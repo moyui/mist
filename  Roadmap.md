@@ -17,3 +17,24 @@
 ## 详细设计
 
 ### 数据采集与存储
+
+感谢 [AKTools](https://aktools.akfamily.xyz/#fastapi) 目前尝试使用aktools来本地启动金融api，后续会自己替换
+采集：axios请求本地http接口
+收集：mysql存储格式化数据
+
+附：python使用说明
+
+- 安装虚拟环境
+  python3 -m venv python-env
+- 激活虚拟环境
+  source python-env/bin/activate
+- 退出虚拟环境
+  deactivate
+- 安装AKTools
+  python3 -m pip install aktools
+- 启动
+  python3 -m aktools
+
+### 数据分析
+
+待续
