@@ -35,6 +35,42 @@
 - 启动
   python3 -m aktools
 
+数据库建立语句 CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
+
+设计表结构
+
+指数表 - IndexData
+
+| 字段名      | 数据类型    | 描述                                |
+| ----------- | ----------- | ----------------------------------- |
+| id          | INT         | 指数id                              |
+| name        | VARCHAR(50) | 指数名                              |
+| symbol      | VARCHAR(50) | 指数编号                            |
+| type        | INT         | 指数类型 1-大盘股 2-中盘股 3-小盘股 |
+| create_time | DATETIME    | 创建时间                            |
+| update_time | DATETIME    | 更新时间                            |
+
+指数分时表（5、15、30、60分钟都类似） - IndexPeriod(xx)Min
+
+| 字段名        | 数据类型       | 描述                |
+| ------------- | -------------- | ------------------- |
+| time          | DATETIME       | 时间 (主键)         |
+| open          | DCECIMAL(12,2) | 开盘                |
+| close         | DCECIMAL(12,2) | 收盘                |
+| highest       | DCECIMAL(12,2) | 最高                |
+| lowest        | DCECIMAL(12,2) | 最低                |
+| volume        | BIGINT         | 成交量 注意单位: 手 |
+| price         | DOUBLE         | 成交额 注意单位: 元 |
+| vibration     | DCECIMAL(12,2) | 振幅                |
+| turnover_rate | DOUBLE         | 换手率              |
+| index_id      | INT            | 指数id 外键         |
+| create_time   | DATETIME       | 创建时间            |
+| update_time   | DATETIME       | 更新时间            |
+
 ### 数据分析
 
 待续
+
+### 踩坑
+
+aktools不会自动提示端口被占用，从而导致请求失败
