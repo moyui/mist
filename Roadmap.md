@@ -41,31 +41,36 @@
 
 指数表 - IndexData
 
-| 字段名      | 数据类型    | 描述                                |
-| ----------- | ----------- | ----------------------------------- |
-| id          | INT         | 指数id                              |
-| name        | VARCHAR(50) | 指数名                              |
-| symbol      | VARCHAR(50) | 指数编号                            |
-| type        | INT         | 指数类型 1-大盘股 2-中盘股 3-小盘股 |
-| create_time | DATETIME    | 创建时间                            |
-| update_time | DATETIME    | 更新时间                            |
+| 字段名      | 数据类型      | 描述                                |
+| ----------- | ------------- | ----------------------------------- |
+| id          | INT           | 指数id                              |
+| name        | VARCHAR(50)   | 指数名                              |
+| symbol      | VARCHAR(50)   | 指数编号                            |
+| type        | ENUM          | 指数类型 1-大盘股 2-中盘股 3-小盘股 |
+| period      | IndexPeriod[] | 外键                                |
+| create_time | DATETIME      | 创建时间                            |
+| update_time | DATETIME      | 更新时间                            |
 
-指数分时表（5、15、30、60分钟都类似） - IndexPeriod(xx)Min
+指数分时表（5、15、30、60分钟都类似） - IndexPeriod
 
-| 字段名        | 数据类型       | 描述                |
-| ------------- | -------------- | ------------------- |
-| time          | DATETIME       | 时间 (主键)         |
-| open          | DCECIMAL(12,2) | 开盘                |
-| close         | DCECIMAL(12,2) | 收盘                |
-| highest       | DCECIMAL(12,2) | 最高                |
-| lowest        | DCECIMAL(12,2) | 最低                |
-| volume        | BIGINT         | 成交量 注意单位: 手 |
-| price         | DOUBLE         | 成交额 注意单位: 元 |
-| vibration     | DCECIMAL(12,2) | 振幅                |
-| turnover_rate | DOUBLE         | 换手率              |
-| index_id      | INT            | 指数id 外键         |
-| create_time   | DATETIME       | 创建时间            |
-| update_time   | DATETIME       | 更新时间            |
+| 字段名        | 数据类型       | 描述                           |
+| ------------- | -------------- | ------------------------------ |
+| id            | INT            | id (主键)                      |
+| time          | VARCHAR(50)    | 时间                           |
+| open          | DCECIMAL(12,2) | 开盘                           |
+| close         | DCECIMAL(12,2) | 收盘                           |
+| highest       | DCECIMAL(12,2) | 最高                           |
+| lowest        | DCECIMAL(12,2) | 最低                           |
+| volume        | BIGINT         | 成交量 注意单位: 手            |
+| price         | DOUBLE         | 成交额 注意单位: 元            |
+| vibration     | DCECIMAL(12,2) | 振幅                           |
+| turnover_rate | DOUBLE         | 换手率                         |
+| type          | ENUM           | 类型 FIVE FIFTEEN THIRTY SIXTY |
+| index_id      | INT            | 指数id 外键                    |
+| create_time   | DATETIME       | 创建时间                       |
+| update_time   | DATETIME       | 更新时间                       |
+
+定时任务 使用 @nestjs/schedule 效果有待考察
 
 ### 数据分析
 

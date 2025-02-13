@@ -2,13 +2,21 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { IndexPeriod } from './index-period.entity';
+
+export enum Type {
+  'LARGE' = 1,
+  'MIDDLE' = 2,
+  'SMALL' = 3,
+}
 
 @Entity({
-  name: 'indexs',
+  name: 'index_datas',
 })
-export class Index {
+export class IndexData {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -25,9 +33,15 @@ export class Index {
   symbol: string;
 
   @Column({
+    type: 'enum',
+    enum: Type,
+    default: Type.LARGE,
     comment: '指数类型 1-大盘股 2-中盘股 3-小盘股',
   })
-  type: number;
+  type: Type;
+
+  @OneToMany(() => IndexPeriod, (indexPeriod) => indexPeriod.indexData)
+  indexPeriod: IndexPeriod[];
 
   @CreateDateColumn()
   createTime: Date;

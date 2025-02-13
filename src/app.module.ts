@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DataModule } from './data/data.module';
+import { IndexData } from './data/entities/index-data.entitiy';
+import { IndexPeriod } from './data/entities/index-period.entity';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -11,6 +15,7 @@ import { DataModule } from './data/data.module';
       isGlobal: true,
       envFilePath: 'src/.env',
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       useFactory(configService: ConfigService) {
         return {
@@ -22,7 +27,7 @@ import { DataModule } from './data/data.module';
           database: configService.get('mysql_server_database'),
           synchronize: true,
           logging: true,
-          // entities: [User, Role, Permission],
+          entities: [IndexData, IndexPeriod],
           poolSize: 10,
           connectorPackage: 'mysql2',
           extra: {
@@ -33,6 +38,7 @@ import { DataModule } from './data/data.module';
       inject: [ConfigService],
     }),
     DataModule,
+    TaskModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,7 +4,9 @@ import { GetIndexDto } from './dto/get-index.dto';
 
 @Controller('data')
 export class DataController {
-  constructor(private readonly dataService: DataService) {}
+  constructor(private readonly dataService: DataService) {
+    this.dataService.initData();
+  }
 
   @Get('index')
   async index() {
