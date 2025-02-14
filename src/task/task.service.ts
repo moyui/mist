@@ -1,12 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 
 @Injectable()
 export class TaskService {
   private readonly logger = new Logger(TaskService.name);
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  handleCron() {
-    console.log('task execute');
+  constructor(private schedulerRegistry: SchedulerRegistry) {}
+
+  addCronJob(name: string, corn: string, callback: () => void) {
+    const job = new CronJob(corn, () => {
+      callback();
+    });
+    this.schedulerRegistry.addCronJob(name, job);
+    job.start();
+    this.logger.warn(`job ${name} added for each minute at  seconds!`);
   }
 }

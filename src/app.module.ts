@@ -8,6 +8,7 @@ import { DataModule } from './data/data.module';
 import { IndexData } from './data/entities/index-data.entitiy';
 import { IndexPeriod } from './data/entities/index-period.entity';
 import { TaskModule } from './task/task.module';
+import { TimezoneModule } from './timezone/timezone.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { TaskModule } from './task/task.module';
     }),
     DataModule,
     TaskModule,
+    TimezoneModule,
   ],
   controllers: [AppController],
   providers: [AppService],

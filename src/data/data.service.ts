@@ -11,11 +11,15 @@ import { AxiosError } from 'axios';
 import { catchError, firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { GetIndexDto } from './dto/get-index.dto';
+import { SaveIndexDto } from './dto/save-index.dto';
 import {
   IndexData,
   Type as IndexDataType,
 } from './entities/index-data.entitiy';
-import { IndexPeriod } from './entities/index-period.entity';
+import {
+  IndexPeriod,
+  Type as IndexPeriodType,
+} from './entities/index-period.entity';
 import { IndexResponse } from './entities/index-response.entity';
 
 @Injectable()
@@ -64,5 +68,47 @@ export class DataService {
         ),
     );
     return data;
+  }
+
+  async saveData(
+    saveIndexDto: SaveIndexDto,
+    data: IndexResponse[],
+    type: IndexPeriodType,
+  ) {
+    // 首先按照时间找到对应的字段和类型
+    const foundIndex = await this.indexDataRepository.findOneBy({
+      symbol: saveIndexDto.symbol,
+    });
+    if (!foundIndex.name) {
+      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+    }
+    // 按照指数id、时间戳、类型查找到对应的id
+    const foundIndexPeriod = await this.indexPeriodRepository.findOne({
+      where: {
+        indexData: foundIndex,
+        time: saveIndexDto.time,
+        type,
+      },
+    });
+    // 如果找不到, 说明是新增, 并且理论上只需要保留第一位即可
+    const indexPeriod = foundIndexPeriod || new IndexPeriod();
+    indexPeriod.time = saveIndexDto.time;
+    indexPeriod.open = data[0]['开盘'];
+    indexPeriod.close = data[0]['收盘'];
+    indexPeriod.highest = data[0]['最高'];
+    indexPeriod.lowest = data[0]['最低'];
+    indexPeriod.volume = data[0]['成交量'].toString();
+    indexPeriod.price = data[0]['成交额'];
+    indexPeriod.vibration = data[0]['振幅'];
+    indexPeriod.turnover_rate = data[0]['换手率'];
+    indexPeriod.type = type;
+    indexPeriod.indexData = foundIndex;
+    try {
+      await this.indexPeriodRepository.save(indexPeriod);
+      return '数据保存成功';
+    } catch (e) {
+      this.logger.error(e, DataService);
+      return '数据保存失败';
+    }
   }
 }

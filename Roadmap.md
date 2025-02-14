@@ -70,7 +70,9 @@
 | create_time   | DATETIME       | 创建时间                       |
 | update_time   | DATETIME       | 更新时间                       |
 
-定时任务 使用 @nestjs/schedule 效果有待考察
+定时任务 使用 @nestjs/schedule，效果有待考察
+
+时间构建和时区转换 使用 date-fns date-fns-tz插件，效果有待考察。并且需要在对应的位置配置当地服务器时区
 
 ### 数据分析
 
