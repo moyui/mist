@@ -63,8 +63,8 @@
 | lowest        | DCECIMAL(12,2) | 最低                           |
 | volume        | BIGINT         | 成交量 注意单位: 手            |
 | price         | DOUBLE         | 成交额 注意单位: 元            |
-| vibration     | DCECIMAL(12,2) | 振幅                           |
-| turnover_rate | DOUBLE         | 换手率                         |
+<!-- | vibration     | DCECIMAL(12,2) | 振幅          这两个指标不一定有                 |
+| turnover_rate | DOUBLE         | 换手率                         | -->
 | type          | ENUM           | 类型 FIVE FIFTEEN THIRTY SIXTY |
 | index_id      | INT            | 指数id 外键                    |
 | create_time   | DATETIME       | 创建时间                       |

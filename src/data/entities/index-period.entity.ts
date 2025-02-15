@@ -8,6 +8,7 @@ import {
 import { IndexData } from './index-data.entitiy';
 
 export enum Type {
+  One = 1,
   FIVE = 5,
   FIFTEEN = 15,
   THIRTY = 30,
@@ -75,20 +76,20 @@ export class IndexPeriod {
   })
   price: number;
 
-  @Column({
-    type: 'decimal',
-    precision: 12,
-    scale: 2,
-    default: 0.0,
-    comment: '振幅',
-  })
-  vibration: number;
+  // @Column({
+  //   type: 'decimal',
+  //   precision: 12,
+  //   scale: 2,
+  //   default: 0.0,
+  //   comment: '振幅',
+  // })
+  // vibration: number;
 
-  @Column({
-    type: 'double',
-    comment: '换手率',
-  })
-  turnover_rate: number;
+  // @Column({
+  //   type: 'double',
+  //   comment: '换手率',
+  // })
+  // turnover_rate: number;
 
   @Column({
     type: 'enum',

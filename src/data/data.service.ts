@@ -41,6 +41,12 @@ export class DataService {
     indexData.type = IndexDataType.LARGE;
     indexData.name = '上证指数';
     await this.indexDataRepository.save(indexData);
+
+    const indexData2 = new IndexData();
+    indexData2.symbol = '000300';
+    indexData2.type = IndexDataType.LARGE;
+    indexData2.name = '沪深300';
+    await this.indexDataRepository.save(indexData2);
   }
 
   async getIndex(index: GetIndexDto): Promise<IndexResponse[]> {
@@ -72,7 +78,7 @@ export class DataService {
 
   async saveData(
     saveIndexDto: SaveIndexDto,
-    data: IndexResponse[],
+    data: IndexResponse,
     type: IndexPeriodType,
   ) {
     // 首先按照时间找到对应的字段和类型
@@ -93,14 +99,14 @@ export class DataService {
     // 如果找不到, 说明是新增, 并且理论上只需要保留第一位即可
     const indexPeriod = foundIndexPeriod || new IndexPeriod();
     indexPeriod.time = saveIndexDto.time;
-    indexPeriod.open = data[0]['开盘'];
-    indexPeriod.close = data[0]['收盘'];
-    indexPeriod.highest = data[0]['最高'];
-    indexPeriod.lowest = data[0]['最低'];
-    indexPeriod.volume = data[0]['成交量'].toString();
-    indexPeriod.price = data[0]['成交额'];
-    indexPeriod.vibration = data[0]['振幅'];
-    indexPeriod.turnover_rate = data[0]['换手率'];
+    indexPeriod.open = data['开盘'];
+    indexPeriod.close = data['收盘'];
+    indexPeriod.highest = data['最高'];
+    indexPeriod.lowest = data['最低'];
+    indexPeriod.volume = data['成交量'].toString();
+    indexPeriod.price = data['成交额'];
+    // indexPeriod.vibration = data[0]['振幅'];
+    // indexPeriod.turnover_rate = data[0]['换手率'];
     indexPeriod.type = type;
     indexPeriod.indexData = foundIndex;
     try {
