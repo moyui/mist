@@ -2,19 +2,15 @@ import {
   Controller,
   Get,
   Inject,
-  Logger,
   OnApplicationBootstrap,
 } from '@nestjs/common';
-import { addMinutes } from 'date-fns';
 import { TaskService } from 'src/task/task.service';
 import { TimezoneService } from 'src/timezone/timezone.service';
 import { addZeroToNumber } from 'src/utils';
 import { DataService } from './data.service';
 import { Type as IndexPeriodType } from './entities/index-period.entity';
-import { IndexResponse } from './entities/index-response.entity';
 @Controller('data')
 export class DataController implements OnApplicationBootstrap {
-  private readonly logger = new Logger();
   private static symbol = '000300'; // 上证指数接口有问题，先用hs300代替
 
   constructor(private readonly dataService: DataService) {
@@ -22,9 +18,14 @@ export class DataController implements OnApplicationBootstrap {
     this.dataService.initData();
   }
 
+  // 尽量晚上启动，不要影响到开盘时间
   onApplicationBootstrap() {
     // 这个函数会在所有模块加载完成后调用
     this.handleCron1MinIndex();
+    this.handleCron5MinIndex();
+    this.handleCron15MinIndex();
+    this.handleCron30MinIndex();
+    this.handleCron60MinIndex();
   }
 
   @Inject()
@@ -64,67 +65,90 @@ export class DataController implements OnApplicationBootstrap {
     return result;
   }
 
+  @Get('time-test')
+  async timeTest() {
+    return this.timezoneService.convertToBeijingTimeWithInterval(
+      new Date('2025-02-14T10:31:01'),
+      'Asia/Shanghai',
+      5,
+    );
+  }
+
+  private getMockTime() {
+    const localTime = new Date();
+    // 模拟9点钟开盘注入数据
+    const minutes = addZeroToNumber(localTime.getMinutes());
+    const seconds = addZeroToNumber(localTime.getSeconds());
+    // 假设当前时间
+    const realTime = new Date(`2025-02-14T10:${minutes}:${seconds}`);
+    return realTime;
+  }
+
   async handleCron1MinIndex() {
+    // 取数时间段 9:32～11:31 || 13:01~15:01 因为32分才能取到第31分的数据，30分的数据无效
     this.taskService.addCronJob('callIndex1Mins', '*/1 * * * *', async () => {
-      const localTime = new Date();
-      // 模拟9点钟开盘注入数据
-      const minutes = addZeroToNumber(localTime.getMinutes());
-      const seconds = addZeroToNumber(localTime.getSeconds());
-      // 假设当前时间
-      const realTime = new Date(`2025-02-14T10:${minutes}:${seconds}`);
-
-      // 启动脚本
-      // 这里有单独的逻辑，如果是9点31分的第一根k线，则需要合并30分和31分的数据， 这个时间理论上应该要从32分开始算是准确的
-      // 反之就取第二位的数据
-      const timeStart = this.timezoneService.convertToBeijingTimeWithInterval(
-        addMinutes(realTime, -1),
-        'Asia/Shanghai', // from时间
-        1,
-      );
-
-      const timeEnd = this.timezoneService.convertToBeijingTimeWithInterval(
-        realTime,
-        'Asia/Shanghai', // from时间
-        1,
-      );
-
-      const data = await this.dataService.getIndex({
+      const time = new Date();
+      if (!this.timezoneService.isInTime1Min(time)) return;
+      return await this.dataService.cronIndex({
         symbol: DataController.symbol,
-        period: IndexPeriodType.One,
-        startDate: timeStart.format,
-        endDate: timeEnd.format,
+        periodType: IndexPeriodType.One,
+        time: time,
       });
-
-      let saveData: IndexResponse = {} as IndexResponse;
-      if (timeEnd.date.getHours() === 9 && timeEnd.date.getMinutes() === 31) {
-        saveData = {
-          时间: data[1]['时间'],
-          开盘: data[0]['开盘'],
-          收盘: data[1]['收盘'],
-          最高: Math.max(data[0]['最高'], data[1]['最高']),
-          最低: Math.max(data[0]['最低'], data[1]['最低']),
-          成交量: data[0]['成交量'] + data[1]['成交量'],
-          成交额: data[1]['成交额'] + data[1]['成交额'],
-        };
-      } else {
-        saveData = data[0];
-      }
-      this.logger.debug(
-        `${JSON.stringify(saveData)}  启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
-        DataController,
-      );
-      const result = await this.dataService.saveData(
-        {
-          symbol: DataController.symbol,
-          time: timeStart.format,
-        },
-        saveData,
-        IndexPeriodType.One,
-      );
-      this.logger.debug(
-        `${result} - 启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
-        DataController,
-      );
     });
+  }
+
+  async handleCron5MinIndex() {
+    // 取数时间段 9:36～11:31 || 13:06~15:01
+    this.taskService.addCronJob('callIndex5Mins', '1/5 * * * *', async () => {
+      const time = new Date();
+      if (!this.timezoneService.isInTime5Min(time)) return;
+      return await this.dataService.cronIndex({
+        symbol: DataController.symbol,
+        periodType: IndexPeriodType.FIVE,
+        time: time,
+      });
+    });
+  }
+
+  async handleCron15MinIndex() {
+    // 取数时间段 9:46～11:31 || 13:16~15:01
+    this.taskService.addCronJob('callIndex15Mins', '1/15 * * * *', async () => {
+      const time = new Date();
+      if (!this.timezoneService.isInTime15Min(time)) return;
+      return await this.dataService.cronIndex({
+        symbol: DataController.symbol,
+        periodType: IndexPeriodType.FIFTEEN,
+        time: time,
+      });
+    });
+  }
+
+  async handleCron30MinIndex() {
+    // 取数时间段 10:01～11:31 || 13:31~15:01
+    this.taskService.addCronJob('callIndex30Mins', '1/30 * * * *', async () => {
+      const time = new Date();
+      if (!this.timezoneService.isInTime30Min(time)) return;
+      return await this.dataService.cronIndex({
+        symbol: DataController.symbol,
+        periodType: IndexPeriodType.THIRTY,
+        time: time,
+      });
+    });
+  }
+
+  async handleCron60MinIndex() {
+    // 取数时间段 10:31～11:31 || 14:01~15:01
+    const task = async () => {
+      const time = new Date();
+      return await this.dataService.cronIndex({
+        symbol: DataController.symbol,
+        periodType: IndexPeriodType.SIXTY,
+        time: time,
+      });
+    };
+    this.taskService.addCronJob('callIndex60Mins1031', '31 10 * * *', task);
+    this.taskService.addCronJob('callIndex60Mins1131', '31 11 * * *', task);
+    this.taskService.addCronJob('callIndex60Mins1401', '01 14 * * *', task);
+    this.taskService.addCronJob('callIndex60Mins1501', '01 15 * * *', task);
   }
 }

@@ -7,6 +7,7 @@ import {
 } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { addZeroToNumber, roundDownToNearestInterval } from 'src/utils';
+import { ConvertTimezoneVo } from './vo/convert-timezone.vo';
 
 @Injectable()
 export class TimezoneService {
@@ -14,7 +15,7 @@ export class TimezoneService {
     date: Date,
     sourceTimeZone: string,
     interval: number,
-  ): { format: string; date: Date } {
+  ): ConvertTimezoneVo {
     // 将原始时间转换为 UTC 时间
     const utcTime = fromZonedTime(date, sourceTimeZone);
     // 将 UTC 时间转换为北京时间
@@ -117,5 +118,75 @@ export class TimezoneService {
     );
 
     return beforeTime.concat(afterTime);
+  }
+
+  // 判断当前时间是否在对应时间段内
+  isInTime1Min(now: Date) {
+    const nowDate = new Date();
+    const year = nowDate.getFullYear();
+    const month = addZeroToNumber(nowDate.getMonth() + 1);
+    const date = addZeroToNumber(nowDate.getDate());
+    // 1分钟级别从9:32开始，到11:31结束
+    return (
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T09:32:00`),
+        end: new Date(`${year}-${month}-${date}T11:31:00`),
+      }) ||
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T13:01:00`),
+        end: new Date(`${year}-${month}-${date}T15:01:00`),
+      })
+    );
+  }
+
+  isInTime5Min(now: Date) {
+    const nowDate = new Date();
+    const year = nowDate.getFullYear();
+    const month = addZeroToNumber(nowDate.getMonth() + 1);
+    const date = addZeroToNumber(nowDate.getDate());
+    return (
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T09:36:00`),
+        end: new Date(`${year}-${month}-${date}T11:31:00`),
+      }) ||
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T13:06:00`),
+        end: new Date(`${year}-${month}-${date}T15:01:00`),
+      })
+    );
+  }
+
+  isInTime15Min(now: Date) {
+    const nowDate = new Date();
+    const year = nowDate.getFullYear();
+    const month = addZeroToNumber(nowDate.getMonth() + 1);
+    const date = addZeroToNumber(nowDate.getDate());
+    return (
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T09:36:00`),
+        end: new Date(`${year}-${month}-${date}T11:31:00`),
+      }) ||
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T13:16:00`),
+        end: new Date(`${year}-${month}-${date}T15:01:00`),
+      })
+    );
+  }
+
+  isInTime30Min(now: Date) {
+    const nowDate = new Date();
+    const year = nowDate.getFullYear();
+    const month = addZeroToNumber(nowDate.getMonth() + 1);
+    const date = addZeroToNumber(nowDate.getDate());
+    return (
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T10:01:00`),
+        end: new Date(`${year}-${month}-${date}T11:31:00`),
+      }) ||
+      isWithinInterval(now, {
+        start: new Date(`${year}-${month}-${date}T13:31:00`),
+        end: new Date(`${year}-${month}-${date}T15:01:00`),
+      })
+    );
   }
 }
