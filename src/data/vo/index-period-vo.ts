@@ -1,4 +1,4 @@
-export class IndexResponse {
+export class IndexPeriodVo {
   '时间': string;
   '开盘': number;
   '收盘': number;

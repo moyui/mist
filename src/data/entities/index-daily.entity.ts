@@ -7,24 +7,16 @@ import {
 } from 'typeorm';
 import { IndexData } from './index-data.entitiy';
 
-export enum Type {
-  One = 1,
-  FIVE = 5,
-  FIFTEEN = 15,
-  THIRTY = 30,
-  SIXTY = 60,
-}
-
 @Entity({
-  name: 'index_periods',
+  name: 'index_dailys',
 })
-export class IndexPeriod {
+export class IndexDaily {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({
     length: 50,
-    comment: '时间',
+    comment: '时间, 数据源开始记录的时候，不是指数上市的时候',
   })
   time: string;
 
@@ -75,29 +67,6 @@ export class IndexPeriod {
     comment: '成交额 注意单位: 元',
   })
   amount: number;
-
-  // @Column({
-  //   type: 'decimal',
-  //   precision: 12,
-  //   scale: 2,
-  //   default: 0.0,
-  //   comment: '振幅',
-  // })
-  // vibration: number;
-
-  // @Column({
-  //   type: 'double',
-  //   comment: '换手率',
-  // })
-  // turnover_rate: number;
-
-  @Column({
-    type: 'enum',
-    enum: Type,
-    default: Type.FIVE,
-    comment: '类型 FIVE FIFTEEN THIRTY SIXTY',
-  })
-  type: Type;
 
   @ManyToOne(() => IndexData, (indexData) => indexData.indexPeriod, {
     cascade: true,

@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { IndexPeriod } from './index-period.entity';
+import { IndexDaily } from './index-daily.entity';
 
 export enum Type {
   'LARGE' = 1,
@@ -33,6 +34,12 @@ export class IndexData {
   symbol: string;
 
   @Column({
+    length: 50,
+    comment: '交易所编号 sz: 深交所, sh: 上交所, csi: 中证指数 + id',
+  })
+  code: string;
+
+  @Column({
     type: 'enum',
     enum: Type,
     default: Type.LARGE,
@@ -42,6 +49,9 @@ export class IndexData {
 
   @OneToMany(() => IndexPeriod, (indexPeriod) => indexPeriod.indexData)
   indexPeriod: IndexPeriod[];
+
+  @OneToMany(() => IndexDaily, (indexDaily) => indexDaily.indexData)
+  indexDaily: IndexDaily[];
 
   @CreateDateColumn()
   createTime: Date;

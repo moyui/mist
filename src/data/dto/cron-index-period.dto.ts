@@ -1,7 +1,7 @@
 import { IsNotEmpty } from 'class-validator';
 import { Type as IndexPeriodType } from '../entities/index-period.entity';
 
-export class CronIndexDto {
+export class CronIndexPeriodDto {
   @IsNotEmpty({
     message: '指数代码不能为空',
   })

@@ -1,6 +1,6 @@
 import { IsInt, IsNotEmpty } from 'class-validator';
 
-export class GetIndexDto {
+export class GetIndexPeriodDto {
   @IsNotEmpty({
     message: '指数代码不能为空',
   })
@@ -16,12 +16,12 @@ export class GetIndexDto {
   period: number;
 
   @IsNotEmpty({
-    message: '开始日期不能为空',
+    message: '开始日期不能为空，格式 yyyy-MM-dd HH:mm:ss',
   })
   startDate: string;
 
   @IsNotEmpty({
-    message: '结束日期不能为空',
+    message: '结束日期不能为空，格式 yyyy-MM-dd HH:mm:ss',
   })
   endDate: string;
 }

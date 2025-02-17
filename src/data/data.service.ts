@@ -13,9 +13,13 @@ import { catchError, firstValueFrom } from 'rxjs';
 import { TimezoneService } from 'src/timezone/timezone.service';
 import { ConvertTimezoneVo } from 'src/timezone/vo/convert-timezone.vo';
 import { Repository } from 'typeorm';
-import { CronIndexDto } from './dto/cron-index.dto';
-import { GetIndexDto } from './dto/get-index.dto';
-import { SaveIndexDto } from './dto/save-index.dto';
+import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
+import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
+import { GetIndexDailyDto } from './dto/get-index-daily.dto';
+import { GetIndexPeriodDto } from './dto/get-index-period.dto';
+import { SaveIndexDailyDto } from './dto/save-index-daily.dto';
+import { SaveIndexPeriodDto } from './dto/save-index-period.dto';
+import { IndexDaily } from './entities/index-daily.entity';
 import {
   IndexData,
   Type as IndexDataType,
@@ -24,7 +28,8 @@ import {
   IndexPeriod,
   Type as IndexPeriodType,
 } from './entities/index-period.entity';
-import { IndexResponse } from './entities/index-response.entity';
+import { IndexDailyVo } from './vo/index-daily-vo';
+import { IndexPeriodVo } from './vo/index-period-vo';
 
 @Injectable()
 export class DataService {
@@ -42,24 +47,29 @@ export class DataService {
   @InjectRepository(IndexPeriod)
   private indexPeriodRepository: Repository<IndexPeriod>;
 
+  @InjectRepository(IndexDaily)
+  private indexDailyRepository: Repository<IndexDaily>;
+
   async initData() {
     const indexData = new IndexData();
     indexData.symbol = '000001';
     indexData.type = IndexDataType.LARGE;
+    indexData.code = 'sh';
     indexData.name = '上证指数';
     await this.indexDataRepository.save(indexData);
 
     const indexData2 = new IndexData();
     indexData2.symbol = '000300';
     indexData2.type = IndexDataType.LARGE;
+    indexData2.code = 'sh';
     indexData2.name = '沪深300';
     await this.indexDataRepository.save(indexData2);
   }
 
-  async getIndex(index: GetIndexDto): Promise<IndexResponse[]> {
+  async getIndexPeriod(index: GetIndexPeriodDto): Promise<IndexPeriodVo[]> {
     const { data } = await firstValueFrom(
       this.httpService
-        .get<IndexResponse[]>(
+        .get<IndexPeriodVo[]>(
           'http://127.0.0.1:8080/api/public/index_zh_a_hist_min_em',
           {
             params: {
@@ -74,7 +84,7 @@ export class DataService {
           catchError((error: AxiosError) => {
             this.logger.error(error.response.data, DataService);
             throw new HttpException(
-              '请求指数数据错误',
+              '请求指数周期数据错误',
               HttpStatus.SERVICE_UNAVAILABLE,
             );
           }),
@@ -83,9 +93,9 @@ export class DataService {
     return data;
   }
 
-  async saveData(
-    saveIndexDto: SaveIndexDto,
-    data: IndexResponse,
+  async saveIndexPeriod(
+    saveIndexDto: SaveIndexPeriodDto,
+    data: IndexPeriodVo,
     type: IndexPeriodType,
   ) {
     // 首先按照时间找到对应的字段和类型
@@ -111,24 +121,24 @@ export class DataService {
     indexPeriod.highest = data['最高'];
     indexPeriod.lowest = data['最低'];
     indexPeriod.volume = data['成交量'].toString();
-    indexPeriod.price = data['成交额'];
+    indexPeriod.amount = data['成交额'];
     // indexPeriod.vibration = data[0]['振幅'];
     // indexPeriod.turnover_rate = data[0]['换手率'];
     indexPeriod.type = type;
     indexPeriod.indexData = foundIndex;
     try {
       await this.indexPeriodRepository.save(indexPeriod);
-      return '数据保存成功';
+      return '指数周期数据保存成功';
     } catch (e) {
       this.logger.error(e, DataService);
-      return '数据保存失败';
+      return '指数周期数据保存失败';
     }
   }
 
   private build1MinData(
     timeEnd: ConvertTimezoneVo,
-    data: IndexResponse[],
-  ): IndexResponse {
+    data: IndexPeriodVo[],
+  ): IndexPeriodVo {
     const hours = timeEnd.date.getHours();
     const minutes = timeEnd.date.getMinutes();
     // 早上开盘
@@ -155,8 +165,8 @@ export class DataService {
 
   private build5MinData(
     timeEnd: ConvertTimezoneVo,
-    data: IndexResponse[],
-  ): IndexResponse {
+    data: IndexPeriodVo[],
+  ): IndexPeriodVo {
     const hours = timeEnd.date.getHours();
     const minutes = timeEnd.date.getMinutes();
     // 早上开盘
@@ -173,8 +183,8 @@ export class DataService {
 
   private build15MinData(
     timeEnd: ConvertTimezoneVo,
-    data: IndexResponse[],
-  ): IndexResponse {
+    data: IndexPeriodVo[],
+  ): IndexPeriodVo {
     const hours = timeEnd.date.getHours();
     const minutes = timeEnd.date.getMinutes();
     // 早上开盘
@@ -191,8 +201,8 @@ export class DataService {
 
   private build30MinData(
     timeEnd: ConvertTimezoneVo,
-    data: IndexResponse[],
-  ): IndexResponse {
+    data: IndexPeriodVo[],
+  ): IndexPeriodVo {
     const hours = timeEnd.date.getHours();
     const minutes = timeEnd.date.getMinutes();
     // 早上开盘
@@ -209,8 +219,8 @@ export class DataService {
 
   private build60MinData(
     timeEnd: ConvertTimezoneVo,
-    data: IndexResponse[],
-  ): IndexResponse {
+    data: IndexPeriodVo[],
+  ): IndexPeriodVo {
     const hours = timeEnd.date.getHours();
     const minutes = timeEnd.date.getMinutes();
     // 早上开盘
@@ -225,7 +235,7 @@ export class DataService {
     }
   }
 
-  async cronIndex(cronIndexDto: CronIndexDto) {
+  async cronIndexPeriod(cronIndexDto: CronIndexPeriodDto) {
     const timeStart = this.timezoneService.convertToBeijingTimeWithInterval(
       addMinutes(cronIndexDto.time, -1 - cronIndexDto.periodType),
       'Asia/Shanghai', // from时间
@@ -236,14 +246,13 @@ export class DataService {
       'Asia/Shanghai', // from时间
       1,
     ); // 前1分钟
-
-    const data = await this.getIndex({
+    const data = await this.getIndexPeriod({
       symbol: cronIndexDto.symbol,
       period: cronIndexDto.periodType,
       startDate: timeStart.format,
       endDate: timeEnd.format,
     });
-    let responseVo: IndexResponse | null = null;
+    let responseVo: IndexPeriodVo | null = null;
     switch (cronIndexDto.periodType) {
       case IndexPeriodType.One:
         responseVo = this.build1MinData(timeEnd, data);
@@ -266,7 +275,7 @@ export class DataService {
     if (!responseVo) {
       throw new HttpException('构建保存数据错误', HttpStatus.BAD_REQUEST);
     }
-    const result = await this.saveData(
+    const result = await this.saveIndexPeriod(
       {
         symbol: cronIndexDto.symbol,
         time: timeEnd.format,
@@ -275,7 +284,142 @@ export class DataService {
       cronIndexDto.periodType,
     );
     this.logger.debug(
-      `${result} - 启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
+      `cronIndexPeriod ${result} - 启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
+      DataService,
+    );
+    return result;
+  }
+
+  async getIndexDaily(index: GetIndexDailyDto): Promise<IndexDailyVo[]> {
+    const { data } = await firstValueFrom(
+      this.httpService
+        .get<IndexDailyVo[]>(
+          'http://127.0.0.1:8080/api/public/stock_zh_index_daily_em',
+          {
+            params: {
+              symbol: `${index.code}${index.symbol}`,
+              start_date: index.startDate,
+              end_date: index.endDate,
+            },
+          },
+        )
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(error.response.data, DataService);
+            throw new HttpException(
+              '请求指数日期数据错误',
+              HttpStatus.SERVICE_UNAVAILABLE,
+            );
+          }),
+        ),
+    );
+    return data;
+  }
+
+  async saveIndexDaily(saveIndexDto: SaveIndexDailyDto, data: IndexDailyVo) {
+    // 首先按照时间找到对应的字段和类型
+    const foundIndex = await this.indexDataRepository.findOneBy({
+      symbol: saveIndexDto.symbol,
+    });
+    if (!foundIndex.name) {
+      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+    }
+    // 按照指数id、时间戳查找到对应的id
+    const foundIndexDaily = await this.indexDailyRepository.findOne({
+      where: {
+        indexData: foundIndex,
+        time: saveIndexDto.time,
+      },
+    });
+    // // 如果找不到, 说明是新增, 并且理论上只需要保留第一位即可
+    const indexDaily = foundIndexDaily || new IndexDaily();
+    indexDaily.time = data.date;
+    indexDaily.open = data.open;
+    indexDaily.close = data.close;
+    indexDaily.highest = data.high;
+    indexDaily.lowest = data.low;
+    indexDaily.volume = data.volume.toString();
+    indexDaily.amount = data.amount;
+    indexDaily.indexData = foundIndex;
+    try {
+      await this.indexDailyRepository.save(indexDaily);
+      return '指数日期数据保存成功';
+    } catch (e) {
+      this.logger.error(e, DataService);
+      return '指数日期数据保存失败';
+    }
+  }
+
+  // 批量保存的部分默认全部是新加入，数据清洗之后再说
+  async saveIndeDailyBatch(
+    saveIndexDto: SaveIndexDailyDto,
+    data: IndexDailyVo[],
+  ) {
+    // 首先按照时间找到对应的字段和类型
+    const foundIndex = await this.indexDataRepository.findOneBy({
+      symbol: saveIndexDto.symbol,
+    });
+    if (!foundIndex.name) {
+      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+    }
+    const batchData = data.map((item) => {
+      const indexDaily = new IndexDaily();
+      indexDaily.time = item.date;
+      indexDaily.open = item.open;
+      indexDaily.close = item.close;
+      indexDaily.highest = item.high;
+      indexDaily.lowest = item.low;
+      indexDaily.volume = item.volume.toString();
+      indexDaily.amount = item.amount;
+      indexDaily.indexData = foundIndex;
+      return indexDaily;
+    });
+    try {
+      await this.indexDailyRepository.save(batchData);
+      return '指数日期数据批量保存成功';
+    } catch (e) {
+      this.logger.error(e, DataService);
+      return '指数日期数据批量保存失败';
+    }
+  }
+
+  // 这个理论上是需要每天跑一次的，可以选择2种模式
+  // 如果查询当前日期，就开始日期等于结束日期
+  async cronIndexDaily(cronIndexDto: CronIndexDailyDto, all: boolean) {
+    const timeStart = this.timezoneService.convertToBeijingTimeInDaily(
+      all ? new Date('1990-01-01') : cronIndexDto.startDate,
+      'Asia/Shanghai',
+    );
+    const timeEnd = this.timezoneService.convertToBeijingTimeInDaily(
+      all ? new Date() : cronIndexDto.endDate,
+      'Asia/Shanghai',
+    );
+    const data = await this.getIndexDaily({
+      symbol: cronIndexDto.symbol,
+      code: cronIndexDto.code,
+      startDate: timeStart.format,
+      endDate: timeEnd.format,
+    });
+    let result = '';
+    if (data.length > 1) {
+      result = await this.saveIndeDailyBatch(
+        {
+          symbol: cronIndexDto.symbol,
+          time: timeEnd.format, // 这个日期入参是无效的，后续代码不会使用，只是为了保持格式一致
+        },
+        data,
+      );
+    } else {
+      result = await this.saveIndexDaily(
+        {
+          symbol: cronIndexDto.symbol,
+          time: data[0]?.date,
+        },
+        data[0],
+      );
+    }
+    this.logger.debug(
+      `cronIndexDaily ${result} - 启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
       DataService,
     );
     return result;

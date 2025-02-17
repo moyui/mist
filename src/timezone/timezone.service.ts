@@ -29,6 +29,16 @@ export class TimezoneService {
     };
   }
 
+  convertToBeijingTimeInDaily(date: Date, sourceTimeZone: string) {
+    const utcTime = fromZonedTime(date, sourceTimeZone);
+    // 将 UTC 时间转换为北京时间
+    const beijingTime = toZonedTime(utcTime, 'Asia/Shanghai');
+    return {
+      format: dateFnsFormat(beijingTime, 'yyyy-MM-dd'),
+      date: beijingTime,
+    };
+  }
+
   private generateTimeSlotsPart(
     startTime: Date,
     endTime: Date,
