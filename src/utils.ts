@@ -32,6 +32,12 @@ export function roundDownToNearestInterval(date: Date, interval: number): Date {
   const roundedMinutes = Math.floor(minutes / interval) * interval;
   return setSeconds(setMilliseconds(setMinutes(date, roundedMinutes), 0), 0); // 舍入到指定间隔并清除秒和毫秒
 }
-export function addZeroToNumber(number: number) {
+
+/**
+ * 日期前增加0
+ * @param number number
+ * @returns string
+ */
+export function addZeroToNumber(number: number): string {
   return (number > 10 ? number : '0' + number).toString();
 }

@@ -81,6 +81,10 @@
 
 目前预计通过实时统计macd和kdj2个指标，k线图的话使用echarts开源显示即可，甚至对于后台系统无需显示开源指标
 
+指标开发采用node-talib 目前支持的函数见Talib.md 文件，[官方文档](https://github.com/oransel/node-talib) [原始c代码](https://ta-lib.org/)
+
+目前实现KDJ，MACD，RSI
+
 ### 策略分析
 
 待续

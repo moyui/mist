@@ -5,11 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DataModule } from './data/data.module';
+import { IndexDaily } from './data/entities/index-daily.entity';
 import { IndexData } from './data/entities/index-data.entitiy';
 import { IndexPeriod } from './data/entities/index-period.entity';
+import { IndicatorModule } from './indicator/indicator.module';
 import { TaskModule } from './task/task.module';
 import { TimezoneModule } from './timezone/timezone.module';
-import { IndicatorModule } from './indicator/indicator.module';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { IndicatorModule } from './indicator/indicator.module';
           database: configService.get('mysql_server_database'),
           synchronize: true,
           logging: true,
-          entities: [IndexData, IndexPeriod],
+          entities: [IndexData, IndexPeriod, IndexDaily],
           poolSize: 10,
           connectorPackage: 'mysql2',
           extra: {
