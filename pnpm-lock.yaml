@@ -62,6 +62,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.1
+      talib:
+        specifier: ^1.1.6
+        version: 1.1.6
       typeorm:
         specifier: ^0.3.20
         version: 0.3.20(mysql2@3.12.0)(redis@4.7.0)(ts-node@10.9.2(@types/node@20.17.17)(typescript@5.7.3))
@@ -2243,6 +2246,9 @@ packages:
     resolution: {integrity: sha512-eLoBxg6wE/rZkJPhU/xRX1WTpkFEwDJEN96oxFrTsqBdbT5ec295Q+CoHrL9IT0DipqKhmGcaZmwOt8OON5x1w==}
     engines: {node: '>=12.0.0'}
 
+  nan@2.22.0:
+    resolution: {integrity: sha512-nbajikzWTMwsW+eSsNm3QwlOs7het9gGJU5dDZzRTQGk03vyBOauxgI4VakDzE0PtsGTmXPsXTbbjVhRwR5mpw==}
+
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
@@ -2740,6 +2746,11 @@ packages:
   synckit@0.9.2:
     resolution: {integrity: sha512-vrozgXDQwYO72vHjUb/HnFbQx1exDjoKzqx23aXEg2a9VIg2TSFZ8FmeZpTjUCFMYw7mpX4BE2SFu8wI7asYsw==}
     engines: {node: ^14.18.0 || >=16.0.0}
+
+  talib@1.1.6:
+    resolution: {integrity: sha512-9hzOn6ZnzoA3vWQaCySg3GP+neR42hOFnSVPr5X4fH5CUaV0XaBNJDEyuqv+dPY42WGC9k0BLCKcY4TK1tcuMg==}
+    engines: {node: '>=20.0.0'}
+    os: [darwin, linux, freebsd, win32]
 
   tapable@2.2.1:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==}
@@ -5702,6 +5713,8 @@ snapshots:
     dependencies:
       lru-cache: 7.18.3
 
+  nan@2.22.0: {}
+
   natural-compare@1.4.0: {}
 
   negotiator@0.6.3: {}
@@ -6192,6 +6205,10 @@ snapshots:
     dependencies:
       '@pkgr/core': 0.1.1
       tslib: 2.8.1
+
+  talib@1.1.6:
+    dependencies:
+      nan: 2.22.0
 
   tapable@2.2.1: {}
 
