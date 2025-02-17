@@ -9,6 +9,7 @@ import { IndexData } from './data/entities/index-data.entitiy';
 import { IndexPeriod } from './data/entities/index-period.entity';
 import { TaskModule } from './task/task.module';
 import { TimezoneModule } from './timezone/timezone.module';
+import { IndicatorModule } from './indicator/indicator.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { TimezoneModule } from './timezone/timezone.module';
     DataModule,
     TaskModule,
     TimezoneModule,
+    IndicatorModule,
   ],
   controllers: [AppController],
   providers: [AppService],
