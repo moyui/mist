@@ -1,6 +1,6 @@
 import { IsInt, IsNotEmpty } from 'class-validator';
 
-export class GetIndexPeriodDto {
+export class IndexPeriodDto {
   @IsNotEmpty({
     message: '指数代码不能为空',
   })

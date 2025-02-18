@@ -5,8 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import * as path from 'path';
-import { KDJDto } from './dto/kdj-dto';
-import { KDJVo } from './vo/kdj-vo';
+import { RunKDJDto } from './dto/run-kdj-dto';
 
 @Injectable()
 export class IndicatorService implements OnModuleInit {
@@ -27,14 +26,16 @@ export class IndicatorService implements OnModuleInit {
     );
   }
 
-  async runMACD(prices: number[]) {
+  async runMACD(
+    prices: number[],
+  ): Promise<{ macd: number[]; signal: number[]; histogram: number[] }> {
     if (!this.talib) {
       throw new HttpException(
         'IndicatorService 服务尚未初始化完成，请稍后执行任务',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
-    return this.talib.execute({
+    const macdResult = this.talib.execute({
       name: 'MACD',
       startIdx: 0,
       endIdx: prices.length - 1,
@@ -43,25 +44,37 @@ export class IndicatorService implements OnModuleInit {
       optInSlowPeriod: 26,
       optInSignalPeriod: 9,
     });
+
+    return {
+      macd: macdResult.result.outMACD,
+      signal: macdResult.result.outMACDSignal,
+      histogram: macdResult.result.outMACDHist,
+    };
   }
 
-  async runRSI(prices: number[], period: number = 14) {
+  async runRSI(prices: number[], period: number = 14): Promise<number[]> {
     if (!this.talib) {
       throw new HttpException(
         'IndicatorService 服务尚未初始化完成，请稍后执行任务',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
-    return this.talib.execute({
+    const rsiResult = this.talib.execute({
       name: 'RSI',
       startIdx: 0,
       endIdx: prices.length - 1,
       inReal: prices,
       optInTimePeriod: period,
     });
+
+    return rsiResult.result.outReal;
   }
 
-  async runKDJ(data: KDJDto): Promise<KDJVo> {
+  async runKDJ(data: RunKDJDto): Promise<{
+    K: number[];
+    D: number[];
+    J: number[];
+  }> {
     if (!this.talib) {
       throw new HttpException(
         'IndicatorService 服务尚未初始化完成，请稍后执行任务',

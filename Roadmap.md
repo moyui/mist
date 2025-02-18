@@ -83,11 +83,15 @@
 
 指标开发采用node-talib 目前支持的函数见Talib.md 文件，[官方文档](https://github.com/oransel/node-talib) [原始c代码](https://ta-lib.org/)
 
-目前实现KDJ，MACD，RSI
+目前实现KDJ，MACD，RSI, K的接口获取，已经顺利完工
 
 ### 策略分析
 
-待续
+目前想采取的方案是使用deepseek api + 智能体agent + 策略模型 + 接口知识库，目前个人需要补齐所需技能点中，项目开发暂缓，先运行测试数据
+
+### 图表查看
+
+优先级较低，目前方案预计使用echarts + eta模版直出方案
 
 ### 踩坑
 

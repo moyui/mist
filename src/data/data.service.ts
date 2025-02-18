@@ -15,9 +15,10 @@ import { ConvertTimezoneVo } from 'src/timezone/vo/convert-timezone.vo';
 import { Between, Repository } from 'typeorm';
 import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
 import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
-import { IndexDailyDto } from './dto/index-daily.dto';
-import { IndexPeriodDto } from './dto/index-period.dto';
 import { IndexDailyPriceDto } from './dto/index-daily-price.dto';
+import { IndexDailyDto } from './dto/index-daily.dto';
+import { IndexPeriodPriceDto } from './dto/index-period-price.dto';
+import { IndexPeriodDto } from './dto/index-period.dto';
 import { SaveIndexDailyDto } from './dto/save-index-daily.dto';
 import { SaveIndexPeriodDto } from './dto/save-index-period.dto';
 import { IndexDaily } from './entities/index-daily.entity';
@@ -31,9 +32,7 @@ import {
 } from './entities/index-period.entity';
 import { IndexDailyVo } from './vo/index-daily-vo';
 import { IndexPeriodVo } from './vo/index-period-vo';
-import { IndexDailyPriceVo } from './vo/index-daily-price-vo';
-import { IndexPeriodPriceDto } from './dto/index-period-price.dto';
-import { IndexPeriodPriceVo } from './vo/index-period-price-vo';
+import { IndexVo } from './vo/index-vo';
 
 @Injectable()
 export class DataService {
@@ -433,7 +432,7 @@ export class DataService {
 
   async findIndexPeriodPriceById(
     indexPeriodPriceDto: IndexPeriodPriceDto,
-  ): Promise<IndexPeriodPriceVo[]> {
+  ): Promise<IndexVo[]> {
     const foundIndex = await this.indexDataRepository.findOneBy({
       symbol: indexPeriodPriceDto.symbol,
     });
@@ -456,15 +455,13 @@ export class DataService {
 
     return foundPeriod.map((item) => ({
       symbol: item.indexData.symbol,
-      time: item.time,
-      price: item.close,
-      period: item.type,
+      ...item,
     }));
   }
 
   async findIndexDailyPriceById(
     indexDailyPriceDto: IndexDailyPriceDto,
-  ): Promise<IndexDailyPriceVo[]> {
+  ): Promise<IndexVo[]> {
     const foundIndex = await this.indexDataRepository.findOneBy({
       symbol: indexDailyPriceDto.symbol,
     });
@@ -482,8 +479,7 @@ export class DataService {
     });
     return foundDaily.map((item) => ({
       symbol: item.indexData.symbol,
-      time: item.time,
-      price: item.close,
+      ...item,
     }));
   }
 }

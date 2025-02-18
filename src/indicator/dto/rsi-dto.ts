@@ -1,7 +1,7 @@
 import { IsBoolean, IsInt, IsNotEmpty } from 'class-validator';
 import { Type as IndexPeriodType } from 'src/data/entities/index-period.entity';
 
-export class KDJDto {
+export class RSIDto {
   @IsNotEmpty({
     message: '指数代码不能为空',
   })
