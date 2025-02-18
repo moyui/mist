@@ -17,7 +17,7 @@ export class IndicatorService implements OnModuleInit {
   }
 
   // 初始化函数
-  async initTalib() {
+  private async initTalib() {
     return await import(
       path.resolve(
         __dirname,

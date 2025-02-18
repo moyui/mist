@@ -4,6 +4,8 @@ import {
   format as dateFnsFormat,
   format,
   isWithinInterval,
+  fromUnixTime,
+  millisecondsToSeconds,
 } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { addZeroToNumber, roundDownToNearestInterval } from 'src/utils';
@@ -198,5 +200,9 @@ export class TimezoneService {
         end: new Date(`${year}-${month}-${date}T15:01:00`),
       })
     );
+  }
+
+  convertTimestamp2Date(timestamp: number) {
+    return fromUnixTime(millisecondsToSeconds(timestamp));
   }
 }

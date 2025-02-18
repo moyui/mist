@@ -8,15 +8,16 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AxiosError } from 'axios';
-import { addMinutes } from 'date-fns';
+import { addMinutes, parse } from 'date-fns';
 import { catchError, firstValueFrom } from 'rxjs';
 import { TimezoneService } from 'src/timezone/timezone.service';
 import { ConvertTimezoneVo } from 'src/timezone/vo/convert-timezone.vo';
-import { Repository } from 'typeorm';
-import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
+import { Between, Repository } from 'typeorm';
 import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
-import { GetIndexDailyDto } from './dto/get-index-daily.dto';
-import { GetIndexPeriodDto } from './dto/get-index-period.dto';
+import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
+import { IndexDailyDto } from './dto/index-daily.dto';
+import { IndexPeriodDto } from './dto/index-period.dto';
+import { IndexDailyPriceDto } from './dto/index-daily-price.dto';
 import { SaveIndexDailyDto } from './dto/save-index-daily.dto';
 import { SaveIndexPeriodDto } from './dto/save-index-period.dto';
 import { IndexDaily } from './entities/index-daily.entity';
@@ -30,6 +31,9 @@ import {
 } from './entities/index-period.entity';
 import { IndexDailyVo } from './vo/index-daily-vo';
 import { IndexPeriodVo } from './vo/index-period-vo';
+import { IndexDailyPriceVo } from './vo/index-daily-price-vo';
+import { IndexPeriodPriceDto } from './dto/index-period-price.dto';
+import { IndexPeriodPriceVo } from './vo/index-period-price-vo';
 
 @Injectable()
 export class DataService {
@@ -66,7 +70,7 @@ export class DataService {
     await this.indexDataRepository.save(indexData2);
   }
 
-  async getIndexPeriod(index: GetIndexPeriodDto): Promise<IndexPeriodVo[]> {
+  async getIndexPeriod(index: IndexPeriodDto): Promise<IndexPeriodVo[]> {
     const { data } = await firstValueFrom(
       this.httpService
         .get<IndexPeriodVo[]>(
@@ -278,7 +282,7 @@ export class DataService {
     const result = await this.saveIndexPeriod(
       {
         symbol: cronIndexDto.symbol,
-        time: timeEnd.format,
+        time: timeEnd.date,
       },
       responseVo,
       cronIndexDto.periodType,
@@ -290,7 +294,7 @@ export class DataService {
     return result;
   }
 
-  async getIndexDaily(index: GetIndexDailyDto): Promise<IndexDailyVo[]> {
+  async getIndexDaily(index: IndexDailyDto): Promise<IndexDailyVo[]> {
     const { data } = await firstValueFrom(
       this.httpService
         .get<IndexDailyVo[]>(
@@ -333,7 +337,7 @@ export class DataService {
     });
     // // 如果找不到, 说明是新增, 并且理论上只需要保留第一位即可
     const indexDaily = foundIndexDaily || new IndexDaily();
-    indexDaily.time = data.date;
+    indexDaily.time = parse(data.date, 'yyyyMMdd', new Date());
     indexDaily.open = data.open;
     indexDaily.close = data.close;
     indexDaily.highest = data.high;
@@ -364,7 +368,7 @@ export class DataService {
     }
     const batchData = data.map((item) => {
       const indexDaily = new IndexDaily();
-      indexDaily.time = item.date;
+      indexDaily.time = parse(item.date, 'yyyyMMdd', new Date());
       indexDaily.open = item.open;
       indexDaily.close = item.close;
       indexDaily.highest = item.high;
@@ -405,7 +409,7 @@ export class DataService {
       result = await this.saveIndeDailyBatch(
         {
           symbol: cronIndexDto.symbol,
-          time: timeEnd.format, // 这个日期入参是无效的，后续代码不会使用，只是为了保持格式一致
+          time: timeEnd.date, // 这个日期入参是无效的，后续代码不会使用，只是为了保持格式一致
         },
         data,
       );
@@ -413,7 +417,9 @@ export class DataService {
       result = await this.saveIndexDaily(
         {
           symbol: cronIndexDto.symbol,
-          time: data[0]?.date,
+          time: data[0]?.date
+            ? parse(data[0]?.date, 'yyyyMMdd', new Date())
+            : new Date(),
         },
         data[0],
       );
@@ -423,5 +429,61 @@ export class DataService {
       DataService,
     );
     return result;
+  }
+
+  async findIndexPeriodPriceById(
+    indexPeriodPriceDto: IndexPeriodPriceDto,
+  ): Promise<IndexPeriodPriceVo[]> {
+    const foundIndex = await this.indexDataRepository.findOneBy({
+      symbol: indexPeriodPriceDto.symbol,
+    });
+    if (!foundIndex.name) {
+      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+    }
+    const foundPeriod = await this.indexPeriodRepository.find({
+      where: {
+        indexData: foundIndex,
+        type: indexPeriodPriceDto.period,
+        time: Between(
+          indexPeriodPriceDto.startDate,
+          indexPeriodPriceDto.endDate,
+        ),
+      },
+      order: {
+        time: 'ASC',
+      },
+    });
+
+    return foundPeriod.map((item) => ({
+      symbol: item.indexData.symbol,
+      time: item.time,
+      price: item.close,
+      period: item.type,
+    }));
+  }
+
+  async findIndexDailyPriceById(
+    indexDailyPriceDto: IndexDailyPriceDto,
+  ): Promise<IndexDailyPriceVo[]> {
+    const foundIndex = await this.indexDataRepository.findOneBy({
+      symbol: indexDailyPriceDto.symbol,
+    });
+    if (!foundIndex.name) {
+      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+    }
+    const foundDaily = await this.indexDailyRepository.find({
+      where: {
+        indexData: foundIndex,
+        time: Between(indexDailyPriceDto.startDate, indexDailyPriceDto.endDate),
+      },
+      order: {
+        time: 'ASC',
+      },
+    });
+    return foundDaily.map((item) => ({
+      symbol: item.indexData.symbol,
+      time: item.time,
+      price: item.close,
+    }));
   }
 }

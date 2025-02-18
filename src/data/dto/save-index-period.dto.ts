@@ -9,5 +9,5 @@ export class SaveIndexPeriodDto {
   @IsNotEmpty({
     message: '时间不能为空',
   })
-  time: string;
+  time: Date;
 }

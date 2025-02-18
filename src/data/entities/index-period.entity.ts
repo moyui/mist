@@ -23,10 +23,10 @@ export class IndexPeriod {
   id: number;
 
   @Column({
-    length: 50,
+    type: 'timestamp',
     comment: '时间',
   })
-  time: string;
+  time: Date;
 
   @Column({
     type: 'decimal',

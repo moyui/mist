@@ -15,10 +15,10 @@ export class IndexDaily {
   id: number;
 
   @Column({
-    length: 50,
+    type: 'timestamp',
     comment: '时间, 数据源开始记录的时候，不是指数上市的时候',
   })
-  time: string;
+  time: Date;
 
   @Column({
     type: 'decimal',

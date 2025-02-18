@@ -9,5 +9,5 @@ export class SaveIndexDailyDto {
   @IsNotEmpty({
     message: '时间不能为空',
   })
-  time: string; // yyyy-mm-dd
+  time: Date; // yyyy-mm-dd
 }

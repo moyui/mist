@@ -1,6 +1,6 @@
 import { IsNotEmpty } from 'class-validator';
 
-export class CronIndexDailyDto {
+export class IndexDailyDto {
   @IsNotEmpty({
     message: '指数代码不能为空',
   })
@@ -12,12 +12,12 @@ export class CronIndexDailyDto {
   code: string;
 
   @IsNotEmpty({
-    message: '开始时间不能为空',
+    message: '开始日期不能为空, 格式19900101',
   })
   startDate: string;
 
   @IsNotEmpty({
-    message: '结束时间不能为空',
+    message: '结束日期不能为空, 格式20500101',
   })
   endDate: string;
 }
