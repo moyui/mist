@@ -9,9 +9,11 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { TaskService } from 'src/task/task.service';
 import { TimezoneService } from 'src/timezone/timezone.service';
+import { getNowDate } from 'src/utils';
 import { DataService } from './data.service';
 import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
 import { Type as IndexPeriodType } from './entities/index-period.entity';
+
 @Controller('data')
 export class DataController implements OnApplicationBootstrap {
   private static symbol = '000300'; // 上证指数接口有问题，先用hs300代替
@@ -83,7 +85,7 @@ export class DataController implements OnApplicationBootstrap {
   async handleCron1MinIndex() {
     // 取数时间段 9:32～11:31 || 13:01~15:01 因为32分才能取到第31分的数据，30分的数据无效
     this.taskService.addCronJob('callIndex1Mins', '*/1 * * * *', async () => {
-      const time = new Date();
+      const time = getNowDate();
       if (!this.timezoneService.isInTime1Min(time)) return;
       return await this.dataService.cronIndexPeriod({
         symbol: DataController.symbol,
@@ -96,7 +98,7 @@ export class DataController implements OnApplicationBootstrap {
   async handleCron5MinIndex() {
     // 取数时间段 9:36～11:31 || 13:06~15:01
     this.taskService.addCronJob('callIndex5Mins', '1/5 * * * *', async () => {
-      const time = new Date();
+      const time = getNowDate();
       if (!this.timezoneService.isInTime5Min(time)) return;
       return await this.dataService.cronIndexPeriod({
         symbol: DataController.symbol,
@@ -109,7 +111,7 @@ export class DataController implements OnApplicationBootstrap {
   async handleCron15MinIndex() {
     // 取数时间段 9:46～11:31 || 13:16~15:01
     this.taskService.addCronJob('callIndex15Mins', '1/15 * * * *', async () => {
-      const time = new Date();
+      const time = getNowDate();
       if (!this.timezoneService.isInTime15Min(time)) return;
       return await this.dataService.cronIndexPeriod({
         symbol: DataController.symbol,
@@ -122,7 +124,7 @@ export class DataController implements OnApplicationBootstrap {
   async handleCron30MinIndex() {
     // 取数时间段 10:01～11:31 || 13:31~15:01
     this.taskService.addCronJob('callIndex30Mins', '1/30 * * * *', async () => {
-      const time = new Date();
+      const time = getNowDate();
       if (!this.timezoneService.isInTime30Min(time)) return;
       return await this.dataService.cronIndexPeriod({
         symbol: DataController.symbol,
@@ -135,7 +137,7 @@ export class DataController implements OnApplicationBootstrap {
   async handleCron60MinIndex() {
     // 取数时间段 10:31～11:31 || 14:01~15:01
     const task = async () => {
-      const time = new Date();
+      const time = getNowDate();
       return await this.dataService.cronIndexPeriod({
         symbol: DataController.symbol,
         periodType: IndexPeriodType.SIXTY,

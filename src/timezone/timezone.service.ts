@@ -36,7 +36,7 @@ export class TimezoneService {
     // 将 UTC 时间转换为北京时间
     const beijingTime = toZonedTime(utcTime, 'Asia/Shanghai');
     return {
-      format: dateFnsFormat(beijingTime, 'yyyy-MM-dd'),
+      format: dateFnsFormat(beijingTime, 'yyyyMMdd'),
       date: beijingTime,
     };
   }

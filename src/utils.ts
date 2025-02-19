@@ -5,6 +5,7 @@ import {
   setMilliseconds,
   setMinutes,
   setSeconds,
+  addHours,
 } from 'date-fns';
 
 /**
@@ -40,4 +41,14 @@ export function roundDownToNearestInterval(date: Date, interval: number): Date {
  */
 export function addZeroToNumber(number: number): string {
   return (number > 10 ? number : '0' + number).toString();
+}
+
+/**
+ * 获取当前时间
+ * @returns Date
+ */
+export function getNowDate() {
+  const now = new Date();
+  const returnNow = addHours(now, -12);
+  return returnNow;
 }

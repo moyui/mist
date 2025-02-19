@@ -287,7 +287,7 @@ export class DataService {
       cronIndexDto.periodType,
     );
     this.logger.debug(
-      `cronIndexPeriod ${result} - 启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
+      `cronIndexPeriod - 周期: ${cronIndexDto.periodType} - ${result} - 启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
       DataService,
     );
     return result;
@@ -336,7 +336,7 @@ export class DataService {
     });
     // // 如果找不到, 说明是新增, 并且理论上只需要保留第一位即可
     const indexDaily = foundIndexDaily || new IndexDaily();
-    indexDaily.time = parse(data.date, 'yyyyMMdd', new Date());
+    indexDaily.time = parse(data.date, 'yyyy-MM-dd', new Date());
     indexDaily.open = data.open;
     indexDaily.close = data.close;
     indexDaily.highest = data.high;
@@ -367,7 +367,7 @@ export class DataService {
     }
     const batchData = data.map((item) => {
       const indexDaily = new IndexDaily();
-      indexDaily.time = parse(item.date, 'yyyyMMdd', new Date());
+      indexDaily.time = parse(item.date, 'yyyy-MM-dd', new Date());
       indexDaily.open = item.open;
       indexDaily.close = item.close;
       indexDaily.highest = item.high;
@@ -412,16 +412,18 @@ export class DataService {
         },
         data,
       );
-    } else {
+    } else if (data.length === 1) {
       result = await this.saveIndexDaily(
         {
           symbol: cronIndexDto.symbol,
           time: data[0]?.date
-            ? parse(data[0]?.date, 'yyyyMMdd', new Date())
+            ? parse(data[0]?.date, 'yyyy-MM-dd', new Date())
             : new Date(),
         },
         data[0],
       );
+    } else {
+      result = '数据不存在';
     }
     this.logger.debug(
       `cronIndexDaily ${result} - 启动时间：${timeStart.format} - 结束时间：${timeEnd.format}`,
@@ -468,15 +470,20 @@ export class DataService {
     if (!foundIndex.name) {
       throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
     }
+    console.log('foundIndex', foundIndex);
     const foundDaily = await this.indexDailyRepository.find({
+      relations: ['indexData'],
       where: {
-        indexData: foundIndex,
+        indexData: {
+          symbol: indexDailyPriceDto.symbol,
+        },
         time: Between(indexDailyPriceDto.startDate, indexDailyPriceDto.endDate),
       },
       order: {
         time: 'ASC',
       },
     });
+
     return foundDaily.map((item) => ({
       symbol: item.indexData.symbol,
       ...item,

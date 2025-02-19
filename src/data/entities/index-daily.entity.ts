@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -15,7 +16,7 @@ export class IndexDaily {
   id: number;
 
   @Column({
-    type: 'timestamp',
+    type: 'datetime',
     comment: '时间, 数据源开始记录的时候，不是指数上市的时候',
   })
   time: Date;
@@ -68,9 +69,10 @@ export class IndexDaily {
   })
   amount: number;
 
-  @ManyToOne(() => IndexData, (indexData) => indexData.indexPeriod, {
+  @ManyToOne(() => IndexData, (indexData) => indexData.indexDaily, {
     cascade: true,
   })
+  @JoinColumn()
   indexData: IndexData;
 
   @CreateDateColumn()
