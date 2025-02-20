@@ -7,6 +7,11 @@ export class KDJDto {
   })
   symbol: string;
 
+  @IsNotEmpty({
+    message: '交易所不能为空',
+  })
+  code: string;
+
   @IsInt({
     message:
       '周期只能为1、5、15、30、60，其中 1 分钟数据只能返回当前的, 其余只能返回近期的数据',

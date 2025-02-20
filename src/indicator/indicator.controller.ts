@@ -31,14 +31,15 @@ export class IndicatorController {
     const endDate = this.timezoneService.convertTimestamp2Date(MACDDto.endDate);
     let data = [] as IndexVo[];
     if (MACDDto.daily) {
-      data = await this.dataService.findIndexDailyPriceById({
+      data = await this.dataService.findIndexDailyById({
         symbol: MACDDto.symbol,
+        code: MACDDto.code,
         startDate,
         endDate,
       });
     }
     if (MACDDto.period) {
-      data = await this.dataService.findIndexPeriodPriceById({
+      data = await this.dataService.findIndexPeriodById({
         symbol: MACDDto.symbol,
         period: MACDDto.period,
         startDate,
@@ -48,7 +49,6 @@ export class IndicatorController {
     const macdResult = await this.indicatorService.runMACD(
       data.map((item) => item.amount),
     );
-
     return data.map((item, index) => ({
       macd: macdResult.macd[index],
       signal: macdResult.signal[index],
@@ -69,14 +69,15 @@ export class IndicatorController {
     let data = [] as IndexVo[];
 
     if (KDJDto.daily) {
-      data = await this.dataService.findIndexDailyPriceById({
+      data = await this.dataService.findIndexDailyById({
         symbol: KDJDto.symbol,
+        code: KDJDto.code,
         startDate,
         endDate,
       });
     }
     if (KDJDto.period) {
-      data = await this.dataService.findIndexPeriodPriceById({
+      data = await this.dataService.findIndexPeriodById({
         symbol: KDJDto.symbol,
         period: KDJDto.period,
         startDate,
@@ -118,14 +119,15 @@ export class IndicatorController {
     let data = [] as IndexVo[];
 
     if (RSIDto.daily) {
-      data = await this.dataService.findIndexDailyPriceById({
+      data = await this.dataService.findIndexDailyById({
         symbol: RSIDto.symbol,
+        code: RSIDto.code,
         startDate,
         endDate,
       });
     }
     if (RSIDto.period) {
-      data = await this.dataService.findIndexPeriodPriceById({
+      data = await this.dataService.findIndexPeriodById({
         symbol: RSIDto.symbol,
         period: RSIDto.period,
         startDate,
@@ -154,14 +156,15 @@ export class IndicatorController {
     let data = [] as IndexVo[];
 
     if (KDto.daily) {
-      data = await this.dataService.findIndexDailyPriceById({
+      data = await this.dataService.findIndexDailyById({
         symbol: KDto.symbol,
+        code: KDto.code,
         startDate,
         endDate,
       });
     }
     if (KDto.period) {
-      data = await this.dataService.findIndexPeriodPriceById({
+      data = await this.dataService.findIndexPeriodById({
         symbol: KDto.symbol,
         period: KDto.period,
         startDate,

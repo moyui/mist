@@ -1,15 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
   addMinutes,
-  format as dateFnsFormat,
   format,
-  isWithinInterval,
   fromUnixTime,
+  isWithinInterval,
   millisecondsToSeconds,
 } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { addZeroToNumber, roundDownToNearestInterval } from 'src/utils';
-import { ConvertTimezoneVo } from './vo/convert-timezone.vo';
 
 @Injectable()
 export class TimezoneService {
@@ -17,7 +15,7 @@ export class TimezoneService {
     date: Date,
     sourceTimeZone: string,
     interval: number,
-  ): ConvertTimezoneVo {
+  ): Date {
     // 将原始时间转换为 UTC 时间
     const utcTime = fromZonedTime(date, sourceTimeZone);
     // 将 UTC 时间转换为北京时间
@@ -25,20 +23,14 @@ export class TimezoneService {
     // 将时间向下舍入到指定间隔
     const roundedTime = roundDownToNearestInterval(beijingTime, interval);
     // 格式化时间为 yyyy-MM-dd HH:mm:ss
-    return {
-      format: dateFnsFormat(roundedTime, 'yyyy-MM-dd HH:mm:ss'),
-      date: roundedTime,
-    };
+    return roundedTime;
   }
 
   convertToBeijingTimeInDaily(date: Date, sourceTimeZone: string) {
     const utcTime = fromZonedTime(date, sourceTimeZone);
     // 将 UTC 时间转换为北京时间
     const beijingTime = toZonedTime(utcTime, 'Asia/Shanghai');
-    return {
-      format: dateFnsFormat(beijingTime, 'yyyyMMdd'),
-      date: beijingTime,
-    };
+    return beijingTime;
   }
 
   private generateTimeSlotsPart(

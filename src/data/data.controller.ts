@@ -5,6 +5,7 @@ import {
   Inject,
   OnApplicationBootstrap,
   Post,
+  Query,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { TaskService } from 'src/task/task.service';
@@ -13,6 +14,7 @@ import { getNowDate } from 'src/utils';
 import { DataService } from './data.service';
 import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
 import { Type as IndexPeriodType } from './entities/index-period.entity';
+import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
 
 @Controller('data')
 export class DataController implements OnApplicationBootstrap {
@@ -39,29 +41,56 @@ export class DataController implements OnApplicationBootstrap {
   @Inject()
   private timezoneService: TimezoneService;
 
+  @Get('index')
+  async getIndex() {
+    return this.dataService.index();
+  }
+
   @Get('index-period')
-  async indexPeriod() {
-    // 生成时间段
-    const startTime = new Date('2025-02-14T09:30:00');
-    const endTime = new Date('2025-02-14T15:00:00');
-    const intervalMinutes = 5;
-    const parse = this.timezoneService.generateTimeSlots(
-      startTime,
-      endTime,
-      intervalMinutes,
-    );
-    const test = {
-      symbol: DataController.symbol,
-      period: 5,
-      startDate: parse[0][0],
-      endDate: parse[0][1],
-    };
-    const data = await this.dataService.getIndexPeriod(test);
-    return data;
+  async getIndexPeriod(
+    @Query('symbol') symbol: string,
+    @Query('period') period: number,
+    @Query('startDate') startDateString: string,
+    @Query('endDate') endDateString: string,
+  ) {
+    const startDate = new Date(startDateString);
+    const endDate = new Date(endDateString);
+    return await this.dataService.findIndexPeriodById({
+      symbol,
+      period,
+      startDate: startDate,
+      endDate: endDate,
+    });
+  }
+
+  @Get('index-daily')
+  async getIndexDaily(
+    @Query('symbol') symbol: string,
+    @Query('code') code: string,
+    @Query('startDate') startDateString: string,
+    @Query('endDate') endDateString: string,
+  ) {
+    const startDate = new Date(startDateString);
+    const endDate = new Date(endDateString);
+    return await this.dataService.findIndexDailyById({
+      symbol,
+      code,
+      startDate: startDate,
+      endDate: endDate,
+    });
+  }
+
+  @Post('index-period')
+  async postIndexPeriod(@Body() indexPeriodDto: CronIndexPeriodDto) {
+    return this.dataService.cronIndexPeriod({
+      symbol: indexPeriodDto.symbol,
+      time: new Date(indexPeriodDto.time), // 这个当前时间采集的是前1分钟的时间，注意
+      periodType: indexPeriodDto.periodType,
+    });
   }
 
   @Post('index-daily')
-  async indexDaily(@Body() indexDailyDto: CronIndexDailyDto) {
+  async postIndexDaily(@Body() indexDailyDto: CronIndexDailyDto) {
     return this.dataService.cronIndexDaily(
       {
         symbol: indexDailyDto.symbol,
@@ -70,15 +99,6 @@ export class DataController implements OnApplicationBootstrap {
         endDate: new Date(indexDailyDto.endDate),
       },
       false,
-    );
-  }
-
-  @Get('time-test')
-  async timeTest() {
-    return this.timezoneService.convertToBeijingTimeWithInterval(
-      new Date('2025-02-14T10:31:01'),
-      'Asia/Shanghai',
-      5,
     );
   }
 

@@ -4,6 +4,7 @@ import {
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { IndexPeriod } from './index-period.entity';
 import { IndexDaily } from './index-daily.entity';
@@ -17,21 +18,22 @@ export enum Type {
 @Entity({
   name: 'index_datas',
 })
+@Unique(['id', 'symbol'])
 export class IndexData {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({
     length: 50,
-    comment: '指数名',
-  })
-  name: string;
-
-  @Column({
-    length: 50,
     comment: '指数编号',
   })
   symbol: string;
+
+  @Column({
+    length: 50,
+    comment: '指数名',
+  })
+  name: string;
 
   @Column({
     length: 50,

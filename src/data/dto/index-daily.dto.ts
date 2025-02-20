@@ -12,12 +12,12 @@ export class IndexDailyDto {
   code: string;
 
   @IsNotEmpty({
-    message: '开始日期不能为空, 格式19900101',
+    message: '开始日期不能为空',
   })
-  startDate: string;
+  startDate: Date;
 
   @IsNotEmpty({
-    message: '结束日期不能为空, 格式20500101',
+    message: '结束日期不能为空',
   })
-  endDate: string;
+  endDate: Date;
 }

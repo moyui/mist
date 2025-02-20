@@ -16,12 +16,12 @@ export class IndexPeriodDto {
   period: number;
 
   @IsNotEmpty({
-    message: '开始日期不能为空，格式 yyyy-MM-dd HH:mm:ss',
+    message: '开始日期不能为空',
   })
-  startDate: string;
+  startDate: Date;
 
   @IsNotEmpty({
-    message: '结束日期不能为空，格式 yyyy-MM-dd HH:mm:ss',
+    message: '结束日期不能为空',
   })
-  endDate: string;
+  endDate: Date;
 }
