@@ -94,7 +94,7 @@ export class DataService {
         )
         .pipe(
           catchError((error: AxiosError) => {
-            this.logger.error(error.response.data, DataService);
+            this.logger.error(error, DataService);
             throw new HttpException(
               '请求指数周期数据错误',
               HttpStatus.SERVICE_UNAVAILABLE,
@@ -308,7 +308,7 @@ export class DataService {
         )
         .pipe(
           catchError((error: AxiosError) => {
-            this.logger.error(error.response.data, DataService);
+            this.logger.error(error, DataService);
             throw new HttpException(
               '请求指数日期数据错误',
               HttpStatus.SERVICE_UNAVAILABLE,

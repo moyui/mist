@@ -1,5 +1,4 @@
 import {
-  addHours,
   getHours,
   getMinutes,
   setHours,
@@ -49,8 +48,7 @@ export function addZeroToNumber(number: number): string {
  */
 export function getNowDate() {
   const now = new Date();
-  const returnNow = addHours(now, -28);
-  return returnNow;
+  return now;
 }
 
 export function formatIndicator(
