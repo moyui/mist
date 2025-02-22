@@ -49,7 +49,7 @@ export function addZeroToNumber(number: number): string {
  */
 export function getNowDate() {
   const now = new Date();
-  const returnNow = addHours(now, -27);
+  const returnNow = addHours(now, -28);
   return returnNow;
 }
 

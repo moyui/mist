@@ -271,16 +271,12 @@ export class DataService {
       default:
         responseVo = null;
     }
-    console.log(
-      'responseVo, timeStart, timeEnd, data, cronIndexDto.periodType',
-      responseVo,
-      timeStart,
-      timeEnd,
-      data,
-      cronIndexDto.periodType,
-    );
     if (!responseVo) {
-      throw new HttpException('构建保存数据错误', HttpStatus.BAD_REQUEST);
+      this.logger.error(
+        `构建保存数据错误 - 周期: ${cronIndexDto.periodType} - 启动时间：${format(timeStart, 'yyyy-MM-dd HH:mm:ss')} - 结束时间：${format(timeEnd, 'yyyy-MM-dd HH:mm:ss')} - 当前数据：${JSON.stringify(data)}`,
+        DataService,
+      );
+      return;
     }
     const result = await this.saveIndexPeriod(
       {
@@ -428,7 +424,11 @@ export class DataService {
     } else if (data.length === 1) {
       result = await this.saveIndexDaily(cronIndexDto.symbol, data[0]);
     } else {
-      result = '数据不存在';
+      this.logger.error(
+        `构建保存数据错误 - 启动时间：${format(timeStart, 'yyyy-MM-dd HH:mm:ss')} - 结束时间：${format(timeEnd, 'yyyy-MM-dd HH:mm:ss')} - 当前数据：${JSON.stringify(data)}`,
+        DataService,
+      );
+      return;
     }
     this.logger.debug(
       `cronIndexDaily - 日期 - ${result} - 启动时间：${format(timeStart, 'yyyy-MM-dd HH:mm:ss')} - 结束时间：${format(timeEnd, 'yyyy-MM-dd HH:mm:ss')}`,
