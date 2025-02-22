@@ -26,6 +26,7 @@ export class IndexPeriod {
   @Column({
     type: 'datetime',
     comment: '时间',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   time: Date;
 

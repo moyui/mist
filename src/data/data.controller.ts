@@ -18,7 +18,8 @@ import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
 
 @Controller('data')
 export class DataController implements OnApplicationBootstrap {
-  private static symbol = '000300'; // 上证指数接口有问题，先用hs300代替
+  private symbol = '000300'; // 上证指数接口有问题，先用hs300代替
+  private isTradingDay = false; // 判断当前日期是否是交易日
 
   constructor(private readonly dataService: DataService) {
     // 初始化上证指数
@@ -26,8 +27,9 @@ export class DataController implements OnApplicationBootstrap {
   }
 
   // 尽量晚上启动，不要影响到开盘时间
-  onApplicationBootstrap() {
+  async onApplicationBootstrap() {
     // 这个函数会在所有模块加载完成后调用
+    this.handleCronIsTradingDay();
     this.handleCron1MinIndex();
     this.handleCron5MinIndex();
     this.handleCron15MinIndex();
@@ -107,8 +109,9 @@ export class DataController implements OnApplicationBootstrap {
     this.taskService.addCronJob('callIndex1Mins', '*/1 * * * *', async () => {
       const time = getNowDate();
       if (!this.timezoneService.isInTime1Min(time)) return;
+      if (!this.isTradingDay) return;
       return await this.dataService.cronIndexPeriod({
-        symbol: DataController.symbol,
+        symbol: this.symbol,
         periodType: IndexPeriodType.One,
         time: time,
       });
@@ -120,8 +123,9 @@ export class DataController implements OnApplicationBootstrap {
     this.taskService.addCronJob('callIndex5Mins', '1/5 * * * *', async () => {
       const time = getNowDate();
       if (!this.timezoneService.isInTime5Min(time)) return;
+      if (!this.isTradingDay) return;
       return await this.dataService.cronIndexPeriod({
-        symbol: DataController.symbol,
+        symbol: this.symbol,
         periodType: IndexPeriodType.FIVE,
         time: time,
       });
@@ -133,8 +137,9 @@ export class DataController implements OnApplicationBootstrap {
     this.taskService.addCronJob('callIndex15Mins', '1/15 * * * *', async () => {
       const time = getNowDate();
       if (!this.timezoneService.isInTime15Min(time)) return;
+      if (!this.isTradingDay) return;
       return await this.dataService.cronIndexPeriod({
-        symbol: DataController.symbol,
+        symbol: this.symbol,
         periodType: IndexPeriodType.FIFTEEN,
         time: time,
       });
@@ -146,8 +151,9 @@ export class DataController implements OnApplicationBootstrap {
     this.taskService.addCronJob('callIndex30Mins', '1/30 * * * *', async () => {
       const time = getNowDate();
       if (!this.timezoneService.isInTime30Min(time)) return;
+      if (!this.isTradingDay) return;
       return await this.dataService.cronIndexPeriod({
-        symbol: DataController.symbol,
+        symbol: this.symbol,
         periodType: IndexPeriodType.THIRTY,
         time: time,
       });
@@ -158,8 +164,9 @@ export class DataController implements OnApplicationBootstrap {
     // 取数时间段 10:31～11:31 || 14:01~15:01
     const task = async () => {
       const time = getNowDate();
+      if (!this.isTradingDay) return;
       return await this.dataService.cronIndexPeriod({
-        symbol: DataController.symbol,
+        symbol: this.symbol,
         periodType: IndexPeriodType.SIXTY,
         time: time,
       });
@@ -171,15 +178,21 @@ export class DataController implements OnApplicationBootstrap {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_5PM)
-  async handleDailyIndex() {
+  async handleCronDailyIndex() {
+    if (!this.isTradingDay) return;
     this.dataService.cronIndexDaily(
       {
-        symbol: DataController.symbol,
+        symbol: this.symbol,
         code: 'sh',
         startDate: new Date(),
         endDate: new Date(),
       },
       false,
     );
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async handleCronIsTradingDay() {
+    this.isTradingDay = await this.timezoneService.isTradingDay(getNowDate());
   }
 }

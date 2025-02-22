@@ -1,4 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import { AxiosError } from 'axios';
 import {
   addMinutes,
   format,
@@ -7,10 +15,16 @@ import {
   millisecondsToSeconds,
 } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { catchError, firstValueFrom } from 'rxjs';
 import { addZeroToNumber, roundDownToNearestInterval } from 'src/utils';
 
 @Injectable()
 export class TimezoneService {
+  private readonly logger = new Logger();
+
+  @Inject()
+  private httpService: HttpService;
+
   convertToBeijingTimeWithInterval(
     date: Date,
     sourceTimeZone: string,
@@ -196,5 +210,32 @@ export class TimezoneService {
 
   convertTimestamp2Date(timestamp: number) {
     return fromUnixTime(millisecondsToSeconds(timestamp));
+  }
+
+  async isTradingDay(date: Date): Promise<boolean> {
+    const { data } = await firstValueFrom(
+      this.httpService
+        .get<{ data: { zrxh: number; jybz: string; jyrq: string }[] }>(
+          'http://www.szse.cn/api/report/exchange/onepersistenthour/monthList',
+          {
+            params: {
+              yearMonth: format(date, 'yyyy-MM'),
+            },
+          },
+        )
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(error.response.data, TimezoneService);
+            throw new HttpException(
+              '请求当前是否是交易时间错误',
+              HttpStatus.SERVICE_UNAVAILABLE,
+            );
+          }),
+        ),
+    );
+    const tradingDay = data.data?.find(
+      (day) => day.jyrq === format(date, 'yyyy-MM-dd') && day.jybz === '1',
+    );
+    return !!tradingDay;
   }
 }

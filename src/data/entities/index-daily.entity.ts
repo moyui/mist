@@ -18,6 +18,7 @@ export class IndexDaily {
   @Column({
     type: 'datetime',
     comment: '时间, 数据源开始记录的时候，不是指数上市的时候',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   time: Date;
 
