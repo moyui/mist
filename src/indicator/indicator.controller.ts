@@ -2,6 +2,7 @@ import { Body, Controller, Inject, Post } from '@nestjs/common';
 import { DataService } from 'src/data/data.service';
 import { IndexVo } from 'src/data/vo/index-vo';
 import { TimezoneService } from 'src/timezone/timezone.service';
+import { formatIndicator } from 'src/utils';
 import { KDto } from './dto/k-dto';
 import { KDJDto } from './dto/kdj-dto';
 import { MACDDto } from './dto/macd-dto';
@@ -47,15 +48,20 @@ export class IndicatorController {
       });
     }
     const macdResult = await this.indicatorService.runMACD(
-      data.map((item) => item.amount),
+      data.map((item) => item.close),
     );
+    // 需要跳过begIndex的值，这些值是无效的
     return data.map((item, index) => ({
-      macd: macdResult.macd[index],
-      signal: macdResult.signal[index],
-      histogram: macdResult.histogram[index],
+      macd: formatIndicator(macdResult.begIndex, index, macdResult.macd),
+      signal: formatIndicator(macdResult.begIndex, index, macdResult.signal),
+      histogram: formatIndicator(
+        macdResult.begIndex,
+        index,
+        macdResult.histogram,
+      ),
       symbol: item.symbol,
       time: item.time,
-      amount: item.amount,
+      close: item.close,
     }));
   }
 
@@ -100,12 +106,12 @@ export class IndicatorController {
     const kdjResult = await this.indicatorService.runKDJ(KDJParams);
 
     return data.map((item, index) => ({
-      k: kdjResult.K[index],
-      d: kdjResult.D[index],
-      j: kdjResult.J[index],
+      k: formatIndicator(kdjResult.begIndex, index, kdjResult.K),
+      d: formatIndicator(kdjResult.begIndex, index, kdjResult.D),
+      j: formatIndicator(kdjResult.begIndex, index, kdjResult.J),
       symbol: item.symbol,
       time: item.time,
-      amount: item.amount,
+      close: item.close,
     }));
   }
 
@@ -135,14 +141,14 @@ export class IndicatorController {
       });
     }
     const rsiResult = await this.indicatorService.runRSI(
-      data.map((item) => item.amount),
+      data.map((item) => item.close),
     );
 
     return data.map((item, index) => ({
-      rsi: rsiResult[index],
+      rsi: formatIndicator(rsiResult.begIndex, index, rsiResult.rsi),
       symbol: item.symbol,
       time: item.time,
-      amount: item.amount,
+      close: item.close,
     }));
   }
 

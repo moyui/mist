@@ -1,6 +1,6 @@
 export class RSIVo {
   symbol: string;
   time: Date;
-  amount: number;
+  close: number;
   rsi: number;
 }

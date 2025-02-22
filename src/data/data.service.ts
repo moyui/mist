@@ -11,6 +11,7 @@ import { AxiosError } from 'axios';
 import { addMinutes, format, parse } from 'date-fns';
 import { catchError, firstValueFrom } from 'rxjs';
 import { TimezoneService } from 'src/timezone/timezone.service';
+import { getNowDate } from 'src/utils';
 import { Between, Repository } from 'typeorm';
 import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
 import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
@@ -270,6 +271,14 @@ export class DataService {
       default:
         responseVo = null;
     }
+    console.log(
+      'responseVo, timeStart, timeEnd, data, cronIndexDto.periodType',
+      responseVo,
+      timeStart,
+      timeEnd,
+      data,
+      cronIndexDto.periodType,
+    );
     if (!responseVo) {
       throw new HttpException('构建保存数据错误', HttpStatus.BAD_REQUEST);
     }
@@ -320,7 +329,7 @@ export class DataService {
     if (!foundIndex.name) {
       throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
     }
-    const foundIndexDailyTime = parse(data.date, 'yyyy-MM-dd', new Date());
+    const foundIndexDailyTime = parse(data.date, 'yyyy-MM-dd', getNowDate());
     // 按照指数id、时间戳查找到对应的id
     const foundIndexDaily = await this.indexDailyRepository.findOne({
       relations: ['indexData'],
@@ -360,7 +369,11 @@ export class DataService {
     }
     const batchData = await Promise.all(
       data.map(async (item) => {
-        const foundIndexDailyTime = parse(item.date, 'yyyy-MM-dd', new Date());
+        const foundIndexDailyTime = parse(
+          item.date,
+          'yyyy-MM-dd',
+          getNowDate(),
+        );
         const foundIndexDaily = await this.indexDailyRepository.findOne({
           relations: ['indexData'],
           where: {

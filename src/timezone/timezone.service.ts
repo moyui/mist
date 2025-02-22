@@ -16,7 +16,11 @@ import {
 } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { catchError, firstValueFrom } from 'rxjs';
-import { addZeroToNumber, roundDownToNearestInterval } from 'src/utils';
+import {
+  addZeroToNumber,
+  getNowDate,
+  roundDownToNearestInterval,
+} from 'src/utils';
 
 @Injectable()
 export class TimezoneService {
@@ -140,7 +144,7 @@ export class TimezoneService {
 
   // 判断当前时间是否在对应时间段内
   isInTime1Min(now: Date) {
-    const nowDate = new Date();
+    const nowDate = getNowDate();
     const year = nowDate.getFullYear();
     const month = addZeroToNumber(nowDate.getMonth() + 1);
     const date = addZeroToNumber(nowDate.getDate());
@@ -158,7 +162,7 @@ export class TimezoneService {
   }
 
   isInTime5Min(now: Date) {
-    const nowDate = new Date();
+    const nowDate = getNowDate();
     const year = nowDate.getFullYear();
     const month = addZeroToNumber(nowDate.getMonth() + 1);
     const date = addZeroToNumber(nowDate.getDate());
@@ -175,7 +179,7 @@ export class TimezoneService {
   }
 
   isInTime15Min(now: Date) {
-    const nowDate = new Date();
+    const nowDate = getNowDate();
     const year = nowDate.getFullYear();
     const month = addZeroToNumber(nowDate.getMonth() + 1);
     const date = addZeroToNumber(nowDate.getDate());
@@ -192,7 +196,7 @@ export class TimezoneService {
   }
 
   isInTime30Min(now: Date) {
-    const nowDate = new Date();
+    const nowDate = getNowDate();
     const year = nowDate.getFullYear();
     const month = addZeroToNumber(nowDate.getMonth() + 1);
     const date = addZeroToNumber(nowDate.getDate());

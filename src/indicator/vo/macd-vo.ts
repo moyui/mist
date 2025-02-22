@@ -4,5 +4,5 @@ export class MACDVo {
   histogram: number;
   symbol: string;
   time: Date;
-  amount: number;
+  close: number;
 }

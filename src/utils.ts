@@ -1,11 +1,11 @@
 import {
+  addHours,
   getHours,
   getMinutes,
   setHours,
   setMilliseconds,
   setMinutes,
   setSeconds,
-  addHours,
 } from 'date-fns';
 
 /**
@@ -49,6 +49,15 @@ export function addZeroToNumber(number: number): string {
  */
 export function getNowDate() {
   const now = new Date();
-  const returnNow = addHours(now, -12);
+  const returnNow = addHours(now, -27);
   return returnNow;
+}
+
+export function formatIndicator(
+  begIndex: number,
+  index: number,
+  data: number[],
+) {
+  if (index < begIndex) return NaN;
+  return data[index - begIndex];
 }

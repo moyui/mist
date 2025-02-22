@@ -13,8 +13,8 @@ import { TimezoneService } from 'src/timezone/timezone.service';
 import { getNowDate } from 'src/utils';
 import { DataService } from './data.service';
 import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
-import { Type as IndexPeriodType } from './entities/index-period.entity';
 import { CronIndexPeriodDto } from './dto/cron-index-period.dto';
+import { Type as IndexPeriodType } from './entities/index-period.entity';
 
 @Controller('data')
 export class DataController implements OnApplicationBootstrap {
@@ -45,7 +45,7 @@ export class DataController implements OnApplicationBootstrap {
 
   @Get('index')
   async getIndex() {
-    return this.dataService.index();
+    return await this.dataService.index();
   }
 
   @Get('index-period')
@@ -84,7 +84,7 @@ export class DataController implements OnApplicationBootstrap {
 
   @Post('index-period')
   async postIndexPeriod(@Body() indexPeriodDto: CronIndexPeriodDto) {
-    return this.dataService.cronIndexPeriod({
+    return await this.dataService.cronIndexPeriod({
       symbol: indexPeriodDto.symbol,
       time: new Date(indexPeriodDto.time), // 这个当前时间采集的是前1分钟的时间，注意
       periodType: indexPeriodDto.periodType,
@@ -184,8 +184,8 @@ export class DataController implements OnApplicationBootstrap {
       {
         symbol: this.symbol,
         code: 'sh',
-        startDate: new Date(),
-        endDate: new Date(),
+        startDate: getNowDate(),
+        endDate: getNowDate(),
       },
       false,
     );

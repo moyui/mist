@@ -26,9 +26,13 @@ export class IndicatorService implements OnModuleInit {
     );
   }
 
-  async runMACD(
-    prices: number[],
-  ): Promise<{ macd: number[]; signal: number[]; histogram: number[] }> {
+  async runMACD(prices: number[]): Promise<{
+    begIndex: number;
+    nbElement: number;
+    macd: number[];
+    signal: number[];
+    histogram: number[];
+  }> {
     if (!this.talib) {
       throw new HttpException(
         'IndicatorService 服务尚未初始化完成，请稍后执行任务',
@@ -44,15 +48,23 @@ export class IndicatorService implements OnModuleInit {
       optInSlowPeriod: 26,
       optInSignalPeriod: 9,
     });
-
     return {
+      begIndex: macdResult.begIndex,
+      nbElement: macdResult.nbElement,
       macd: macdResult.result.outMACD,
       signal: macdResult.result.outMACDSignal,
       histogram: macdResult.result.outMACDHist,
     };
   }
 
-  async runRSI(prices: number[], period: number = 14): Promise<number[]> {
+  async runRSI(
+    prices: number[],
+    period: number = 14,
+  ): Promise<{
+    begIndex: number;
+    nbElement: number;
+    rsi: number[];
+  }> {
     if (!this.talib) {
       throw new HttpException(
         'IndicatorService 服务尚未初始化完成，请稍后执行任务',
@@ -67,10 +79,16 @@ export class IndicatorService implements OnModuleInit {
       optInTimePeriod: period,
     });
 
-    return rsiResult.result.outReal;
+    return {
+      begIndex: rsiResult.begIndex,
+      nbElement: rsiResult.nbElement,
+      rsi: rsiResult.result.outReal,
+    };
   }
 
   async runKDJ(data: RunKDJDto): Promise<{
+    begIndex: number;
+    nbElement: number;
     K: number[];
     D: number[];
     J: number[];
@@ -101,6 +119,12 @@ export class IndicatorService implements OnModuleInit {
     // 计算 J 线
     const J = K.map((kValue, index) => 3 * kValue - 2 * D[index]);
 
-    return { K, D, J };
+    return {
+      K,
+      D,
+      J,
+      begIndex: stochasticResult.begIndex,
+      nbElement: stochasticResult.nbElement,
+    };
   }
 }
