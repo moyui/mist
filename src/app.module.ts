@@ -11,6 +11,8 @@ import { IndexPeriod } from './data/entities/index-period.entity';
 import { IndicatorModule } from './indicator/indicator.module';
 import { TaskModule } from './task/task.module';
 import { TimezoneModule } from './timezone/timezone.module';
+import { GraphModule } from './graph/graph.module';
+import { GraphModule } from './graph/graph.module';
 
 @Module({
   imports: [
@@ -44,6 +46,7 @@ import { TimezoneModule } from './timezone/timezone.module';
     TaskModule,
     TimezoneModule,
     IndicatorModule,
+    GraphModule,
   ],
   controllers: [AppController],
   providers: [AppService],
