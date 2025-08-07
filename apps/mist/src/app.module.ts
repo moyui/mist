@@ -8,11 +8,10 @@ import { DataModule } from './data/data.module';
 import { IndexDaily } from './data/entities/index-daily.entity';
 import { IndexData } from './data/entities/index-data.entitiy';
 import { IndexPeriod } from './data/entities/index-period.entity';
+import { GraphModule } from './graph/graph.module';
 import { IndicatorModule } from './indicator/indicator.module';
 import { TaskModule } from './task/task.module';
 import { TimezoneModule } from './timezone/timezone.module';
-import { GraphModule } from './graph/graph.module';
-import { GraphModule } from './graph/graph.module';
 
 @Module({
   imports: [
