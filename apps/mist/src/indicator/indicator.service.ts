@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import * as path from 'path';
-import { RunKDJDto } from './dto/run-kdj-dto';
+import { RunKDJDto } from './dto/run-kdj.dto';
 
 @Injectable()
 export class IndicatorService implements OnModuleInit {

@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@langchain/core": "^0.3.62",
+    "@langchain/deepseek": "^0.1.0",
     "@langchain/langgraph": "^0.3.6",
     "@nestjs/axios": "^4.0.0",
     "@nestjs/common": "^10.0.0",
@@ -83,7 +84,12 @@
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "roots": [
-      "<rootDir>/apps/"
-    ]
+      "<rootDir>/apps/",
+      "<rootDir>/libs/"
+    ],
+    "moduleNameMapper": {
+      "^@app/prompts(|/.*)$": "<rootDir>/libs/prompts/src/$1",
+      "^@app/config(|/.*)$": "<rootDir>/libs/config/src/$1"
+    }
   }
 }

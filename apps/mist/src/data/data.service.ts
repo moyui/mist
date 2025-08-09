@@ -27,9 +27,9 @@ import {
   IndexPeriod,
   Type as IndexPeriodType,
 } from './entities/index-period.entity';
-import { IndexDailyVo } from './vo/index-daily-vo';
-import { IndexPeriodVo } from './vo/index-period-vo';
-import { IndexVo } from './vo/index-vo';
+import { IndexDailyVo } from './vo/index-daily.vo';
+import { IndexPeriodVo } from './vo/index-period.vo';
+import { IndexVo } from './vo/index.vo';
 
 @Injectable()
 export class DataService {

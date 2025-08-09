@@ -3,16 +3,16 @@ import { DataService } from 'src/data/data.service';
 import { IndexVo } from 'src/data/vo/index-vo';
 import { TimezoneService } from 'src/timezone/timezone.service';
 import { formatIndicator } from 'src/utils';
-import { KDto } from './dto/k-dto';
-import { KDJDto } from './dto/kdj-dto';
-import { MACDDto } from './dto/macd-dto';
-import { RSIDto } from './dto/rsi-dto';
-import { RunKDJDto } from './dto/run-kdj-dto';
+import { KDto } from './dto/k.dto';
+import { KDJDto } from './dto/kdj.dto';
+import { MACDDto } from './dto/macd.dto';
+import { RSIDto } from './dto/rsi.dto';
+import { RunKDJDto } from './dto/run-kdj.dto';
 import { IndicatorService } from './indicator.service';
-import { KVo } from './vo/k-vo';
-import { KDJVo } from './vo/kdj-vo';
-import { MACDVo } from './vo/macd-vo';
-import { RSIVo } from './vo/rsi-vo';
+import { KVo } from './vo/k.vo';
+import { KDJVo } from './vo/kdj.vo';
+import { MACDVo } from './vo/macd.vo';
+import { RSIVo } from './vo/rsi.vo';
 
 @Controller('indicator')
 export class IndicatorController {

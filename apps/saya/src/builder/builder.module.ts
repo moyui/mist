@@ -1,22 +1,17 @@
 import { Graph } from '@langchain/langgraph';
 import { DynamicModule, Module } from '@nestjs/common';
+import { BuilderController } from './builder.controller';
+import { BuilderService } from './builder.service';
+import { WorkflowConfig } from './dto/workflow.dto';
 
-type workflowConfigType = {
-  nodes: {
-    name: Parameters<(typeof Graph.prototype)['addNode']>['0'];
-    handler: Parameters<(typeof Graph.prototype)['addNode']>['1'];
-  }[];
-  edges: {
-    source: Parameters<(typeof Graph.prototype)['addEdge']>['0'];
-    target: Parameters<(typeof Graph.prototype)['addEdge']>['1'];
-  }[];
-};
-
-@Module({})
-export class LangGraphModule {
-  static register(workflowConfig: workflowConfigType): DynamicModule {
+@Module({
+  controllers: [BuilderController],
+  providers: [BuilderService],
+})
+export class BuilderModule {
+  static register(workflowConfig: WorkflowConfig): DynamicModule {
     return {
-      module: LangGraphModule,
+      module: BuilderModule,
       providers: [
         {
           provide: 'LANG_GRAPH',

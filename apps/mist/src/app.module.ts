@@ -8,7 +8,6 @@ import { DataModule } from './data/data.module';
 import { IndexDaily } from './data/entities/index-daily.entity';
 import { IndexData } from './data/entities/index-data.entitiy';
 import { IndexPeriod } from './data/entities/index-period.entity';
-import { GraphModule } from './graph/graph.module';
 import { IndicatorModule } from './indicator/indicator.module';
 import { TaskModule } from './task/task.module';
 import { TimezoneModule } from './timezone/timezone.module';
@@ -17,7 +16,7 @@ import { TimezoneModule } from './timezone/timezone.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'src/.env',
+      envFilePath: '.env',
     }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
@@ -45,7 +44,6 @@ import { TimezoneModule } from './timezone/timezone.module';
     TaskModule,
     TimezoneModule,
     IndicatorModule,
-    GraphModule,
   ],
   controllers: [AppController],
   providers: [AppService],
