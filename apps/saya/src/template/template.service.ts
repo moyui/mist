@@ -1,6 +1,7 @@
+import { SystemMessage } from '@langchain/core/messages';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { Injectable } from '@nestjs/common';
 import { ApplyTemplateDto } from './dto/apply.dto';
-import { PromptTemplate } from '@langchain/core/prompts';
 
 @Injectable()
 export class TemplateService {
@@ -9,21 +10,15 @@ export class TemplateService {
     return name;
   }
 
-  applyPromptTemplate(applyTemplateDto: ApplyTemplateDto) {
-    const systemPrompt = new PromptTemplate({
+  async applyPromptTemplate(applyTemplateDto: ApplyTemplateDto) {
+    const systemPrompt = await new PromptTemplate({
       inputVariables: ['CURRENT_TIME'],
       template: this.getPromptTemplate(applyTemplateDto.name),
-    }).format;
+    }).format({ CURRENT_TIME: Date.now() });
 
     return [
-      {
-        //   role: 'system';
-        //   content: systemPrompt;
-      },
+      new SystemMessage(systemPrompt),
+      ...applyTemplateDto.state['messages'],
     ];
-
-    // join(
-    //   applyTemplateDto.state.messages,
-    // );
   }
 }

@@ -1,5 +1,5 @@
 import { IsNotEmpty } from 'class-validator';
-import { AgentState } from '@langchain/langgraph/prebuilt';
+import { State } from '../../role/dto/state.dto';
 
 export class ApplyTemplateDto {
   @IsNotEmpty({
@@ -7,5 +7,5 @@ export class ApplyTemplateDto {
   })
   name: string;
 
-  state: AgentState;
+  state: State;
 }
