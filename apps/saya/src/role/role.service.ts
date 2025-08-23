@@ -1,8 +1,10 @@
 import { AngentsConfig } from '@app/config';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Command } from '@langchain/langgraph';
 import { LlmService } from '../llm/llm.service';
 import { TemplateService } from '../template/template.service';
+import { Router } from './dto/router.dto';
 import { State } from './dto/state.dto';
 
 @Injectable()
@@ -14,17 +16,21 @@ export class RoleService {
   ) {}
 
   async Commander(state: State) {
-    // 1. 接收用户指令/目标
     const messages = await this.templateService.applyPromptTemplate({
-      name: 'commander',
+      name: 'Commander',
       state,
     });
     const agentsConfig = this.configService.get<AngentsConfig>('agents');
     const llm = this.llmService.getLLMByType(agentsConfig['Commander']);
-    const response = await llm.withStructuredOutput({}).invoke(messages);
-    const goTo = response['next'];
-
-    return state;
+    const response = await llm.withStructuredOutput(Router).invoke(messages);
+    let goto = response['next'];
+    if (goto === 'FINISH') {
+      goto = '__end__';
+    }
+    return new Command({
+      goto,
+      update: { next: goto },
+    });
   }
 
   DataEngineer() {}

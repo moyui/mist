@@ -2,12 +2,17 @@ import { SystemMessage } from '@langchain/core/messages';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { Injectable } from '@nestjs/common';
 import { ApplyTemplateDto } from './dto/apply.dto';
+import { getMarkdownContent } from '@app/prompts';
 
 @Injectable()
 export class TemplateService {
   getPromptTemplate(name: string) {
-    // todo 获取md形式的模版
-    return name;
+    let template = getMarkdownContent(name);
+    // 转义花括号：将 { 替换为 {{，将 } 替换为 }}
+    template = template.replace('{', '{{').replace('}', '}}');
+    // 使用正则表达式将 <<VAR>> 替换为 {VAR}
+    template = template.replace(/<<([^>>]+)>>/g, '{$1}');
+    return template;
   }
 
   async applyPromptTemplate(applyTemplateDto: ApplyTemplateDto) {
