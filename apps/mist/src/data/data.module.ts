@@ -1,13 +1,13 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TaskModule } from 'src/task/task.module';
-import { TimezoneModule } from 'src/timezone/timezone.module';
+import { TaskModule } from '../task/task.module';
+import { TimezoneModule } from '../timezone/timezone.module';
 import { DataController } from './data.controller';
 import { DataService } from './data.service';
+import { IndexDaily } from './entities/index-daily.entity';
 import { IndexData } from './entities/index-data.entitiy';
 import { IndexPeriod } from './entities/index-period.entity';
-import { IndexDaily } from './entities/index-daily.entity';
 
 @Module({
   imports: [

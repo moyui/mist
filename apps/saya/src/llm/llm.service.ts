@@ -1,6 +1,6 @@
 import { LlmType } from '@app/config';
 import { ChatDeepSeek, ChatDeepSeekInput } from '@langchain/deepseek';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CreateDeepSeekLLMDto } from '../llm/dto/create.dto';
 
@@ -8,7 +8,10 @@ import { CreateDeepSeekLLMDto } from '../llm/dto/create.dto';
 export class LlmService {
   private llmCache: Record<LlmType, ChatDeepSeek | null>;
 
-  constructor(private configService: ConfigService) {
+  @Inject()
+  private configService: ConfigService;
+
+  constructor() {
     this.llmCache = {
       [LlmType.Basic]: null,
       [LlmType.Reasoning]: null,

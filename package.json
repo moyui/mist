@@ -90,7 +90,8 @@
     ],
     "moduleNameMapper": {
       "^@app/prompts(|/.*)$": "<rootDir>/libs/prompts/src/$1",
-      "^@app/config(|/.*)$": "<rootDir>/libs/config/src/$1"
+      "^@app/config(|/.*)$": "<rootDir>/libs/config/src/$1",
+      "^@app/utils(|/.*)$": "<rootDir>/libs/utils/src/$1"
     }
   }
 }

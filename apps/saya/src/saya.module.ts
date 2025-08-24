@@ -8,6 +8,7 @@ import { RoleModule } from './role/role.module';
 import { SayaController } from './saya.controller';
 import { SayaService } from './saya.service';
 import { TemplateModule } from './template/template.module';
+import { ToolsModule } from './tools/tools.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TemplateModule } from './template/template.module';
     AgentsModule,
     LlmModule,
     TemplateModule,
+    ToolsModule,
   ],
   controllers: [SayaController],
   providers: [SayaService],

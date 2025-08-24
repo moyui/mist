@@ -20,7 +20,7 @@ import {
   addZeroToNumber,
   getNowDate,
   roundDownToNearestInterval,
-} from 'src/utils';
+} from '../utils';
 
 @Injectable()
 export class TimezoneService {

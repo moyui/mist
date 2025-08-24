@@ -1,7 +1,7 @@
 import { AngentsConfig } from '@app/config';
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Command } from '@langchain/langgraph';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { LlmService } from '../llm/llm.service';
 import { TemplateService } from '../template/template.service';
 import { Router } from './dto/router.dto';
@@ -9,11 +9,14 @@ import { State } from './dto/state.dto';
 
 @Injectable()
 export class RoleService {
-  constructor(
-    private templateService: TemplateService,
-    private llmService: LlmService,
-    private configService: ConfigService,
-  ) {}
+  @Inject()
+  private templateService: TemplateService;
+
+  @Inject()
+  private llmService: LlmService;
+
+  @Inject()
+  private configService: ConfigService;
 
   async Commander(state: State) {
     const messages = await this.templateService.applyPromptTemplate({
@@ -33,7 +36,7 @@ export class RoleService {
     });
   }
 
-  DataEngineer() {}
+  async DataEngineer() {}
 
   Strategist() {}
 

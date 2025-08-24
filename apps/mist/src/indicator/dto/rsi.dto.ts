@@ -1,5 +1,5 @@
 import { IsBoolean, IsInt, IsNotEmpty } from 'class-validator';
-import { Type as IndexPeriodType } from 'src/data/entities/index-period.entity';
+import { Type as IndexPeriodType } from '../../data/entities/index-period.entity';
 
 export class RSIDto {
   @IsNotEmpty({

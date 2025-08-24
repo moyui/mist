@@ -8,9 +8,9 @@ import {
   Query,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { TaskService } from 'src/task/task.service';
-import { TimezoneService } from 'src/timezone/timezone.service';
-import { getNowDate } from 'src/utils';
+import { TaskService } from '../task/task.service';
+import { TimezoneService } from '../timezone/timezone.service';
+import { getNowDate } from '../utils';
 import { DataService } from './data.service';
 import { CronIndexDailyDto } from './dto/cron-index-daily.dto';
 import { CronIndexPeriodDto } from './dto/cron-index-period.dto';

@@ -1,8 +1,8 @@
 import { Body, Controller, Inject, Post } from '@nestjs/common';
-import { DataService } from 'src/data/data.service';
-import { IndexVo } from 'src/data/vo/index-vo';
-import { TimezoneService } from 'src/timezone/timezone.service';
-import { formatIndicator } from 'src/utils';
+import { DataService } from '../data/data.service';
+import { IndexVo } from '../data/vo/index.vo';
+import { TimezoneService } from '../timezone/timezone.service';
+import { formatIndicator } from '../utils';
 import { KDto } from './dto/k.dto';
 import { KDJDto } from './dto/kdj.dto';
 import { MACDDto } from './dto/macd.dto';

@@ -1,8 +1,8 @@
+import { getMarkdownContent } from '@app/prompts';
 import { SystemMessage } from '@langchain/core/messages';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { Injectable } from '@nestjs/common';
 import { ApplyTemplateDto } from './dto/apply.dto';
-import { getMarkdownContent } from '@app/prompts';
 
 @Injectable()
 export class TemplateService {
