@@ -3,11 +3,15 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LlmService } from '../llm/llm.service';
+import { ToolsService } from '../tools/tools.service';
 
 @Injectable()
 export class AgentsService {
   @Inject()
   private llmService: LlmService;
+
+  @Inject()
+  private toolsService: ToolsService;
 
   @Inject()
   private configService: ConfigService;
