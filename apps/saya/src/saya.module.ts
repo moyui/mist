@@ -2,7 +2,6 @@ import { CONFIG_REGISTER } from '@app/config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AgentsModule } from './agents/agents.module';
-import { BuilderModule } from './builder/builder.module';
 import { LlmModule } from './llm/llm.module';
 import { RoleModule } from './role/role.module';
 import { SayaController } from './saya.controller';
@@ -18,10 +17,6 @@ import { ToolsModule } from './tools/tools.module';
       load: CONFIG_REGISTER,
     }),
     RoleModule,
-    BuilderModule.register({
-      nodes: [],
-      edges: [],
-    }),
     AgentsModule,
     LlmModule,
     TemplateModule,
