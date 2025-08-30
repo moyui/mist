@@ -1,33 +1,12 @@
-import { Graph } from '@langchain/langgraph';
-import { DynamicModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { RoleModule } from '../role/role.module';
 import { BuilderController } from './builder.controller';
 import { BuilderService } from './builder.service';
-import { WorkflowConfig } from './dto/workflow.dto';
+// import { WorkflowConfig } from './dto/workflow.dto';
 
 @Module({
+  imports: [RoleModule],
   controllers: [BuilderController],
   providers: [BuilderService],
 })
-export class BuilderModule {
-  static register(workflowConfig: WorkflowConfig): DynamicModule {
-    return {
-      module: BuilderModule,
-      providers: [
-        {
-          provide: 'LANG_GRAPH',
-          useFactory: () => {
-            const graph = new Graph();
-            workflowConfig.nodes.forEach((node) =>
-              graph.addNode(node.name, node.handler),
-            );
-            workflowConfig.edges.forEach((edge) =>
-              graph.addEdge(edge.source, edge.target),
-            );
-            return graph.compile();
-          },
-        },
-      ],
-      exports: ['LANG_GRAPH'],
-    };
-  }
-}
+export class BuilderModule {}

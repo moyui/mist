@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { LlmService } from '../llm/llm.service';
 import { TemplateService } from '../template/template.service';
 import { Router } from './dto/router.dto';
-import { State } from './dto/state.dto';
+import { StateAnnotation } from './dto/state.dto';
 
 @Injectable()
 export class RoleService {
@@ -18,7 +18,7 @@ export class RoleService {
   @Inject()
   private configService: ConfigService;
 
-  async Commander(state: State) {
+  async Commander(state: typeof StateAnnotation.State) {
     const messages = await this.templateService.applyPromptTemplate({
       name: 'Commander',
       state,

@@ -1,5 +1,5 @@
 import { IsNotEmpty } from 'class-validator';
-import { State } from '../../role/dto/state.dto';
+import { StateAnnotation } from '../../role/dto/state.dto';
 
 export class ApplyTemplateDto {
   @IsNotEmpty({
@@ -7,5 +7,5 @@ export class ApplyTemplateDto {
   })
   name: string;
 
-  state: State;
+  state: typeof StateAnnotation.State;
 }
