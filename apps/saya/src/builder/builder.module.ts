@@ -8,5 +8,6 @@ import { BuilderService } from './builder.service';
   imports: [RoleModule],
   controllers: [BuilderController],
   providers: [BuilderService],
+  exports: [BuilderService],
 })
 export class BuilderModule {}

@@ -6,7 +6,7 @@ import { ApplyTemplateDto } from './dto/apply.dto';
 
 @Injectable()
 export class TemplateService {
-  getPromptTemplate(name: string) {
+  private getPromptTemplate(name: string) {
     let template = getMarkdownContent(name);
     // 转义花括号：将 { 替换为 {{，将 } 替换为 }}
     template = template.replace('{', '{{').replace('}', '}}');

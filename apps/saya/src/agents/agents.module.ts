@@ -9,5 +9,6 @@ import { AgentsService } from './agents.service';
   imports: [LlmModule, ToolsModule, ConfigModule],
   controllers: [AgentsController],
   providers: [AgentsService],
+  exports: [AgentsService],
 })
 export class AgentsModule {}

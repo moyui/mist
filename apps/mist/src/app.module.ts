@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DataModule } from './data/data.module';
@@ -16,7 +17,7 @@ import { TimezoneModule } from './timezone/timezone.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: path.join(__dirname, '.env'),
     }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({

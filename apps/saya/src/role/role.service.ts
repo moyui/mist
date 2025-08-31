@@ -18,7 +18,7 @@ export class RoleService {
   @Inject()
   private configService: ConfigService;
 
-  async Commander(state: typeof StateAnnotation.State) {
+  Commander = async (state: typeof StateAnnotation.State) => {
     const messages = await this.templateService.applyPromptTemplate({
       name: 'Commander',
       state,
@@ -34,7 +34,7 @@ export class RoleService {
       goto,
       update: { next: goto },
     });
-  }
+  };
 
   async DataEngineer() {}
 

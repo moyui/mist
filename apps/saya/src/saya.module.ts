@@ -1,7 +1,9 @@
 import { CONFIG_REGISTER } from '@app/config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import * as path from 'path';
 import { AgentsModule } from './agents/agents.module';
+import { BuilderModule } from './builder/builder.module';
 import { LlmModule } from './llm/llm.module';
 import { RoleModule } from './role/role.module';
 import { SayaController } from './saya.controller';
@@ -13,14 +15,15 @@ import { ToolsModule } from './tools/tools.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: path.join(__dirname, '.env'),
       load: CONFIG_REGISTER,
     }),
-    RoleModule,
-    AgentsModule,
     LlmModule,
     TemplateModule,
     ToolsModule,
+    BuilderModule,
+    RoleModule,
+    AgentsModule,
   ],
   controllers: [SayaController],
   providers: [SayaService],

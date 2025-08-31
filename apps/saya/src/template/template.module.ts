@@ -5,5 +5,6 @@ import { TemplateController } from './template.controller';
 @Module({
   controllers: [TemplateController],
   providers: [TemplateService],
+  exports: [TemplateService],
 })
 export class TemplateModule {}

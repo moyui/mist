@@ -8,5 +8,6 @@ import { ToolsService } from './tools.service';
   imports: [HttpModule, UtilsModule],
   controllers: [ToolsController],
   providers: [ToolsService],
+  exports: [ToolsService],
 })
 export class ToolsModule {}

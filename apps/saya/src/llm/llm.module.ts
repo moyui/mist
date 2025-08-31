@@ -7,5 +7,6 @@ import { LlmService } from './llm.service';
   imports: [ConfigModule],
   controllers: [LlmController],
   providers: [LlmService],
+  exports: [LlmService],
 })
 export class LlmModule {}

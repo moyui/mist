@@ -24,6 +24,7 @@ export class LlmService {
     if (createDeepSeekLLMDto.baseUrl) {
       params.configuration = { baseURL: createDeepSeekLLMDto.baseUrl };
     }
+    console.log('params', params);
     return new ChatDeepSeek(params);
   }
 
