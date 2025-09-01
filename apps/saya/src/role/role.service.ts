@@ -18,6 +18,13 @@ export class RoleService {
   @Inject()
   private configService: ConfigService;
 
+  Planner = async (state: typeof StateAnnotation.State) => {
+    const messages = await this.templateService.applyPromptTemplate({
+      name: 'Planner',
+      state,
+    });
+  };
+
   Commander = async (state: typeof StateAnnotation.State) => {
     const messages = await this.templateService.applyPromptTemplate({
       name: 'Commander',
@@ -25,18 +32,24 @@ export class RoleService {
     });
     const agentsConfig = this.configService.get<AngentsConfig>('agents');
     const llm = this.llmService.getLLMByType(agentsConfig['Commander']);
-    const response = await llm.withStructuredOutput(Router).invoke(messages);
-    let goto = response['next'];
-    if (goto === 'FINISH') {
-      goto = '__end__';
-    }
-    return new Command({
-      goto,
-      update: { next: goto },
-    });
+
+    // const response = await llm.withStructuredOutput(Router).invoke(messages);
+    // let goto = response['next'];
+    // if (goto === 'FINISH') {
+    //   goto = '__end__';
+    // }
+    // return new Command({
+    //   goto,
+    //   update: { next: goto },
+    // });
   };
 
-  async DataEngineer() {}
+  DataEngineer = async (state: typeof StateAnnotation.State) => {
+    const messages = await this.templateService.applyPromptTemplate({
+      name: 'DataEngineer',
+      state,
+    });
+  };
 
   Strategist() {}
 

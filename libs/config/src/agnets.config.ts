@@ -7,6 +7,7 @@ export enum LlmType {
 }
 
 export interface AngentsConfig {
+  Planner: LlmType;
   Commander: LlmType;
   DataEngineer: LlmType;
   Strategist: LlmType;
@@ -19,6 +20,7 @@ export interface AngentsConfig {
 export const agentsConfig = registerAs(
   'agents',
   (): AngentsConfig => ({
+    Planner: LlmType.Reasoning,
     Commander: LlmType.Reasoning,
     DataEngineer: LlmType.Basic,
     Strategist: LlmType.Basic,
