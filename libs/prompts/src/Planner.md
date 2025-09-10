@@ -32,29 +32,83 @@
 
 **【Agent能力清单】**
 
-- DataCollector: 获取股票价格、新闻数据等原始数据
-- TechnicalAnalyst: 计算技术指标（如RSI、MACD）、识别图表形态（如双底、头肩顶）
-- SentimentAnalyst: 分析市场情绪来自新闻、社交媒体等
-- RiskAssessor: 评估风险因素，如波动性、异常事件
+- DataEngineer: 获取股票价格（K线）、技术指标（RSI、MACD）等数据
+- Strategist: 按照预先设定的交易策略规则，对 DataEngineer 提供的当前数据进行分析，并输出客观信号
+- Reporter: 按照数据和分析结果，转化为用户易于理解的自然语言报告并输出
 
 **【示例输出】**
 
 示例1: 简单任务计划
-输入: "监控特斯拉股价，出现双底形态且RSI超卖时提醒我"
+输入: "判断特斯拉现在是否可以买入"
 输出:
 
 ```json
 {
   "tasks": [
-    { "agent": "DataCollector", "description": "获取特斯拉最近30天的股价数据" },
-    { "agent": "TechnicalAnalyst", "description": "计算特斯拉股票的RSI指标" },
-    { "agent": "TechnicalAnalyst", "description": "识别特斯拉股价的双底形态" },
-    { "agent": "SentimentAnalyst", "description": "分析特斯拉相关的市场情绪" }
+    {
+      "agent": "DataEngineer",
+      "description": "获取特斯拉最近30天的股价数据、MACD数据、RSI数据"
+    },
+    {
+      "agent": "Strategist",
+      "description": "分析特斯拉的股价趋势"
+    },
+    { "agent": "Reporter", "description": "输出特斯拉的交易策略结果" }
   ],
   "dependencies": [
     { "from": 0, "to": 1 },
+    { "from": 1, "to": 2 },
+    { "from": 2, "to": 3 }
+  ]
+}
+```
+
+示例2: 复杂任务计划
+输入: "对比分析特斯拉和苹果的股价趋势"
+输出:
+
+```json
+{
+  "tasks": [
+    {
+      "agent": "DataEngineer",
+      "description": "获取特斯拉最近30天的股价数据、MACD数据、RSI数据"
+    },
+    {
+      "agent": "DataEngineer",
+      "description": "获取苹果最近30天的股价数据、MACD数据、RSI数据"
+    },
+    { "agent": "Strategist", "description": "分析特斯拉股价趋势" },
+    { "agent": "Strategist", "description": "分析苹果股价趋势" },
+    { "agent": "Strategist", "description": "对比特斯拉和苹果的股价趋势" },
+    { "agent": "Reporter", "description": "输出特斯拉和苹果股价股价趋势的结果" }
+  ],
+  "dependencies": [
     { "from": 0, "to": 2 },
-    { "from": 0, "to": 3 }
+    { "from": 2, "to": 4 },
+    { "from": 1, "to": 3 },
+    { "from": 3, "to": 4 },
+    { "from": 4, "to": 5 }
+  ]
+}
+```
+
+示例3: 简单指令
+输入: "获取特斯拉的股价数据"
+输出:
+
+```json
+{
+  "tasks": [
+    {
+      "agent": "DataEngineer",
+      "description": "获取特斯拉最近30天的股价数据、MACD数据、RSI数据"
+    },
+    { "agent": "Reporter", "description": "输出特斯拉的股价数据" }
+  ],
+  "dependencies": [
+    { "from": 0, "to": 1 },
+    { "from": 1, "to": 2 }
   ]
 }
 ```
