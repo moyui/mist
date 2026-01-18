@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ChanModule } from './chan/chan.module';
 import { DataModule } from './data/data.module';
 import { IndexDaily } from './data/entities/index-daily.entity';
 import { IndexData } from './data/entities/index-data.entitiy';
@@ -12,6 +13,8 @@ import { IndexPeriod } from './data/entities/index-period.entity';
 import { IndicatorModule } from './indicator/indicator.module';
 import { TaskModule } from './task/task.module';
 import { TimezoneModule } from './timezone/timezone.module';
+import { TrendModule } from './trend/trend.module';
+import { TrendService } from './trend/trend.service';
 
 @Module({
   imports: [
@@ -45,8 +48,10 @@ import { TimezoneModule } from './timezone/timezone.module';
     TaskModule,
     TimezoneModule,
     IndicatorModule,
+    ChanModule,
+    TrendModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, TrendService],
 })
 export class AppModule {}

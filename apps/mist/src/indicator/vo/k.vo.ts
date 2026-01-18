@@ -1,4 +1,5 @@
 export class KVo {
+  id: number;
   symbol: string;
   time: Date;
   amount: number;

@@ -1,4 +1,5 @@
 export class IndexVo {
+  id: number;
   symbol: string;
   time: Date;
   amount: number;

@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -58,6 +59,6 @@ export class IndexData {
   @CreateDateColumn()
   createTime: Date;
 
-  @CreateDateColumn()
+  @UpdateDateColumn()
   updateTime: Date;
 }

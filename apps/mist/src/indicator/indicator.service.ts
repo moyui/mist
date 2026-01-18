@@ -5,6 +5,9 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import * as path from 'path';
+import { RunADXDto } from './dto/run-adx.dto';
+import { RunATRDto } from './dto/run-atr.dto';
+import { RunDualMADto } from './dto/run-dualma.dto';
 import { RunKDJDto } from './dto/run-kdj.dto';
 
 @Injectable()
@@ -126,5 +129,83 @@ export class IndicatorService implements OnModuleInit {
       begIndex: stochasticResult.begIndex,
       nbElement: stochasticResult.nbElement,
     };
+  }
+
+  async runADX(data: RunADXDto): Promise<number[]> {
+    if (!this.talib) {
+      throw new HttpException(
+        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    const adxResult = await this.talib.execute({
+      name: 'ADX',
+      startIdx: 0,
+      endIdx: data.close.length - 1,
+      high: data.high,
+      low: data.low,
+      close: data.close,
+      optInTimePeriod: data.period || 14,
+    });
+
+    // talib返回的结果中，result.result.outReal 是ADX值数组
+    // 前面 period*2-1 个值是null（因为ADX计算需要足够的数据）
+    return adxResult.result.outReal;
+  }
+
+  async runDualMA(
+    data: RunDualMADto,
+  ): Promise<{ shortMA: number[]; longMA: number[] }> {
+    if (!this.talib) {
+      throw new HttpException(
+        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    // 并行计算两条均线
+    const [shortMAResult, longMA] = await Promise.all([
+      this.talib.execute({
+        name: 'SMA',
+        startIdx: 0,
+        endIdx: data.close.length - 1,
+        inReal: data.close,
+        optInTimePeriod: data.shortPeriod || 13,
+      }),
+      this.talib.execute({
+        name: 'SMA',
+        startIdx: 0,
+        endIdx: data.close.length - 1,
+        inReal: data.close,
+        optInTimePeriod: data.longPeriod || 60,
+      }),
+    ]);
+
+    return {
+      shortMA: shortMAResult.result.outReal,
+      longMA: longMA.result.outReal,
+    };
+  }
+
+  async runATR(data: RunATRDto): Promise<number[]> {
+    if (!this.talib) {
+      throw new HttpException(
+        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    const atrResult = await this.talib.execute({
+      name: 'ATR',
+      startIdx: 0,
+      endIdx: data.close.length - 1,
+      high: data.high,
+      low: data.low,
+      close: data.close,
+      optInTimePeriod: data.period || 14,
+    });
+
+    return atrResult.result.outReal;
   }
 }

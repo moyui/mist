@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { IndexData } from './index-data.entitiy';
 
@@ -79,6 +80,6 @@ export class IndexDaily {
   @CreateDateColumn()
   createTime: Date;
 
-  @CreateDateColumn()
+  @UpdateDateColumn()
   updateTime: Date;
 }
