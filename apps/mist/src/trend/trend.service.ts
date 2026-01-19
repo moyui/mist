@@ -62,11 +62,11 @@ export class TrendService {
     };
   }
 
-  async judgeSimpleTrend(
+  judgeSimpleTrend(
     prev: KVo,
     now: KVo,
     prevTrend: TrendDirection,
-  ): Promise<TrendDirection> {
+  ): TrendDirection {
     // 只有高点抬高, 低点也抬高, 则判断为上涨趋势
     if (now.highest > prev.highest && now.lowest > prev.lowest) {
       return TrendDirection.Up;

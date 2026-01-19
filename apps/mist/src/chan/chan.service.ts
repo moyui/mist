@@ -3,14 +3,15 @@ import { Inject, Injectable } from '@nestjs/common';
 import { KVo } from '../indicator/vo/k.vo';
 import { TrendService } from '../trend/trend.service';
 import { CreateBiDto } from './dto/create-bi.dto';
+import { CreateChannelDto } from './dto/create-channel.dto';
 import { BiType } from './enums/bi.enum';
+import { ChannelLevel, ChannelType } from './enums/channel.enum';
 import { FenxingType } from './enums/fenxing.enum';
 import { TrendDirection } from './enums/trend-direction.enum';
 import { BiVo } from './vo/bi.vo';
 import { ChannelVo } from './vo/channel.vo';
 import { FenxingVo } from './vo/fenxing.vo';
 import { MergedKVo } from './vo/merged-k.vo';
-import { ChannelLevel, ChannelType } from './enums/channel.enum';
 
 @Injectable()
 export class ChanService {
@@ -56,7 +57,7 @@ export class ChanService {
   }
 
   // 合并k线
-  async mergeK(data: KVo[]): Promise<MergedKVo[]> {
+  mergeK(data: KVo[]): MergedKVo[] {
     if (data.length === 0) {
       return [];
     }
@@ -76,7 +77,7 @@ export class ChanService {
     for (let i = 1; i < data.length; i++) {
       const prev = data[i - 1];
       const now = data[i];
-      currentTrend = await this.trendService.judgeSimpleTrend(
+      currentTrend = this.trendService.judgeSimpleTrend(
         prev,
         now,
         currentTrend,
@@ -239,7 +240,7 @@ export class ChanService {
     };
   }
 
-  private async getBi(data: MergedKVo[]) {
+  private getBi(data: MergedKVo[]) {
     if (data.length === 0) {
       return [];
     }
@@ -342,11 +343,11 @@ export class ChanService {
   }
 
   // 画笔
-  async createBi(createBiDto: CreateBiDto) {
+  createBi(createBiDto: CreateBiDto) {
     // 首先进行合并k线操作
-    const mergedK = await this.mergeK(createBiDto.k);
+    const mergedK = this.mergeK(createBiDto.k);
     // 接下来进行画笔操作
-    const bis = await this.getBi(mergedK);
+    const bis = this.getBi(mergedK);
     return bis;
   }
 
@@ -357,6 +358,10 @@ export class ChanService {
       }
     }
     return true;
+  }
+
+  private hasOverlapWithChannel(bi: BiVo, zg: number, zd: number) {
+    return bi.lowest < zg && bi.highest > zd;
   }
 
   private checkOverlapRange(bis: BiVo[]) {
@@ -370,18 +375,15 @@ export class ChanService {
     const zd = Math.max(...lowests);
     // 无重叠
     if (zd >= zg) return null;
-    const allOverlap = bis.every((stroke) => {
-      return stroke.lowest < zg && stroke.highest > zd;
-    });
+    const allOverlap = bis.every((bi) =>
+      this.hasOverlapWithChannel(bi, zg, zd),
+    );
     // 每笔重叠区间
     if (!allOverlap) return null;
     return [zg, zd];
   }
 
-  private getInitialChannel(
-    bis: BiVo[],
-    overlapRange: [number, number],
-  ): ChannelVo {
+  private getStrictChannel(bis: BiVo[], overlapRange: number[]): ChannelVo {
     const resultBis = bis.slice(0, 5);
     return {
       zg: overlapRange[0],
@@ -390,12 +392,16 @@ export class ChanService {
       dd: Math.min(...resultBis.map((bi) => bi.lowest)),
       bis: resultBis,
       level: ChannelLevel.Bi, // 目前都是笔中枢，后续可能有段中枢
-      type: ChannelType.Complete,
+      type: ChannelType.Complete, // 目前是完成的中枢
+      startId: bis[0].originIds[0],
+      endId:
+        bis[bis.length - 1].originIds[bis[bis.length - 1].originIds.length - 1],
+      trend: bis[0].trend, // 中枢方向就是进入第一笔的方向
     };
   }
 
-  // 处理中枢状态
-  private handleChannelState(bis: BiVo[]): ChannelVo | null {
+  // 处理严格中枢状态
+  private handleStrictChannelState(bis: BiVo[]): ChannelVo | null {
     if (bis.length < 5) {
       return null;
     }
@@ -408,21 +414,111 @@ export class ChanService {
     if (!overlapRange) {
       return null;
     }
+
+    const channel = this.getStrictChannel(bis, overlapRange);
+    return channel;
   }
 
-  private async getChannel(data: BiVo[]) {
+  private recalculateChannel(channel: ChannelVo, bis: BiVo[]): ChannelVo {
+    return {
+      ...channel,
+      bis: [...channel.bis, ...bis],
+      gg: Math.max(channel.gg, ...bis.map((bi) => bi.highest)),
+      dd: Math.min(channel.dd, ...bis.map((bi) => bi.lowest)),
+    };
+  }
+
+  // 处理扩展中枢状态
+  private handleExtendChannelState(
+    channel: ChannelVo,
+    bis: BiVo[],
+  ): { channel: ChannelVo; offsetIndex: number } {
+    if (bis.length === 0) return { channel, offsetIndex: 0 };
+    const extendedBis: BiVo[] = [];
+    let i = 0;
+    for (i; i < bis.length; i++) {
+      const hasOverlap = this.hasOverlapWithChannel(
+        bis[i],
+        channel.zg,
+        channel.zd,
+      );
+      if (hasOverlap) {
+        extendedBis.push(bis[i]);
+      } else {
+        break; // 如果一旦没有出现重叠，那么延伸处理结束
+      }
+    }
+    if (extendedBis.length === 0) return { channel, offsetIndex: 0 };
+    // 如果最后一笔的方向和起始笔是一样的，说明最后一笔无法构成一个正常中枢，需要进行处理
+    // 这里就需要判断是笔是否用完了
+    if (extendedBis[extendedBis.length - 1].trend === bis[0].trend) {
+      if (i === bis.length) {
+        // 笔用完了，判断成中枢结构未完
+        return {
+          channel: {
+            ...channel,
+            type: ChannelType.UnComplete,
+          },
+          offsetIndex: i,
+        };
+      } else {
+        // 笔未用完，最后一笔为新中枢的起始段，不属于原有中枢
+        const newExtendedBis = [...extendedBis];
+        newExtendedBis.pop();
+        return {
+          channel: this.recalculateChannel(channel, [
+            ...channel.bis,
+            ...newExtendedBis,
+          ]),
+          offsetIndex: i - 1,
+        };
+      }
+    } else {
+      return {
+        channel: this.recalculateChannel(channel, [
+          ...channel.bis,
+          ...extendedBis,
+        ]),
+        offsetIndex: i,
+      };
+    }
+  }
+
+  /**
+   * 获取中枢
+   * @param data
+   * @returns
+   */
+  private getChannel(data: BiVo[]) {
     // 中枢要至少5笔才能形成，所以使用滑动窗口方案
     const channels: ChannelVo[] = [];
     const biCount = data.length;
     if (biCount < 5) {
-      return channels;
+      return { channels, offsetIndex: 0 };
     }
-    for (let i = 0; i <= biCount - 5; i++) {
+    let i = 0;
+    for (i; i <= biCount - 5; i++) {
       const fiveBis = data.slice(i, i + 5);
-      // const channel = this.
+      // 生成严格中枢
+      const channel = this.handleStrictChannelState(fiveBis);
+      // 如果没有找到channel, 尝试下次迭代
+      if (!channel) continue;
+      // 处理中枢扩展，如果存在后续笔的情况
+      if (i + 5 < biCount) {
+        const remainBis = data.slice(i + 5);
+        const { channel: extendedChannel, offsetIndex } =
+          this.handleExtendChannelState(channel, remainBis);
+        i = i + offsetIndex;
+        channels.push(extendedChannel);
+      } else {
+        channels.push(channel);
+      }
     }
+    return { channels, offsetIndex: i };
   }
 
   // 画中枢
-  async createChannel() {}
+  createChannel(createChannelDto: CreateChannelDto) {
+    return this.getChannel(createChannelDto.bi);
+  }
 }

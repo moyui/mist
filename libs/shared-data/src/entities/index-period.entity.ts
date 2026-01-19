@@ -7,15 +7,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { PeriodType } from '../enums/index-period.enum';
 import { IndexData } from './index-data.entitiy';
-
-export enum Type {
-  One = 1,
-  FIVE = 5,
-  FIFTEEN = 15,
-  THIRTY = 30,
-  SIXTY = 60,
-}
 
 @Entity({
   name: 'index_periods',
@@ -81,11 +74,11 @@ export class IndexPeriod {
 
   @Column({
     type: 'enum',
-    enum: Type,
-    default: Type.FIVE,
+    enum: PeriodType,
+    default: PeriodType.FIVE,
     comment: '类型 FIVE FIFTEEN THIRTY SIXTY',
   })
-  type: Type;
+  type: PeriodType;
 
   @ManyToOne(() => IndexData, (indexData) => indexData.indexPeriod, {
     cascade: true,

@@ -1,3 +1,4 @@
+import { IndexData } from '@app/shared-data';
 import {
   Column,
   CreateDateColumn,
@@ -7,10 +8,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { IndexData } from '../../data/entities/index-data.entitiy';
+import { FenxingType } from '../enums/fenxing.enum';
 import { Period } from '../enums/period.enum';
 import { Table } from '../enums/table.enum';
-import { FenxingType } from '../enums/fenxing.enum';
 
 @Entity({
   name: 'chan_fenxings',

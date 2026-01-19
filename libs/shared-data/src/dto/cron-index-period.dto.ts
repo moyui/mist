@@ -1,5 +1,5 @@
 import { IsNotEmpty } from 'class-validator';
-import { Type as IndexPeriodType } from '../entities/index-period.entity';
+import { Type as IndexPeriodType } from '../../../../../libs/shared-data/src/entities/index-period.entity';
 
 export class CronIndexPeriodDto {
   @IsNotEmpty({

@@ -1,8 +1,7 @@
+import { TimezoneService } from '@app/timezone';
 import { Body, Controller, Inject, Post } from '@nestjs/common';
+import { IndexVo } from '../../../../libs/shared-data/src/vo/index.vo';
 import { DataService } from '../data/data.service';
-import { IndexVo } from '../data/vo/index.vo';
-import { TimezoneService } from '../timezone/timezone.service';
-import { formatIndicator } from '../utils';
 import { KDto } from './dto/k.dto';
 import { KDJDto } from './dto/kdj.dto';
 import { MACDDto } from './dto/macd.dto';
@@ -13,6 +12,15 @@ import { KVo } from './vo/k.vo';
 import { KDJVo } from './vo/kdj.vo';
 import { MACDVo } from './vo/macd.vo';
 import { RSIVo } from './vo/rsi.vo';
+
+export function formatIndicator(
+  begIndex: number,
+  index: number,
+  data: number[],
+) {
+  if (index < begIndex) return NaN;
+  return data[index - begIndex];
+}
 
 @Controller('indicator')
 export class IndicatorController {

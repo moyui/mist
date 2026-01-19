@@ -58,6 +58,33 @@
       "compilerOptions": {
         "tsConfigPath": "libs/utils/tsconfig.lib.json"
       }
+    },
+    "schedule": {
+      "type": "application",
+      "root": "apps/schedule",
+      "entryFile": "main",
+      "sourceRoot": "apps/schedule/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/schedule/tsconfig.app.json"
+      }
+    },
+    "timezone": {
+      "type": "library",
+      "root": "libs/timezone",
+      "entryFile": "index",
+      "sourceRoot": "libs/timezone/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/timezone/tsconfig.lib.json"
+      }
+    },
+    "shared-data": {
+      "type": "library",
+      "root": "libs/shared-data",
+      "entryFile": "index",
+      "sourceRoot": "libs/shared-data/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared-data/tsconfig.lib.json"
+      }
     }
   }
 }

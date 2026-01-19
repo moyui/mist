@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "module": "commonjs",
     "declaration": true,
     "removeComments": true,
@@ -37,6 +38,20 @@
       ],
       "@app/utils/*": [
         "libs/utils/src/*"
+      ],
+      "@app/shared-data": [
+        "libs/shared-data/src",
+        "libs/shared-data/src"
+      ],
+      "@app/shared-data/*": [
+        "libs/shared-data/src/*",
+        "libs/shared-data/src/*"
+      ],
+      "@app/timezone": [
+        "libs/timezone/src"
+      ],
+      "@app/timezone/*": [
+        "libs/timezone/src/*"
       ]
     }
   }

@@ -3,7 +3,6 @@ import { TrendDirection } from '../enums/trend-direction.enum';
 import { ChannelLevel, ChannelType } from '../enums/channel.enum';
 
 export class ChannelVo {
-  id: number;
   bis: BiVo[];
   zg: number; // 中枢上沿
   zd: number; // 中枢下沿

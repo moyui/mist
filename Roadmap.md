@@ -142,6 +142,8 @@ v        v       v       v         v
 
 优先级较低，目前方案预计使用echarts + eta模版直出方案
 
+更新：采用next模版快速搭建，在mist项目集里面增加mist-fe
+
 ### 告警提示
 
 通过微信告警？
@@ -153,3 +155,7 @@ aktools不会自动提示端口被占用，从而导致请求失败
 使用 date-fns date-fns-tz插件，需要在对应的位置配置当地服务器时区
 
 切换成monorepo架构，主核心是mist，saya为ai agent
+
+继续拆分架构，将mist中定时器部分拆出来，目前主核心是mist，saya为 ai agent，schedule为定时器脚本。分别独立部署
+
+目前正在开发缠论分析模块，此模块暂时不需要接入模型能力，只for图表使用+策略使用

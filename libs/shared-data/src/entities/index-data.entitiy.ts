@@ -1,20 +1,15 @@
 import {
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
   Unique,
+  UpdateDateColumn,
 } from 'typeorm';
-import { IndexPeriod } from './index-period.entity';
+import { DataType } from '../enums/index-data.enum';
 import { IndexDaily } from './index-daily.entity';
-
-export enum Type {
-  'LARGE' = 1,
-  'MIDDLE' = 2,
-  'SMALL' = 3,
-}
+import { IndexPeriod } from './index-period.entity';
 
 @Entity({
   name: 'index_datas',
@@ -44,11 +39,11 @@ export class IndexData {
 
   @Column({
     type: 'enum',
-    enum: Type,
-    default: Type.LARGE,
+    enum: DataType,
+    default: DataType.LARGE,
     comment: '指数类型 1-大盘股 2-中盘股 3-小盘股',
   })
-  type: Type;
+  type: DataType;
 
   @OneToMany(() => IndexPeriod, (indexPeriod) => indexPeriod.indexData)
   indexPeriod: IndexPeriod[];

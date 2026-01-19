@@ -1,14 +1,13 @@
 import { IndexDaily, IndexData, IndexPeriod } from '@app/shared-data';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'path';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ChanModule } from './chan/chan.module';
-import { DataModule } from './data/data.module';
-import { IndicatorModule } from './indicator/indicator.module';
-import { TrendModule } from './trend/trend.module';
+import { RunModule } from './run/run.module';
+import { ScheduleController } from './schedule.controller';
+import { ScheduleService } from './schedule.service';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -37,12 +36,11 @@ import { TrendModule } from './trend/trend.module';
       },
       inject: [ConfigService],
     }),
-    DataModule,
-    IndicatorModule,
-    ChanModule,
-    TrendModule,
+    NestScheduleModule.forRoot(),
+    RunModule,
+    TaskModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [ScheduleController],
+  providers: [ScheduleService],
 })
-export class AppModule {}
+export class ScheduleModule {}

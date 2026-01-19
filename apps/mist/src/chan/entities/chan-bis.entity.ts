@@ -1,3 +1,4 @@
+import { IndexData } from '@app/shared-data';
 import {
   Column,
   CreateDateColumn,
@@ -7,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { IndexData } from '../../data/entities/index-data.entitiy';
 import { Period } from '../enums/period.enum';
 import { Table } from '../enums/table.enum';
 

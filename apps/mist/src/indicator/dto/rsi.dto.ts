@@ -1,5 +1,5 @@
+import { PeriodType } from '@app/shared-data';
 import { IsBoolean, IsInt, IsNotEmpty } from 'class-validator';
-import { Type as IndexPeriodType } from '../../data/entities/index-period.entity';
 
 export class RSIDto {
   @IsNotEmpty({
@@ -16,7 +16,7 @@ export class RSIDto {
     message:
       '周期只能为1、5、15、30、60，其中 1 分钟数据只能返回当前的, 其余只能返回近期的数据',
   })
-  period?: IndexPeriodType;
+  period?: PeriodType;
 
   @IsBoolean({
     message: '是否是日线必须是布尔值',

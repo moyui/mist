@@ -1,3 +1,4 @@
+import { UtilsService } from '@app/utils';
 import { HttpService } from '@nestjs/axios';
 import {
   HttpException,
@@ -16,11 +17,6 @@ import {
 } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { catchError, firstValueFrom } from 'rxjs';
-import {
-  addZeroToNumber,
-  getNowDate,
-  roundDownToNearestInterval,
-} from '../utils';
 
 @Injectable()
 export class TimezoneService {
@@ -28,6 +24,9 @@ export class TimezoneService {
 
   @Inject()
   private httpService: HttpService;
+
+  @Inject()
+  private utilsService: UtilsService;
 
   convertToBeijingTimeWithInterval(
     date: Date,
@@ -39,7 +38,10 @@ export class TimezoneService {
     // 将 UTC 时间转换为北京时间
     const beijingTime = toZonedTime(utcTime, 'Asia/Shanghai');
     // 将时间向下舍入到指定间隔
-    const roundedTime = roundDownToNearestInterval(beijingTime, interval);
+    const roundedTime = this.utilsService.roundDownToNearestInterval(
+      beijingTime,
+      interval,
+    );
     // 格式化时间为 yyyy-MM-dd HH:mm:ss
     return roundedTime;
   }
@@ -112,7 +114,7 @@ export class TimezoneService {
     intervalMinutes: number,
   ): string[][] {
     const year = startTime.getFullYear().toString();
-    const month = addZeroToNumber(startTime.getMonth() + 1);
+    const month = this.utilsService.addZeroToNumber(startTime.getMonth() + 1);
     const date = startTime.getDate().toString();
 
     const beforePart = new Date(`${year}-${month}-${date}T11:30:00`);
@@ -144,10 +146,10 @@ export class TimezoneService {
 
   // 判断当前时间是否在对应时间段内
   isInTime1Min(now: Date) {
-    const nowDate = getNowDate();
+    const nowDate = this.utilsService.getNowDate();
     const year = nowDate.getFullYear();
-    const month = addZeroToNumber(nowDate.getMonth() + 1);
-    const date = addZeroToNumber(nowDate.getDate());
+    const month = this.utilsService.addZeroToNumber(nowDate.getMonth() + 1);
+    const date = this.utilsService.addZeroToNumber(nowDate.getDate());
     // 1分钟级别从9:32开始，到11:31结束
     return (
       isWithinInterval(now, {
@@ -162,10 +164,10 @@ export class TimezoneService {
   }
 
   isInTime5Min(now: Date) {
-    const nowDate = getNowDate();
+    const nowDate = this.utilsService.getNowDate();
     const year = nowDate.getFullYear();
-    const month = addZeroToNumber(nowDate.getMonth() + 1);
-    const date = addZeroToNumber(nowDate.getDate());
+    const month = this.utilsService.addZeroToNumber(nowDate.getMonth() + 1);
+    const date = this.utilsService.addZeroToNumber(nowDate.getDate());
     return (
       isWithinInterval(now, {
         start: new Date(`${year}-${month}-${date}T09:36:00`),
@@ -179,10 +181,10 @@ export class TimezoneService {
   }
 
   isInTime15Min(now: Date) {
-    const nowDate = getNowDate();
+    const nowDate = this.utilsService.getNowDate();
     const year = nowDate.getFullYear();
-    const month = addZeroToNumber(nowDate.getMonth() + 1);
-    const date = addZeroToNumber(nowDate.getDate());
+    const month = this.utilsService.addZeroToNumber(nowDate.getMonth() + 1);
+    const date = this.utilsService.addZeroToNumber(nowDate.getDate());
     return (
       isWithinInterval(now, {
         start: new Date(`${year}-${month}-${date}T09:36:00`),
@@ -196,10 +198,10 @@ export class TimezoneService {
   }
 
   isInTime30Min(now: Date) {
-    const nowDate = getNowDate();
+    const nowDate = this.utilsService.getNowDate();
     const year = nowDate.getFullYear();
-    const month = addZeroToNumber(nowDate.getMonth() + 1);
-    const date = addZeroToNumber(nowDate.getDate());
+    const month = this.utilsService.addZeroToNumber(nowDate.getMonth() + 1);
+    const date = this.utilsService.addZeroToNumber(nowDate.getDate());
     return (
       isWithinInterval(now, {
         start: new Date(`${year}-${month}-${date}T10:01:00`),
