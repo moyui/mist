@@ -196,6 +196,27 @@ export class ChanService {
     return false;
   }
 
+  getFenxings(data: MergedKVo[]) {
+    // 至少需要三个k线才能进行分型判断
+    if (data.length < 3) {
+      return [];
+    }
+    const fenxings: FenxingVo[] = [];
+    for (let i = 1; i < data.length - 1; i++) {
+      const prev = data[i - 1];
+      const now = data[i];
+      const next = data[i + 1];
+      if (!prev || !now || !next) {
+        continue;
+      }
+      const fenxing = this.handleFenxing(prev, i - 1, now, i, next, i + 1);
+      if (fenxing.type !== FenxingType.None) {
+        fenxings.push(fenxing);
+      }
+    }
+    return fenxings;
+  }
+
   private uniqueById(arr: KVo[]) {
     const seen = new Set<number>();
     return arr.filter((item) => {
@@ -240,11 +261,10 @@ export class ChanService {
     };
   }
 
-  private getBi(data: MergedKVo[]) {
+  private getBi(data: MergedKVo[], fenxings: FenxingVo[]) {
     if (data.length === 0) {
       return [];
     }
-    const fenxings: FenxingVo[] = [];
     // 基准数据
     let baseData: BiVo = {
       startTime: data[0].startTime,
@@ -258,6 +278,42 @@ export class ChanService {
       type: BiType.UnComplete,
     };
     const bis: BiVo[] = [baseData];
+    const validFenxings: FenxingVo[] = [];
+    if (fenxings.length === 0) {
+      return bis;
+    }
+    // 从当前分型开始
+    let fenxingIndex = -1;
+    let mergedKIndex = 0;
+    for (let i = 0; i < fenxings.length - 1; i++) {
+      // 寻找第一个和趋势相同的分型
+      if (baseData.trend === TrendDirection.Up) {
+        if (fenxings[i].type === FenxingType.Top) {
+          validFenxings.push(fenxings[i]);
+          fenxingIndex += 1;
+        } else {
+          continue;
+        }
+      } else if (baseData.trend === TrendDirection.Down) {
+        if (fenxings[i].type === FenxingType.Bottom) {
+          validFenxings.push(fenxings[i]);
+          fenxingIndex += 1;
+        } else {
+          continue;
+        }
+      } else if (baseData.trend === TrendDirection.None) {
+        // 无趋势的话，就将第一个分型作为有效分型
+        validFenxings.push(fenxings[i]);
+        fenxingIndex += 1;
+      }
+      // const validFenxing = validFenxings[fenxingIndex];
+      // const validMergedKIndex = validFenxing.middleIndex;
+      // baseData.endTime = data[mergedKIndex].endTime;
+      // baseData.independentCount = validMergedKIndex - mergedKIndex + 1;
+      // baseData.type = BiType.Complete;
+      // baseData.originIds = [...data[0].mergedIds];
+      // baseData.originData = [...data[0].mergedData];
+    }
 
     for (let i = 1; i < data.length; i++) {
       const prev = data[i - 1];
@@ -346,8 +402,10 @@ export class ChanService {
   createBi(createBiDto: CreateBiDto) {
     // 首先进行合并k线操作
     const mergedK = this.mergeK(createBiDto.k);
+    // 绘制顶底分型
+    const fenxings = this.getFenxings(mergedK);
     // 接下来进行画笔操作
-    const bis = this.getBi(mergedK);
+    const bis = this.getBi(mergedK, fenxings);
     return bis;
   }
 
