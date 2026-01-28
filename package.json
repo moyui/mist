@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:dev:mist": "nest start mist --watch",
     "start:dev:saya": "nest start saya --watch",
+    "start:dev:chan": "nest start chan --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/apps/mist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

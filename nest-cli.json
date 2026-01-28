@@ -85,6 +85,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/shared-data/tsconfig.lib.json"
       }
+    },
+    "chan": {
+      "type": "application",
+      "root": "apps/chan",
+      "entryFile": "main",
+      "sourceRoot": "apps/chan/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/chan/tsconfig.app.json"
+      }
     }
   }
 }

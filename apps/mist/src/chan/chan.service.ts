@@ -63,7 +63,7 @@ export class ChanService {
     }
     let currentTrend = TrendDirection.None;
     // 基准K线
-    const baseData: MergedKVo = {
+    let baseData: MergedKVo = {
       startTime: data[0].time,
       endTime: data[0].time,
       highest: data[0].highest,
@@ -82,6 +82,7 @@ export class ChanService {
         now,
         currentTrend,
       );
+      // 这个有问题
       const containedState = this.handleContainedState(
         baseData,
         now,
@@ -98,7 +99,7 @@ export class ChanService {
         baseData.mergedIds.push(now.id);
         baseData.mergedData.push(now);
         // 然后替换上一条k线
-        mergedKs[mergedKs.length - 1] = baseData;
+        mergedKs[mergedKs.length - 1] = { ...baseData };
       } else {
         const newBaseData: MergedKVo = {
           startTime: now.time,
@@ -110,7 +111,8 @@ export class ChanService {
           mergedIds: [now.id],
           mergedData: [now],
         };
-        mergedKs.push(newBaseData);
+        baseData = newBaseData;
+        mergedKs.push({ ...newBaseData });
       }
     }
     return mergedKs;
@@ -187,11 +189,10 @@ export class ChanService {
   }
 
   private isFenxingsContained(a: FenxingVo, b: FenxingVo) {
-    if (a.highest > b.highest && a.lowest < b.lowest) {
-      return true;
-    }
-    if (a.highest < b.highest && a.lowest > b.lowest) {
-      return true;
+    if (a.type === FenxingType.Top && b.type === FenxingType.Bottom) {
+      return !(a.lowest >= b.highest);
+    } else if (a.type === FenxingType.Bottom && b.type === FenxingType.Top) {
+      return !(a.highest <= b.lowest);
     }
     return false;
   }
@@ -319,10 +320,6 @@ export class ChanService {
       const prev = data[i - 1];
       const now = data[i];
       const next = data[i + 1];
-      if (!prev || !now || !next) {
-        // todo 未完成笔
-        continue;
-      }
       // 笔数据更新
       baseData.endTime = now.endTime;
       baseData.trend = now.trend;
@@ -331,6 +328,11 @@ export class ChanService {
       baseData.originIds.push(...now.mergedIds);
       baseData.originData.push(...now.mergedData);
       baseData.independentCount += 1;
+
+      if (!next) {
+        bis.push({ ...baseData, type: BiType.UnComplete });
+        continue;
+      }
       // 判断这三个数据是不是分型
       const fenxing = this.handleFenxing(prev, i - 1, now, i, next, i + 1);
       // 有分型出现，判断是否成笔
@@ -339,8 +341,7 @@ export class ChanService {
       if (fenxings.length === 0) {
         // 上一笔完成
         fenxings.push(fenxing);
-        baseData.type = BiType.Complete;
-        bis.push(baseData);
+        bis.push({ ...baseData, type: BiType.Complete });
         // 基准数据更新
         baseData = this.getInitialBi(now);
         continue;
@@ -359,10 +360,75 @@ export class ChanService {
       }
       // 合并后的笔至少有4根独立k线
       if (baseData.independentCount < 4) {
-        // 回退处理
-        fenxings.pop();
-        const lastBi = bis.pop();
-        baseData = this.getFallbackBi(lastBi, baseData);
+        // 说明当前笔无效，需要一直递归找到有效的笔
+        const tempBis: BiVo[] = [];
+        while (bis.length > 0) {
+          const prevBi = bis.pop();
+          if (
+            prevBi.trend === baseData.trend &&
+            this.trendService.judgeBiTrend(prevBi, baseData)
+          ) {
+            bis.push({
+              ...prevBi,
+              endTime: baseData.endTime,
+              highest: Math.max(prevBi.highest, baseData.highest),
+              lowest: Math.min(prevBi.lowest, baseData.lowest),
+              trend: baseData.trend,
+              type: BiType.Complete,
+              independentCount:
+                prevBi.independentCount +
+                tempBis.reduce((acc, cur) => acc + cur.independentCount, 0) +
+                baseData.independentCount,
+              originIds: Array.from(
+                new Set([
+                  ...prevBi.originIds,
+                  ...tempBis.reduce(
+                    (acc, cur) => [...acc, ...cur.originIds],
+                    [],
+                  ),
+                  ...baseData.originIds,
+                ]),
+              ),
+              originData: this.uniqueById([
+                ...prevBi.originData,
+                ...tempBis.reduce(
+                  (acc, cur) => [...acc, ...cur.originData],
+                  [],
+                ),
+                ...baseData.originData,
+              ]),
+            });
+            break;
+          } else {
+            // 从头开始推
+            tempBis.unshift(prevBi);
+          }
+        }
+
+        if (tempBis.length > 0) {
+          // 说明从头开始到当前的笔都是无效笔，统一进行合并
+          const bi: BiVo = {
+            startTime: tempBis[0].startTime,
+            endTime: baseData.endTime,
+            highest: Math.max(...tempBis.map((bi) => bi.highest)),
+            lowest: Math.min(...tempBis.map((bi) => bi.lowest)),
+            trend: tempBis[0].trend,
+            originIds: Array.from(
+              new Set([
+                ...tempBis.reduce((acc, cur) => [...acc, ...cur.originIds], []),
+                ...baseData.originIds,
+              ]),
+            ),
+            originData: this.uniqueById([
+              ...tempBis.reduce((acc, cur) => [...acc, ...cur.originData], []),
+              ...baseData.originData,
+            ]),
+            independentCount: tempBis.reduce(
+              (acc, cur) => acc + cur.independentCount,
+              baseData.independentCount,
+            ),
+          };
+        }
         continue;
       }
       // 原来的笔之间至少有5根原始笔
@@ -379,6 +445,7 @@ export class ChanService {
         baseData = this.getFallbackBi(lastBi, baseData);
         continue;
       }
+
       // 还有一个中间非笔结构，没想起来，到时候继续做，没记错的话是高度限制的，这样需要把趋势改变的逻辑加上 todo
 
       // 上一笔完成
