@@ -188,13 +188,28 @@ export class ChanService {
     };
   }
 
+  // 顶底分型之间必须要拉开差距，这里暂时不考虑底分型的整体位置还要比顶分型高的情况，反过来也是
   private isFenxingsContained(a: FenxingVo, b: FenxingVo) {
     if (a.type === FenxingType.Top && b.type === FenxingType.Bottom) {
-      return !(a.lowest >= b.highest);
+      if (a.highest > b.highest && a.lowest > b.lowest) {
+        return { isContained: false, bigger: null };
+      } else {
+        return {
+          isContained: true,
+          bigger: a.highest <= b.highest ? 'a' : 'b',
+        };
+      }
     } else if (a.type === FenxingType.Bottom && b.type === FenxingType.Top) {
-      return !(a.highest <= b.lowest);
+      if (a.lowest < b.lowest && a.highest < b.highest) {
+        return { isContained: false, bigger: null };
+      } else {
+        return {
+          isContained: true,
+          bigger: a.lowest >= b.lowest ? 'b' : 'a',
+        };
+      }
     }
-    return false;
+    return { isContained: false, bigger: null };
   }
 
   getFenxings(data: MergedKVo[]) {
@@ -229,39 +244,6 @@ export class ChanService {
     });
   }
 
-  private getInitialBi(now: MergedKVo) {
-    return {
-      startTime: now.startTime,
-      endTime: now.endTime,
-      highest: now.highest,
-      lowest: now.lowest,
-      trend: now.trend,
-      type: BiType.Initial,
-      originIds: [...now.mergedIds],
-      originData: [...now.mergedData],
-      independentCount: 1,
-    };
-  }
-
-  private getFallbackBi(lastBi: BiVo, baseData: BiVo) {
-    return {
-      startTime: lastBi.startTime, // 上一笔的开始
-      endTime: baseData.endTime, // 当前笔的结束
-      highest: Math.max(lastBi.highest, baseData.highest),
-      lowest: Math.min(lastBi.lowest, baseData.lowest),
-      trend: lastBi.trend, // 趋势未发生改变
-      type: BiType.UnComplete,
-      originIds: Array.from(
-        new Set([...lastBi.originIds, ...baseData.originIds]),
-      ),
-      originData: this.uniqueById([
-        ...lastBi.originData,
-        ...baseData.originData,
-      ]),
-      independentCount: lastBi.independentCount + baseData.independentCount - 1, // 回退分型的中间k线重复计算
-    };
-  }
-
   private getBi(data: MergedKVo[], fenxings: FenxingVo[]) {
     if (data.length === 0) {
       return [];
@@ -283,184 +265,132 @@ export class ChanService {
     if (fenxings.length === 0) {
       return bis;
     }
-    // 从当前分型开始
-    let fenxingIndex = -1;
-    let mergedKIndex = 0;
+    let startKIndex = 0;
+    let highest = baseData.highest;
+    let lowest = baseData.lowest;
+    const tempKs: MergedKVo[] = []; // 存放已经遍历过的k线，最后合并的时候需要去重
+
     for (let i = 0; i < fenxings.length - 1; i++) {
+      const tempStartKIndex = startKIndex;
+      let validFenxing: FenxingVo | null = null;
       // 寻找第一个和趋势相同的分型
       if (baseData.trend === TrendDirection.Up) {
         if (fenxings[i].type === FenxingType.Top) {
-          validFenxings.push(fenxings[i]);
-          fenxingIndex += 1;
+          validFenxing = fenxings[i];
         } else {
           continue;
         }
       } else if (baseData.trend === TrendDirection.Down) {
         if (fenxings[i].type === FenxingType.Bottom) {
-          validFenxings.push(fenxings[i]);
-          fenxingIndex += 1;
+          validFenxing = fenxings[i];
         } else {
           continue;
         }
       } else if (baseData.trend === TrendDirection.None) {
         // 无趋势的话，就将第一个分型作为有效分型
-        validFenxings.push(fenxings[i]);
-        fenxingIndex += 1;
+        validFenxing = fenxings[i];
       }
-      // const validFenxing = validFenxings[fenxingIndex];
-      // const validMergedKIndex = validFenxing.middleIndex;
-      // baseData.endTime = data[mergedKIndex].endTime;
-      // baseData.independentCount = validMergedKIndex - mergedKIndex + 1;
-      // baseData.type = BiType.Complete;
-      // baseData.originIds = [...data[0].mergedIds];
-      // baseData.originData = [...data[0].mergedData];
-    }
-
-    for (let i = 1; i < data.length; i++) {
-      const prev = data[i - 1];
-      const now = data[i];
-      const next = data[i + 1];
-      // 笔数据更新
-      baseData.endTime = now.endTime;
-      baseData.trend = now.trend;
-      baseData.highest = Math.max(baseData.highest, now.highest);
-      baseData.lowest = Math.min(baseData.lowest, now.lowest);
-      baseData.originIds.push(...now.mergedIds);
-      baseData.originData.push(...now.mergedData);
-      baseData.independentCount += 1;
-
-      if (!next) {
-        bis.push({ ...baseData, type: BiType.UnComplete });
+      // 判断从这一笔到validFenxing的最高点和最低点
+      if (validFenxing.type === FenxingType.Top) {
+        highest = validFenxing.highest;
+      } else if (validFenxing.type === FenxingType.Bottom) {
+        lowest = validFenxing.lowest;
+      }
+      // 遍历从这一笔到validFenxing的数据，判断当中的k线是否有凸起或者凹陷的情况，顺便把k线数据更新
+      for (let j = startKIndex; j <= validFenxing.middleIndex; j++) {
+        const now = data[j];
+        tempKs.push(now);
+        // 判断当前k线是否是凸起
+        if (now.highest > highest || now.lowest < lowest) {
+          // 这一个分型无效，
+          validFenxing = null;
+        }
+      }
+      startKIndex = validFenxing.middleIndex;
+      // 如果没有有效分型，继续下一个分型
+      if (!validFenxing) {
         continue;
       }
-      // 判断这三个数据是不是分型
-      const fenxing = this.handleFenxing(prev, i - 1, now, i, next, i + 1);
-      // 有分型出现，判断是否成笔
-      if (fenxing.type === FenxingType.None) continue;
-      // 如果历史state中没有分型，那么先加进去
-      if (fenxings.length === 0) {
-        // 上一笔完成
-        fenxings.push(fenxing);
-        bis.push({ ...baseData, type: BiType.Complete });
-        // 基准数据更新
-        baseData = this.getInitialBi(now);
-        continue;
-      }
-      const lastFenxing = fenxings[fenxings.length - 1];
-      // 必须和上一个有效的分型之间是顶底分型
-      if (lastFenxing.type === fenxing.type) {
-        continue;
-      }
-      // 分型必须不能互相包含
-      if (this.isFenxingsContained(lastFenxing, fenxing)) {
-        // 回退处理
-        fenxings.pop();
-        const lastBi = bis.pop();
-        baseData = this.getFallbackBi(lastBi, baseData);
-      }
-      // 合并后的笔至少有4根独立k线
-      if (baseData.independentCount < 4) {
-        // 说明当前笔无效，需要一直递归找到有效的笔
-        const tempBis: BiVo[] = [];
-        while (bis.length > 0) {
-          const prevBi = bis.pop();
-          if (
-            prevBi.trend === baseData.trend &&
-            this.trendService.judgeBiTrend(prevBi, baseData)
-          ) {
-            bis.push({
-              ...prevBi,
-              endTime: baseData.endTime,
-              highest: Math.max(prevBi.highest, baseData.highest),
-              lowest: Math.min(prevBi.lowest, baseData.lowest),
-              trend: baseData.trend,
-              type: BiType.Complete,
-              independentCount:
-                prevBi.independentCount +
-                tempBis.reduce((acc, cur) => acc + cur.independentCount, 0) +
-                baseData.independentCount,
-              originIds: Array.from(
-                new Set([
-                  ...prevBi.originIds,
-                  ...tempBis.reduce(
-                    (acc, cur) => [...acc, ...cur.originIds],
-                    [],
-                  ),
-                  ...baseData.originIds,
-                ]),
-              ),
-              originData: this.uniqueById([
-                ...prevBi.originData,
-                ...tempBis.reduce(
-                  (acc, cur) => [...acc, ...cur.originData],
-                  [],
-                ),
-                ...baseData.originData,
-              ]),
-            });
-            break;
-          } else {
-            // 从头开始推
-            tempBis.unshift(prevBi);
+      // 判断当前分型和上一个分型之间是否存在包含关系
+      const prevFenxing = validFenxings[i - 1];
+      if (prevFenxing) {
+        const { isContained, bigger } = this.isFenxingsContained(
+          prevFenxing,
+          validFenxing,
+        );
+        if (isContained) {
+          validFenxing = null;
+          // 如果当前分型包含了之前的分型，说明前面的分型无效，要回退到前面已经成立的一笔继续计算
+          if (bigger === 'b') {
+            // 上一个分型无效
+            fenxings.pop();
+            // 判断是否还有上上一个分型
+            const initialFenxing = fenxings[fenxings.length - 1];
+            // 这里笔肯定存在
+            const initialBi = bis.pop();
+            startKIndex = initialFenxing ? initialFenxing.middleIndex : 0;
+            highest = Math.max(initialBi.highest, highest);
+            lowest = Math.min(initialBi.lowest, lowest);
+            // 起始数据回退到上一个起始笔
+            baseData = {
+              startTime: initialBi.startTime,
+              endTime: initialBi.endTime,
+              highest: highest,
+              lowest: lowest,
+              trend: initialBi.trend,
+              originIds: [...initialBi.originIds],
+              originData: [...initialBi.originData],
+              independentCount: initialBi.independentCount,
+              type: BiType.UnComplete,
+            };
           }
+          // 如果是a的分型则直接无视，认为当前分型无效
+          continue;
         }
-
-        if (tempBis.length > 0) {
-          // 说明从头开始到当前的笔都是无效笔，统一进行合并
-          const bi: BiVo = {
-            startTime: tempBis[0].startTime,
-            endTime: baseData.endTime,
-            highest: Math.max(...tempBis.map((bi) => bi.highest)),
-            lowest: Math.min(...tempBis.map((bi) => bi.lowest)),
-            trend: tempBis[0].trend,
-            originIds: Array.from(
-              new Set([
-                ...tempBis.reduce((acc, cur) => [...acc, ...cur.originIds], []),
-                ...baseData.originIds,
-              ]),
-            ),
-            originData: this.uniqueById([
-              ...tempBis.reduce((acc, cur) => [...acc, ...cur.originData], []),
-              ...baseData.originData,
-            ]),
-            independentCount: tempBis.reduce(
-              (acc, cur) => acc + cur.independentCount,
-              baseData.independentCount,
-            ),
-          };
-        }
-        continue;
-      }
-      // 原来的笔之间至少有5根原始笔
-      const startOriginIndex = baseData.originData.findIndex(
-        (k) => k.id === lastFenxing.middleOriginId,
-      );
-      const endOriginIndex = baseData.originData.findIndex(
-        (k) => k.id === fenxing.middleOriginId,
-      );
-      if (endOriginIndex - startOriginIndex < 5) {
-        // 回退处理
-        fenxings.pop();
-        const lastBi = bis.pop();
-        baseData = this.getFallbackBi(lastBi, baseData);
-        continue;
       }
 
-      // 还有一个中间非笔结构，没想起来，到时候继续做，没记错的话是高度限制的，这样需要把趋势改变的逻辑加上 todo
-
-      // 上一笔完成
-      fenxings.push(fenxing);
-      baseData.type = BiType.Complete;
-      bis.push(baseData);
-      // 基准数据更新
-      baseData = this.getInitialBi(now);
-    }
-    // 如果当前的基准数据是未完成且上一笔是完成的情况
-    if (
-      baseData.type === BiType.UnComplete &&
-      bis[bis.length - 1].type === BiType.Complete
-    ) {
-      bis.push(baseData);
+      // 分型
+      validFenxings.push(validFenxing);
+      const validMiddleMergedK = data[validFenxing.middleIndex];
+      // 成笔
+      const bi = {
+        startTime: baseData.startTime,
+        endTime: validMiddleMergedK.endTime,
+        highest: Math.max(baseData.highest, validFenxing.highest),
+        lowest: Math.min(baseData.lowest, validFenxing.lowest),
+        trend:
+          validFenxing.type === FenxingType.Top
+            ? TrendDirection.Up
+            : TrendDirection.Down,
+        type: BiType.Complete,
+        originIds: Array.from(
+          new Set([
+            ...baseData.originIds,
+            ...tempKs.map((item) => item.mergedIds).flat(),
+          ]),
+        ),
+        originData: this.uniqueById([
+          ...baseData.originData,
+          ...tempKs.map((item) => item.mergedData).flat(),
+        ]),
+        independentCount: startKIndex - tempStartKIndex + 1,
+      };
+      bis.push(bi);
+      // 更新基准数据
+      baseData = {
+        startTime: validMiddleMergedK.startTime,
+        endTime: validMiddleMergedK.endTime,
+        highest: validMiddleMergedK.highest,
+        lowest: validMiddleMergedK.lowest,
+        trend:
+          validFenxing.type === FenxingType.Top
+            ? TrendDirection.Down
+            : TrendDirection.Up,
+        type: BiType.UnComplete,
+        originIds: [...validMiddleMergedK.mergedIds],
+        originData: [...validMiddleMergedK.mergedData],
+        independentCount: 1,
+      };
     }
     return bis;
   }
