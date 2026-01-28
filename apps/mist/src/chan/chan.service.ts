@@ -268,7 +268,7 @@ export class ChanService {
     let startKIndex = 0;
     let highest = baseData.highest;
     let lowest = baseData.lowest;
-    const tempKs: MergedKVo[] = []; // 存放已经遍历过的k线，最后合并的时候需要去重
+    let tempKs: MergedKVo[] = []; // 存放已经遍历过的k线，最后合并的时候需要去重
 
     for (let i = 0; i < fenxings.length - 1; i++) {
       const tempStartKIndex = startKIndex;
@@ -324,14 +324,11 @@ export class ChanService {
           if (bigger === 'b') {
             // 上一个分型无效
             fenxings.pop();
-            // 判断是否还有上上一个分型
-            const initialFenxing = fenxings[fenxings.length - 1];
             // 这里笔肯定存在
             const initialBi = bis.pop();
-            startKIndex = initialFenxing ? initialFenxing.middleIndex : 0;
+            // 起始数据回退到上一个起始笔
             highest = Math.max(initialBi.highest, highest);
             lowest = Math.min(initialBi.lowest, lowest);
-            // 起始数据回退到上一个起始笔
             baseData = {
               startTime: initialBi.startTime,
               endTime: initialBi.endTime,
@@ -391,6 +388,9 @@ export class ChanService {
         originData: [...validMiddleMergedK.mergedData],
         independentCount: 1,
       };
+      tempKs = [];
+      highest = baseData.highest;
+      lowest = baseData.lowest;
     }
     return bis;
   }
