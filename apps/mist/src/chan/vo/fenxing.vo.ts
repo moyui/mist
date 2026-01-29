@@ -6,11 +6,8 @@ export class FenxingVo {
   middleIds: number[];
   rightIds: number[];
 
-  // 这三个是mergedK的index
-  leftIndex: number;
+  // 中间的index
   middleIndex: number;
-  rightIndex: number;
-
   // 最中间的未合并前的真实id
   middleOriginId: number;
 
