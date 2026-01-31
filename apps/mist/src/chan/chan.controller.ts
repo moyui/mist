@@ -1,15 +1,19 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ChanService } from './chan.service';
-import { MergeKDto } from './dto/merge-k.dto';
 import { CreateBiDto } from './dto/create-bi.dto';
+import { MergeKDto } from './dto/merge-k.dto';
+import { KMergeService } from './services/k-merge.service';
 
 @Controller('chan')
 export class ChanController {
-  constructor(private readonly chanService: ChanService) {}
+  constructor(
+    private readonly chanService: ChanService,
+    private readonly kMergeService: KMergeService,
+  ) {}
 
   @Post('merge-k')
   async postMergeK(@Body() mergeKDto: MergeKDto) {
-    return this.chanService.mergeK(mergeKDto.k);
+    return this.kMergeService.merge(mergeKDto.k);
   }
 
   @Post('bi')

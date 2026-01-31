@@ -15,3 +15,9 @@ export class FenxingVo {
   highest: number;
   lowest: number;
 }
+
+export class FenxingWithStateVo extends FenxingVo {
+  leftValid: boolean; // 左侧的笔是否有效
+  rightValid: boolean; // 右侧的笔是否有效
+  erased: boolean; // 是否被完全擦除（两侧都无效）
+}

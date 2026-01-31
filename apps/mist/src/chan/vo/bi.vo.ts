@@ -1,6 +1,7 @@
 import { KVo } from '../../indicator/vo/k.vo';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import { BiType } from '../enums/bi.enum';
+import { FenxingVo } from './fenxing.vo';
 
 export class BiVo {
   startTime: Date;
@@ -12,4 +13,6 @@ export class BiVo {
   independentCount: number; // 独立k线数量
   originIds: number[];
   originData: KVo[];
+  startFenxing: FenxingVo;
+  endFenxing: FenxingVo;
 }
