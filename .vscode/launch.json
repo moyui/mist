@@ -4,57 +4,63 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Chan App",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start:dev:chan"],
-      "console": "integratedTerminal",
-      "restart": true,
-      "autoAttachChildProcesses": true,
-      "skipFiles": ["<node_internals>/**"],
-      "sourceMaps": true,
-      "outFiles": ["${workspaceFolder}/dist/apps/chan/**/*.js"]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Chan Tests",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "test", "--", "apps/chan"],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "skipFiles": ["<node_internals>/**"],
-      "sourceMaps": true
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Specific Test File",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "name": "🚀 Debug Chan App",
+      "program": "${workspaceFolder}/node_modules/@nestjs/cli/bin/nest.js",
       "args": [
-        "${fileBasenameNoExtension}",
-        "--config",
-        "jest.config.js",
-        "--detectOpenHandles",
-        "--verbose",
-        "--no-coverage"
+        "start",
+        "chan",
+        "--watch"
       ],
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "skipFiles": ["<node_internals>/**"],
-      "sourceMaps": true
+      "internalConsoleOptions": "openOnSessionStart",
+      "restart": true,
+      "autoAttachChildProcesses": false, // 改为 false，避免冲突
+      "sourceMaps": true,
+      "smartStep": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ],
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${workspaceFolder}/apps/chan/*",
+        "webpack:///src/*": "${workspaceFolder}/apps/chan/src/*",
+        "webpack:///*": "*",
+        "webpack:///./~/*": "${workspaceFolder}/node_modules/*"
+      },
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "TS_NODE_PROJECT": "${workspaceFolder}/apps/chan/tsconfig.app.json",
+        "NODE_ENV": "development"
+      },
+      "outputCapture": "std"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Chan with Breakpoints",
-      "program": "${workspaceFolder}/node_modules/.bin/nest",
-      "args": ["start", "chan", "--debug", "--watch"],
-      "console": "integratedTerminal",
-      "restart": true,
-      "autoAttachChildProcesses": true,
-      "skipFiles": ["<node_internals>/**"],
+      "name": "🐞 Debug Chan with TS-Node",
+      "runtimeArgs": [
+        "--nolazy",
+        "-r",
+        "ts-node/register",
+        "-r",
+        "tsconfig-paths/register"
+      ],
+      "args": [
+        "${workspaceFolder}/apps/chan/src/main.ts"
+      ],
+      "cwd": "${workspaceFolder}",
       "sourceMaps": true,
-      "outFiles": ["${workspaceFolder}/dist/apps/chan/**/*.js"]
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_PROJECT": "${workspaceFolder}/apps/chan/tsconfig.app.json"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "openOnSessionStart",
+      "skipFiles": ["<node_internals>/**"]
     }
   ]
 }
