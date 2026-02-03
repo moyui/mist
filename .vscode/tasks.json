@@ -1,0 +1,84 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build:chan",
+      "type": "shell",
+      "command": ". .vscode/nvm-setup.sh && nvm use 20 && pnpm build chan",
+      "args": [],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": true,
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "description": "加载nvm环境，切换到Node 20，编译chan应用"
+    },
+    {
+      "label": "start:debug:chan",
+      "type": "shell",
+      "command": ". .vscode/nvm-setup.sh && nvm use 20 && pnpm start:debug:chan",
+      "args": [],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": true,
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "description": "加载nvm环境，切换到Node 20，启动chan应用调试模式（调试器连接端口：9229）",
+      "isBackground": true,
+      "dependsOn": ["build:chan"]
+    },
+    {
+      "label": "debug:check:chan",
+      "type": "shell",
+      "command": "echo \"检查Chan应用状态...\" && curl -s http://localhost:3001/chan/merge-k -X POST -H 'Content-Type: application/json' -d '{\"k\": [{\"timestamp\": 1, \"open\": 10, \"high\": 15, \"low\": 8, \"close\": 12, \"volume\": 1000}]}' || echo \"Chan应用未启动或接口不可用\"",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "description": "检查Chan应用是否正常运行"
+    },
+    {
+      "label": "kill:chan",
+      "type": "shell",
+      "command": "lsof -ti:3001 | xargs kill -9 2>/dev/null || echo \"没有找到运行在3001端口的Chan应用\"",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "description": "强制停止运行在3001端口的Chan应用"
+    },
+    {
+      "label": "start:dev:chan",
+      "type": "shell",
+      "command": ". .vscode/nvm-setup.sh && nvm use 20 && pnpm start:dev:chan",
+      "args": [],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "description": "加载nvm环境，切换到Node 20，启动chan应用开发模式"
+    }
+  ]
+}

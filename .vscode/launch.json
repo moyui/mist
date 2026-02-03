@@ -4,63 +4,22 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "🚀 Debug Chan App",
-      "program": "${workspaceFolder}/node_modules/@nestjs/cli/bin/nest.js",
-      "args": [
-        "start",
-        "chan",
-        "--watch"
-      ],
+      "name": "🚀 Debug Chan App with pnpm",
+      "program": "${workspaceFolder}/dist/apps/chan/main.js",
+      "preLaunchTask": "build:chan",
       "console": "integratedTerminal",
       "internalConsoleOptions": "openOnSessionStart",
-      "restart": true,
-      "autoAttachChildProcesses": false, // 改为 false，避免冲突
-      "sourceMaps": true,
+      "restart": false,
       "smartStep": true,
       "skipFiles": [
         "<node_internals>/**",
         "${workspaceFolder}/node_modules/**"
       ],
-      "resolveSourceMapLocations": [
-        "${workspaceFolder}/**",
-        "!**/node_modules/**"
-      ],
-      "sourceMapPathOverrides": {
-        "webpack:///./*": "${workspaceFolder}/apps/chan/*",
-        "webpack:///src/*": "${workspaceFolder}/apps/chan/src/*",
-        "webpack:///*": "*",
-        "webpack:///./~/*": "${workspaceFolder}/node_modules/*"
-      },
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/dist/apps/chan",
       "env": {
-        "TS_NODE_PROJECT": "${workspaceFolder}/apps/chan/tsconfig.app.json",
         "NODE_ENV": "development"
       },
-      "outputCapture": "std"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "🐞 Debug Chan with TS-Node",
-      "runtimeArgs": [
-        "--nolazy",
-        "-r",
-        "ts-node/register",
-        "-r",
-        "tsconfig-paths/register"
-      ],
-      "args": [
-        "${workspaceFolder}/apps/chan/src/main.ts"
-      ],
-      "cwd": "${workspaceFolder}",
-      "sourceMaps": true,
-      "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_PROJECT": "${workspaceFolder}/apps/chan/tsconfig.app.json"
-      },
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "openOnSessionStart",
-      "skipFiles": ["<node_internals>/**"]
+      "outputCapture": "std",
     }
   ]
 }
