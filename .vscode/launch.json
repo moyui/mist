@@ -9,17 +9,21 @@
       "preLaunchTask": "build:chan",
       "console": "integratedTerminal",
       "internalConsoleOptions": "openOnSessionStart",
-      "restart": false,
+      "restart": true,
       "smartStep": true,
       "skipFiles": [
         "<node_internals>/**",
         "${workspaceFolder}/node_modules/**"
       ],
-      "cwd": "${workspaceFolder}/dist/apps/chan",
+      "cwd": "${workspaceFolder}",
       "env": {
         "NODE_ENV": "development"
       },
       "outputCapture": "std",
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/dist/apps/chan/**/*.js"
+      ]
     }
   ]
 }

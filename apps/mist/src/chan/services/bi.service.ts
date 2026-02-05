@@ -33,7 +33,7 @@ export class BiService {
     // 保存到状态（这里只是示意，实际需要序列化存储）
     this.saveFenxingState(alternatingFenxings);
 
-    // 步骤3: 创建带状态的分型对象，并标记伪笔
+    // 步骤3: 创建带状态的分型对象
     const fenxingsWithState = this.createFenxingsWithState(alternatingFenxings);
 
     // 步骤4: 计算伪笔有效性，标记擦除
@@ -298,13 +298,13 @@ export class BiService {
 
     // 价格关系检查
     if (start.type === FenxingType.Bottom) {
-      // 上升笔：终点高点必须高于起点高点
-      if (end.highest <= start.highest) {
+      // 上升笔：终点高点必须高于起点低点
+      if (end.highest <= start.lowest) {
         return false;
       }
     } else {
-      // 下降笔：终点低点必须低于起点低点
-      if (end.lowest >= start.lowest) {
+      // 下降笔：终点低点必须低于起点高点
+      if (end.lowest >= start.highest) {
         return false;
       }
     }
@@ -343,6 +343,7 @@ export class BiService {
   ): BiVo[] {
     const bis: BiVo[] = [];
     let currentIndex = 0;
+    let currentValidIndex = 0;
 
     while (currentIndex < fenxings.length) {
       // 寻找有效的起点分型
@@ -363,7 +364,7 @@ export class BiService {
 
       if (connectionResult.success) {
         // 成功形成一笔
-        const bi = this.buildBi(
+        const bi = this.buildCompleteBi(
           data,
           startFenxing,
           connectionResult.endFenxing!,
@@ -380,9 +381,27 @@ export class BiService {
 
         // 更新当前索引到这个结束笔
         currentIndex = connectionResult.endIndex!;
+        currentValidIndex = connectionResult.endIndex!;
       } else {
         // 连接失败，尝试下一个分型
         currentIndex = startIndex + 1;
+      }
+    }
+
+    if (currentValidIndex < data.length) {
+      const startIndex = fenxings[currentValidIndex]?.middleIndex ?? 0;
+      // 这里得判断最后一段数据是否可以和前面一段的数据进行拼接
+      const { isSequence, bi } = this.buildUnCompleteBi(
+        data,
+        startIndex,
+        data.length - 1,
+        bis[bis.length - 1],
+      );
+
+      if (isSequence) {
+        bis[bis.length - 1] = bi;
+      } else {
+        bis.push(bi);
       }
     }
 
@@ -435,6 +454,16 @@ export class BiService {
     // 寻找可能的终点分型
     for (let i = startIndex + 1; i < fenxings.length; i++) {
       const candidate = fenxings[i];
+
+      // 如果在已经找到了某一个终点分型的情况下，快速判断终点分型和下一个连续分型之间的关系
+      // 如果下一个终点分型的右侧和下一个分型的左侧valid，那么就到此为止
+      if (
+        bestEndIndex !== -1 &&
+        bestEndFenxing.rightValid &&
+        candidate.leftValid
+      ) {
+        break;
+      }
 
       // 检查候选分型是否可以作为终点
       if (!this.canBeEndFenxing(candidate, trend)) {
@@ -522,7 +551,7 @@ export class BiService {
         trend === TrendDirection.Up &&
         middleFenxing.type === FenxingType.Bottom
       ) {
-        if (middleFenxing.lowest < start.highest) {
+        if (middleFenxing.lowest <= start.lowest) {
           return false; // 趋势反转
         }
         // 同理，下降趋势的起点必然是顶分型
@@ -530,7 +559,7 @@ export class BiService {
         trend === TrendDirection.Down &&
         middleFenxing.type === FenxingType.Top
       ) {
-        if (middleFenxing.highest > start.lowest) {
+        if (middleFenxing.highest >= start.highest) {
           return false; // 趋势反转
         }
       }
@@ -538,18 +567,18 @@ export class BiService {
 
     // 检查候选分型本身
     if (trend === TrendDirection.Up) {
-      // 上升趋势，候选顶分型应该创新高
-      return candidate.highest > start.highest;
+      // 上升趋势，候选顶分型应该创新高 start底分型，candidate顶分型
+      return candidate.highest > start.lowest;
     } else {
       // 下降趋势，候选底分型应该创新低
-      return candidate.lowest < start.lowest;
+      return candidate.lowest < start.highest;
     }
   }
 
   /**
    * 创建笔
    */
-  private buildBi(
+  private buildCompleteBi(
     data: MergedKVo[],
     start: FenxingWithStateVo,
     end: FenxingWithStateVo,
@@ -591,6 +620,74 @@ export class BiService {
       independentCount: rangeKs.length,
       startFenxing: start,
       endFenxing: end,
+    };
+  }
+
+  /**
+   * 创建未完成的笔
+   */
+  private buildUnCompleteBi(
+    data: MergedKVo[],
+    startIndex: number,
+    endIndex: number,
+    prevBi: BiVo | null,
+  ): { isSequence: boolean; bi: BiVo } {
+    const start = data[startIndex];
+    const end = data[endIndex];
+    const rangeKs = data.slice(startIndex, endIndex + 1);
+    const trend =
+      start.lowest <= end.highest ? TrendDirection.Up : TrendDirection.Down;
+
+    // 计算笔的属性
+    let highest = -Infinity;
+    let lowest = Infinity;
+    const allOriginIds: number[] = [];
+    const allOriginData: KVo[] = [];
+
+    rangeKs.forEach((k) => {
+      highest = Math.max(highest, k.highest);
+      lowest = Math.min(lowest, k.lowest);
+      allOriginIds.push(...k.mergedIds);
+      allOriginData.push(...k.mergedData);
+    });
+
+    // 判断和上一条趋势，如果趋势相同，则需要拼接，如果趋势相反，则不需要拼接
+    if (prevBi && prevBi.trend === trend) {
+      return {
+        isSequence: true,
+        bi: {
+          startTime: prevBi.startTime,
+          endTime: end.endTime,
+          highest: Math.max(prevBi.highest, highest),
+          lowest: Math.min(prevBi.lowest, lowest),
+          trend,
+          type: BiType.UnComplete,
+          originIds: Array.from(
+            new Set([...prevBi.originIds, ...allOriginIds]),
+          ),
+          originData: uniqueById([...prevBi.originData, ...allOriginData]),
+          independentCount: prevBi.independentCount + rangeKs.length - 1,
+          startFenxing: prevBi.startFenxing,
+          endFenxing: null,
+        },
+      };
+    }
+
+    return {
+      isSequence: false,
+      bi: {
+        startTime: start.startTime,
+        endTime: end.endTime,
+        highest,
+        lowest,
+        trend,
+        type: BiType.UnComplete,
+        originIds: Array.from(new Set(allOriginIds)),
+        originData: uniqueById(allOriginData),
+        independentCount: rangeKs.length,
+        startFenxing: prevBi ? prevBi.endFenxing : null,
+        endFenxing: null,
+      },
     };
   }
 

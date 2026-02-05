@@ -13,7 +13,6 @@ export class ChanController {
 
   @Post('merge-k')
   async postMergeK(@Body() mergeKDto: MergeKDto) {
-    debugger;
     return this.kMergeService.merge(mergeKDto.k);
   }
 
