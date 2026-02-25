@@ -51,7 +51,7 @@ mist/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-org/mist.git
+git clone https://github.com/moyui/mist.git
 cd mist
 
 # 安装依赖
