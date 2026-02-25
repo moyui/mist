@@ -168,7 +168,7 @@ export class BiService {
   private saveFenxingState(fenxings: FenxingVo[]): void {
     // 这里应该将交错序列保存到数据库或文件
     // 下次可以从这里恢复状态
-    console.log(`保存 ${fenxings.length} 个分型到状态`);
+    // console.log(`保存 ${fenxings.length} 个分型到状态`);
   }
 
   /**

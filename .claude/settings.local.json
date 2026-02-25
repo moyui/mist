@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm test -- --testPathPattern=k-merge 2>&1 | head -100)",
+      "Bash(pnpm test -- --testPathPattern=k-merge 2>&1 | head -150)",
+      "Bash(pnpm test -- --testPathPattern=k-merge 2>&1)",
+      "Bash(pnpm test -- --testPathPattern=bi\\\\.service 2>&1)",
+      "Bash(pnpm test -- --testPathPattern=chan\\\\.service 2>&1)",
+      "Bash(pnpm test -- --testPathPattern=chan\\\\.controller 2>&1)",
+      "Bash(pnpm test -- --testPathPattern=chan 2>&1)",
+      "Bash(pnpm test:cov -- --testPathPattern=chan 2>&1)",
+      "Bash(pnpm test:cov -- chan 2>&1 | head -200)",
+      "Bash(pnpm test:cov -- chan 2>&1 | tail -100)",
+      "Bash(pnpm test:cov -- chan 2>&1 | grep -A 5 \"apps/mist/src/chan\")",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation --verbose 2>&1 | head -200)",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation --verbose 2>&1 | grep -A 30 \"Test 1.1 result:\")",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation 2>&1 | tail -60)",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation 2>&1 | grep -A 80 \"Test 1.4 result:\")",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation 2>&1 | tail -80)",
+      "Bash(pnpm test -- --testPathPattern=\"accuracy-validation.*Test 1\" 2>&1 | grep -A 60 \"Test 1.4 - Data\")",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.4\" 2>&1 | tail -100)",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.4\" 2>&1 | grep -A 100 \"markInvalidPseudoBi\")",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1\" 2>&1 | tail -40)",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | grep -A 50 \"markInvalidPseudoBi\")",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | grep -A 60 \"connectValidFenxings 开始\")",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | grep -A 100 \"连接结果: success=true\")",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | grep -A 20 \"buildUnCompleteBi\")",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation 2>&1 | tail -50)",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation 2>&1 | tail -30)",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation 2>&1 | tail -25)",
+      "Bash(pnpm test -- --testPathPattern=accuracy-validation 2>&1)",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | grep -A 30 \"Test 1.1 result:\")",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | tail -30)",
+      "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | grep -A 40 \"Test 1.1 result:\")",
+      "Bash(pnpm test -- apps/mist/src/chan 2>&1 | tail -30)",
+      "Bash(pnpm test -- --testNamePattern=\"Test 4\\\\.\" 2>&1 | tail -40)",
+      "Bash(pnpm test -- apps/mist/src/chan 2>&1 | grep -E \"\\(PASS|FAIL|Test Suites|Tests:\\)\")"
+    ]
+  }
+}
