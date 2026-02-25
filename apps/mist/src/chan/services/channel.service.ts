@@ -7,8 +7,9 @@ import { ChannelVo } from '../vo/channel.vo';
 @Injectable()
 export class ChannelService {
   // 画中枢
-  createChannel(createChannelDto: CreateChannelDto) {
-    return this.getChannel(createChannelDto.bi);
+  createChannel(createChannelDto: CreateChannelDto): ChannelVo[] {
+    const { channels } = this.getChannel(createChannelDto.bi);
+    return channels;
   }
 
   private isTrendAlternating(bis: BiVo[]) {
@@ -21,7 +22,7 @@ export class ChannelService {
   }
 
   private hasOverlapWithChannel(bi: BiVo, zg: number, zd: number) {
-    return bi.lowest < zg && bi.highest > zd;
+    return bi.lowest <= zg && bi.highest >= zd;
   }
 
   private checkOverlapRange(bis: BiVo[]) {

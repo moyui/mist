@@ -34,7 +34,8 @@
       "Bash(pnpm test -- --testNamePattern=\"Test 1.1\" 2>&1 | grep -A 40 \"Test 1.1 result:\")",
       "Bash(pnpm test -- apps/mist/src/chan 2>&1 | tail -30)",
       "Bash(pnpm test -- --testNamePattern=\"Test 4\\\\.\" 2>&1 | tail -40)",
-      "Bash(pnpm test -- apps/mist/src/chan 2>&1 | grep -E \"\\(PASS|FAIL|Test Suites|Tests:\\)\")"
+      "Bash(pnpm test -- apps/mist/src/chan 2>&1 | grep -E \"\\(PASS|FAIL|Test Suites|Tests:\\)\")",
+      "Bash(pnpm test -- channel.service.spec.ts 2>&1)"
     ]
   }
 }
