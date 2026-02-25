@@ -133,13 +133,13 @@ describe('Chan Algorithm Accuracy Validation', () => {
       it('should detect top fenxing at correct position with correct values', () => {
         // Use very simple data: up trend only (bottom -> ... -> potential top)
         const data = [
-          createMergedKVo(1, 90, 80, 0),   // lowest in early sequence
-          createMergedKVo(2, 95, 85, 1),   // going up
-          createMergedKVo(3, 85, 75, 2),   // bottom fenxing: lowest=75 < K2.lowest=85 && < K4.lowest=80
-          createMergedKVo(4, 100, 80, 3),  // going up
-          createMergedKVo(5, 105, 90, 4),  // going up
+          createMergedKVo(1, 90, 80, 0), // lowest in early sequence
+          createMergedKVo(2, 95, 85, 1), // going up
+          createMergedKVo(3, 85, 75, 2), // bottom fenxing: lowest=75 < K2.lowest=85 && < K4.lowest=80
+          createMergedKVo(4, 100, 80, 3), // going up
+          createMergedKVo(5, 105, 90, 4), // going up
           createMergedKVo(6, 115, 100, 5), // top fenxing: highest=115 > K5.highest=105 && > K7.highest=110
-          createMergedKVo(7, 110, 95, 6),  // going down to complete the cycle
+          createMergedKVo(7, 110, 95, 6), // going down to complete the cycle
         ];
 
         const result = service.getBi(data);
@@ -176,7 +176,7 @@ describe('Chan Algorithm Accuracy Validation', () => {
           createMergedKVo(3, 120, 110, 2), // middle K
           createMergedKVo(4, 115, 105, 3), // middle K
           createMergedKVo(5, 110, 100, 4), // middle K
-          createMergedKVo(6, 110, 90, 5),  // bottom fenxing
+          createMergedKVo(6, 110, 90, 5), // bottom fenxing
           createMergedKVo(7, 115, 105, 6), // ascending - prevents extending the down bi
         ];
 
@@ -267,7 +267,7 @@ describe('Chan Algorithm Accuracy Validation', () => {
         const data = [
           createMergedKVo(1, 90, 80, 0),
           createMergedKVo(2, 95, 85, 1),
-          createMergedKVo(3, 85, 75, 2),   // bottom fenxing
+          createMergedKVo(3, 85, 75, 2), // bottom fenxing
           createMergedKVo(4, 100, 80, 3),
           createMergedKVo(5, 105, 90, 4),
           createMergedKVo(6, 115, 100, 5), // top fenxing
@@ -316,7 +316,7 @@ describe('Chan Algorithm Accuracy Validation', () => {
         const data = [
           createMergedKVo(1, 90, 80, 0),
           createMergedKVo(2, 95, 85, 1),
-          createMergedKVo(3, 85, 75, 2),   // bottom fenxing
+          createMergedKVo(3, 85, 75, 2), // bottom fenxing
           createMergedKVo(4, 100, 80, 3),
           createMergedKVo(5, 105, 90, 4),
           createMergedKVo(6, 115, 100, 5), // top fenxing
@@ -377,7 +377,9 @@ describe('Chan Algorithm Accuracy Validation', () => {
         expect(downBi.endFenxing.lowest).toBe(100);
 
         // Price relationship: bottom.lowest < top.highest
-        expect(downBi.endFenxing.lowest).toBeLessThan(downBi.startFenxing.highest);
+        expect(downBi.endFenxing.lowest).toBeLessThan(
+          downBi.startFenxing.highest,
+        );
       });
     });
 
@@ -390,11 +392,11 @@ describe('Chan Algorithm Accuracy Validation', () => {
       it('should NOT form bi when top highest <= bottom lowest', () => {
         const data = [
           createMergedKVo(1, 100, 90, 0),
-          createMergedKVo(2, 95, 85, 1),   // bottom fenxing (lowest=85)
+          createMergedKVo(2, 95, 85, 1), // bottom fenxing (lowest=85)
           createMergedKVo(3, 100, 90, 2),
           createMergedKVo(4, 98, 88, 3),
           createMergedKVo(5, 96, 86, 4),
-          createMergedKVo(6, 84, 80, 5),   // top fenxing but highest=84 <= 85
+          createMergedKVo(6, 84, 80, 5), // top fenxing but highest=84 <= 85
           createMergedKVo(7, 90, 85, 6),
         ];
 
@@ -405,7 +407,9 @@ describe('Chan Algorithm Accuracy Validation', () => {
         if (completeBis.length > 0) {
           const firstBi = completeBis[0];
           // If bi exists, verify it's not using these invalid fenxings
-          expect(firstBi.endFenxing.highest).toBeGreaterThan(firstBi.startFenxing.lowest);
+          expect(firstBi.endFenxing.highest).toBeGreaterThan(
+            firstBi.startFenxing.lowest,
+          );
         }
       });
     });
@@ -433,8 +437,8 @@ describe('Chan Algorithm Accuracy Validation', () => {
       it('should mark bottom fenxing as erased when contained by top fenxing', () => {
         const data = [
           createMergedKVo(1, 100, 90, 0),
-          createMergedKVo(2, 105, 95, 1),  // bottom fenxing
-          createMergedKVo(3, 110, 90, 2),  // top fenxing that contains bottom
+          createMergedKVo(2, 105, 95, 1), // bottom fenxing
+          createMergedKVo(3, 110, 90, 2), // top fenxing that contains bottom
           createMergedKVo(4, 105, 95, 3),
         ];
 
@@ -495,7 +499,7 @@ describe('Chan Algorithm Accuracy Validation', () => {
         const data = [
           createMergedKVo(1, 90, 80, 0),
           createMergedKVo(2, 95, 85, 1),
-          createMergedKVo(3, 85, 75, 2),   // bottom fenxing
+          createMergedKVo(3, 85, 75, 2), // bottom fenxing
           createMergedKVo(4, 100, 80, 3),
           createMergedKVo(5, 105, 90, 4),
           createMergedKVo(6, 115, 100, 5), // top fenxing (no containment: 115>=95 ✓ but 100<=75 ✗)
@@ -528,13 +532,13 @@ describe('Chan Algorithm Accuracy Validation', () => {
         // 设计：底分型 -> 第一个顶分型 -> 中间K -> 第二个更高的顶分型 -> 下降K
         const data = [
           createMergedKVo(1, 100, 90, 0),
-          createMergedKVo(2, 95, 85, 1),   // 底分型 at position 1
-          createMergedKVo(3, 110, 100, 2),  // 上升
-          createMergedKVo(4, 115, 105, 3),  // 第一个顶分型 (high=115) at position 3
-          createMergedKVo(5, 110, 100, 4),  // 下降 - 形成分型边界
-          createMergedKVo(6, 110, 100, 5),  // 上升 - 形成分型边界
-          createMergedKVo(7, 120, 105, 6),  // 第二个顶分型 (high=120，更高) at position 6
-          createMergedKVo(8, 110, 100, 7),  // 下降 - 结束上升趋势
+          createMergedKVo(2, 95, 85, 1), // 底分型 at position 1
+          createMergedKVo(3, 110, 100, 2), // 上升
+          createMergedKVo(4, 115, 105, 3), // 第一个顶分型 (high=115) at position 3
+          createMergedKVo(5, 110, 100, 4), // 下降 - 形成分型边界
+          createMergedKVo(6, 110, 100, 5), // 上升 - 形成分型边界
+          createMergedKVo(7, 120, 105, 6), // 第二个顶分型 (high=120，更高) at position 6
+          createMergedKVo(8, 110, 100, 7), // 下降 - 结束上升趋势
         ];
 
         const result = service.getBi(data);
@@ -545,7 +549,7 @@ describe('Chan Algorithm Accuracy Validation', () => {
         expect(firstBi.trend).toBe(TrendDirection.Up);
 
         // 检查是否有最高点为120的笔（说明使用了更高的顶分型）
-        const hasHighestTop = result.some(bi => bi.highest === 120);
+        const hasHighestTop = result.some((bi) => bi.highest === 120);
         expect(hasHighestTop).toBe(true);
       });
     });
@@ -560,13 +564,13 @@ describe('Chan Algorithm Accuracy Validation', () => {
         // 设计：顶分型 -> 第一个底分型 -> 中间K -> 第二个更低的底分型 -> 上升K
         const data = [
           createMergedKVo(1, 120, 110, 0),
-          createMergedKVo(2, 125, 115, 1),  // 顶分型 at position 1
-          createMergedKVo(3, 120, 110, 2),  // 下降
-          createMergedKVo(4, 115, 105, 3),  // 第一个底分型 (low=105) at position 3
-          createMergedKVo(5, 120, 115, 4),  // 上升 - 形成分型边界
-          createMergedKVo(6, 120, 115, 5),  // 下降 - 形成分型边界
-          createMergedKVo(7, 110, 100, 6),  // 第二个底分型 (low=100，更低) at position 6
-          createMergedKVo(8, 115, 105, 7),  // 上升 - 结束下降趋势
+          createMergedKVo(2, 125, 115, 1), // 顶分型 at position 1
+          createMergedKVo(3, 120, 110, 2), // 下降
+          createMergedKVo(4, 115, 105, 3), // 第一个底分型 (low=105) at position 3
+          createMergedKVo(5, 120, 115, 4), // 上升 - 形成分型边界
+          createMergedKVo(6, 120, 115, 5), // 下降 - 形成分型边界
+          createMergedKVo(7, 110, 100, 6), // 第二个底分型 (low=100，更低) at position 6
+          createMergedKVo(8, 115, 105, 7), // 上升 - 结束下降趋势
         ];
 
         const result = service.getBi(data);
@@ -577,7 +581,7 @@ describe('Chan Algorithm Accuracy Validation', () => {
         expect(firstBi.trend).toBe(TrendDirection.Down);
 
         // 检查是否有最低点为100的笔（说明使用了更低的底分型）
-        const hasLowestBottom = result.some(bi => bi.lowest === 100);
+        const hasLowestBottom = result.some((bi) => bi.lowest === 100);
         expect(hasLowestBottom).toBe(true);
       });
     });
@@ -597,12 +601,12 @@ describe('Chan Algorithm Accuracy Validation', () => {
         const data = [
           // Initial down trend
           createMergedKVo(1, 130, 120, 0),
-          createMergedKVo(2, 135, 125, 1),  // top fenxing
+          createMergedKVo(2, 135, 125, 1), // top fenxing
           createMergedKVo(3, 130, 120, 2),
           createMergedKVo(4, 125, 115, 3),
           createMergedKVo(5, 120, 110, 4),
           createMergedKVo(6, 115, 105, 5),
-          createMergedKVo(7, 110, 100, 6),  // bottom fenxing
+          createMergedKVo(7, 110, 100, 6), // bottom fenxing
           createMergedKVo(8, 115, 105, 7),
           createMergedKVo(9, 120, 110, 8),
           createMergedKVo(10, 125, 115, 9),
@@ -689,9 +693,9 @@ describe('Chan Algorithm Accuracy Validation', () => {
       it('should correctly handle all-time high and low prices', () => {
         const data = [
           createMergedKVo(1, 100, 90, 0),
-          createMergedKVo(2, 95, 85, 1),   // bottom fenxing (all-time low so far)
+          createMergedKVo(2, 95, 85, 1), // bottom fenxing (all-time low so far)
           createMergedKVo(3, 105, 95, 2),
-          createMergedKVo(4, 150, 140, 3),  // huge jump - all-time high
+          createMergedKVo(4, 150, 140, 3), // huge jump - all-time high
           createMergedKVo(5, 145, 135, 4),
           createMergedKVo(6, 140, 130, 5),
         ];

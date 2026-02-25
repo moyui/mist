@@ -1,10 +1,8 @@
 import { AngentsConfig } from '@app/config';
-import { Command } from '@langchain/langgraph';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LlmService } from '../llm/llm.service';
 import { TemplateService } from '../template/template.service';
-import { Router } from './dto/router.dto';
 import { StateAnnotation } from './dto/state.dto';
 
 @Injectable()
@@ -19,20 +17,21 @@ export class RoleService {
   private configService: ConfigService;
 
   Planner = async (state: typeof StateAnnotation.State) => {
-    const messages = await this.templateService.applyPromptTemplate({
+    await this.templateService.applyPromptTemplate({
       name: 'Planner',
       state,
     });
   };
 
   Commander = async (state: typeof StateAnnotation.State) => {
-    const messages = await this.templateService.applyPromptTemplate({
+    await this.templateService.applyPromptTemplate({
       name: 'Commander',
       state,
     });
     const agentsConfig = this.configService.get<AngentsConfig>('agents');
-    const llm = this.llmService.getLLMByType(agentsConfig['Commander']);
+    this.llmService.getLLMByType(agentsConfig['Commander']);
 
+    // TODO: Uncomment when Router is ready
     // const response = await llm.withStructuredOutput(Router).invoke(messages);
     // let goto = response['next'];
     // if (goto === 'FINISH') {
@@ -45,7 +44,7 @@ export class RoleService {
   };
 
   DataEngineer = async (state: typeof StateAnnotation.State) => {
-    const messages = await this.templateService.applyPromptTemplate({
+    await this.templateService.applyPromptTemplate({
       name: 'DataEngineer',
       state,
     });

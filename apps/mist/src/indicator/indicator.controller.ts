@@ -1,5 +1,7 @@
 import { TimezoneService } from '@app/timezone';
 import { Body, Controller, Inject, Post } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { IndexVo } from '../../../../libs/shared-data/src/vo/index.vo';
 import { DataService } from '../data/data.service';
 import { KDto } from './dto/k.dto';
@@ -22,6 +24,7 @@ export function formatIndicator(
   return data[index - begIndex];
 }
 
+@ApiTags('indicator')
 @Controller('indicator')
 export class IndicatorController {
   constructor(private readonly indicatorService: IndicatorService) {}
@@ -33,6 +36,18 @@ export class IndicatorController {
   private timezoneService: TimezoneService;
 
   @Post('macd')
+  @Throttle({ default: { limit: 40, ttl: 60000 } }) // 40 requests per minute for MACD
+  @ApiOperation({
+    summary: 'Calculate MACD indicator',
+    description:
+      'Computes MACD (Moving Average Convergence Divergence) with default parameters: fast=12, slow=26, signal=9',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns array of MACD values with MACD line, signal line, and histogram',
+    type: [MACDVo],
+  })
   async macd(@Body() MACDDto: MACDDto): Promise<MACDVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
       MACDDto.startDate,
@@ -58,7 +73,7 @@ export class IndicatorController {
     const macdResult = await this.indicatorService.runMACD(
       data.map((item) => item.close),
     );
-    // 需要跳过begIndex的值，这些值是无效的
+    // Need to skip begIndex values, these are invalid
     return data.map((item, index) => ({
       macd: formatIndicator(macdResult.begIndex, index, macdResult.macd),
       signal: formatIndicator(macdResult.begIndex, index, macdResult.signal),
@@ -74,6 +89,17 @@ export class IndicatorController {
   }
 
   @Post('kdj')
+  @Throttle({ default: { limit: 40, ttl: 60000 } }) // 40 requests per minute for KDJ
+  @ApiOperation({
+    summary: 'Calculate KDJ indicator',
+    description:
+      'Computes KDJ (Stochastic) indicator with default parameters: period=9, kSmoothing=3, dSmoothing=3',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns array of KDJ values with K, D, and J lines',
+    type: [KDJVo],
+  })
   async kdj(@Body() KDJDto: KDJDto): Promise<KDJVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
       KDJDto.startDate,
@@ -124,6 +150,17 @@ export class IndicatorController {
   }
 
   @Post('rsi')
+  @Throttle({ default: { limit: 40, ttl: 60000 } }) // 40 requests per minute for RSI
+  @ApiOperation({
+    summary: 'Calculate RSI indicator',
+    description:
+      'Computes RSI (Relative Strength Index) with default period of 14',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns array of RSI values (0-100 range)',
+    type: [RSIVo],
+  })
   async rsi(@Body() RSIDto: RSIDto): Promise<RSIVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
       RSIDto.startDate,
@@ -161,6 +198,18 @@ export class IndicatorController {
   }
 
   @Post('k')
+  @Throttle({ default: { limit: 60, ttl: 60000 } }) // 60 requests per minute for K-line data
+  @ApiOperation({
+    summary: 'Get K-line data',
+    description:
+      'Retrieves K-line (candlestick) data for the specified symbol and time range',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns array of K-line data with open, high, low, close, and volume',
+    type: [KVo],
+  })
   async k(@Body() KDto: KDto): Promise<KVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
       KDto.startDate,

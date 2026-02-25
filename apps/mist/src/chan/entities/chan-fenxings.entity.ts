@@ -12,6 +12,16 @@ import { FenxingType } from '../enums/fenxing.enum';
 import { Period } from '../enums/period.enum';
 import { Table } from '../enums/table.enum';
 
+/**
+ * Metadata type for ChanFenxings entity
+ * Can be extended with specific properties as needed
+ */
+export interface ChanFenxingMeta {
+  klineCount?: number;
+  processedAt?: Date;
+  [key: string]: unknown;
+}
+
 @Entity({
   name: 'chan_fenxings',
 })
@@ -66,7 +76,7 @@ export class ChanFenxings {
     type: 'json',
     comment: '元数据',
   })
-  meta: any;
+  meta: ChanFenxingMeta;
 
   @CreateDateColumn()
   createTime: Date;

@@ -35,7 +35,17 @@
       "Bash(pnpm test -- apps/mist/src/chan 2>&1 | tail -30)",
       "Bash(pnpm test -- --testNamePattern=\"Test 4\\\\.\" 2>&1 | tail -40)",
       "Bash(pnpm test -- apps/mist/src/chan 2>&1 | grep -E \"\\(PASS|FAIL|Test Suites|Tests:\\)\")",
-      "Bash(pnpm test -- channel.service.spec.ts 2>&1)"
+      "Bash(pnpm test -- channel.service.spec.ts 2>&1)",
+      "Bash(find /Users/moyui/sean/mist/.github -name \"*.yml\" -o -name \"*.yaml\" 2>/dev/null | head -10)",
+      "Bash(pnpm run lint 2>&1 | head -50)",
+      "Bash(pnpm run lint 2>&1 | head -30)",
+      "Bash(pnpm run lint 2>&1)",
+      "Bash(pnpm add -w @nestjs/swagger)",
+      "Bash(pnpm add @nestjs/swagger)",
+      "Bash(pnpm add -D husky lint-staged)",
+      "Bash(pnpm husky install)",
+      "Bash(pnpm exec husky init)",
+      "Bash(pnpm add @nestjs/throttler)"
     ]
   }
 }

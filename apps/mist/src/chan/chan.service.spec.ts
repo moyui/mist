@@ -8,7 +8,6 @@ import { KLineFixtures } from './test/fixtures/k-line-fixtures';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { TrendDirection } from './enums/trend-direction.enum';
 import { BiType } from './enums/bi.enum';
-import { KVo } from '../indicator/vo/k.vo';
 
 describe('ChanService', () => {
   let service: ChanService;
@@ -193,12 +192,7 @@ describe('ChanService', () => {
     it('should handle large dataset without errors', () => {
       const largeKData: ReturnType<typeof KLineFixtures.upTrend> = [];
       for (let i = 0; i < 100; i++) {
-        const k = KLineFixtures.createKVo(
-          i + 1,
-          100 + i * 10,
-          90 + i * 10,
-          i,
-        );
+        const k = KLineFixtures.createKVo(i + 1, 100 + i * 10, 90 + i * 10, i);
         largeKData.push(k);
       }
 
@@ -225,7 +219,9 @@ describe('ChanService', () => {
       const result = service.createBi(createBiDto);
 
       if (result.length > 0) {
-        const firstCompleteBi = result.find((bi) => bi.type === BiType.Complete);
+        const firstCompleteBi = result.find(
+          (bi) => bi.type === BiType.Complete,
+        );
         if (firstCompleteBi) {
           expect(
             [TrendDirection.Up, TrendDirection.Down].includes(

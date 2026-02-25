@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiService } from './bi.service';
 import { TrendDirection } from '../enums/trend-direction.enum';
-import { FenxingType } from '../enums/fenxing.enum';
 import { BiType } from '../enums/bi.enum';
 import { KLineFixtures } from '../test/fixtures/k-line-fixtures';
 import { MergedKVo } from '../vo/merged-k.vo';

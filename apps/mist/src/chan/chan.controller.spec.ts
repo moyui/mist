@@ -246,7 +246,9 @@ describe('ChanController', () => {
       // Mock the merge result
       const mockMergedData = kMergeService.merge(kData);
 
-      const mergeSpy = jest.spyOn(kMergeService, 'merge').mockReturnValue(mockMergedData);
+      const mergeSpy = jest
+        .spyOn(kMergeService, 'merge')
+        .mockReturnValue(mockMergedData);
 
       const result = await controller.postMergeK(mergeKDto);
 

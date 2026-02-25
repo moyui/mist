@@ -1,22 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { KMergeService } from './k-merge.service';
-import { TrendService } from '../../trend/trend.service';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import { KLineFixtures } from '../test/fixtures/k-line-fixtures';
-import { KVo } from '../../indicator/vo/k.vo';
 import { UtilsService } from '@app/utils';
 
 describe('KMergeService', () => {
   let service: KMergeService;
-  let trendService: TrendService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [KMergeService, TrendService, UtilsService],
+      providers: [KMergeService, UtilsService],
     }).compile();
 
     service = module.get<KMergeService>(KMergeService);
-    trendService = module.get<TrendService>(TrendService);
   });
 
   it('should be defined', () => {

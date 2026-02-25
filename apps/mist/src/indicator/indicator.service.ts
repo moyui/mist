@@ -4,6 +4,7 @@ import {
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
+import { ERROR_MESSAGES } from '@app/constants';
 import * as path from 'path';
 import { RunADXDto } from './dto/run-adx.dto';
 import { RunATRDto } from './dto/run-atr.dto';
@@ -12,7 +13,7 @@ import { RunKDJDto } from './dto/run-kdj.dto';
 
 @Injectable()
 export class IndicatorService implements OnModuleInit {
-  private talib: any | null = null;
+  private talib: Awaited<ReturnType<typeof import('talib')>> | null = null;
 
   async onModuleInit() {
     this.talib = await this.initTalib();
@@ -38,7 +39,7 @@ export class IndicatorService implements OnModuleInit {
   }> {
     if (!this.talib) {
       throw new HttpException(
-        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        ERROR_MESSAGES.INDICATOR_NOT_INITIALIZED,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -70,7 +71,7 @@ export class IndicatorService implements OnModuleInit {
   }> {
     if (!this.talib) {
       throw new HttpException(
-        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        ERROR_MESSAGES.INDICATOR_NOT_INITIALIZED,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -98,7 +99,7 @@ export class IndicatorService implements OnModuleInit {
   }> {
     if (!this.talib) {
       throw new HttpException(
-        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        ERROR_MESSAGES.INDICATOR_NOT_INITIALIZED,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -134,7 +135,7 @@ export class IndicatorService implements OnModuleInit {
   async runADX(data: RunADXDto): Promise<number[]> {
     if (!this.talib) {
       throw new HttpException(
-        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        ERROR_MESSAGES.INDICATOR_NOT_INITIALIZED,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -159,7 +160,7 @@ export class IndicatorService implements OnModuleInit {
   ): Promise<{ shortMA: number[]; longMA: number[] }> {
     if (!this.talib) {
       throw new HttpException(
-        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        ERROR_MESSAGES.INDICATOR_NOT_INITIALIZED,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -191,7 +192,7 @@ export class IndicatorService implements OnModuleInit {
   async runATR(data: RunATRDto): Promise<number[]> {
     if (!this.talib) {
       throw new HttpException(
-        'IndicatorService 服务尚未初始化完成，请稍后执行任务',
+        ERROR_MESSAGES.INDICATOR_NOT_INITIALIZED,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }

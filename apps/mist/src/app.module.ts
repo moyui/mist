@@ -1,6 +1,7 @@
 import { IndexDaily, IndexData, IndexPeriod } from '@app/shared-data';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'path';
 import { AppController } from './app.controller';
@@ -16,6 +17,12 @@ import { TrendModule } from './trend/trend.module';
       isGlobal: true,
       envFilePath: path.join(__dirname, '.env'),
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // Time window in milliseconds (1 minute)
+        limit: 100, // Maximum number of requests within the ttl window
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       useFactory(configService: ConfigService) {
         return {
@@ -25,8 +32,8 @@ import { TrendModule } from './trend/trend.module';
           username: configService.get('mysql_server_username'),
           password: configService.get('mysql_server_password'),
           database: configService.get('mysql_server_database'),
-          synchronize: true,
-          logging: true,
+          synchronize: configService.get('NODE_ENV') !== 'production',
+          logging: configService.get('NODE_ENV') !== 'production',
           entities: [IndexData, IndexPeriod, IndexDaily],
           poolSize: 10,
           connectorPackage: 'mysql2',

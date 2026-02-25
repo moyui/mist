@@ -11,6 +11,17 @@ import {
 import { Period } from '../enums/period.enum';
 import { Table } from '../enums/table.enum';
 
+/**
+ * Metadata type for ChanBi entity
+ * Can be extended with specific properties as needed
+ */
+export interface ChanBiMeta {
+  klines?: number[];
+  highestPrice?: number;
+  lowestPrice?: number;
+  [key: string]: unknown;
+}
+
 export enum Direction {
   Up = 'up',
   Down = 'down',
@@ -86,7 +97,7 @@ export class ChanBi {
     type: 'json',
     comment: '元数据',
   })
-  meta: any;
+  meta: ChanBiMeta;
 
   @CreateDateColumn()
   createTime: Date;

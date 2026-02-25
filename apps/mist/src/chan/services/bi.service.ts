@@ -163,12 +163,13 @@ export class BiService {
   }
 
   /**
-   * 保存分型状态（示意）
+   * Save fenxing state (placeholder)
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private saveFenxingState(fenxings: FenxingVo[]): void {
-    // 这里应该将交错序列保存到数据库或文件
-    // 下次可以从这里恢复状态
-    // console.log(`保存 ${fenxings.length} 个分型到状态`);
+    // This should save the alternating sequence to database or file
+    // Can be restored from here next time
+    // console.log(`Saved ${fenxings.length} fenxings to state`);
   }
 
   /**
