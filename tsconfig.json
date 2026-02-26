@@ -20,6 +20,7 @@
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "types": ["jest", "node"],
     "paths": {
       "@app/prompts": [
         "libs/prompts/src"

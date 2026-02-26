@@ -187,10 +187,10 @@ describe('Chan Algorithm Accuracy Validation', () => {
 
         const downBi = completeBis[0];
         expect(downBi.trend).toBe(TrendDirection.Down);
-        expect(downBi.startFenxing.type).toBe(FenxingType.Top);
-        expect(downBi.endFenxing.type).toBe(FenxingType.Bottom);
-        expect(downBi.endFenxing.lowest).toBe(90);
-        expect(downBi.endFenxing.middleOriginId).toBe(6);
+        expect(downBi.startFenxing?.type).toBe(FenxingType.Top);
+        expect(downBi.endFenxing?.type).toBe(FenxingType.Bottom);
+        expect(downBi.endFenxing?.lowest).toBe(90);
+        expect(downBi.endFenxing?.middleOriginId).toBe(6);
       });
     });
 
@@ -371,15 +371,17 @@ describe('Chan Algorithm Accuracy Validation', () => {
 
         const downBi = completeBis[0];
         expect(downBi.trend).toBe(TrendDirection.Down);
-        expect(downBi.startFenxing.type).toBe(FenxingType.Top);
-        expect(downBi.startFenxing.highest).toBe(130);
-        expect(downBi.endFenxing.type).toBe(FenxingType.Bottom);
-        expect(downBi.endFenxing.lowest).toBe(100);
+        expect(downBi.startFenxing?.type).toBe(FenxingType.Top);
+        expect(downBi.startFenxing?.highest).toBe(130);
+        expect(downBi.endFenxing?.type).toBe(FenxingType.Bottom);
+        expect(downBi.endFenxing?.lowest).toBe(100);
 
         // Price relationship: bottom.lowest < top.highest
-        expect(downBi.endFenxing.lowest).toBeLessThan(
-          downBi.startFenxing.highest,
-        );
+        if (downBi.endFenxing && downBi.startFenxing) {
+          expect(downBi.endFenxing.lowest).toBeLessThan(
+            downBi.startFenxing.highest,
+          );
+        }
       });
     });
 
@@ -407,9 +409,11 @@ describe('Chan Algorithm Accuracy Validation', () => {
         if (completeBis.length > 0) {
           const firstBi = completeBis[0];
           // If bi exists, verify it's not using these invalid fenxings
-          expect(firstBi.endFenxing.highest).toBeGreaterThan(
-            firstBi.startFenxing.lowest,
-          );
+          if (firstBi.endFenxing && firstBi.startFenxing) {
+            expect(firstBi.endFenxing.highest).toBeGreaterThan(
+              firstBi.startFenxing.lowest,
+            );
+          }
         }
       });
     });
@@ -712,9 +716,9 @@ describe('Chan Algorithm Accuracy Validation', () => {
      */
     describe('Test 6.3: Minimum data requirements', () => {
       it('should return empty array for data with fewer than 3 K-lines', () => {
-        const data1 = [];
-        const data2 = [createMergedKVo(1, 100, 90, 0)];
-        const data3 = [
+        const data1: MergedKVo[] = [];
+        const data2: MergedKVo[] = [createMergedKVo(1, 100, 90, 0)];
+        const data3: MergedKVo[] = [
           createMergedKVo(1, 100, 90, 0),
           createMergedKVo(2, 110, 100, 1),
         ];

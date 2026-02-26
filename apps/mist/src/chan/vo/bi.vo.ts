@@ -13,6 +13,6 @@ export class BiVo {
   independentCount: number; // 独立k线数量
   originIds: number[];
   originData: KVo[];
-  startFenxing: FenxingVo;
-  endFenxing: FenxingVo;
+  startFenxing: FenxingVo | null;
+  endFenxing: FenxingVo | null;
 }
