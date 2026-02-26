@@ -60,3 +60,6 @@ python-env
 
 #atktools
 aktools*
+
+#test
+test-results
