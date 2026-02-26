@@ -54,7 +54,7 @@ export class DataService {
     const foundIndex = await this.indexDataRepository.findOneBy({
       symbol: indexPeriodDto.symbol,
     });
-    if (!foundIndex.name) {
+    if (!foundIndex) {
       throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
     }
     const foundPeriod = await this.indexPeriodRepository.find({
@@ -81,7 +81,7 @@ export class DataService {
     const foundIndex = await this.indexDataRepository.findOneBy({
       symbol: indexDailyDto.symbol,
     });
-    if (!foundIndex.name) {
+    if (!foundIndex) {
       throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
     }
     const foundDaily = await this.indexDailyRepository.find({

@@ -1,6 +1,7 @@
 import { agentsConfig } from './agnets.config';
 
 export * from './agnets.config';
+export * from './validation.schema';
 
 export const TEAM_MEMBERS = [
   'DataEngineer',

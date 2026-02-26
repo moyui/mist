@@ -231,7 +231,7 @@ export class TimezoneService {
         )
         .pipe(
           catchError((error: AxiosError) => {
-            this.logger.error(error.response.data, TimezoneService);
+            this.logger.error(error.response?.data, TimezoneService);
             throw new HttpException(
               '请求当前是否是交易时间错误',
               HttpStatus.SERVICE_UNAVAILABLE,

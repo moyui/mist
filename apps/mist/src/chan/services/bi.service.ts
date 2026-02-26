@@ -460,7 +460,7 @@ export class BiService {
       // 如果下一个终点分型的右侧和下一个分型的左侧valid，那么就到此为止
       if (
         bestEndIndex !== -1 &&
-        bestEndFenxing.rightValid &&
+        bestEndFenxing?.rightValid &&
         candidate.leftValid
       ) {
         break;

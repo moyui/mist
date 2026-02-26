@@ -9,6 +9,7 @@
       "**/*.env"
     ],
     "webpack": true,
+    "webpackConfigPath": "webpack.config.js",
     "tsConfigPath": "apps/mist/tsconfig.app.json"
   },
   "monorepo": true,

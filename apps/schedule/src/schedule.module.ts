@@ -8,12 +8,18 @@ import { RunModule } from './run/run.module';
 import { ScheduleController } from './schedule.controller';
 import { ScheduleService } from './schedule.service';
 import { TaskModule } from './task/task.module';
+import { commonEnvSchema } from '@app/config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: path.join(__dirname, '.env'),
+      validationSchema: commonEnvSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
     }),
     TypeOrmModule.forRootAsync({
       useFactory(configService: ConfigService) {
@@ -24,8 +30,8 @@ import { TaskModule } from './task/task.module';
           username: configService.get('mysql_server_username'),
           password: configService.get('mysql_server_password'),
           database: configService.get('mysql_server_database'),
-          synchronize: true,
-          logging: true,
+          synchronize: configService.get('NODE_ENV') !== 'production',
+          logging: configService.get('NODE_ENV') !== 'production',
           entities: [IndexData, IndexPeriod, IndexDaily],
           poolSize: 10,
           connectorPackage: 'mysql2',

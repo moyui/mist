@@ -45,7 +45,19 @@
       "Bash(pnpm add -D husky lint-staged)",
       "Bash(pnpm husky install)",
       "Bash(pnpm exec husky init)",
-      "Bash(pnpm add @nestjs/throttler)"
+      "Bash(pnpm add @nestjs/throttler)",
+      "Bash(pnpm run start:dev:mist)",
+      "Bash(ls -la /Users/moyui/sean/mist/.env* 2>/dev/null || echo \"No .env files in project root\")",
+      "Bash(lsof -ti:8001 | xargs kill -9 2>/dev/null || echo \"No process on port 8001\")",
+      "Bash(lsof -ti :8001 | xargs kill -9 2>/dev/null || true)",
+      "Bash(lsof -i :8001)",
+      "Bash(pnpm list talib)",
+      "Bash(cd apps/mist && npm run start:dev:mist)",
+      "Bash(pnpm add joi)",
+      "Bash(pnpm run build)",
+      "Bash(lsof -ti:8001 || echo \"Port 8001 is free\")",
+      "Bash(source python-env/bin/activate && pip show aktools)",
+      "Bash(source python-env/bin/activate && pip install --upgrade aktools)"
     ]
   }
 }

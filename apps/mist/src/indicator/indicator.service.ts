@@ -1,11 +1,10 @@
+import { ERROR_MESSAGES } from '@app/constants';
 import {
   HttpException,
   HttpStatus,
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
-import { ERROR_MESSAGES } from '@app/constants';
-import * as path from 'path';
 import { RunADXDto } from './dto/run-adx.dto';
 import { RunATRDto } from './dto/run-atr.dto';
 import { RunDualMADto } from './dto/run-dualma.dto';
@@ -13,21 +12,18 @@ import { RunKDJDto } from './dto/run-kdj.dto';
 
 @Injectable()
 export class IndicatorService implements OnModuleInit {
-  private talib: Awaited<ReturnType<typeof import('talib')>> | null = null;
+  private talib: any = null;
 
-  async onModuleInit() {
-    this.talib = await this.initTalib();
+  onModuleInit() {
+    this.talib = this.initTalib();
   }
 
   // 初始化函数
-  private async initTalib() {
-    return await import(
-      path.resolve(
-        __dirname,
-        '../../',
-        'node_modules/talib/build/Release/talib.node',
-      )
-    );
+  private initTalib() {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('talib');
   }
 
   async runMACD(prices: number[]): Promise<{
@@ -103,7 +99,7 @@ export class IndicatorService implements OnModuleInit {
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
-    const stochasticResult = await this.talib.execute({
+    const stochasticResult = this.talib.execute({
       name: 'STOCH',
       startIdx: 0,
       endIdx: data.high.length - 1,
@@ -121,7 +117,9 @@ export class IndicatorService implements OnModuleInit {
     const D = stochasticResult.result.outSlowD;
 
     // 计算 J 线
-    const J = K.map((kValue, index) => 3 * kValue - 2 * D[index]);
+    const J = K.map(
+      (kValue: number, index: number) => 3 * kValue - 2 * D[index],
+    );
 
     return {
       K,
@@ -140,7 +138,7 @@ export class IndicatorService implements OnModuleInit {
       );
     }
 
-    const adxResult = await this.talib.execute({
+    const adxResult = this.talib.execute({
       name: 'ADX',
       startIdx: 0,
       endIdx: data.close.length - 1,
@@ -197,7 +195,7 @@ export class IndicatorService implements OnModuleInit {
       );
     }
 
-    const atrResult = await this.talib.execute({
+    const atrResult = this.talib.execute({
       name: 'ATR',
       startIdx: 0,
       endIdx: data.close.length - 1,

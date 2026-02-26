@@ -1,4 +1,4 @@
-import { CONFIG_REGISTER } from '@app/config';
+import { CONFIG_REGISTER, sayaEnvSchema } from '@app/config';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import * as path from 'path';
@@ -17,6 +17,11 @@ import { ToolsModule } from './tools/tools.module';
       isGlobal: true,
       envFilePath: path.join(__dirname, '.env'),
       load: CONFIG_REGISTER,
+      validationSchema: sayaEnvSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
     }),
     LlmModule,
     TemplateModule,

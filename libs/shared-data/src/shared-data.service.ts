@@ -87,7 +87,7 @@ export class SharedDataService {
     const foundIndex = await this.indexDataRepository.findOneBy({
       symbol: saveIndexDto.symbol,
     });
-    if (!foundIndex.name) {
+    if (!foundIndex) {
       throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
     }
     // 按照指数id、时间戳、类型查找到对应的id
@@ -295,7 +295,7 @@ export class SharedDataService {
   private async saveIndexDaily(symbol: string, data: IndexDailyVo) {
     // 首先按照时间找到对应的字段和类型
     const foundIndex = await this.indexDataRepository.findOneBy({ symbol });
-    if (!foundIndex.name) {
+    if (!foundIndex) {
       throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
     }
     const foundIndexDailyTime = parse(
@@ -337,7 +337,7 @@ export class SharedDataService {
   private async saveIndeDailyBatch(symbol: string, data: IndexDailyVo[]) {
     // 首先按照时间找到对应的字段和类型
     const foundIndex = await this.indexDataRepository.findOneBy({ symbol });
-    if (!foundIndex.name) {
+    if (!foundIndex) {
       throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
     }
     const batchData = await Promise.all(
