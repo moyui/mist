@@ -89,6 +89,24 @@ export class ChannelService {
     };
   }
 
+  /**
+   * 重新计算中枢，追加新的bis（不重复原有的）
+   */
+  private recalculateChannelWithNewBis(
+    channel: ChannelVo,
+    newBis: BiVo[],
+  ): ChannelVo {
+    const allBis = [...channel.bis, ...newBis];
+    return {
+      ...channel,
+      bis: allBis,
+      zg: Math.min(...allBis.map((bi) => bi.highest)),
+      zd: Math.max(...allBis.map((bi) => bi.lowest)),
+      gg: Math.max(channel.gg, ...newBis.map((bi) => bi.highest)),
+      dd: Math.min(channel.dd, ...newBis.map((bi) => bi.lowest)),
+    };
+  }
+
   // 处理扩展中枢状态
   private handleExtendChannelState(
     channel: ChannelVo,
@@ -127,19 +145,13 @@ export class ChannelService {
         const newExtendedBis = [...extendedBis];
         newExtendedBis.pop();
         return {
-          channel: this.recalculateChannel(channel, [
-            ...channel.bis,
-            ...newExtendedBis,
-          ]),
+          channel: this.recalculateChannelWithNewBis(channel, newExtendedBis),
           offsetIndex: i - 1,
         };
       }
     } else {
       return {
-        channel: this.recalculateChannel(channel, [
-          ...channel.bis,
-          ...extendedBis,
-        ]),
+        channel: this.recalculateChannelWithNewBis(channel, extendedBis),
         offsetIndex: i,
       };
     }

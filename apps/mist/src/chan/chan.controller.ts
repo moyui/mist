@@ -49,6 +49,21 @@ export class ChanController {
     return this.chanService.createBi(createBiDto);
   }
 
+  @Post('fenxing')
+  @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 requests per minute for Fenxing retrieval
+  @ApiOperation({
+    summary: 'Get Fenxing (fractals)',
+    description:
+      'Returns all fenxing (fractal) data identified from merged K-lines',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns array of fenxing data',
+  })
+  async postFenxing(@Body() createBiDto: CreateBiDto) {
+    return this.chanService.getFenxings(createBiDto);
+  }
+
   @Post('channel')
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute for channel creation
   @ApiOperation({

@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BiService } from '../services/bi.service';
 import { ChannelService } from '../services/channel.service';
+import { KMergeService } from '../services/k-merge.service';
+import { TrendService } from '../../trend/trend.service';
+import { UtilsService } from '@app/utils';
 import { BiType } from '../enums/bi.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import { MergedKVo } from '../vo/merged-k.vo';
@@ -8,23 +11,6 @@ import { ChannelType } from '../enums/channel.enum';
 import { shanghaiIndexData2024_2025 } from './fixtures/shanghai-index-2024-2025.fixture';
 import * as fs from 'fs';
 import * as path from 'path';
-
-/**
- * Helper function to convert KVo array to MergedKVo array
- * Each K-line becomes a separate merged K-line with mergedCount=1
- */
-function convertToMergedK(kData: any[]): MergedKVo[] {
-  return kData.map((k) => ({
-    startTime: k.time,
-    endTime: k.time,
-    highest: k.highest,
-    lowest: k.lowest,
-    trend: TrendDirection.None,
-    mergedCount: 1,
-    mergedIds: [k.id],
-    mergedData: [k],
-  }));
-}
 
 /**
  * ============================================================================
@@ -55,15 +41,34 @@ function convertToMergedK(kData: any[]): MergedKVo[] {
 describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
   let biService: BiService;
   let channelService: ChannelService;
+  let kMergeService: KMergeService;
 
+  // Store services globally for use in helper functions
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [BiService, ChannelService],
+      providers: [
+        BiService,
+        ChannelService,
+        KMergeService,
+        TrendService,
+        UtilsService,
+      ],
     }).compile();
 
     biService = module.get<BiService>(BiService);
     channelService = module.get<ChannelService>(ChannelService);
+    kMergeService = module.get<KMergeService>(KMergeService);
+
+    // Make services available globally
+    (global as any).testBiService = biService;
+    (global as any).testChannelService = channelService;
+    (global as any).testKMergeService = kMergeService;
   });
+
+  // Helper function to merge K-lines using the real merge service
+  function getMergedK(): MergedKVo[] {
+    return (global as any).testKMergeService.merge(shanghaiIndexData2024_2025);
+  }
 
   /**
    * ========================================================================
@@ -137,7 +142,7 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
     let biData: any[];
 
     beforeAll(() => {
-      mergedKData = convertToMergedK(shanghaiIndexData2024_2025);
+      mergedKData = getMergedK();
       biData = biService.getBi(mergedKData);
 
       console.log(`\n笔识别统计:`);
@@ -275,7 +280,7 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
     let channelData: any[];
 
     beforeAll(() => {
-      mergedKData = convertToMergedK(shanghaiIndexData2024_2025);
+      mergedKData = getMergedK();
       biData = biService.getBi(mergedKData);
       channelData = channelService.createChannel({ bi: biData });
 
@@ -411,8 +416,12 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
    */
   describe('Section 4: Complete Pipeline Tests', () => {
     it('should execute complete pipeline: K -> Bi -> Channel', () => {
-      const mergedK = convertToMergedK(shanghaiIndexData2024_2025);
-      expect(mergedK.length).toBe(485);
+      const mergedK = getMergedK();
+      // 合并K的数量应该小于或等于原始K线数量
+      expect(mergedK.length).toBeLessThanOrEqual(
+        shanghaiIndexData2024_2025.length,
+      );
+      expect(mergedK.length).toBeGreaterThan(0);
 
       const bis = biService.getBi(mergedK);
       expect(bis.length).toBeGreaterThan(0);
@@ -429,7 +438,7 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
     });
 
     it('should maintain data integrity through the pipeline', () => {
-      const mergedK = convertToMergedK(shanghaiIndexData2024_2025);
+      const mergedK = getMergedK();
       const bis = biService.getBi(mergedK);
 
       const allMergedKIds = new Set(
@@ -444,7 +453,7 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
     });
 
     it('should have consistent timestamps across pipeline', () => {
-      const mergedK = convertToMergedK(shanghaiIndexData2024_2025);
+      const mergedK = getMergedK();
       const bis = biService.getBi(mergedK);
       const channels = channelService.createChannel({ bi: bis });
 
@@ -464,7 +473,7 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
     });
 
     it('should reflect 2024-2025 market characteristics in results', () => {
-      const mergedK = convertToMergedK(shanghaiIndexData2024_2025);
+      const mergedK = getMergedK();
       const bis = biService.getBi(mergedK);
       const channels = channelService.createChannel({ bi: bis });
 
@@ -488,7 +497,7 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
    */
   describe('Section 5: Result Export', () => {
     it('should generate JSON test results file', () => {
-      const mergedK = convertToMergedK(shanghaiIndexData2024_2025);
+      const mergedK = getMergedK();
       const bis = biService.getBi(mergedK);
       const channels = channelService.createChannel({ bi: bis });
 
@@ -566,7 +575,7 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
     });
 
     it('should generate statistics summary in console', () => {
-      const mergedK = convertToMergedK(shanghaiIndexData2024_2025);
+      const mergedK = getMergedK();
       const bis = biService.getBi(mergedK);
       const channels = channelService.createChannel({ bi: bis });
 

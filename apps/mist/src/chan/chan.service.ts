@@ -17,4 +17,12 @@ export class ChanService {
     // 接下来进行画笔操作
     return this.biService.getBi(mergedK);
   }
+
+  // 获取分型数据
+  getFenxings(createBiDto: CreateBiDto) {
+    // 首先进行合并k线操作
+    const mergedK = this.kMergeService.merge(createBiDto.k);
+    // 返回分型数据
+    return this.biService.getFenxings(mergedK);
+  }
 }

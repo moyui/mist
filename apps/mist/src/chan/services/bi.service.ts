@@ -46,6 +46,20 @@ export class BiService {
   }
 
   /**
+   * 获取所有分型数据（供前端使用）
+   */
+  getFenxings(data: MergedKVo[]): FenxingVo[] {
+    // 步骤1: 识别所有顶底分型
+    const allFenxings = this.getAllRawFenxings(data);
+
+    // 步骤2: 生成交错序列（顶底交替）
+    const alternatingFenxings = this.createAlternatingSequence(allFenxings);
+
+    // 直接返回交替后的分型序列
+    return alternatingFenxings;
+  }
+
+  /**
    * 步骤1: 获取所有原始分型
    */
   private getAllRawFenxings(data: MergedKVo[]): FenxingVo[] {
@@ -488,6 +502,23 @@ export class BiService {
 
       // 检查笔的有效性
       if (this.isBiValid(startFenxing, candidate, data)) {
+        // 如果已经有最佳终点，检查当前候选是否更好（创新高/新低）
+        if (bestEndFenxing) {
+          if (trend === TrendDirection.Up) {
+            // 上升趋势，只有创新高的顶分型才能替代之前的终点
+            if (candidate.highest <= bestEndFenxing.highest) {
+              // 没有创新高，停止寻找
+              break;
+            }
+          } else {
+            // 下降趋势，只有创新低的底分型才能替代之前的终点
+            if (candidate.lowest >= bestEndFenxing.lowest) {
+              // 没有创新低，停止寻找
+              break;
+            }
+          }
+        }
+
         // 更新最佳终点
         bestEndFenxing = candidate;
         bestEndIndex = i;

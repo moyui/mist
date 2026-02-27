@@ -14,20 +14,38 @@ export class KMergeService {
     next: KVo,
     trend: TrendDirection,
   ): { merged: boolean; newHigh: number; newLow: number } {
-    // 没有明显趋势，不处理k线关系
-    if (trend === TrendDirection.None) {
+    // 判断包含关系的方向
+    // 前包含后：当前K线包含下一根K线
+    const currentContainsNext =
+      current.highest >= next.highest && current.lowest <= next.lowest;
+    // 后包含前：下一根K线包含当前K线
+    const nextContainsCurrent =
+      next.highest >= current.highest && next.lowest <= current.lowest;
+
+    // 没有包含关系，不合并
+    if (!currentContainsNext && !nextContainsCurrent) {
       return { merged: false, newHigh: 0, newLow: 0 };
     }
-    const isContained =
-      (current.highest >= next.highest && current.lowest <= next.lowest) ||
-      (next.highest >= current.highest && next.lowest <= current.lowest);
 
-    if (!isContained) {
-      return { merged: false, newHigh: 0, newLow: 0 };
+    // 当趋势为None时，根据包含关系的方向来判断
+    let actualTrend = trend;
+    if (actualTrend === TrendDirection.None) {
+      // 比较中心点位置来决定方向
+      const currentMiddle = (current.highest + current.lowest) / 2;
+      const nextMiddle = (next.highest + next.lowest) / 2;
+
+      if (nextMiddle < currentMiddle) {
+        actualTrend = TrendDirection.Down;
+      } else if (nextMiddle > currentMiddle) {
+        actualTrend = TrendDirection.Up;
+      } else {
+        // 中心点相等，不合并
+        return { merged: false, newHigh: 0, newLow: 0 };
+      }
     }
 
     // 处理向上趋势, 高高取高
-    if (trend === TrendDirection.Up) {
+    if (actualTrend === TrendDirection.Up) {
       return {
         merged: true,
         newHigh: Math.max(current.highest, next.highest),
@@ -62,19 +80,35 @@ export class KMergeService {
     };
     const mergedKs: MergedKVo[] = [baseData];
     for (let i = 1; i < data.length; i++) {
-      const prev = data[i - 1];
       const now = data[i];
+      // 使用上一个合并K线来判断趋势
+      const lastMergedK = mergedKs[mergedKs.length - 1];
+
+      // 将MergedKVo转换为KVo，以便trendService使用
+      const lastMergedKAsKVo: KVo = {
+        id: lastMergedK.mergedIds[lastMergedK.mergedIds.length - 1],
+        symbol: lastMergedK.mergedData[0].symbol,
+        time: lastMergedK.endTime,
+        amount:
+          lastMergedK.mergedData[lastMergedK.mergedData.length - 1].amount,
+        open: lastMergedK.mergedData[0].open,
+        close: lastMergedK.mergedData[lastMergedK.mergedData.length - 1].close,
+        highest: lastMergedK.highest,
+        lowest: lastMergedK.lowest,
+      };
+
       currentTrend = this.trendService.judgeSimpleTrend(
-        prev,
+        lastMergedKAsKVo,
         now,
         currentTrend,
       );
-      // 这个有问题
+
       const containedState = this.handleContainedState(
-        baseData,
+        lastMergedK,
         now,
         currentTrend,
       );
+
       // 这里说明有包含关系，按照k线进行合并
       if (containedState.merged) {
         // 先处理baseData
