@@ -21,9 +21,16 @@ const uniqueById = (arr: KVo[]) => {
 @Injectable()
 export class BiService {
   /**
-   * 主函数：识别笔
+   * 主函数：识别笔（旧算法备份）
+   *
+   * NOTE: This is the old implementation kept for reference and comparison.
+   * It has a known bug where it can produce consecutive bis with the same trend,
+   * violating the fundamental alternating property of bi in Chan Theory.
+   *
+   * The new implementation (getBi) fixes this issue using a recursive + rollback
+   * state machine approach.
    */
-  getBi(data: MergedKVo[]): BiVo[] {
+  getBiOld(data: MergedKVo[]): BiVo[] {
     // 步骤1: 识别所有顶底分型
     const allFenxings = this.getAllRawFenxings(data);
 
@@ -41,6 +48,40 @@ export class BiService {
 
     // 步骤5: 连接有效分型，形成真实的笔
     const bis = this.connectValidFenxings(fenxingsWithState, data);
+
+    return bis;
+  }
+
+  /**
+   * 主函数：识别笔（新算法：递推+回退）
+   *
+   * 算法流程：
+   * 1. 识别所有顶底分型
+   * 2. 生成交错序列（顶底交替）
+   * 3. 生成候选笔 + 宽笔过滤（>=3根K线）
+   * 4. 递推状态机处理候选笔
+   *
+   * 核心优势：
+   * - 不需要管理分型的复杂状态（leftValid/rightValid/erased）
+   * - 包含关系隐式处理（通过笔的合并）
+   * - 逻辑更直观，更容易理解
+   * - 简化为4步，vs 旧算法的5步
+   *
+   * @param data 合并K线数据
+   * @returns 识别出的笔数组，保证趋势交替
+   */
+  getBi(data: MergedKVo[]): BiVo[] {
+    // 步骤1: 识别所有顶底分型
+    const allFenxings = this.getAllRawFenxings(data);
+
+    // 步骤2: 生成交错序列（顶底交替）
+    const alternatingFenxings = this.createAlternatingSequence(allFenxings);
+
+    // 步骤3: 生成候选笔 + 宽笔过滤
+    const candidates = this.generateCandidateBis(alternatingFenxings, data);
+
+    // 步骤4: 递推状态机处理
+    const bis = this.processCandidateBisWithRollback(candidates, data);
 
     return bis;
   }
@@ -735,5 +776,401 @@ export class BiService {
     fenxings[start].erased = false;
     fenxings[end].leftValid = true;
     fenxings[end].erased = false;
+  }
+
+  /**
+   * ============================================================================
+   * 新算法：递推+回退状态机
+   * ============================================================================
+   */
+
+  /**
+   * 步骤3: 生成候选笔 + 宽笔过滤
+   *
+   * 处理逻辑：
+   * - 所有相邻分型对形成候选笔
+   * - 立即检查宽笔要求（>=3根K线）
+   * - 不满足的候选笔直接丢弃
+   *
+   * @param fenxings 交替的分型序列
+   * @param data 合并K线数据
+   * @returns 候选笔数组（已过滤宽笔）
+   */
+  private generateCandidateBis(
+    fenxings: FenxingVo[],
+    data: MergedKVo[],
+  ): BiVo[] {
+    const candidates: BiVo[] = [];
+
+    for (let i = 0; i < fenxings.length - 1; i++) {
+      const start = fenxings[i];
+      const end = fenxings[i + 1];
+
+      // 计算K线数量
+      const kCount = this.countOriginKsBetween(
+        start.middleIndex,
+        end.middleIndex,
+        data,
+      );
+
+      // 宽笔过滤：必须>=3根K线
+      if (kCount >= 3) {
+        candidates.push(this.buildBiFromFenxings(start, end, data));
+      }
+    }
+
+    return candidates;
+  }
+
+  /**
+   * 步骤4: 递推状态机处理候选笔
+   *
+   * 状态定义：
+   * - confirmed: 暂时确认的笔（仍可能回退）
+   * - pending: 正在试探的笔（最多1笔）
+   *
+   * 递推规则：
+   * 1. pending为空 → 直接加入
+   * 2. 趋势交替 → 将pending移入confirmed，新笔加入pending
+   * 3. 趋势相同 → 检查是否形成"up→down→up"或"down→up→down"模式并处理
+   *
+   * @param candidates 候选笔数组
+   * @param data 合并K线数据
+   * @returns 最终的笔数组
+   */
+  private processCandidateBisWithRollback(
+    candidates: BiVo[],
+    data: MergedKVo[],
+  ): BiVo[] {
+    const confirmed: BiVo[] = [];
+    const pending: BiVo[] = [];
+
+    for (const newBi of candidates) {
+      const result = this.tryAddBi(confirmed, pending, newBi, data);
+      confirmed.length = 0;
+      confirmed.push(...result.confirmed);
+      pending.length = 0;
+      pending.push(...result.pending);
+    }
+
+    // 处理未完成的最后一笔
+    const finalResult = this.buildFinalUncompleteBi(confirmed, pending, data);
+
+    return finalResult;
+  }
+
+  /**
+   * 尝试添加新笔（核心递推逻辑）
+   */
+  private tryAddBi(
+    confirmed: BiVo[],
+    pending: BiVo[],
+    newBi: BiVo,
+    data: MergedKVo[],
+  ): { confirmed: BiVo[]; pending: BiVo[] } {
+    // 规则1: pending为空，直接加入
+    if (pending.length === 0) {
+      return { confirmed, pending: [newBi] };
+    }
+
+    const lastPending = pending[0];
+
+    // 规则2: 趋势交替，将pending移入confirmed
+    if (lastPending.trend !== newBi.trend) {
+      return {
+        confirmed: [...confirmed, lastPending],
+        pending: [newBi],
+      };
+    }
+
+    // 规则3: 趋势相同，需要处理
+    // 此时pending和newBi趋势相同，需要检查confirmed的最后一笔
+    if (confirmed.length === 0) {
+      // 没有前序笔，合并pending和newBi
+      return {
+        confirmed: [...confirmed],
+        pending: [this.mergeTwoBis(lastPending, newBi, data)],
+      };
+    }
+
+    const lastConfirmed = confirmed[confirmed.length - 1];
+
+    // 检查是否形成 pattern: lastConfirmed → lastPending → newBi
+    const pattern = this.getPattern(lastConfirmed, lastPending, newBi);
+
+    if (pattern === 'up-down-up') {
+      return this.handleUpDownUp(
+        lastConfirmed,
+        lastPending,
+        newBi,
+        confirmed,
+        data,
+      );
+    } else if (pattern === 'down-up-down') {
+      return this.handleDownUpDown(
+        lastConfirmed,
+        lastPending,
+        newBi,
+        confirmed,
+        data,
+      );
+    }
+
+    // 其他情况：直接合并pending和newBi
+    return {
+      confirmed: [...confirmed],
+      pending: [this.mergeTwoBis(lastPending, newBi, data)],
+    };
+  }
+
+  /**
+   * 获取三笔的模式
+   */
+  private getPattern(bi1: BiVo, bi2: BiVo, bi3: BiVo): string | null {
+    const isUpDownUp =
+      bi1.trend === TrendDirection.Up &&
+      bi2.trend === TrendDirection.Down &&
+      bi3.trend === TrendDirection.Up;
+    const isDownUpDown =
+      bi1.trend === TrendDirection.Down &&
+      bi2.trend === TrendDirection.Up &&
+      bi3.trend === TrendDirection.Down;
+
+    if (isUpDownUp) return 'up-down-up';
+    if (isDownUpDown) return 'down-up-down';
+    return null;
+  }
+
+  /**
+   * 处理 up → down → up 模式
+   */
+  private handleUpDownUp(
+    bi1: BiVo, // up
+    bi2: BiVo, // down
+    bi3: BiVo, // up
+    confirmed: BiVo[],
+    data: MergedKVo[],
+  ): { confirmed: BiVo[]; pending: BiVo[] } {
+    if (bi1.highest > bi3.highest) {
+      // 保留bi1，合并bi2+bi3成down笔
+      const mergedDown = this.mergeTwoBis(bi2, bi3, data);
+      return {
+        confirmed: [...confirmed.slice(0, -1), bi1],
+        pending: [mergedDown],
+      };
+    } else {
+      // 合并bi1+bi2+bi3成大up笔
+      const bigUp = this.mergeThreeBis(bi1, bi2, bi3, data);
+      return {
+        confirmed: [...confirmed.slice(0, -1), bigUp],
+        pending: [],
+      };
+    }
+  }
+
+  /**
+   * 处理 down → up → down 模式
+   */
+  private handleDownUpDown(
+    bi1: BiVo, // down
+    bi2: BiVo, // up
+    bi3: BiVo, // down
+    confirmed: BiVo[],
+    data: MergedKVo[],
+  ): { confirmed: BiVo[]; pending: BiVo[] } {
+    if (bi1.lowest < bi3.lowest) {
+      // 保留bi1，合并bi2+bi3成up笔
+      const mergedUp = this.mergeTwoBis(bi2, bi3, data);
+      return {
+        confirmed: [...confirmed.slice(0, -1), bi1],
+        pending: [mergedUp],
+      };
+    } else {
+      // 合并bi1+bi2+bi3成大down笔
+      const bigDown = this.mergeThreeBis(bi1, bi2, bi3, data);
+      return {
+        confirmed: [...confirmed.slice(0, -1), bigDown],
+        pending: [],
+      };
+    }
+  }
+
+  /**
+   * 合并两笔
+   */
+  private mergeTwoBis(bi1: BiVo, bi2: BiVo, data: MergedKVo[]): BiVo {
+    // 合并两笔：bi1的起点 + bi2的终点
+    const startIdx = bi1.startFenxing!.middleIndex;
+    const endIdx = bi2.endFenxing!.middleIndex;
+
+    const rangeKs = data.slice(startIdx, endIdx + 1);
+
+    let highest = -Infinity;
+    let lowest = Infinity;
+    const allOriginIds: number[] = [];
+    const allOriginData: KVo[] = [];
+
+    rangeKs.forEach((k) => {
+      highest = Math.max(highest, k.highest);
+      lowest = Math.min(lowest, k.lowest);
+      allOriginIds.push(...k.mergedIds);
+      allOriginData.push(...k.mergedData);
+    });
+
+    return {
+      startTime: data[startIdx].startTime,
+      endTime: data[endIdx].endTime,
+      highest,
+      lowest,
+      trend: bi1.trend,
+      type: BiType.Complete,
+      originIds: Array.from(new Set(allOriginIds)),
+      originData: uniqueById(allOriginData),
+      independentCount: rangeKs.length,
+      startFenxing: bi1.startFenxing,
+      endFenxing: bi2.endFenxing,
+    };
+  }
+
+  /**
+   * 合并三笔
+   */
+  private mergeThreeBis(
+    bi1: BiVo,
+    bi2: BiVo,
+    bi3: BiVo,
+    data: MergedKVo[],
+  ): BiVo {
+    // 合并三笔：bi1的起点 + bi3的终点
+    const startIdx = bi1.startFenxing!.middleIndex;
+    const endIdx = bi3.endFenxing!.middleIndex;
+
+    const rangeKs = data.slice(startIdx, endIdx + 1);
+
+    let highest = -Infinity;
+    let lowest = Infinity;
+    const allOriginIds: number[] = [];
+    const allOriginData: KVo[] = [];
+
+    rangeKs.forEach((k) => {
+      highest = Math.max(highest, k.highest);
+      lowest = Math.min(lowest, k.lowest);
+      allOriginIds.push(...k.mergedIds);
+      allOriginData.push(...k.mergedData);
+    });
+
+    return {
+      startTime: data[startIdx].startTime,
+      endTime: data[endIdx].endTime,
+      highest,
+      lowest,
+      trend: bi1.trend,
+      type: BiType.Complete,
+      originIds: Array.from(new Set(allOriginIds)),
+      originData: uniqueById(allOriginData),
+      independentCount: rangeKs.length,
+      startFenxing: bi1.startFenxing,
+      endFenxing: bi3.endFenxing,
+    };
+  }
+
+  /**
+   * 计算两个分型之间的原始K线数量
+   */
+  private countOriginKsBetween(
+    startIndex: number,
+    endIndex: number,
+    data: MergedKVo[],
+  ): number {
+    const startMergeKIndex = startIndex + 1;
+    const endMergeKIndex = endIndex - 1;
+    const mergeKs = data.slice(startMergeKIndex, endMergeKIndex + 1);
+    const originKs = mergeKs.flatMap((item) => item.mergedIds);
+    return originKs.length;
+  }
+
+  /**
+   * 从分型构建笔
+   */
+  private buildBiFromFenxings(
+    start: FenxingVo,
+    end: FenxingVo,
+    data: MergedKVo[],
+  ): BiVo {
+    const startIdx = start.middleIndex;
+    const endIdx = end.middleIndex;
+
+    const rangeKs = data.slice(startIdx, endIdx + 1);
+
+    let highest = -Infinity;
+    let lowest = Infinity;
+    const allOriginIds: number[] = [];
+    const allOriginData: KVo[] = [];
+
+    rangeKs.forEach((k) => {
+      highest = Math.max(highest, k.highest);
+      lowest = Math.min(lowest, k.lowest);
+      allOriginIds.push(...k.mergedIds);
+      allOriginData.push(...k.mergedData);
+    });
+
+    const trend =
+      start.type === FenxingType.Bottom
+        ? TrendDirection.Up
+        : TrendDirection.Down;
+
+    return {
+      startTime: data[startIdx].startTime,
+      endTime: data[endIdx].endTime,
+      highest,
+      lowest,
+      trend,
+      type: BiType.Complete,
+      originIds: Array.from(new Set(allOriginIds)),
+      originData: uniqueById(allOriginData),
+      independentCount: rangeKs.length,
+      startFenxing: start,
+      endFenxing: end,
+    };
+  }
+
+  /**
+   * 构建最终的未完成笔
+   */
+  private buildFinalUncompleteBi(
+    confirmed: BiVo[],
+    pending: BiVo[],
+    data: MergedKVo[],
+  ): BiVo[] {
+    const result = [...confirmed, ...pending];
+
+    if (result.length === 0) {
+      return [];
+    }
+
+    const lastBi = result[result.length - 1];
+    const endIndex = data.length - 1;
+
+    // 检查是否需要构建未完成笔
+    if (lastBi.endFenxing) {
+      const lastFenxingIndex = lastBi.endFenxing.middleIndex;
+      if (lastFenxingIndex < endIndex) {
+        // 需要构建未完成笔
+        const { isSequence, bi } = this.buildUnCompleteBi(
+          data,
+          lastFenxingIndex,
+          endIndex,
+          lastBi,
+        );
+
+        if (isSequence) {
+          result[result.length - 1] = bi;
+        } else {
+          result.push(bi);
+        }
+      }
+    }
+
+    return result;
   }
 }
