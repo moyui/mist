@@ -4,7 +4,7 @@
     {
       "label": "build:chan",
       "type": "shell",
-      "command": ". .vscode/nvm-setup.sh && nvm use 20 && pnpm build chan",
+      "command": ". .vscode/nvm-setup.sh && pnpm build chan",
       "args": [],
       "group": "build",
       "presentation": {
@@ -21,7 +21,7 @@
     {
       "label": "start:debug:chan",
       "type": "shell",
-      "command": ". .vscode/nvm-setup.sh && nvm use 20 && pnpm start:debug:chan",
+      "command": ". .vscode/nvm-setup.sh && pnpm start:debug:chan",
       "args": [],
       "group": "build",
       "presentation": {
@@ -68,7 +68,7 @@
     {
       "label": "start:dev:chan",
       "type": "shell",
-      "command": ". .vscode/nvm-setup.sh && nvm use 20 && pnpm start:dev:chan",
+      "command": ". .vscode/nvm-setup.sh && pnpm start:dev:chan",
       "args": [],
       "group": "build",
       "presentation": {

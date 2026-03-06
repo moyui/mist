@@ -1,6 +1,6 @@
 import { KVo } from '../../indicator/vo/k.vo';
-import { TrendDirection } from '../enums/trend-direction.enum';
 import { BiType } from '../enums/bi.enum';
+import { TrendDirection } from '../enums/trend-direction.enum';
 import { FenxingVo } from './fenxing.vo';
 
 export class BiVo {
