@@ -855,8 +855,18 @@ export class BiService {
   }
 
   /**
-   * 尝试添加新笔（核心递推逻辑）
-   * 这里可能需要考虑滑动窗口反复迭代来进行操作
+   * 尝试添加新笔（核心递推逻辑 - 无递归版本）
+   *
+   * 设计思路：
+   * - 合并具有单调性：合并后的笔极值范围更大，更难再次合并
+   * - 笔的方向交替性：上升→下降→上升，阻止了连锁合并
+   * - 因此：一次合并后，不需要立即尝试再次合并，可加入pending等待后续处理
+   *
+   * @param confirmed 已经确认的笔
+   * @param pending 滑动窗口迭代
+   * @param bi3 这次新增的笔
+   * @param data 原始数据队列
+   * @returns 最终的笔数组
    */
   private tryAddBi(
     confirmed: BiVo[], // 已经确认的笔
@@ -880,13 +890,13 @@ export class BiService {
       const pendingResult = this.handleTwoBiInPending(pending, bi3, data);
       if (pendingResult.status === 'merge') {
         this.removeBiByIndex(pending, pendingResult.startIndex);
-        return this.tryAddBi(confirmed, pending, pendingResult.bi, data);
+        return this.pushBi(pending, confirmed, pendingResult.bi, data);
       }
       // 再判断起点是否能从confirm数组开始
       const confirmedResult = this.handleTwoBiInConfirmed(confirmed, bi3, data);
       if (confirmedResult.status === 'merge') {
         this.removeBiByIndex(confirmed, confirmedResult.startIndex);
-        return this.tryAddBi(confirmed, pending, confirmedResult.bi, data);
+        return this.pushBi(pending, confirmed, confirmedResult.bi, data);
       }
       // 如果这里都不满足的话，那么就继续继续向下看
     }
@@ -909,8 +919,7 @@ export class BiService {
         if (result.status === 'merge') {
           // 移除原有的位置
           this.removeBiByFrom(pending, confirmed, bi1From, bi2From);
-          // 这里需要反复递归直到合并不下去为止
-          return this.tryAddBi(confirmed, pending, result.bi, data);
+          return this.pushBi(pending, confirmed, result.bi, data);
         }
       }
     }
@@ -1423,5 +1432,29 @@ export class BiService {
       this.isBiWideEnough(bi, data) &&
       !this.isFenxingContainment(bi.startFenxing, bi.endFenxing).hasContainment
     );
+  }
+
+  /**
+   * 将笔加入确认数组或待处理数组
+   * @param pending
+   * @param confirmed
+   * @param bi
+   */
+  private pushBi(
+    pending: BiVo[],
+    confirmed: BiVo[],
+    bi: BiVo,
+    data: MergedKVo[],
+  ) {
+    // 检查新笔是否有效
+    const isValid = this.isCandidateBiValid(bi, data);
+    if (!isValid) {
+      pending.push(bi);
+    } else if (pending.length === 0) {
+      confirmed.push(bi);
+    } else {
+      pending.push(bi);
+    }
+    return { confirmed: [...confirmed], pending: [...pending] };
   }
 }
