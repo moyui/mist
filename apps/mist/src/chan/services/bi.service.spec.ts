@@ -457,4 +457,77 @@ describe('BiService', () => {
       expect(Array.isArray(result)).toBe(true);
     });
   });
+
+  /**
+   * ========================================================================
+   * Bug fix: independentCount should count original K-lines, not merged K-lines
+   * ========================================================================
+   */
+  describe('Bug Fix - independentCount calculation', () => {
+    it('should count original K-lines in merged K-lines for mergeThreeBis', () => {
+      // Create test data where each merged K contains multiple original K-lines
+      const data = [
+        createMergedKVoWithMultiple([1, 2, 3], 100, 90, 0), // 3 original Ks
+        createMergedKVoWithMultiple([4, 5], 110, 100, 3), // 2 original Ks
+        createMergedKVoWithMultiple([6, 7, 8], 95, 85, 6), // 3 original Ks (bottom)
+        createMergedKVoWithMultiple([9, 10], 105, 95, 9), // 2 original Ks
+        createMergedKVoWithMultiple([11, 12, 13], 115, 105, 11), // 3 original Ks (top)
+        createMergedKVoWithMultiple([14, 15], 110, 100, 14), // 2 original Ks
+        createMergedKVoWithMultiple([16, 17, 18], 105, 95, 16), // 3 original Ks (bottom)
+        createMergedKVoWithMultiple([19, 20], 120, 110, 19), // 2 original Ks
+      ];
+
+      const result = service.getBi(data);
+
+      // Find a complete bi and verify its independentCount
+      const completeBi = result.find((bi) => bi.type === BiType.Complete);
+      expect(completeBi).toBeDefined();
+
+      if (completeBi) {
+        // Count the expected original K-lines
+        const startIdx = completeBi.startFenxing!.middleIndex;
+        const endIdx = completeBi.endFenxing!.middleIndex;
+        const rangeKs = data.slice(startIdx, endIdx + 1);
+
+        // Expected: sum of all mergedData.length in rangeKs
+        const expectedCount = rangeKs.reduce(
+          (sum, k) => sum + k.mergedData.length,
+          0,
+        );
+
+        // Actual: independentCount (should count original K-lines)
+        expect(completeBi.independentCount).toBe(expectedCount);
+        expect(completeBi.originIds.length).toBe(expectedCount);
+      }
+    });
+
+    it('should count original K-lines in buildBiFromFenxings', () => {
+      const data = [
+        createMergedKVoWithMultiple([1, 2, 3], 100, 90, 0), // 3 original Ks
+        createMergedKVoWithMultiple([4, 5], 95, 85, 3), // 2 original Ks (bottom)
+        createMergedKVoWithMultiple([6, 7, 8], 105, 95, 6), // 3 original Ks
+        createMergedKVoWithMultiple([9, 10], 110, 100, 9), // 2 original Ks (top)
+        createMergedKVoWithMultiple([11, 12], 105, 95, 11), // 2 original Ks
+      ];
+
+      const result = service.getBi(data);
+
+      // Verify all bis have correct independentCount
+      result.forEach((bi) => {
+        if (bi.startFenxing && bi.endFenxing) {
+          const startIdx = bi.startFenxing.middleIndex;
+          const endIdx = bi.endFenxing.middleIndex;
+          const rangeKs = data.slice(startIdx, endIdx + 1);
+
+          const expectedCount = rangeKs.reduce(
+            (sum, k) => sum + k.mergedData.length,
+            0,
+          );
+
+          expect(bi.independentCount).toBe(expectedCount);
+          expect(bi.originIds.length).toBe(expectedCount);
+        }
+      });
+    });
+  });
 });

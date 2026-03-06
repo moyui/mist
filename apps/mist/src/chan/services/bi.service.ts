@@ -690,7 +690,10 @@ export class BiService {
       type: BiType.Complete,
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
-      independentCount: rangeKs.length,
+      independentCount: rangeKs.reduce(
+        (sum, k) => sum + k.mergedData.length,
+        0,
+      ),
       startFenxing: start,
       endFenxing: end,
     };
@@ -726,6 +729,11 @@ export class BiService {
 
     // 判断和上一条趋势，如果趋势相同，则需要拼接，如果趋势相反，则不需要拼接
     if (prevBi && prevBi.trend === trend) {
+      // Calculate new original K count (exclude first merged K to avoid double counting)
+      const newOriginKCount = rangeKs
+        .slice(1)
+        .reduce((sum, k) => sum + k.mergedData.length, 0);
+
       return {
         isSequence: true,
         bi: {
@@ -739,7 +747,7 @@ export class BiService {
             new Set([...prevBi.originIds, ...allOriginIds]),
           ),
           originData: uniqueById([...prevBi.originData, ...allOriginData]),
-          independentCount: prevBi.independentCount + rangeKs.length - 1,
+          independentCount: prevBi.independentCount + newOriginKCount,
           startFenxing: prevBi.startFenxing,
           endFenxing: null,
         },
@@ -757,7 +765,10 @@ export class BiService {
         type: BiType.UnComplete,
         originIds: Array.from(new Set(allOriginIds)),
         originData: uniqueById(allOriginData),
-        independentCount: rangeKs.length,
+        independentCount: rangeKs.reduce(
+          (sum, k) => sum + k.mergedData.length,
+          0,
+        ),
         startFenxing: prevBi ? prevBi.endFenxing : null,
         endFenxing: null,
       },
@@ -1215,7 +1226,10 @@ export class BiService {
       type: BiType.Complete,
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
-      independentCount: rangeKs.length,
+      independentCount: rangeKs.reduce(
+        (sum, k) => sum + k.mergedData.length,
+        0,
+      ),
       startFenxing: bi1.startFenxing,
       endFenxing: bi2.endFenxing,
     };
@@ -1252,7 +1266,10 @@ export class BiService {
       type: BiType.Complete,
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
-      independentCount: rangeKs.length,
+      independentCount: rangeKs.reduce(
+        (sum, k) => sum + k.mergedData.length,
+        0,
+      ),
       startFenxing: bi1.startFenxing,
       endFenxing: bi3.endFenxing,
     };
@@ -1313,7 +1330,10 @@ export class BiService {
       type,
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
-      independentCount: rangeKs.length,
+      independentCount: rangeKs.reduce(
+        (sum, k) => sum + k.mergedData.length,
+        0,
+      ),
       startFenxing: start,
       endFenxing: end,
     };
