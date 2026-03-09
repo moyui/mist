@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { KVo } from '../../indicator/vo/k.vo';
-import { BiType } from '../enums/bi.enum';
+import { BiType, BiStatus } from '../enums/bi.enum';
 import { FenxingType } from '../enums/fenxing.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import { BiVo } from '../vo/bi.vo';
@@ -692,6 +692,7 @@ export class BiService {
       lowest,
       trend,
       type: BiType.Complete,
+      status: BiStatus.Unknown, // 初始化为未知状态
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
       independentCount: rangeKs.reduce(
@@ -774,6 +775,7 @@ export class BiService {
           lowest: Math.min(prevBi.lowest, lowest),
           trend,
           type: BiType.UnComplete,
+          status: BiStatus.Unknown, // 未完成笔初始化为未知状态
           originIds: Array.from(
             new Set([...prevBi.originIds, ...allOriginIds]),
           ),
@@ -794,6 +796,7 @@ export class BiService {
         lowest,
         trend,
         type: BiType.UnComplete,
+        status: BiStatus.Unknown, // 未完成笔初始化为未知状态
         originIds: Array.from(new Set(allOriginIds)),
         originData: uniqueById(allOriginData),
         independentCount: rangeKs.reduce(
@@ -848,9 +851,14 @@ export class BiService {
 
       // 生成所有候选笔，不做宽笔过滤
       // 宽笔过滤将在步骤4的最终输出时进行
-      candidates.push(
-        this.buildBiFromFenxings(BiType.Complete, start, end, data),
-      );
+      const bi = this.buildBiFromFenxings(BiType.Complete, start, end, data);
+
+      // 计算并设置状态
+      bi.status = this.isCandidateBiValid(bi, data)
+        ? BiStatus.Valid
+        : BiStatus.Invalid;
+
+      candidates.push(bi);
     }
 
     return candidates;
@@ -908,7 +916,7 @@ export class BiService {
     data: MergedKVo[], // 原始数据队列
   ): { confirmed: BiVo[]; pending: BiVo[] } {
     // 检查候选笔是否有效
-    const bi3Valid = this.isCandidateBiValid(bi3, data);
+    const bi3Valid = bi3.status === BiStatus.Valid;
     const { bi: bi2, from: bi2From } = this.getLastBi(pending, confirmed);
     const { bi: bi1, from: bi1From } = this.getLastLastBi(
       pending,
@@ -936,8 +944,8 @@ export class BiService {
 
     // 常规情况只做三笔合并判断
     if (bi1 && bi2 && bi3) {
-      const bi1Valid = this.isCandidateBiValid(bi1, data);
-      const bi2Valid = this.isCandidateBiValid(bi2, data);
+      const bi1Valid = bi1.status === BiStatus.Valid;
+      const bi2Valid = bi2.status === BiStatus.Valid;
 
       if (bi1Valid && bi2Valid && bi3Valid) {
         // 如果bi1和bi2都有效，那么直接删除原来位置，加入confirmed即可
@@ -1269,6 +1277,7 @@ export class BiService {
       lowest,
       trend: bi1.trend,
       type: BiType.Complete,
+      status: BiStatus.Unknown, // 合并后的笔初始化为未知状态，将在pushBi中重新验证
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
       independentCount: rangeKs.reduce(
@@ -1313,6 +1322,7 @@ export class BiService {
       lowest,
       trend: bi1.trend,
       type: BiType.Complete,
+      status: BiStatus.Unknown, // 合并后的笔初始化为未知状态，将在pushBi中重新验证
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
       independentCount: rangeKs.reduce(
@@ -1381,6 +1391,7 @@ export class BiService {
       lowest,
       trend,
       type,
+      status: BiStatus.Unknown, // 初始化为未知状态
       originIds: Array.from(new Set(allOriginIds)),
       originData: uniqueById(allOriginData),
       independentCount: rangeKs.reduce(
@@ -1522,8 +1533,12 @@ export class BiService {
     bi: BiVo,
     data: MergedKVo[],
   ) {
-    // 检查新笔是否有效
+    // 检查新笔是否有效（因为可能有新合并的笔需要重新验证）
     const isValid = this.isCandidateBiValid(bi, data);
+
+    // 将新计算的状态写入笔中
+    bi.status = isValid ? BiStatus.Valid : BiStatus.Invalid;
+
     // 这里有confirm为0的处理，如果confirm为0的情况下，且新生成的笔是有效笔的情况下，需要把pending的内容区域清空处理
     if (!isValid) {
       pending.push(bi);

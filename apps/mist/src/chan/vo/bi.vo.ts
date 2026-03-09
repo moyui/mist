@@ -1,5 +1,5 @@
 import { KVo } from '../../indicator/vo/k.vo';
-import { BiType } from '../enums/bi.enum';
+import { BiType, BiStatus } from '../enums/bi.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import { FenxingVo } from './fenxing.vo';
 
@@ -10,6 +10,7 @@ export class BiVo {
   lowest: number;
   trend: TrendDirection;
   type: BiType;
+  status: BiStatus; // 笔的状态
   independentCount: number; // 独立k线数量
   originIds: number[];
   originData: KVo[];
