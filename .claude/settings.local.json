@@ -74,7 +74,16 @@
       "Bash(pnpm test shanghai-index-2024-2025 2>&1 | head -200)",
       "Bash(pnpm test shanghai-index-2024-2025 2>&1 | tail -100)",
       "Bash(pnpm test:chan:shanghai-2024-2025 2>&1 | grep -E \"\\(PASS|FAIL|passed|failed\\)\" | tail -5)",
-      "Bash(ls -la apps/mist/src/chan/*.ts)"
+      "Bash(ls -la apps/mist/src/chan/*.ts)",
+      "Bash(lsof -i :8080 -t)",
+      "Bash(kill 15406)",
+      "Bash(lsof -i :8080)",
+      "Bash(python3 -m pip list | grep -E \"akshare|aktools\")",
+      "Bash(python3 -m pip install --upgrade akshare aktools)",
+      "Bash(source python-env/bin/activate && python -m pip install --upgrade akshare aktools)",
+      "Bash(source python-env/bin/activate && python -m pip list --format=freeze | grep -E \"^\\(beautifulsoup4|certifi|charset-normalizer|click|decorator|et-xmlfile|fastapi|h11|html5lib|idna|Jinja2|jsonpath|lxml|markdown-it-py|MarkupSafe|mdurl|mini-racer|numpy|openpyxl|pandas|pydantic|pydantic-core|Pygments|python-dateutil|python-multipart|pytz|requests|rich|shellingham|six|sniffio|soupsieve|starlette|tabulate|tqdm|typer|typing-extensions|tzdata|urllib3|uvicorn|webencodings|xlrd|annotated-types|anyio|curl-cffi|pycparser|cffi\\)==\" | sort)",
+      "Bash(source python-env/bin/activate && python -m pip list --format=freeze > requirements.txt && cat requirements.txt)",
+      "Bash(source python-env/bin/activate && python -m pip list --outdated --format=columns)"
     ]
   }
 }
