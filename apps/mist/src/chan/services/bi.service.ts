@@ -365,12 +365,15 @@ export class BiService {
       }
     }
 
-    // 宽笔检查，除去分型的下标之间的原始数据长度要大于等于3
-    const startMergeKIndex = start.middleIndex + 1;
-    const endMergeKIndex = end.middleIndex - 1;
-    const mergeKs = data.slice(startMergeKIndex, endMergeKIndex + 1);
-    const originKs = mergeKs.flatMap((item) => item.mergedIds);
-    if (originKs.length < 3) {
+    // 宽笔检查，两个分型之间的原始K线数量必须大于等于3
+    // 使用 middleOriginId 来准确计算原始K线数量，避免合并K线导致的计数错误
+    const originKCount = this.countOriginKsBetween(
+      start.middleOriginId,
+      end.middleOriginId,
+      data,
+    );
+
+    if (originKCount < 3) {
       return false;
     }
 
@@ -1335,18 +1338,37 @@ export class BiService {
   }
 
   /**
-   * 计算两个分型之间的原始K线数量
+   * 计算两个分型之间的原始K线数量（核心函数，被多处复用）
+   *
+   * **重要：** 此方法使用原始K线ID来计算，而不是合并K线索引。
+   * 这是为了避免K线合并操作导致的计数错误。
+   *
+   * **调用场景：**
+   * - `isBiValid`: 检查伪笔的有效性
+   * - `isBiWideEnough`: 检查候选笔是否满足宽笔要求
+   *
+   * @param startOriginId 起始分型的原始K线ID (middleOriginId)
+   * @param endOriginId 结束分型的原始K线ID (middleOriginId)
+   * @param data 合并K线数据
+   * @returns 两个分型之间的原始K线数量（不包括分型本身）
    */
   private countOriginKsBetween(
-    startIndex: number,
-    endIndex: number,
+    startOriginId: number,
+    endOriginId: number,
     data: MergedKVo[],
   ): number {
-    const startMergeKIndex = startIndex + 1;
-    const endMergeKIndex = endIndex - 1;
-    const mergeKs = data.slice(startMergeKIndex, endMergeKIndex + 1);
-    const originKs = mergeKs.flatMap((item) => item.mergedIds);
-    return originKs.length;
+    // 计算两个原始K线ID之间的原始K线数量
+    let originKCount = 0;
+    for (const mergeK of data) {
+      for (const id of mergeK.mergedIds) {
+        // 只计算起点和终点分型之间的原始K线（不包括分型本身）
+        if (id > startOriginId && id < endOriginId) {
+          originKCount++;
+        }
+      }
+    }
+
+    return originKCount;
   }
 
   /**
@@ -1460,10 +1482,10 @@ export class BiService {
    * @returns 是否满足宽笔要求
    */
   private isBiWideEnough(bi: BiVo, data: MergedKVo[]): boolean {
-    const startIdx = bi.startFenxing?.middleIndex ?? 0;
-    const endIdx = bi.endFenxing?.middleIndex ?? data.length - 1;
+    const startOriginId = bi.startFenxing?.middleOriginId ?? 0;
+    const endOriginId = bi.endFenxing?.middleOriginId ?? data.length - 1;
 
-    const kCount = this.countOriginKsBetween(startIdx, endIdx, data);
+    const kCount = this.countOriginKsBetween(startOriginId, endOriginId, data);
     return kCount >= 3;
   }
 
