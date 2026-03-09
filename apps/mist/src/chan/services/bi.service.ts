@@ -681,9 +681,13 @@ export class BiService {
         ? TrendDirection.Up
         : TrendDirection.Down;
 
+    // 使用分型的中间K线时间，而不是合并K的开始/结束时间
+    const startK = this.findKByFenxing(data, start);
+    const endK = this.findKByFenxing(data, end);
+
     return {
-      startTime: data[startIdx].startTime,
-      endTime: data[endIdx].endTime,
+      startTime: startK.time,
+      endTime: endK.time,
       highest,
       lowest,
       trend,
@@ -697,6 +701,25 @@ export class BiService {
       startFenxing: start,
       endFenxing: end,
     };
+  }
+
+  /**
+   * 根据分型找到对应的原始K线
+   */
+  private findKByFenxing(data: MergedKVo[], fenxing: FenxingVo): KVo {
+    const middleId = fenxing.middleOriginId; // 使用分型的中间K线ID
+
+    // 在合并K数据中查找包含这个ID的原始K线
+    for (const mergedK of data) {
+      const found = mergedK.mergedData.find((k) => k.id === middleId);
+      if (found) {
+        return found;
+      }
+    }
+
+    // 如果找不到，回退到使用分型所在合并K的第一个K线
+    const fallback = data[fenxing.middleIndex].mergedData[0];
+    return fallback;
   }
 
   /**
@@ -726,6 +749,14 @@ export class BiService {
       allOriginIds.push(...k.mergedIds);
       allOriginData.push(...k.mergedData);
     });
+
+    // 计算开始时间：优先使用上一笔的结束分型时间
+    let startTime: Date;
+    if (prevBi && prevBi.endFenxing) {
+      startTime = this.findKByFenxing(data, prevBi.endFenxing).time;
+    } else {
+      startTime = start.startTime;
+    }
 
     // 判断和上一条趋势，如果趋势相同，则需要拼接，如果趋势相反，则不需要拼接
     if (prevBi && prevBi.trend === trend) {
@@ -757,7 +788,7 @@ export class BiService {
     return {
       isSequence: false,
       bi: {
-        startTime: start.startTime,
+        startTime: startTime,
         endTime: end.endTime,
         highest,
         lowest,
@@ -796,7 +827,7 @@ export class BiService {
    */
 
   /**
-   * 步骤3: 生成候选笔 + 宽笔过滤
+   * 步骤3: 生成候选笔
    *
    * 处理逻辑：
    * - 所有相邻分型对形成候选笔
@@ -810,16 +841,6 @@ export class BiService {
     data: MergedKVo[],
   ): BiVo[] {
     const candidates: BiVo[] = [];
-
-    // DEBUG: Show first 10 fenxings and their types
-    console.log(
-      `DEBUG: Generating candidates from ${fenxings.length} fenxings`,
-    );
-    for (let i = 0; i < Math.min(10, fenxings.length); i++) {
-      const f = fenxings[i];
-      const typeStr = f.type === FenxingType.Top ? 'Top' : 'Bottom';
-      console.log(`  Fenxing ${i}: ${typeStr} at index ${f.middleIndex}`);
-    }
 
     for (let i = 0; i < fenxings.length - 1; i++) {
       const start = fenxings[i];
@@ -853,7 +874,8 @@ export class BiService {
     let confirmed: BiVo[] = [];
     let pending: BiVo[] = [];
 
-    for (const newBi of candidates) {
+    for (let i = 0; i < candidates.length; i++) {
+      const newBi = candidates[i];
       const result = this.tryAddBi(confirmed, pending, newBi, data);
       confirmed = result.confirmed;
       pending = result.pending;
@@ -931,6 +953,15 @@ export class BiService {
           // 移除原有的位置
           this.removeBiByFrom(pending, confirmed, bi1From, bi2From);
           return this.pushBi(pending, confirmed, result.bi, data);
+        }
+        if (bi3Valid) {
+          // 在这三笔无法合并成为一笔的情况下，此时bi3却可以独立存在成为一笔
+          // 这里先尝试将bi1，bi2，bi3加入confirm进行确认，然后等待后面还有没有什么bug的情况导致需要回退
+          this.removeBiByFrom(pending, confirmed, bi1From, bi2From);
+          return {
+            confirmed: [...confirmed, bi1, bi2, bi3],
+            pending: [...pending],
+          };
         }
       }
     }
@@ -1178,18 +1209,28 @@ export class BiService {
     bi1From: string,
     bi2From: string,
   ) {
-    if (pending.length < 2) {
-      throw new Error('Invalid state: pending has fewer than 2 items');
-    }
-
     if (bi1From === 'pending' && bi2From === 'pending') {
+      if (pending.length < 2) {
+        throw new Error('Invalid state: pending has fewer than 2 items');
+      }
+
       pending.pop();
       pending.pop();
       // 这个不应该存在
     } else if (bi1From === 'confirmed' && bi2From === 'pending') {
+      if (pending.length < 1 || confirmed.length < 1) {
+        throw new Error(
+          'Invalid state: pending & confirmed has fewer than 2 items',
+        );
+      }
+
       confirmed.pop();
       pending.pop();
     } else if (bi1From === 'confirmed' && bi2From === 'confirmed') {
+      if (confirmed.length < 2) {
+        throw new Error('Invalid state: confirmed has fewer than 2 items');
+      }
+
       confirmed.pop();
       confirmed.pop();
     }
@@ -1217,9 +1258,13 @@ export class BiService {
       allOriginData.push(...k.mergedData);
     });
 
+    // 使用分型的中间K线时间，而不是合并K的开始/结束时间
+    const startK = this.findKByFenxing(data, bi1.startFenxing!);
+    const endK = this.findKByFenxing(data, bi2.endFenxing!);
+
     return {
-      startTime: data[startIdx].startTime,
-      endTime: data[endIdx].endTime,
+      startTime: startK.time,
+      endTime: endK.time,
       highest,
       lowest,
       trend: bi1.trend,
@@ -1257,9 +1302,13 @@ export class BiService {
       allOriginData.push(...k.mergedData);
     });
 
+    // 使用分型的中间K线时间，而不是合并K的开始/结束时间
+    const startK = this.findKByFenxing(data, bi1.startFenxing!);
+    const endK = this.findKByFenxing(data, bi3.endFenxing!);
+
     return {
-      startTime: data[startIdx].startTime,
-      endTime: data[endIdx].endTime,
+      startTime: startK.time,
+      endTime: endK.time,
       highest,
       lowest,
       trend: bi1.trend,
@@ -1321,9 +1370,13 @@ export class BiService {
         ? TrendDirection.Up
         : TrendDirection.Down;
 
+    // 使用分型的中间K线时间，而不是合并K的开始/结束时间
+    const startK = this.findKByFenxing(data, start);
+    const endK = this.findKByFenxing(data, end);
+
     return {
-      startTime: data[startIdx].startTime,
-      endTime: data[endIdx].endTime,
+      startTime: startK.time,
+      endTime: endK.time,
       highest,
       lowest,
       trend,
@@ -1447,11 +1500,14 @@ export class BiService {
    * @returns
    */
   private isCandidateBiValid(bi: BiVo, data: MergedKVo[]): boolean {
-    return (
-      bi.startFenxing?.type !== bi.endFenxing?.type &&
-      this.isBiWideEnough(bi, data) &&
-      !this.isFenxingContainment(bi.startFenxing, bi.endFenxing).hasContainment
-    );
+    const differentTypes = bi.startFenxing?.type !== bi.endFenxing?.type;
+    const wideEnough = this.isBiWideEnough(bi, data);
+    const noContainment = !this.isFenxingContainment(
+      bi.startFenxing,
+      bi.endFenxing,
+    ).hasContainment;
+
+    return differentTypes && wideEnough && noContainment;
   }
 
   /**
@@ -1468,13 +1524,22 @@ export class BiService {
   ) {
     // 检查新笔是否有效
     const isValid = this.isCandidateBiValid(bi, data);
+    // 这里有confirm为0的处理，如果confirm为0的情况下，且新生成的笔是有效笔的情况下，需要把pending的内容区域清空处理
     if (!isValid) {
       pending.push(bi);
-    } else if (pending.length === 0) {
-      confirmed.push(bi);
-    } else {
-      pending.push(bi);
     }
+
+    if (isValid) {
+      if (confirmed.length === 0 && pending.length > 0) {
+        pending = [];
+        confirmed.push(bi);
+      } else if (pending.length === 0) {
+        confirmed.push(bi);
+      } else {
+        pending.push(bi);
+      }
+    }
+
     return { confirmed: [...confirmed], pending: [...pending] };
   }
 }
