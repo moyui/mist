@@ -17,7 +17,7 @@ pnpm install
 # Development - run specific app in watch mode
 pnpm run start:dev:mist    # Main stock analysis (port 8001)
 pnpm run start:dev:saya    # AI Agent system (port 8002)
-pnpm run start:dev:chan    # Notification module
+pnpm run start:dev:chan    # Chan Theory test entry (port 8008)
 
 # Build all projects
 pnpm run build
@@ -42,7 +42,7 @@ pnpm run test:watch        # Watch mode
 | **mist** | Main stock analysis application - data collection, indicators, trend analysis | 8001 |
 | **saya** | AI Agent system using LangChain/LangGraph for intelligent analysis | 8002 |
 | **schedule** | Scheduled task runner for periodic data collection | 8003 |
-| **chan** | Notification/communication module | - |
+| **chan** | Chan Theory test/debug entry - K-line merge, Bi (stroke) calculation | 8008 |
 
 ### Libraries (`libs/`)
 

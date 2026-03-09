@@ -73,7 +73,8 @@
       "Bash(ls -la /Users/moyui/sean/mist/apps/mist/src/chan/test/*.spec.ts)",
       "Bash(pnpm test shanghai-index-2024-2025 2>&1 | head -200)",
       "Bash(pnpm test shanghai-index-2024-2025 2>&1 | tail -100)",
-      "Bash(pnpm test:chan:shanghai-2024-2025 2>&1 | grep -E \"\\(PASS|FAIL|passed|failed\\)\" | tail -5)"
+      "Bash(pnpm test:chan:shanghai-2024-2025 2>&1 | grep -E \"\\(PASS|FAIL|passed|failed\\)\" | tail -5)",
+      "Bash(ls -la apps/mist/src/chan/*.ts)"
     ]
   }
 }
