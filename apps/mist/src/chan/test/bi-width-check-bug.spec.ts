@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BiService } from '../services/bi.service';
 import { KMergeService } from '../services/k-merge.service';
 import { TrendService } from '../../trend/trend.service';
-import { shanghaiIndexData2024 } from './fixtures/shanghai-index-2024.fixture';
+import { shanghaiIndexData2024 } from '../../../../../test-data/fixtures/k-line/shanghai-index-2024.fixture';
 import { TrendDirection } from '../enums/trend-direction.enum';
 
 /**

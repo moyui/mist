@@ -8,7 +8,7 @@ import { BiType } from '../enums/bi.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import { MergedKVo } from '../vo/merged-k.vo';
 import { ChannelType } from '../enums/channel.enum';
-import { shanghaiIndexData2024_2025 } from './fixtures/shanghai-index-2024-2025.fixture';
+import { shanghaiIndexData2024_2025 } from '../../../../../test-data/fixtures/k-line/shanghai-index-2024-2025.fixture';
 import * as fs from 'fs';
 import * as path from 'path';
 

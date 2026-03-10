@@ -3,7 +3,7 @@ import { BiService } from '../services/bi.service';
 import { KMergeService } from '../services/k-merge.service';
 import { TrendService } from '../../trend/trend.service';
 import { UtilsService } from '@app/utils';
-import { shanghaiIndexData2024_2025 } from './fixtures/shanghai-index-2024-2025.fixture';
+import { shanghaiIndexData2024_2025 } from '../../../../../test-data/fixtures/k-line/shanghai-index-2024-2025.fixture';
 import { FenxingType } from '../enums/fenxing.enum';
 import { BiStatus } from '../enums/bi.enum';
 
