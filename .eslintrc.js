@@ -16,6 +16,21 @@ module.exports = {
     jest: true,
   },
   ignorePatterns: ['.eslintrc.js'],
+  overrides: [
+    {
+      files: ['tools/*.mjs'],
+      parser: 'espree',
+      parserOptions: {
+        sourceType: 'module',
+        ecmaVersion: 2022,
+      },
+      plugins: [],
+      extends: ['plugin:prettier/recommended'],
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+      },
+    },
+  ],
   rules: {
     '@typescript-eslint/interface-name-prefix': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
