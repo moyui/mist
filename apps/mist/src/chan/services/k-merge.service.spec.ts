@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { KMergeService } from './k-merge.service';
 import { TrendDirection } from '../enums/trend-direction.enum';
-import { KLineFixtures } from '../../../../../../test-data/fixtures/patterns/k-line-fixtures';
+import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
 import { UtilsService } from '@app/utils';
 
 describe('KMergeService', () => {

@@ -49,6 +49,7 @@ function createBiVo(
     lowest,
     trend,
     type: BiType.Complete,
+    status: 1,
     independentCount: 1,
     originIds: [id],
     originData: [],

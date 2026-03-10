@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { ScheduleModule } from './../src/schedule.module';
 
 describe('ScheduleController (e2e)', () => {

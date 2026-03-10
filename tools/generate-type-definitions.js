@@ -16,9 +16,10 @@ if (!fs.existsSync(TYPES_DIR)) {
 }
 
 function toPascalCase(str) {
-  return str.split(/[-]/g).map(part =>
-    part.charAt(0).toUpperCase() + part.slice(1)
-  ).join('');
+  return str
+    .split(/[-]/g)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
 }
 
 function generateTypeDefinition(jsonFile) {
@@ -122,7 +123,9 @@ function main() {
     return;
   }
 
-  const jsonFiles = fs.readdirSync(RESULTS_DIR).filter(f => f.endsWith('.json'));
+  const jsonFiles = fs
+    .readdirSync(RESULTS_DIR)
+    .filter((f) => f.endsWith('.json'));
 
   if (jsonFiles.length === 0) {
     console.log('⚠️  No JSON files found');

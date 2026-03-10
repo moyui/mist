@@ -3,7 +3,7 @@ import { ChanController } from './chan.controller';
 import { ChanService } from './chan.service';
 import { BiService } from './services/bi.service';
 import { KMergeService } from './services/k-merge.service';
-import { KLineFixtures } from '../../../../../test-data/fixtures/patterns/k-line-fixtures';
+import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
 import { MergeKDto } from './dto/merge-k.dto';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { TrendService } from '../trend/trend.service';
@@ -222,6 +222,7 @@ describe('ChanController', () => {
           lowest: 90,
           trend: TrendDirection.Up,
           type: BiType.Complete,
+          status: 1,
           originIds: [1, 2, 3],
           originData: kData.slice(0, 3),
           independentCount: 3,

@@ -44,7 +44,7 @@ function checkFrontendExists() {
 function validateTestResults() {
   log(colors.blue, '🔍 Validating test results...');
 
-  const missingFiles = CONFIG.requiredFiles.filter(file => {
+  const missingFiles = CONFIG.requiredFiles.filter((file) => {
     const filePath = path.join(CONFIG.testResultsDir, file);
     return !fs.existsSync(filePath);
   });
