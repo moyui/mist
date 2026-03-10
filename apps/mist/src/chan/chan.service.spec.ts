@@ -4,7 +4,7 @@ import { BiService } from './services/bi.service';
 import { KMergeService } from './services/k-merge.service';
 import { TrendService } from '../trend/trend.service';
 import { UtilsService } from '@app/utils';
-import { KLineFixtures } from './test/fixtures/k-line-fixtures';
+import { KLineFixtures } from '../../../../../test-data/fixtures/patterns/k-line-fixtures';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { TrendDirection } from './enums/trend-direction.enum';
 import { BiType } from './enums/bi.enum';
