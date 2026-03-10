@@ -23,6 +23,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/mist/test/jest-e2e.json",
     "test:chan:shanghai-2024-2025": "jest shanghai-index-2024-2025",
+    "test:sync": "node tools/sync-test-data.js",
+    "test:gen-types": "node tools/generate-type-definitions.js",
+    "test:full": "pnpm run test && pnpm run test:sync",
     "prepare": "husky"
   },
   "lint-staged": {
