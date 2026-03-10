@@ -101,8 +101,8 @@ export interface I${exportName}Data {
   };
 }
 
-// Import JSON data
-import rawData from './${jsonFile}';
+// Import JSON data from raw directory
+import rawData from '../raw/${jsonFile}';
 
 // Type assertion
 export const ${varName}: I${exportName}Data = rawData as unknown as I${exportName}Data;

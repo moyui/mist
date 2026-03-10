@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const CONFIG = {
-  frontendPath: path.resolve(__dirname, '../mist-fe'),
+  frontendPath: path.resolve(__dirname, '../../mist-fe'),
   testResultsDir: path.resolve(__dirname, '../test-data/test-results/raw'),
   requiredFiles: [
     'shanghai-index-2024-2025-results.json',
