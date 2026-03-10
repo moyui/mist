@@ -1,4 +1,4 @@
-import { KVo } from '../../../indicator/vo/k.vo';
+import { KVo } from '../../../apps/mist/src/indicator/vo/k.vo';
 
 /**
  * CSI300 2025 Mock Data Fixture

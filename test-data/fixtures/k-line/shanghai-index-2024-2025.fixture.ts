@@ -1,4 +1,4 @@
-import { KVo } from '../../../indicator/vo/k.vo';
+import { KVo } from '../../../apps/mist/src/indicator/vo/k.vo';
 
 /**
  * Shanghai Index 2024-2025 Data Fixture

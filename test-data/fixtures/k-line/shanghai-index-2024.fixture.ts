@@ -1,4 +1,4 @@
-import { KVo } from '../../../indicator/vo/k.vo';
+import { KVo } from '../../../apps/mist/src/indicator/vo/k.vo';
 
 /**
  * 上证指数2024年真实测试数据
