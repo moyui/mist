@@ -33,6 +33,34 @@ pnpm run test:cov          # Test coverage
 pnpm run test:watch        # Watch mode
 ```
 
+## Test Data Management
+
+### Directory Structure
+
+```
+mist/test-data/
+├── fixtures/           # Test input data
+│   ├── k-line/         # K-line raw data
+│   └── patterns/       # Test pattern data
+└── test-results/       # Test output
+    ├── raw/            # JSON results
+    └── types/          # TypeScript definitions
+```
+
+### Synchronization
+
+Sync test results to frontend:
+```bash
+pnpm run test:sync     # Sync only
+pnpm run test:full     # Run tests + sync
+```
+
+### Test Data Files
+
+- **Fixtures**: Located in `test-data/fixtures/k-line/` - K-line data for different test scenarios
+- **Results**: Generated in `test-data/test-results/raw/` - JSON outputs from test runs
+- **Type Definitions**: Auto-generated TypeScript types in `test-data/test-results/types/`
+
 ## Architecture
 
 ### Applications (`apps/`)
