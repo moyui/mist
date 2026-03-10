@@ -4,8 +4,12 @@
  * Generate TypeScript type definitions from JSON test results
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const RESULTS_DIR = path.resolve(__dirname, '../test-data/test-results/raw');
 const TYPES_DIR = path.resolve(__dirname, '../test-data/test-results/types');
