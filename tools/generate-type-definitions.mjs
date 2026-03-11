@@ -40,8 +40,11 @@ function generateTypeDefinition(jsonFile) {
  * Generated at: ${timestamp}
  */
 
+// Import JSON data
+import rawData from '../../results/json/${jsonFile}';
+
 // Type definitions matching backend VO structures
-export interface IFetchK {
+export interface I${exportName}K {
   id: number;
   symbol: string;
   time: Date | string;
@@ -52,7 +55,7 @@ export interface IFetchK {
   lowest: number;
 }
 
-export interface IMergeK {
+export interface I${exportName}MergeK {
   startTime: Date | string;
   endTime: Date | string;
   highest: number;
@@ -60,10 +63,10 @@ export interface IMergeK {
   trend: string;
   mergedCount: number;
   mergedIds: number[];
-  mergedData: IFetchK[];
+  mergedData: I${exportName}K[];
 }
 
-export interface IFetchBi {
+export interface I${exportName}Bi {
   startTime: Date | string;
   endTime: Date | string;
   highest: number;
@@ -73,10 +76,10 @@ export interface IFetchBi {
   status: number;
   independentCount: number;
   originIds: number[];
-  originData: IFetchK[];
+  originData: I${exportName}K[];
 }
 
-export interface IFetchChannel {
+export interface I${exportName}Channel {
   zg: number;
   zd: number;
   gg: number;
@@ -94,20 +97,17 @@ export interface I${exportName}Data {
   metadata: any;
   summary: any;
   data: {
-    originalKLines: IFetchK[];
-    mergeK: IMergeK[];
-    bis: IFetchBi[];
-    channels: IFetchChannel[];
+    originalKLines: I${exportName}K[];
+    mergeK: I${exportName}MergeK[];
+    bis: I${exportName}Bi[];
+    channels: I${exportName}Channel[];
   };
 }
-
-// Import JSON data from raw directory
-import rawData from '../raw/${jsonFile}';
 
 // Type assertion
 export const ${varName}: I${exportName}Data = rawData as unknown as I${exportName}Data;
 
-// Convenience exports
+// Convenience exports with export name for frontend
 export const ${varName}KLines = ${varName}.data.originalKLines;
 export const ${varName}MergeK = ${varName}.data.mergeK;
 export const ${varName}Bi = ${varName}.data.bis;
