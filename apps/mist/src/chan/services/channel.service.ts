@@ -126,28 +126,23 @@ export class ChannelService {
 
   /**
    * 重新计算中枢，追加新的bis（不重复原有的）
+   * 注意：延伸中枢时，zg和zd保持不变，只更新gg和dd
+   * 这是缠论的正确逻辑 - 延伸的笔应该"保护"原有的zg-zd重叠区间
    */
   private recalculateChannelWithNewBis(
     channel: ChannelVo,
     newBis: BiVo[],
-  ): ChannelVo | null {
-    const allBis = [...channel.bis, ...newBis];
-    const newZg = Math.min(...allBis.map((bi) => bi.highest));
-    const newZd = Math.max(...allBis.map((bi) => bi.lowest));
-
-    // 验证重新计算后的中枢仍然有效（必须有重叠区间）
-    if (newZd >= newZg) {
-      // 延伸导致重叠失效，返回null表示不能延伸
-      return null;
-    }
+  ): ChannelVo {
+    // 延伸时zg和zd保持不变，只更新gg和dd
+    // 原因：zg-zd是核心重叠区间，延伸的笔应该保护这个区间，而不是改变它
+    const newGg = Math.max(channel.gg, ...newBis.map((bi) => bi.highest));
+    const newDd = Math.min(channel.dd, ...newBis.map((bi) => bi.lowest));
 
     return {
       ...channel,
-      bis: allBis,
-      zg: newZg,
-      zd: newZd,
-      gg: Math.max(channel.gg, ...newBis.map((bi) => bi.highest)),
-      dd: Math.min(channel.dd, ...newBis.map((bi) => bi.lowest)),
+      bis: [...channel.bis, ...newBis],
+      gg: newGg,
+      dd: newDd,
     };
   }
 
@@ -188,56 +183,14 @@ export class ChannelService {
         // 笔未用完，最后一笔为新中枢的起始段，不属于原有中枢
         const newExtendedBis = [...extendedBis];
         newExtendedBis.pop();
-        const recalculatedChannel = this.recalculateChannelWithNewBis(
-          channel,
-          newExtendedBis,
-        );
-        // 如果重新计算返回null，说明延伸导致重叠失效，不能延伸
-        if (recalculatedChannel === null) {
-          // 尝试不包含最后一笔
-          const smallerExtendedBis = [...newExtendedBis];
-          smallerExtendedBis.pop();
-          if (smallerExtendedBis.length === 0) {
-            return { channel, offsetIndex: i - 2 };
-          }
-          const recalcAgain = this.recalculateChannelWithNewBis(
-            channel,
-            smallerExtendedBis,
-          );
-          return {
-            channel: recalcAgain || channel,
-            offsetIndex: i - 2,
-          };
-        }
         return {
-          channel: recalculatedChannel,
+          channel: this.recalculateChannelWithNewBis(channel, newExtendedBis),
           offsetIndex: i - 1,
         };
       }
     } else {
-      const recalculatedChannel = this.recalculateChannelWithNewBis(
-        channel,
-        extendedBis,
-      );
-      // 如果重新计算返回null，说明延伸导致重叠失效，不能延伸
-      if (recalculatedChannel === null) {
-        // 尝试不包含最后一笔
-        const smallerExtendedBis = [...extendedBis];
-        smallerExtendedBis.pop();
-        if (smallerExtendedBis.length === 0) {
-          return { channel, offsetIndex: i - 1 };
-        }
-        const recalcAgain = this.recalculateChannelWithNewBis(
-          channel,
-          smallerExtendedBis,
-        );
-        return {
-          channel: recalcAgain || channel,
-          offsetIndex: i - 1,
-        };
-      }
       return {
-        channel: recalculatedChannel,
+        channel: this.recalculateChannelWithNewBis(channel, extendedBis),
         offsetIndex: i,
       };
     }

@@ -370,8 +370,11 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
       if (channelData.length === 0) return;
 
       channelData.forEach((ch) => {
-        const minHighest = Math.min(...ch.bis.map((b: any) => b.highest));
-        const maxLowest = Math.max(...ch.bis.map((b: any) => b.lowest));
+        //zg-zd应该等于前3笔的重叠区间（缠论正确逻辑）
+        //后续笔延伸中枢时，zg-zd保持不变
+        const first3Bis = ch.bis.slice(0, 3);
+        const minHighest = Math.min(...first3Bis.map((b: any) => b.highest));
+        const maxLowest = Math.max(...first3Bis.map((b: any) => b.lowest));
 
         expect(ch.zg).toBeCloseTo(minHighest, 1);
         expect(ch.zd).toBeCloseTo(maxLowest, 1);
