@@ -97,11 +97,20 @@ export class ChannelService {
     newBis: BiVo[],
   ): ChannelVo {
     const allBis = [...channel.bis, ...newBis];
+    const newZg = Math.min(...allBis.map((bi) => bi.highest));
+    const newZd = Math.max(...allBis.map((bi) => bi.lowest));
+
+    // 验证重新计算后的中枢仍然有效（必须有重叠区间）
+    if (newZd >= newZg) {
+      // 如果重新计算后无效，返回原中枢
+      return channel;
+    }
+
     return {
       ...channel,
       bis: allBis,
-      zg: Math.min(...allBis.map((bi) => bi.highest)),
-      zd: Math.max(...allBis.map((bi) => bi.lowest)),
+      zg: newZg,
+      zd: newZd,
       gg: Math.max(channel.gg, ...newBis.map((bi) => bi.highest)),
       dd: Math.min(channel.dd, ...newBis.map((bi) => bi.lowest)),
     };
@@ -130,7 +139,7 @@ export class ChannelService {
     if (extendedBis.length === 0) return { channel, offsetIndex: 0 };
     // 如果最后一笔的方向和起始笔是一样的，说明最后一笔无法构成一个正常中枢，需要进行处理
     // 这里就需要判断是笔是否用完了
-    if (extendedBis[extendedBis.length - 1].trend === bis[0].trend) {
+    if (extendedBis[extendedBis.length - 1].trend === channel.bis[0].trend) {
       if (i === bis.length) {
         // 笔用完了，判断成中枢结构未完
         return {

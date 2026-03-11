@@ -320,7 +320,7 @@ describe('Shanghai Index 2024 - Chan Algorithm Test Suite', () => {
         expect(ch.level).toBeDefined();
         expect(ch.type).toBeDefined();
         expect(ch.bis).toBeDefined();
-        expect(ch.bis.length).toBeGreaterThanOrEqual(5);
+        expect(ch.bis.length).toBeGreaterThanOrEqual(3);
 
         // Price relationships
         expect(ch.gg).toBeGreaterThanOrEqual(ch.zg);
@@ -333,7 +333,7 @@ describe('Shanghai Index 2024 - Chan Algorithm Test Suite', () => {
       if (channelData.length === 0) return;
 
       channelData.forEach((ch) => {
-        expect(ch.bis.length).toBeGreaterThanOrEqual(5);
+        expect(ch.bis.length).toBeGreaterThanOrEqual(3);
         console.log(`中枢包含 ${ch.bis.length} 笔`);
       });
     });
