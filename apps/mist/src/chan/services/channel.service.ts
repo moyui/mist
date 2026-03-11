@@ -130,15 +130,15 @@ export class ChannelService {
   private recalculateChannelWithNewBis(
     channel: ChannelVo,
     newBis: BiVo[],
-  ): ChannelVo {
+  ): ChannelVo | null {
     const allBis = [...channel.bis, ...newBis];
     const newZg = Math.min(...allBis.map((bi) => bi.highest));
     const newZd = Math.max(...allBis.map((bi) => bi.lowest));
 
     // 验证重新计算后的中枢仍然有效（必须有重叠区间）
     if (newZd >= newZg) {
-      // 如果重新计算后无效，返回原中枢
-      return channel;
+      // 延伸导致重叠失效，返回null表示不能延伸
+      return null;
     }
 
     return {
@@ -188,14 +188,56 @@ export class ChannelService {
         // 笔未用完，最后一笔为新中枢的起始段，不属于原有中枢
         const newExtendedBis = [...extendedBis];
         newExtendedBis.pop();
+        const recalculatedChannel = this.recalculateChannelWithNewBis(
+          channel,
+          newExtendedBis,
+        );
+        // 如果重新计算返回null，说明延伸导致重叠失效，不能延伸
+        if (recalculatedChannel === null) {
+          // 尝试不包含最后一笔
+          const smallerExtendedBis = [...newExtendedBis];
+          smallerExtendedBis.pop();
+          if (smallerExtendedBis.length === 0) {
+            return { channel, offsetIndex: i - 2 };
+          }
+          const recalcAgain = this.recalculateChannelWithNewBis(
+            channel,
+            smallerExtendedBis,
+          );
+          return {
+            channel: recalcAgain || channel,
+            offsetIndex: i - 2,
+          };
+        }
         return {
-          channel: this.recalculateChannelWithNewBis(channel, newExtendedBis),
+          channel: recalculatedChannel,
           offsetIndex: i - 1,
         };
       }
     } else {
+      const recalculatedChannel = this.recalculateChannelWithNewBis(
+        channel,
+        extendedBis,
+      );
+      // 如果重新计算返回null，说明延伸导致重叠失效，不能延伸
+      if (recalculatedChannel === null) {
+        // 尝试不包含最后一笔
+        const smallerExtendedBis = [...extendedBis];
+        smallerExtendedBis.pop();
+        if (smallerExtendedBis.length === 0) {
+          return { channel, offsetIndex: i - 1 };
+        }
+        const recalcAgain = this.recalculateChannelWithNewBis(
+          channel,
+          smallerExtendedBis,
+        );
+        return {
+          channel: recalcAgain || channel,
+          offsetIndex: i - 1,
+        };
+      }
       return {
-        channel: this.recalculateChannelWithNewBis(channel, extendedBis),
+        channel: recalculatedChannel,
         offsetIndex: i,
       };
     }
