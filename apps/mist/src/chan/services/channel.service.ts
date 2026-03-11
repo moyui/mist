@@ -26,7 +26,7 @@ export class ChannelService {
   }
 
   private checkOverlapRange(bis: BiVo[]) {
-    if (bis.length < 5) {
+    if (bis.length < 3) {
       return null;
     }
     const highests = bis.map((bi) => bi.highest);
@@ -45,7 +45,7 @@ export class ChannelService {
   }
 
   private getStrictChannel(bis: BiVo[], overlapRange: number[]): ChannelVo {
-    const resultBis = bis.slice(0, 5);
+    const resultBis = bis.slice(0, 3);
     return {
       zg: overlapRange[0],
       zd: overlapRange[1],
@@ -63,15 +63,15 @@ export class ChannelService {
 
   // 处理严格中枢状态
   private handleStrictChannelState(bis: BiVo[]): ChannelVo | null {
-    if (bis.length < 5) {
+    if (bis.length < 3) {
       return null;
     }
     // 检查笔的方向是否交替
     if (!this.isTrendAlternating(bis)) {
       return null;
     }
-    // 检查前5笔是否重叠
-    const overlapRange = this.checkOverlapRange(bis.slice(0, 5));
+    // 检查前3笔是否重叠
+    const overlapRange = this.checkOverlapRange(bis.slice(0, 3));
     if (!overlapRange) {
       return null;
     }
@@ -163,22 +163,22 @@ export class ChannelService {
    * @returns
    */
   private getChannel(data: BiVo[]) {
-    // 中枢要至少5笔才能形成，所以使用滑动窗口方案
+    // 中枢要至少3笔才能形成，所以使用滑动窗口方案
     const channels: ChannelVo[] = [];
     const biCount = data.length;
-    if (biCount < 5) {
+    if (biCount < 3) {
       return { channels, offsetIndex: 0 };
     }
     let i = 0;
-    for (i; i <= biCount - 5; i++) {
-      const fiveBis = data.slice(i, i + 5);
+    for (i; i <= biCount - 3; i++) {
+      const threeBis = data.slice(i, i + 3);
       // 生成严格中枢
-      const channel = this.handleStrictChannelState(fiveBis);
+      const channel = this.handleStrictChannelState(threeBis);
       // 如果没有找到channel, 尝试下次迭代
       if (!channel) continue;
       // 处理中枢扩展，如果存在后续笔的情况
-      if (i + 5 < biCount) {
-        const remainBis = data.slice(i + 5);
+      if (i + 3 < biCount) {
+        const remainBis = data.slice(i + 3);
         const { channel: extendedChannel, offsetIndex } =
           this.handleExtendChannelState(channel, remainBis);
         i = i + offsetIndex;
