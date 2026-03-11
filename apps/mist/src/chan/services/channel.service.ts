@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { ChannelLevel, ChannelType } from '../enums/channel.enum';
 import { BiVo } from '../vo/bi.vo';
@@ -8,8 +8,43 @@ import { ChannelVo } from '../vo/channel.vo';
 export class ChannelService {
   // 画中枢
   createChannel(createChannelDto: CreateChannelDto): ChannelVo[] {
+    this.validateInput(createChannelDto);
     const { channels } = this.getChannel(createChannelDto.bi);
     return channels;
+  }
+
+  private validateInput(createChannelDto: CreateChannelDto): void {
+    if (!createChannelDto || !createChannelDto.bi) {
+      throw new BadRequestException('Invalid input: bi data is required');
+    }
+
+    if (!Array.isArray(createChannelDto.bi)) {
+      throw new BadRequestException('Invalid input: bi must be an array');
+    }
+
+    if (createChannelDto.bi.length === 0) {
+      throw new BadRequestException('Invalid input: bi array cannot be empty');
+    }
+
+    // Validate each bi has required fields
+    for (let i = 0; i < createChannelDto.bi.length; i++) {
+      const bi = createChannelDto.bi[i];
+      if (!bi.highest || !bi.lowest) {
+        throw new BadRequestException(
+          `Invalid bi at index ${i}: missing highest or lowest value`,
+        );
+      }
+      if (typeof bi.highest !== 'number' || typeof bi.lowest !== 'number') {
+        throw new BadRequestException(
+          `Invalid bi at index ${i}: highest and lowest must be numbers`,
+        );
+      }
+      if (bi.highest <= bi.lowest) {
+        throw new BadRequestException(
+          `Invalid bi at index ${i}: highest must be greater than lowest`,
+        );
+      }
+    }
   }
 
   private isTrendAlternating(bis: BiVo[]) {

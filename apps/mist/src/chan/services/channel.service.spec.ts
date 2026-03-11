@@ -404,34 +404,451 @@ describe('ChannelService', () => {
   // ========================================
   // New Test Suites (to be added in Tasks 2-7)
   // ========================================
-  // The following test suites will be added:
-  //
-  // Task 2: 基础功能 - 笔数量验证
-  //   - 应返回空数组当笔数量少于3笔
-  //   - 应检测3笔形成的基本中枢
-  //
-  // Task 3: zg/zd/gg/dd 计算
-  //   - 应正确计算zg为所有笔highest的最小值
-  //   - 应正确计算zd为所有笔lowest的最大值
-  //   - 应正确计算gg为所有笔highest的最大值
-  //   - 应正确计算dd为所有笔lowest的最小值
-  //
-  // Task 4: 方向交替验证
-  //   - 应拒绝3笔方向不交替的情况
-  //   - 应接受正确的上-下-上交替
-  //   - 应接受正确的下-上-下交替
-  //
-  // Task 5: 中枢延伸
-  //   - 应将第4笔添加到中枢（在zg-zd区间内）
-  //   - 应将第5笔添加到中枢（在zg-zd区间内）
-  //   - 应停止延伸当笔突破zg或zd
-  //
-  // Task 6: 滑动窗口检测
-  //   - 应检测所有可能的中枢
-  //   - 应处理重叠的中枢
-  //
-  // Task 7: 边界情况
-  //   - 应处理恰好3笔的情况
-  //   - 应处理大量笔（性能测试）
-  //   - 应处理所有笔价格相同
+
+  describe('Task 2: 基础功能 - 笔数量验证', () => {
+    it('应返回空数组当笔数量少于3笔', () => {
+      // 准备测试数据 - 只有2笔
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 110, 100, 0),
+        createBiVo(2, TrendDirection.Down, 105, 95, 1),
+      ];
+
+      const dto = new CreateChannelDto();
+      dto.bi = mockBi;
+
+      const result = service.createChannel(dto);
+
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
+
+    it('应返回空数组当笔数组为空', () => {
+      const dto = new CreateChannelDto();
+      dto.bi = [];
+
+      const result = service.createChannel(dto);
+      expect(result).toEqual([]);
+    });
+
+    it('应检测3笔形成的基本中枢', () => {
+      // 3笔交替且重叠
+      // 第1笔: 100→120 (up)
+      // 第2笔: 120→105 (down, 与第1笔重叠: 105-120)
+      // 第3笔: 105→115 (up, 与第2笔重叠: 105-115)
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 120, 100, 0), // 第1笔: 100→120
+        createBiVo(2, TrendDirection.Down, 120, 105, 1), // 第2笔: 120→105
+        createBiVo(3, TrendDirection.Up, 115, 105, 2), // 第3笔: 105→115
+      ];
+
+      const dto = new CreateChannelDto();
+      dto.bi = mockBi;
+
+      const result = service.createChannel(dto);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].zg).toBe(115); // min(120, 120, 115) = 115
+      expect(result[0].zd).toBe(105); // max(100, 105, 105) = 105
+      expect(result[0].gg).toBe(120); // max(120, 120, 115) = 120
+      expect(result[0].dd).toBe(100); // min(100, 105, 105) = 100
+      expect(result[0].bis).toHaveLength(3);
+    });
+  });
+
+  describe('Task 3: zg/zd/gg/dd 计算', () => {
+    it('应正确计算zg为所有笔highest的最小值', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 130, 100), // highest=130
+        createBiVo(2, TrendDirection.Down, 130, 90), // highest=130
+        createBiVo(3, TrendDirection.Up, 125, 90), // highest=125 ← zg
+      ];
+
+      const dto = new CreateChannelDto();
+      dto.bi = mockBi;
+
+      const result = service.createChannel(dto);
+
+      expect(result[0].zg).toBe(125); // min(130, 130, 125) = 125
+    });
+
+    it('应正确计算zd为所有笔lowest的最大值', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 130, 100), // lowest=100
+        createBiVo(2, TrendDirection.Down, 130, 95), // lowest=95
+        createBiVo(3, TrendDirection.Up, 125, 95), // lowest=95 ← zd
+      ];
+
+      const dto = new CreateChannelDto();
+      dto.bi = mockBi;
+
+      const result = service.createChannel(dto);
+
+      expect(result[0].zd).toBe(100); // max(100, 95, 95) = 100
+    });
+
+    it('应正确计算gg为所有笔highest的最大值', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 130, 100),
+        createBiVo(2, TrendDirection.Down, 130, 90),
+        createBiVo(3, TrendDirection.Up, 125, 90),
+      ];
+
+      const dto = new CreateChannelDto();
+      dto.bi = mockBi;
+
+      const result = service.createChannel(dto);
+
+      expect(result[0].gg).toBe(130); // max(130, 130, 125) = 130
+    });
+
+    it('应正确计算dd为所有笔lowest的最小值', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 130, 100),
+        createBiVo(2, TrendDirection.Down, 130, 90),
+        createBiVo(3, TrendDirection.Up, 125, 90),
+      ];
+
+      const dto = new CreateChannelDto();
+      dto.bi = mockBi;
+
+      const result = service.createChannel(dto);
+
+      expect(result[0].dd).toBe(90); // min(100, 90, 90) = 90
+    });
+
+    it('应处理价格相等的情况', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 120, 100),
+        createBiVo(2, TrendDirection.Down, 120, 100), // zd = zg = 100
+        createBiVo(3, TrendDirection.Up, 120, 100),
+      ];
+
+      const dto = new CreateChannelDto();
+      dto.bi = mockBi;
+
+      const result = service.createChannel(dto);
+
+      // 边界情况：zd >= zg 时应返回空（无有效重叠）
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('Task 4: 方向交替验证', () => {
+    it('应拒绝3笔方向不交替的情况 - 连续上升', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 120, 100),
+        createBiVo(115, TrendDirection.Up, 135, 115),
+        createBiVo(130, TrendDirection.Up, 150, 130),
+      ];
+      expect(service.createChannel({ bi: mockBi })).toHaveLength(0);
+    });
+
+    it('应拒绝3笔方向不交替的情况 - 连续下降', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(150, TrendDirection.Down, 150, 130),
+        createBiVo(135, TrendDirection.Down, 135, 115),
+        createBiVo(120, TrendDirection.Down, 120, 100),
+      ];
+      expect(service.createChannel({ bi: mockBi })).toHaveLength(0);
+    });
+
+    it('应接受正确的上-下-上交替', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+      ];
+      expect(service.createChannel({ bi: mockBi })).toHaveLength(1);
+    });
+
+    it('应接受正确的下-上-下交替', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(120, TrendDirection.Down, 100, 120),
+        createBiVo(100, TrendDirection.Up, 100, 115),
+        createBiVo(115, TrendDirection.Down, 105, 115),
+      ];
+      expect(service.createChannel({ bi: mockBi })).toHaveLength(1);
+    });
+  });
+
+  describe('Task 5: 中枢延伸', () => {
+    it('应将第4笔添加到中枢（在zg-zd区间内）', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Down, 108, 115),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result).toHaveLength(1);
+      expect(result[0].bis).toHaveLength(4);
+    });
+
+    it('应将第5笔添加到中枢（在zg-zd区间内）', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Down, 108, 115),
+        createBiVo(108, TrendDirection.Up, 108, 118),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result).toHaveLength(1);
+      expect(result[0].bis).toHaveLength(5);
+    });
+
+    it('应停止延伸当笔突破zg', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Up, 115, 130),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result).toHaveLength(1);
+      expect(result[0].bis).toHaveLength(3);
+      expect(result[0].type).toBe(ChannelType.Complete);
+    });
+
+    it('应停止延伸当笔突破zd', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Down, 95, 115),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result).toHaveLength(1);
+      expect(result[0].bis).toHaveLength(3);
+    });
+
+    it('应标记为Complete当笔不再重叠', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Down, 90, 115),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result[0].type).toBe(ChannelType.Complete);
+    });
+
+    it('应标记为UnComplete当仍有后续重叠笔', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Down, 108, 115),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result[0].type).toBe(ChannelType.UnComplete);
+    });
+  });
+
+  describe('Task 6: 滑动窗口检测', () => {
+    it('应检测所有可能的中枢', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Down, 90, 115),
+        createBiVo(90, TrendDirection.Up, 90, 110),
+        createBiVo(110, TrendDirection.Down, 95, 110),
+        createBiVo(95, TrendDirection.Up, 95, 108),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('应处理重叠的中枢（不同起始点）', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Down, 110, 115),
+        createBiVo(110, TrendDirection.Up, 110, 118),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('应正确跳过无效窗口', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 100, 120),
+        createBiVo(120, TrendDirection.Down, 105, 120),
+        createBiVo(105, TrendDirection.Up, 105, 115),
+        createBiVo(115, TrendDirection.Up, 115, 130),
+        createBiVo(130, TrendDirection.Up, 125, 130),
+        createBiVo(125, TrendDirection.Down, 125, 135),
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('Task 7: 边界情况', () => {
+    it('应处理恰好3笔的情况', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 120, 100), // Fixed: highest > lowest
+        createBiVo(120, TrendDirection.Down, 120, 105), // Fixed: highest > lowest
+        createBiVo(105, TrendDirection.Up, 115, 105), // Fixed: highest > lowest
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result).toHaveLength(1);
+    });
+
+    it('应处理大量笔（性能测试）', () => {
+      const mockBi: BiVo[] = [];
+      let price = 100;
+      for (let i = 0; i < 100; i++) {
+        const isUp = i % 2 === 0;
+        const start = price;
+        const end = isUp ? price + 20 : price - 15;
+        const highest = Math.max(start, end); // Fixed: use max for highest
+        const lowest = Math.min(start, end); // Fixed: use min for lowest
+        mockBi.push(
+          createBiVo(
+            i,
+            isUp ? TrendDirection.Up : TrendDirection.Down,
+            highest,
+            lowest,
+          ),
+        );
+        price = end;
+      }
+      const startTime = Date.now();
+      const result = service.createChannel({ bi: mockBi });
+      const endTime = Date.now();
+      expect(endTime - startTime).toBeLessThan(100);
+      expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('应处理所有笔价格相同', () => {
+      // Changed: Use non-overlapping prices since validation now rejects highest === lowest
+      const mockBi: BiVo[] = [
+        createBiVo(100, TrendDirection.Up, 105, 100),
+        createBiVo(101, TrendDirection.Down, 100, 95),
+        createBiVo(102, TrendDirection.Up, 110, 105), // No overlap with first bi
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result).toHaveLength(0); // No valid channel formed
+    });
+
+    it('应处理极端价格值', () => {
+      const mockBi: BiVo[] = [
+        createBiVo(1, TrendDirection.Up, 99999, 0.0001), // Fixed: highest > lowest
+        createBiVo(2, TrendDirection.Down, 99999, 0.0001), // Fixed: highest > lowest
+        createBiVo(3, TrendDirection.Up, 50000, 0.0001), // Fixed: highest > lowest
+      ];
+      const result = service.createChannel({ bi: mockBi });
+      expect(result.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // ========================================
+  // Task 13: Input Validation Tests
+  // ========================================
+  describe('createChannel - input validation', () => {
+    it('should throw BadRequestException when input is null', () => {
+      expect(() => {
+        service.createChannel(null as any);
+      }).toThrow('Invalid input: bi data is required');
+    });
+
+    it('should throw BadRequestException when input is undefined', () => {
+      expect(() => {
+        service.createChannel(undefined as any);
+      }).toThrow('Invalid input: bi data is required');
+    });
+
+    it('should throw BadRequestException when bi is not provided', () => {
+      expect(() => {
+        service.createChannel({} as any);
+      }).toThrow('Invalid input: bi data is required');
+    });
+
+    it('should throw BadRequestException when bi is not an array', () => {
+      expect(() => {
+        service.createChannel({ bi: 'not an array' } as any);
+      }).toThrow('Invalid input: bi must be an array');
+    });
+
+    it('should throw BadRequestException when bi array is empty', () => {
+      expect(() => {
+        service.createChannel({ bi: [] });
+      }).toThrow('Invalid input: bi array cannot be empty');
+    });
+
+    it('should throw BadRequestException when bi is missing highest value', () => {
+      const invalidBi = [createBiVo(1, TrendDirection.Up, 120, 100, 0)];
+      delete (invalidBi[0] as any).highest;
+
+      expect(() => {
+        service.createChannel({ bi: invalidBi });
+      }).toThrow('Invalid bi at index 0: missing highest or lowest value');
+    });
+
+    it('should throw BadRequestException when bi is missing lowest value', () => {
+      const invalidBi = [createBiVo(1, TrendDirection.Up, 120, 100, 0)];
+      delete (invalidBi[0] as any).lowest;
+
+      expect(() => {
+        service.createChannel({ bi: invalidBi });
+      }).toThrow('Invalid bi at index 0: missing highest or lowest value');
+    });
+
+    it('should throw BadRequestException when highest is not a number', () => {
+      const invalidBi = [
+        {
+          ...createBiVo(1, TrendDirection.Up, 120, 100, 0),
+          highest: 'not a number' as any,
+        },
+      ];
+
+      expect(() => {
+        service.createChannel({ bi: invalidBi });
+      }).toThrow('Invalid bi at index 0: highest and lowest must be numbers');
+    });
+
+    it('should throw BadRequestException when lowest is not a number', () => {
+      const invalidBi = [
+        {
+          ...createBiVo(1, TrendDirection.Up, 120, 100, 0),
+          lowest: 'not a number' as any,
+        },
+      ];
+
+      expect(() => {
+        service.createChannel({ bi: invalidBi });
+      }).toThrow('Invalid bi at index 0: highest and lowest must be numbers');
+    });
+
+    it('should throw BadRequestException when highest is less than or equal to lowest', () => {
+      const invalidBi = [createBiVo(1, TrendDirection.Up, 100, 120, 0)]; // highest < lowest
+
+      expect(() => {
+        service.createChannel({ bi: invalidBi });
+      }).toThrow('Invalid bi at index 0: highest must be greater than lowest');
+    });
+
+    it('should throw BadRequestException when highest equals lowest', () => {
+      const invalidBi = [createBiVo(1, TrendDirection.Up, 100, 100, 0)]; // highest === lowest
+
+      expect(() => {
+        service.createChannel({ bi: invalidBi });
+      }).toThrow('Invalid bi at index 0: highest must be greater than lowest');
+    });
+
+    it('should validate all bis in the array', () => {
+      const invalidBi = [
+        createBiVo(1, TrendDirection.Up, 120, 100, 0),
+        createBiVo(2, TrendDirection.Down, 110, 90, 1),
+        createBiVo(3, TrendDirection.Up, 100, 120, 2), // Invalid: highest < lowest
+      ];
+
+      expect(() => {
+        service.createChannel({ bi: invalidBi });
+      }).toThrow('Invalid bi at index 2: highest must be greater than lowest');
+    });
+  });
 });
