@@ -73,6 +73,13 @@ describe('ChannelService', () => {
     expect(service).toBeDefined();
   });
 
+  // ========================================
+  // Existing Tests (5-bi minimum - to be updated)
+  // ========================================
+  // NOTE: These tests currently validate 5-bi minimum behavior.
+  // They will be updated in Tasks 2-7 to test 3-bi minimum behavior
+  // according to Chan Theory standards.
+
   describe('createChannel - standard channel formation', () => {
     it('should recognize a channel from 5 alternating pens with price overlap', () => {
       // 笔1: up, high=120, low=100
@@ -393,4 +400,38 @@ describe('ChannelService', () => {
       expect(result[0].type).toBe(ChannelType.UnComplete);
     });
   });
+
+  // ========================================
+  // New Test Suites (to be added in Tasks 2-7)
+  // ========================================
+  // The following test suites will be added:
+  //
+  // Task 2: 基础功能 - 笔数量验证
+  //   - 应返回空数组当笔数量少于3笔
+  //   - 应检测3笔形成的基本中枢
+  //
+  // Task 3: zg/zd/gg/dd 计算
+  //   - 应正确计算zg为所有笔highest的最小值
+  //   - 应正确计算zd为所有笔lowest的最大值
+  //   - 应正确计算gg为所有笔highest的最大值
+  //   - 应正确计算dd为所有笔lowest的最小值
+  //
+  // Task 4: 方向交替验证
+  //   - 应拒绝3笔方向不交替的情况
+  //   - 应接受正确的上-下-上交替
+  //   - 应接受正确的下-上-下交替
+  //
+  // Task 5: 中枢延伸
+  //   - 应将第4笔添加到中枢（在zg-zd区间内）
+  //   - 应将第5笔添加到中枢（在zg-zd区间内）
+  //   - 应停止延伸当笔突破zg或zd
+  //
+  // Task 6: 滑动窗口检测
+  //   - 应检测所有可能的中枢
+  //   - 应处理重叠的中枢
+  //
+  // Task 7: 边界情况
+  //   - 应处理恰好3笔的情况
+  //   - 应处理大量笔（性能测试）
+  //   - 应处理所有笔价格相同
 });
