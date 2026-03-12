@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { ChannelLevel, ChannelType } from '../enums/channel.enum';
 import { BiVo } from '../vo/bi.vo';
@@ -9,59 +9,58 @@ export class ChannelService {
   // 画中枢
   createChannel(createChannelDto: CreateChannelDto): ChannelVo[] {
     this.validateInput(createChannelDto);
-    // 步骤 1: 验证所有笔的完整性
     this.validateBiIntegrity(createChannelDto.bi);
-    // 步骤 2: 执行中枢检测业务逻辑
     const { channels } = this.getChannel(createChannelDto.bi);
     return channels;
   }
 
   private validateInput(createChannelDto: CreateChannelDto): void {
     if (!createChannelDto || !createChannelDto.bi) {
-      throw new BadRequestException('Invalid input: bi data is required');
+      throw new HttpException(
+        'Invalid input: bi data is required',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     if (!Array.isArray(createChannelDto.bi)) {
-      throw new BadRequestException('Invalid input: bi must be an array');
+      throw new HttpException(
+        'Invalid input: bi must be an array',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     if (createChannelDto.bi.length === 0) {
-      throw new BadRequestException('Invalid input: bi array cannot be empty');
+      throw new HttpException(
+        'Invalid input: bi array cannot be empty',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // Validate each bi has required fields
     for (let i = 0; i < createChannelDto.bi.length; i++) {
       const bi = createChannelDto.bi[i];
       if (!bi.highest || !bi.lowest) {
-        throw new BadRequestException(
+        throw new HttpException(
           `Invalid bi at index ${i}: missing highest or lowest value`,
+          HttpStatus.BAD_REQUEST,
         );
       }
       if (typeof bi.highest !== 'number' || typeof bi.lowest !== 'number') {
-        throw new BadRequestException(
+        throw new HttpException(
           `Invalid bi at index ${i}: highest and lowest must be numbers`,
+          HttpStatus.BAD_REQUEST,
         );
       }
       if (bi.highest <= bi.lowest) {
-        throw new BadRequestException(
+        throw new HttpException(
           `Invalid bi at index ${i}: highest must be greater than lowest`,
+          HttpStatus.BAD_REQUEST,
         );
       }
     }
   }
 
   private validateBiIntegrity(bis: BiVo[]): void {
-    // 检查是否有任何笔包含分型信息
-    const hasAnyFenxing = bis.some(
-      (bi) => bi.startFenxing !== null || bi.endFenxing !== null,
-    );
-
-    // 如果没有任何笔包含分型信息，则跳过验证（向后兼容）
-    if (!hasAnyFenxing) {
-      return;
-    }
-
-    // 如果有任何笔包含分型信息，则所有笔（除了最后一笔）都必须有完整的分型信息
     for (let i = 0; i < bis.length; i++) {
       const bi = bis[i];
       const isLastBi = i === bis.length - 1;
@@ -73,7 +72,10 @@ export class ChannelService {
 
       // 其他笔必须有完整的 startFenxing 和 endFenxing
       if (!bi.startFenxing || !bi.endFenxing) {
-        throw new BadRequestException(`第 ${i + 1} 笔数据不完整：缺少分型信息`);
+        throw new HttpException(
+          `第 ${i + 1} 笔数据不完整：缺少分型信息`,
+          HttpStatus.BAD_REQUEST,
+        );
       }
     }
   }
