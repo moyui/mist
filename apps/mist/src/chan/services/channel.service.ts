@@ -134,21 +134,27 @@ export class ChannelService {
 
   /**
    * 检测 5-bi 中枢
-   * @param bis 笔数组（至少 5 笔）
+   * @param fiveBis 笔数组（至少 5 笔）
+   * @param originalBis 原始完整笔数组（用于获取正确的 ID）
+   * @param startIndex 起始索引
    * @returns 中枢对象或 null
    */
-  private detectChannel(bis: BiVo[]): ChannelVo | null {
-    if (bis.length < 5) {
+  private detectChannel(
+    fiveBis: BiVo[],
+    originalBis: BiVo[],
+    startIndex: number,
+  ): ChannelVo | null {
+    if (fiveBis.length < 5) {
       return null;
     }
 
     // 检查趋势是否交替
-    if (!this.isTrendAlternating(bis)) {
+    if (!this.isTrendAlternating(fiveBis)) {
       return null;
     }
 
     // 从前 3 笔计算 zg-zd
-    const zgZd = this.calculateZgZd(bis);
+    const zgZd = this.calculateZgZd(fiveBis);
     if (!zgZd) {
       return null;
     }
@@ -156,27 +162,32 @@ export class ChannelService {
     const [zg, zd] = zgZd;
 
     // 检查第 4、5 笔是否与 zg-zd 重叠
-    if (!this.hasOverlap(bis[3], zg, zd) || !this.hasOverlap(bis[4], zg, zd)) {
+    if (
+      !this.hasOverlap(fiveBis[3], zg, zd) ||
+      !this.hasOverlap(fiveBis[4], zg, zd)
+    ) {
       return null;
     }
 
     // 计算 gg-dd
-    const gg = Math.max(...bis.map((bi) => bi.highest));
-    const dd = Math.min(...bis.map((bi) => bi.lowest));
+    const gg = Math.max(...fiveBis.map((bi) => bi.highest));
+    const dd = Math.min(...fiveBis.map((bi) => bi.lowest));
 
-    // 创建中枢对象
+    // 创建中枢对象，使用原始笔数组的 ID
     return {
-      bis: [...bis],
+      bis: [...fiveBis],
       zg: zg,
       zd: zd,
       gg: gg,
       dd: dd,
       level: ChannelLevel.Bi,
       type: ChannelType.Complete,
-      startId: bis[0].originIds[0],
+      startId: originalBis[startIndex].originIds[0],
       endId:
-        bis[bis.length - 1].originIds[bis[bis.length - 1].originIds.length - 1],
-      trend: bis[0].trend,
+        originalBis[startIndex + 4].originIds[
+          originalBis[startIndex + 4].originIds.length - 1
+        ],
+      trend: fiveBis[0].trend,
     };
   }
 
@@ -387,35 +398,151 @@ export class ChannelService {
   }
 
   /**
-   * 获取中枢
-   * @param data
-   * @returns
+   * 延伸中枢
+   * @param channel 原始中枢
+   * @param remainingBis 剩余笔数组
+   * @returns 延伸后的中枢和使用的笔数
    */
-  private getChannel(data: BiVo[]) {
-    // 中枢要至少3笔才能形成，所以使用滑动窗口方案
-    const channels: ChannelVo[] = [];
-    const biCount = data.length;
-    if (biCount < 3) {
-      return { channels, offsetIndex: 0 };
+  private extendChannel(
+    channel: ChannelVo,
+    remainingBis: BiVo[],
+  ): { channel: ChannelVo; usedCount: number } {
+    if (remainingBis.length === 0) {
+      return { channel, usedCount: 0 };
     }
-    let i = 0;
-    for (i; i <= biCount - 3; i++) {
-      const threeBis = data.slice(i, i + 3);
-      // 生成严格中枢
-      const channel = this.handleStrictChannelState(threeBis);
-      // 如果没有找到channel, 尝试下次迭代
-      if (!channel) continue;
-      // 处理中枢扩展，如果存在后续笔的情况
-      if (i + 3 < biCount) {
-        const remainBis = data.slice(i + 3);
-        const { channel: extendedChannel, offsetIndex } =
-          this.handleExtendChannelState(channel, remainBis);
-        i = i + offsetIndex;
-        channels.push(extendedChannel);
+
+    const extendedBis: BiVo[] = [];
+    let currentExtreme = this.calculateInitialExtreme(channel);
+
+    for (let i = 0; i < remainingBis.length; i++) {
+      const bi = remainingBis[i];
+      const biNumber = channel.bis.length + extendedBis.length + 1;
+
+      // 检查重叠
+      if (!this.hasOverlap(bi, channel.zg, channel.zd)) {
+        break; // 没有重叠，中枢结束
+      }
+
+      const isOddNumbered = biNumber >= 7 && biNumber % 2 === 1;
+
+      if (isOddNumbered) {
+        // 奇数笔：检查极值
+        if (this.exceedsExtreme(bi, currentExtreme, channel.trend)) {
+          // 延伸成功，更新极值
+          extendedBis.push(bi);
+          currentExtreme = this.updateExtreme(
+            bi,
+            currentExtreme,
+            channel.trend,
+          );
+        } else {
+          // 未超过极值，回退，中枢结束
+          break;
+        }
       } else {
-        channels.push(channel);
+        // 偶数笔：无条件延伸
+        extendedBis.push(bi);
       }
     }
-    return { channels, offsetIndex: i };
+
+    // 重新计算中枢
+    if (extendedBis.length > 0) {
+      const newBis = [...channel.bis, ...extendedBis];
+      const newGg = Math.max(channel.gg, ...extendedBis.map((b) => b.highest));
+      const newDd = Math.min(channel.dd, ...extendedBis.map((b) => b.lowest));
+
+      return {
+        channel: {
+          ...channel,
+          bis: newBis,
+          gg: newGg,
+          dd: newDd,
+          endId: extendedBis[extendedBis.length - 1].originIds[0],
+        },
+        usedCount: extendedBis.length,
+      };
+    }
+
+    return { channel, usedCount: 0 };
+  }
+
+  /**
+   * 检查两个中枢是否有时间重叠
+   * @param channel1 中枢1
+   * @param channel2 中枢2
+   * @returns 是否有时间重叠
+   */
+  private hasTimeOverlap(channel1: ChannelVo, channel2: ChannelVo): boolean {
+    const start1 = channel1.bis[0].startTime.getTime();
+    const end1 = channel1.bis[channel1.bis.length - 1].endTime.getTime();
+    const start2 = channel2.bis[0].startTime.getTime();
+    const end2 = channel2.bis[channel2.bis.length - 1].endTime.getTime();
+
+    // 检查时间区间是否重叠
+    return start1 <= end2 && end1 >= start2;
+  }
+
+  /**
+   * 合并重叠的中枢（保留笔数少的）
+   * @param channels 中枢数组
+   * @returns 合并后的中枢数组
+   */
+  private mergeOverlappingChannels(channels: ChannelVo[]): ChannelVo[] {
+    const result: ChannelVo[] = [];
+
+    for (const current of channels) {
+      const overlapIndex = result.findIndex((existing) =>
+        this.hasTimeOverlap(existing, current),
+      );
+
+      if (overlapIndex === -1) {
+        // 无重叠，直接添加
+        result.push(current);
+      } else {
+        // 有重叠，保留笔数少的（更精确）
+        if (current.bis.length < result[overlapIndex].bis.length) {
+          result[overlapIndex] = current;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取中枢
+   * @param data 笔数组
+   * @returns 中枢数组和偏移索引
+   */
+  private getChannel(data: BiVo[]) {
+    const channels: ChannelVo[] = [];
+    const biCount = data.length;
+
+    if (biCount < 5) {
+      return { channels, offsetIndex: 0 };
+    }
+
+    // 滑动窗口检测所有 5-bi 中枢
+    for (let i = 0; i <= biCount - 5; i++) {
+      const channel = this.detectChannel(data.slice(i), data, i);
+
+      if (!channel) {
+        continue;
+      }
+
+      // 尝试延伸中枢
+      const remainingBis = data.slice(i + 5);
+      const { channel: extendedChannel } = this.extendChannel(
+        channel,
+        remainingBis,
+      );
+
+      channels.push(extendedChannel);
+    }
+
+    // 合并重叠的中枢（保留笔数少的）
+    const mergedChannels = this.mergeOverlappingChannels(channels);
+
+    return { channels: mergedChannels, offsetIndex: biCount };
   }
 }

@@ -319,7 +319,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
       ];
 
-      const result = (service as any).detectChannel(bis);
+      const result = (service as any).detectChannel(bis, bis, 0);
 
       expect(result).not.toBeNull();
       expect(result!.zg).toBe(105); // min(110, 105, 115)
@@ -344,7 +344,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 102, lowest: 82, trend: TrendDirection.Down }),
       ];
 
-      const result = (service as any).detectChannel(bis);
+      const result = (service as any).detectChannel(bis, bis, 0);
 
       expect(result).not.toBeNull();
       expect(result!.zg).toBe(100); // min(100, 110, 105)
@@ -363,7 +363,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
       ];
 
-      const result = (service as any).detectChannel(bis);
+      const result = (service as any).detectChannel(bis, bis, 0);
 
       expect(result).toBeNull();
     });
@@ -377,7 +377,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Down }),
       ];
 
-      const result = (service as any).detectChannel(bis);
+      const result = (service as any).detectChannel(bis, bis, 0);
 
       expect(result).toBeNull();
     });
@@ -391,7 +391,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
       ];
 
-      const result = (service as any).detectChannel(bis);
+      const result = (service as any).detectChannel(bis, bis, 0);
 
       expect(result).toBeNull();
     });
@@ -406,7 +406,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
       ];
 
-      const result = (service as any).detectChannel(bis);
+      const result = (service as any).detectChannel(bis, bis, 0);
 
       expect(result).toBeNull();
     });
@@ -421,9 +421,30 @@ describe('ChannelService', () => {
         createTestBi({ highest: 94, lowest: 80, trend: TrendDirection.Up }),
       ];
 
-      const result = (service as any).detectChannel(bis);
+      const result = (service as any).detectChannel(bis, bis, 0);
 
       expect(result).toBeNull();
+    });
+
+    it('应该正确使用原始笔数组的 ID', () => {
+      const originalBis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+      ];
+
+      // 修改原始 ID
+      originalBis[0].originIds = [100];
+      originalBis[4].originIds = [500];
+
+      const slice = originalBis.slice(0); // 创建副本
+      const result = (service as any).detectChannel(slice, originalBis, 0);
+
+      expect(result).not.toBeNull();
+      expect(result!.startId).toBe(100);
+      expect(result!.endId).toBe(500);
     });
   });
 
@@ -437,7 +458,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
       ];
 
-      const channel = (service as any).detectChannel(bis);
+      const channel = (service as any).detectChannel(bis, bis, 0);
       const result = (service as any).calculateInitialExtreme(channel);
 
       // 极值 = max(110, 115, 112) = 115
@@ -453,7 +474,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 102, lowest: 82, trend: TrendDirection.Down }),
       ];
 
-      const channel = (service as any).detectChannel(bis);
+      const channel = (service as any).detectChannel(bis, bis, 0);
       const result = (service as any).calculateInitialExtreme(channel);
 
       // 极值 = min(80, 85, 82) = 80
@@ -602,6 +623,443 @@ describe('ChannelService', () => {
       const result = (service as any).updateExtreme(bi, extreme, trend);
 
       expect(result).toBe(80); // min(80, 85) = 80
+    });
+  });
+
+  describe('中枢延伸', () => {
+    it('应该不延伸 - 没有剩余笔', () => {
+      const bis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+      ];
+
+      const channel = (service as any).detectChannel(bis, bis, 0);
+      const result = (service as any).extendChannel(channel, []);
+
+      expect(result.channel.bis.length).toBe(5);
+      expect(result.usedCount).toBe(0);
+    });
+
+    it('应该延伸 - 偶数笔无条件延伸', () => {
+      const bis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: 偶数笔，无条件延伸
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      expect(result.channel.bis.length).toBe(6);
+      expect(result.usedCount).toBe(1);
+      expect(result.channel.gg).toBe(115);
+      expect(result.channel.dd).toBe(85);
+    });
+
+    it('应该延伸 - 奇数笔超过极值', () => {
+      const bis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: 偶数笔
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        // Bi7: 奇数笔，超过极值 (115)
+        createTestBi({ highest: 120, lowest: 100, trend: TrendDirection.Up }),
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      expect(result.channel.bis.length).toBe(7);
+      expect(result.usedCount).toBe(2);
+      expect(result.channel.gg).toBe(120); // 更新后的最高点
+      expect(result.channel.dd).toBe(85);
+    });
+
+    it('应该不延伸 - 奇数笔未超过极值', () => {
+      const bis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: 偶数笔
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        // Bi7: 奇数笔，未超过极值 (115)
+        createTestBi({ highest: 114, lowest: 94, trend: TrendDirection.Up }),
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      expect(result.channel.bis.length).toBe(6);
+      expect(result.usedCount).toBe(1);
+    });
+
+    it('应该不延伸 - 笔不与中枢重叠', () => {
+      const bis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: 完全在 zg-zd 下方
+        createTestBi({ highest: 94, lowest: 80, trend: TrendDirection.Down }),
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      expect(result.channel.bis.length).toBe(5);
+      expect(result.usedCount).toBe(0);
+    });
+
+    it('应该正确处理向下中枢的延伸', () => {
+      const bis = [
+        createTestBi({ highest: 100, lowest: 80, trend: TrendDirection.Down }),
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Up }),
+        createTestBi({ highest: 102, lowest: 82, trend: TrendDirection.Down }),
+        // Bi6: 偶数笔
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Up }),
+        // Bi7: 奇数笔，超过极值 (80)
+        createTestBi({ highest: 100, lowest: 75, trend: TrendDirection.Down }),
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      expect(result.channel.bis.length).toBe(7);
+      expect(result.usedCount).toBe(2);
+      expect(result.channel.dd).toBe(75); // 更新后的最低点
+    });
+  });
+
+  describe('时间重叠检查', () => {
+    it('应该检测到完全重叠', () => {
+      const bis1 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+      ];
+      bis1[0].startTime = new Date('2024-01-01');
+      bis1[0].endTime = new Date('2024-01-02');
+      bis1[1].startTime = new Date('2024-01-03');
+      bis1[1].endTime = new Date('2024-01-04');
+
+      const bis2 = [
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+      ];
+      bis2[0].startTime = new Date('2024-01-02');
+      bis2[0].endTime = new Date('2024-01-03');
+      bis2[1].startTime = new Date('2024-01-04');
+      bis2[1].endTime = new Date('2024-01-05');
+
+      const channel1: any = {
+        bis: bis1,
+        zg: 105,
+        zd: 90,
+        gg: 110,
+        dd: 85,
+      };
+
+      const channel2: any = {
+        bis: bis2,
+        zg: 108,
+        zd: 88,
+        gg: 115,
+        dd: 88,
+      };
+
+      const result = (service as any).hasTimeOverlap(channel1, channel2);
+
+      expect(result).toBe(true);
+    });
+
+    it('应该检测到部分重叠', () => {
+      const bis1 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+      ];
+      bis1[0].startTime = new Date('2024-01-01');
+      bis1[0].endTime = new Date('2024-01-02');
+      bis1[1].startTime = new Date('2024-01-03');
+      bis1[1].endTime = new Date('2024-01-04');
+
+      const bis2 = [
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+      ];
+      bis2[0].startTime = new Date('2024-01-04');
+      bis2[0].endTime = new Date('2024-01-05');
+      bis2[1].startTime = new Date('2024-01-06');
+      bis2[1].endTime = new Date('2024-01-07');
+
+      const channel1: any = {
+        bis: bis1,
+        zg: 105,
+        zd: 90,
+        gg: 110,
+        dd: 85,
+      };
+
+      const channel2: any = {
+        bis: bis2,
+        zg: 108,
+        zd: 88,
+        gg: 115,
+        dd: 88,
+      };
+
+      const result = (service as any).hasTimeOverlap(channel1, channel2);
+
+      expect(result).toBe(true);
+    });
+
+    it('应该检测到无重叠', () => {
+      const bis1 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+      ];
+      bis1[0].startTime = new Date('2024-01-01');
+      bis1[0].endTime = new Date('2024-01-02');
+      bis1[1].startTime = new Date('2024-01-03');
+      bis1[1].endTime = new Date('2024-01-04');
+
+      const bis2 = [
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+      ];
+      bis2[0].startTime = new Date('2024-01-10');
+      bis2[0].endTime = new Date('2024-01-11');
+      bis2[1].startTime = new Date('2024-01-12');
+      bis2[1].endTime = new Date('2024-01-13');
+
+      const channel1: any = {
+        bis: bis1,
+        zg: 105,
+        zd: 90,
+        gg: 110,
+        dd: 85,
+      };
+
+      const channel2: any = {
+        bis: bis2,
+        zg: 108,
+        zd: 88,
+        gg: 115,
+        dd: 88,
+      };
+
+      const result = (service as any).hasTimeOverlap(channel1, channel2);
+
+      expect(result).toBe(false);
+    });
+
+    it('应该检测到边界重叠 - 结束时间等于开始时间', () => {
+      const bis1 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+      ];
+      bis1[0].startTime = new Date('2024-01-01');
+      bis1[0].endTime = new Date('2024-01-05');
+
+      const bis2 = [
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+      ];
+      bis2[0].startTime = new Date('2024-01-05');
+      bis2[0].endTime = new Date('2024-01-10');
+
+      const channel1: any = {
+        bis: bis1,
+        zg: 105,
+        zd: 90,
+        gg: 110,
+        dd: 85,
+      };
+
+      const channel2: any = {
+        bis: bis2,
+        zg: 108,
+        zd: 88,
+        gg: 115,
+        dd: 88,
+      };
+
+      const result = (service as any).hasTimeOverlap(channel1, channel2);
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('重叠中枢合并', () => {
+    it('应该保留笔数少的中枢', () => {
+      const bis1 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+      ];
+      bis1.forEach((bi, i) => {
+        bi.startTime = new Date(`2024-01-0${i + 1}`);
+        bi.endTime = new Date(`2024-01-0${i + 2}`);
+      });
+
+      const bis2 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        createTestBi({ highest: 120, lowest: 100, trend: TrendDirection.Up }),
+      ];
+      bis2.forEach((bi, i) => {
+        bi.startTime = new Date(`2024-01-0${i + 1}`);
+        bi.endTime = new Date(`2024-01-0${i + 2}`);
+      });
+
+      const channel1: any = {
+        bis: bis1,
+        zg: 105,
+        zd: 90,
+        gg: 115,
+        dd: 85,
+      };
+
+      const channel2: any = {
+        bis: bis2,
+        zg: 105,
+        zd: 90,
+        gg: 120,
+        dd: 85,
+      };
+
+      const result = (service as any).mergeOverlappingChannels([
+        channel1,
+        channel2,
+      ]);
+
+      expect(result.length).toBe(1);
+      expect(result[0].bis.length).toBe(5); // 保留笔数少的
+    });
+
+    it('应该保留所有无重叠的中枢', () => {
+      const bis1 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+      ];
+      bis1[0].startTime = new Date('2024-01-01');
+      bis1[0].endTime = new Date('2024-01-02');
+      bis1[1].startTime = new Date('2024-01-03');
+      bis1[1].endTime = new Date('2024-01-04');
+
+      const bis2 = [
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+      ];
+      bis2[0].startTime = new Date('2024-01-10');
+      bis2[0].endTime = new Date('2024-01-11');
+      bis2[1].startTime = new Date('2024-01-12');
+      bis2[1].endTime = new Date('2024-01-13');
+
+      const channel1: any = {
+        bis: bis1,
+        zg: 105,
+        zd: 90,
+        gg: 110,
+        dd: 85,
+      };
+
+      const channel2: any = {
+        bis: bis2,
+        zg: 108,
+        zd: 88,
+        gg: 115,
+        dd: 88,
+      };
+
+      const result = (service as any).mergeOverlappingChannels([
+        channel1,
+        channel2,
+      ]);
+
+      expect(result.length).toBe(2);
+    });
+
+    it('应该处理多个重叠中枢', () => {
+      const bis1 = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+      ];
+      bis1[0].startTime = new Date('2024-01-01');
+      bis1[0].endTime = new Date('2024-01-10');
+
+      const bis2 = [
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+      ];
+      bis2[0].startTime = new Date('2024-01-05');
+      bis2[0].endTime = new Date('2024-01-15');
+
+      const bis3 = [
+        createTestBi({ highest: 120, lowest: 100, trend: TrendDirection.Up }),
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+      ];
+      // 让 channel3 与 channel1 直接重叠
+      bis3[0].startTime = new Date('2024-01-08');
+      bis3[0].endTime = new Date('2024-01-20');
+
+      const channel1: any = {
+        bis: bis1,
+        zg: 105,
+        zd: 90,
+        gg: 110,
+        dd: 85,
+      };
+
+      const channel2: any = {
+        bis: bis2,
+        zg: 108,
+        zd: 88,
+        gg: 115,
+        dd: 88,
+      };
+
+      const channel3: any = {
+        bis: bis3,
+        zg: 107,
+        zd: 87,
+        gg: 120,
+        dd: 87,
+      };
+
+      const result = (service as any).mergeOverlappingChannels([
+        channel1,
+        channel2,
+        channel3,
+      ]);
+
+      // channel1 与 channel2 重叠，保留 channel1（笔数少）
+      // channel3 与 channel1 重叠，保留 channel1（笔数少）
+      expect(result.length).toBe(1);
+      expect(result[0].bis.length).toBe(1); // 保留笔数最少的
+      expect(result[0].zg).toBe(105); // channel1 的 zg
     });
   });
 });
