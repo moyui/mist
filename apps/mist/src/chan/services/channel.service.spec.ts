@@ -140,4 +140,62 @@ describe('ChannelService', () => {
       }).toThrow(HttpException);
     });
   });
+
+  describe('重叠检查', () => {
+    it('应该检测到完全重叠', () => {
+      const bi = createTestBi({
+        highest: 110,
+        lowest: 85,
+        trend: TrendDirection.Up,
+      });
+      const zg = 100;
+      const zd = 90;
+
+      const result = (service as any).hasOverlap(bi, zg, zd);
+
+      expect(result).toBe(true);
+    });
+
+    it('应该检测到部分重叠 - 从下方进入', () => {
+      const bi = createTestBi({
+        highest: 95,
+        lowest: 85,
+        trend: TrendDirection.Up,
+      });
+      const zg = 100;
+      const zd = 90;
+
+      const result = (service as any).hasOverlap(bi, zg, zd);
+
+      expect(result).toBe(true);
+    });
+
+    it('应该检测到无重叠 - 完全在下方', () => {
+      const bi = createTestBi({
+        highest: 85,
+        lowest: 80,
+        trend: TrendDirection.Up,
+      });
+      const zg = 100;
+      const zd = 90;
+
+      const result = (service as any).hasOverlap(bi, zg, zd);
+
+      expect(result).toBe(false);
+    });
+
+    it('应该检测到边界重叠 - 最高点等于 zg', () => {
+      const bi = createTestBi({
+        highest: 100,
+        lowest: 85,
+        trend: TrendDirection.Up,
+      });
+      const zg = 100;
+      const zd = 90;
+
+      const result = (service as any).hasOverlap(bi, zg, zd);
+
+      expect(result).toBe(true);
+    });
+  });
 });
