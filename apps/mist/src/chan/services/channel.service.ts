@@ -165,13 +165,14 @@ export class ChannelService {
       return null;
     }
 
-    // 计算 gg-dd
-    const gg = Math.max(...fiveBis.map((bi) => bi.highest));
-    const dd = Math.min(...fiveBis.map((bi) => bi.lowest));
+    // 计算 gg-dd（只使用前5笔）
+    const initialFiveBis = fiveBis.slice(0, 5);
+    const gg = Math.max(...initialFiveBis.map((bi) => bi.highest));
+    const dd = Math.min(...initialFiveBis.map((bi) => bi.lowest));
 
-    // 创建中枢对象，使用原始笔数组的 ID
+    // 创建中枢对象，使用原始笔数组的 ID（只使用前5笔）
     return {
-      bis: [...fiveBis],
+      bis: [...initialFiveBis],
       zg: zg,
       zd: zd,
       gg: gg,
@@ -275,11 +276,56 @@ export class ChannelService {
     const confirmedBis: BiVo[] = []; // 确认区：已确认加入中枢的笔
     let currentExtreme = this.calculateInitialExtreme(channel);
 
+    // 计算突破阈值（zg-zd区间大小的1%，至少为1）
+    const breakoutThreshold = Math.max(1, (channel.zg - channel.zd) * 0.01);
+
     for (let i = 0; i < remainingBis.length; i++) {
       const bi = remainingBis[i];
       // 计算当前笔的编号（5笔基础中枢 + 已确认笔 + 暂存笔 + 当前笔）
       const biNumber =
         channel.bis.length + confirmedBis.length + pendingBis.length + 1;
+
+      // 检查价格突破（方案1）：中枢的破坏条件
+      // 向上突破：笔的低点 > zg（整个区间都在zg之上）
+      // 向下突破：笔的高点 < zd（整个区间都在zd之下）
+      if (bi.lowest > channel.zg || bi.highest < channel.zd) {
+        break; // 价格突破，中枢结束
+      }
+
+      // 检查趋势突破（方案3）：结合趋势方向的突破检测，使用百分比阈值
+      // 向上中枢：如果向上笔的低点跌破zd超过阈值，或向下笔的高点跌破zg超过阈值
+      // 向下中枢：如果向下笔的高点突破zg超过阈值，或向上笔的低点突破zd超过阈值
+      if (channel.trend === TrendDirection.Up) {
+        // 向上中枢的破坏条件：
+        // 1. 向上笔低点跌破zd超过阈值（正常震荡时，向上笔的低点应该在zd附近或之上）
+        // 2. 向下笔高点跌破zg超过阈值（正常震荡时，向下笔的高点应该在zg附近或之下）
+        if (bi.trend === TrendDirection.Up) {
+          // 向上笔：低点大幅跌破zd
+          if (channel.zd - bi.lowest > breakoutThreshold) {
+            break;
+          }
+        } else {
+          // 向下笔：高点大幅跌破zg
+          if (channel.zg - bi.highest > breakoutThreshold) {
+            break;
+          }
+        }
+      } else {
+        // 向下中枢的破坏条件：
+        // 1. 向下笔高点突破zg超过阈值（正常震荡时，向下笔的高点应该在zg附近或之下）
+        // 2. 向上笔低点突破zd超过阈值（正常震荡时，向上笔的低点应该在zd附近或之上）
+        if (bi.trend === TrendDirection.Down) {
+          // 向下笔：高点大幅突破zg
+          if (bi.highest - channel.zg > breakoutThreshold) {
+            break;
+          }
+        } else {
+          // 向上笔：低点大幅突破zd
+          if (bi.lowest - channel.zd < -breakoutThreshold) {
+            break;
+          }
+        }
+      }
 
       // 检查重叠
       if (!this.hasOverlap(bi, channel.zg, channel.zd)) {
@@ -409,7 +455,24 @@ export class ChannelService {
         remainingBis,
       );
 
-      channels.push(extendedChannel);
+      // 检查第一笔和最后一笔的极值关系
+      // 向上中枢：第一笔的highest < 最后一笔的highest
+      // 向下中枢：第一笔的lowest > 最后一笔的lowest
+      const firstBi = extendedChannel.bis[0];
+      const lastBi = extendedChannel.bis[extendedChannel.bis.length - 1];
+
+      let satisfiesExtremeCondition = false;
+      if (extendedChannel.trend === TrendDirection.Up) {
+        satisfiesExtremeCondition = firstBi.highest < lastBi.highest;
+      } else {
+        satisfiesExtremeCondition = firstBi.lowest > lastBi.lowest;
+      }
+
+      // 只有满足极值条件的中枢才添加到列表
+      if (satisfiesExtremeCondition) {
+        channels.push(extendedChannel);
+      }
+      // 如果不满足条件，丢弃这个中枢，继续从下一笔开始检测
     }
 
     // 合并重叠的中枢（保留笔数少的）
