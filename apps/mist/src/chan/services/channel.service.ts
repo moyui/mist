@@ -93,6 +93,18 @@ export class ChannelService {
     return bi.lowest <= zg && bi.highest >= zd;
   }
 
+  /**
+   * 检查笔是否与中枢区间重叠
+   * @param bi 笔数据
+   * @param zg 中枢高
+   * @param zd 中枢低
+   * @returns 是否重叠
+   */
+  private hasOverlap(bi: BiVo, zg: number, zd: number): boolean {
+    // 基本重叠检查：笔的低点 ≤ zg 且笔的高点 ≥ zd
+    return bi.lowest <= zg && bi.highest >= zd;
+  }
+
   private checkOverlapRange(bis: BiVo[]) {
     if (bis.length < 3) {
       return null;
