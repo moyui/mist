@@ -337,10 +337,18 @@ export class ChannelService {
    * @returns 是否有时间重叠
    */
   private hasTimeOverlap(channel1: ChannelVo, channel2: ChannelVo): boolean {
-    const start1 = channel1.bis[0].startTime.getTime();
-    const end1 = channel1.bis[channel1.bis.length - 1].endTime.getTime();
-    const start2 = channel2.bis[0].startTime.getTime();
-    const end2 = channel2.bis[channel2.bis.length - 1].endTime.getTime();
+    // 安全地获取时间戳，处理 Date 对象或字符串
+    const getTime = (date: Date | string): number => {
+      if (date instanceof Date) {
+        return date.getTime();
+      }
+      return new Date(date).getTime();
+    };
+
+    const start1 = getTime(channel1.bis[0].startTime);
+    const end1 = getTime(channel1.bis[channel1.bis.length - 1].endTime);
+    const start2 = getTime(channel2.bis[0].startTime);
+    const end2 = getTime(channel2.bis[channel2.bis.length - 1].endTime);
 
     // 检查时间区间是否重叠
     return start1 <= end2 && end1 >= start2;
