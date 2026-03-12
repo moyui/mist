@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { ChannelLevel, ChannelType } from '../enums/channel.enum';
+import { TrendDirection } from '../enums/trend-direction.enum';
 import { BiVo } from '../vo/bi.vo';
 import { ChannelVo } from '../vo/channel.vo';
 
@@ -103,6 +104,150 @@ export class ChannelService {
   private hasOverlap(bi: BiVo, zg: number, zd: number): boolean {
     // 基本重叠检查：笔的低点 ≤ zg 且笔的高点 ≥ zd
     return bi.lowest <= zg && bi.highest >= zd;
+  }
+
+  /**
+   * 计算 zg-zd（中枢高低点）
+   * zg = 前 3 笔的最低高点
+   * zd = 前 3 笔的最高低点
+   * @param bis 笔数组（至少 3 笔）
+   * @returns [zg, zd] 或 null（无重叠）
+   */
+  private calculateZgZd(bis: BiVo[]): [number, number] | null {
+    if (bis.length < 3) {
+      return null;
+    }
+
+    // zg = 前 3 笔的最低高点
+    const zg = Math.min(bis[0].highest, bis[1].highest, bis[2].highest);
+
+    // zd = 前 3 笔的最高低点
+    const zd = Math.max(bis[0].lowest, bis[1].lowest, bis[2].lowest);
+
+    // 检查是否有重叠
+    if (zg <= zd) {
+      return null;
+    }
+
+    return [zg, zd];
+  }
+
+  /**
+   * 检测 5-bi 中枢
+   * @param bis 笔数组（至少 5 笔）
+   * @returns 中枢对象或 null
+   */
+  private detectChannel(bis: BiVo[]): ChannelVo | null {
+    if (bis.length < 5) {
+      return null;
+    }
+
+    // 检查趋势是否交替
+    if (!this.isTrendAlternating(bis)) {
+      return null;
+    }
+
+    // 从前 3 笔计算 zg-zd
+    const zgZd = this.calculateZgZd(bis);
+    if (!zgZd) {
+      return null;
+    }
+
+    const [zg, zd] = zgZd;
+
+    // 检查第 4、5 笔是否与 zg-zd 重叠
+    if (!this.hasOverlap(bis[3], zg, zd) || !this.hasOverlap(bis[4], zg, zd)) {
+      return null;
+    }
+
+    // 计算 gg-dd
+    const gg = Math.max(...bis.map((bi) => bi.highest));
+    const dd = Math.min(...bis.map((bi) => bi.lowest));
+
+    // 创建中枢对象
+    return {
+      bis: [...bis],
+      zg: zg,
+      zd: zd,
+      gg: gg,
+      dd: dd,
+      level: ChannelLevel.Bi,
+      type: ChannelType.Complete,
+      startId: bis[0].originIds[0],
+      endId:
+        bis[bis.length - 1].originIds[bis[bis.length - 1].originIds.length - 1],
+      trend: bis[0].trend,
+    };
+  }
+
+  /**
+   * 计算初始极值
+   * 向上中枢：极值 = max(Bi1.highest, Bi3.highest, Bi5.highest)
+   * 向下中枢：极值 = min(Bi1.lowest, Bi3.lowest, Bi5.lowest)
+   * @param channel 中枢对象
+   * @returns 初始极值
+   */
+  private calculateInitialExtreme(channel: ChannelVo): number {
+    const channelTrend = channel.trend;
+    let extreme: number;
+
+    if (channelTrend === TrendDirection.Up) {
+      extreme = Math.max(
+        channel.bis[0].highest,
+        channel.bis[2].highest,
+        channel.bis[4].highest,
+      );
+    } else {
+      extreme = Math.min(
+        channel.bis[0].lowest,
+        channel.bis[2].lowest,
+        channel.bis[4].lowest,
+      );
+    }
+
+    return extreme;
+  }
+
+  /**
+   * 检查笔是否超过极值
+   * 向上笔：highest > currentExtreme → 超过
+   * 向下笔：lowest < currentExtreme → 超过
+   * @param bi 笔数据
+   * @param extreme 当前极值
+   * @param trend 趋势方向
+   * @returns 是否超过极值
+   */
+  private exceedsExtreme(
+    bi: BiVo,
+    extreme: number,
+    trend: TrendDirection,
+  ): boolean {
+    if (trend === TrendDirection.Up) {
+      return bi.highest > extreme;
+    } else {
+      return bi.lowest < extreme;
+    }
+  }
+
+  /**
+   * 更新极值
+   * 向上中枢：取 max(extreme, bi.highest)
+   * 向下中枢：取 min(extreme, bi.lowest)
+   * @param bi 笔数据
+   * @param extreme 当前极值
+   * @param trend 趋势方向
+   * @returns 新的极值
+   */
+  private updateExtreme(
+    bi: BiVo,
+    extreme: number,
+    trend: TrendDirection,
+  ): number {
+    if (trend === TrendDirection.Up) {
+      return Math.max(extreme, bi.highest);
+    } else {
+      return Math.min(extreme, bi.lowest);
+    }
   }
 
   private checkOverlapRange(bis: BiVo[]) {
