@@ -9,6 +9,9 @@ export class ChannelService {
   // 画中枢
   createChannel(createChannelDto: CreateChannelDto): ChannelVo[] {
     this.validateInput(createChannelDto);
+    // 步骤 1: 验证所有笔的完整性
+    this.validateBiIntegrity(createChannelDto.bi);
+    // 步骤 2: 执行中枢检测业务逻辑
     const { channels } = this.getChannel(createChannelDto.bi);
     return channels;
   }
@@ -43,6 +46,34 @@ export class ChannelService {
         throw new BadRequestException(
           `Invalid bi at index ${i}: highest must be greater than lowest`,
         );
+      }
+    }
+  }
+
+  private validateBiIntegrity(bis: BiVo[]): void {
+    // 检查是否有任何笔包含分型信息
+    const hasAnyFenxing = bis.some(
+      (bi) => bi.startFenxing !== null || bi.endFenxing !== null,
+    );
+
+    // 如果没有任何笔包含分型信息，则跳过验证（向后兼容）
+    if (!hasAnyFenxing) {
+      return;
+    }
+
+    // 如果有任何笔包含分型信息，则所有笔（除了最后一笔）都必须有完整的分型信息
+    for (let i = 0; i < bis.length; i++) {
+      const bi = bis[i];
+      const isLastBi = i === bis.length - 1;
+
+      // 最后一笔可以是未完成的（endFenxing 为 null）
+      if (isLastBi && !bi.endFenxing) {
+        continue;
+      }
+
+      // 其他笔必须有完整的 startFenxing 和 endFenxing
+      if (!bi.startFenxing || !bi.endFenxing) {
+        throw new BadRequestException(`第 ${i + 1} 笔数据不完整：缺少分型信息`);
       }
     }
   }
