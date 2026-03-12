@@ -1,0 +1,90 @@
+{
+  "name": "5笔延伸中枢",
+  "description": "3笔基础中枢+2笔延伸，展示中枢延伸逻辑",
+  "bis": [
+    {
+      "startTime": "2024-01-01T00:00:00Z",
+      "endTime": "2024-01-02T00:00:00Z",
+      "lowest": 100,
+      "highest": 120,
+      "trend": "up",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [1, 2, 3],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-02T00:00:00Z",
+      "endTime": "2024-01-03T00:00:00Z",
+      "lowest": 105,
+      "highest": 120,
+      "trend": "down",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [4, 5, 6],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-03T00:00:00Z",
+      "endTime": "2024-01-04T00:00:00Z",
+      "lowest": 105,
+      "highest": 115,
+      "trend": "up",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [7, 8, 9],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-04T00:00:00Z",
+      "endTime": "2024-01-05T00:00:00Z",
+      "lowest": 108,
+      "highest": 115,
+      "trend": "down",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [10, 11, 12],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-05T00:00:00Z",
+      "endTime": "2024-01-06T00:00:00Z",
+      "lowest": 108,
+      "highest": 118,
+      "trend": "up",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [13, 14, 15],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    }
+  ],
+  "expected": {
+    "channelCount": 1,
+    "biCount": 5,
+    "type": "uncomplete",
+    "zg": 115,
+    "zd": 105,
+    "notes": "第4、5笔在重叠区间[105,115]内，延伸中枢"
+  },
+  "notes": [
+    "前3笔形成基础中枢: zg=115, zd=105",
+    "第4笔(108-115)在区间内，延伸中枢",
+    "第5笔(108-118)在区间内，继续延伸",
+    "由于最后1笔仍在区间内，标记为UnComplete"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "name": "无重叠-应返回空",
+  "description": "3笔不重叠，不应形成中枢（边界情况测试）",
+  "bis": [
+    {
+      "startTime": "2024-01-01T00:00:00Z",
+      "endTime": "2024-01-02T00:00:00Z",
+      "lowest": 100,
+      "highest": 110,
+      "trend": "up",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [1, 2, 3],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-02T00:00:00Z",
+      "endTime": "2024-01-03T00:00:00Z",
+      "lowest": 90,
+      "highest": 100,
+      "trend": "down",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [4, 5, 6],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-03T00:00:00Z",
+      "endTime": "2024-01-04T00:00:00Z",
+      "lowest": 110,
+      "highest": 120,
+      "trend": "up",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [7, 8, 9],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    }
+  ],
+  "expected": {
+    "channelCount": 0,
+    "notes": "3笔无重叠区间，不应形成中枢"
+  },
+  "notes": [
+    "第1笔区间: [100, 110]",
+    "第2笔区间: [90, 100]",
+    "第3笔区间: [110, 120]",
+    "第1笔与第2笔仅接触于100，无实际重叠",
+    "第2笔与第3笔完全分离",
+    "zg = min(110, 100, 120) = 100",
+    "zd = max(100, 90, 110) = 110",
+    "zd >= zg，无有效重叠，返回空数组"
+  ]
+}

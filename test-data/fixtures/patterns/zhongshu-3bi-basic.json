@@ -1,0 +1,65 @@
+{
+  "name": "3笔基础上升中枢",
+  "description": "3笔形成标准上升中枢（上-下-上模式）",
+  "bis": [
+    {
+      "startTime": "2024-01-01T00:00:00Z",
+      "endTime": "2024-01-02T00:00:00Z",
+      "lowest": 100,
+      "highest": 120,
+      "trend": "up",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [1, 2, 3],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-02T00:00:00Z",
+      "endTime": "2024-01-03T00:00:00Z",
+      "lowest": 105,
+      "highest": 120,
+      "trend": "down",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [4, 5, 6],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    },
+    {
+      "startTime": "2024-01-03T00:00:00Z",
+      "endTime": "2024-01-04T00:00:00Z",
+      "lowest": 105,
+      "highest": 115,
+      "trend": "up",
+      "type": "complete",
+      "status": "valid",
+      "independentCount": 3,
+      "originIds": [7, 8, 9],
+      "originData": [],
+      "startFenxing": null,
+      "endFenxing": null
+    }
+  ],
+  "expected": {
+    "channelCount": 1,
+    "zg": 115,
+    "zd": 105,
+    "gg": 120,
+    "dd": 100,
+    "biCount": 3,
+    "trend": "up",
+    "type": "complete"
+  },
+  "notes": [
+    "zg = min(120, 120, 115) = 115",
+    "zd = max(100, 105, 105) = 105",
+    "gg = max(120, 120, 115) = 120",
+    "dd = min(100, 105, 105) = 100",
+    "有效重叠区间: [105, 115]"
+  ]
+}
