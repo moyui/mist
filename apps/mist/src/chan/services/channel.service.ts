@@ -90,10 +90,6 @@ export class ChannelService {
     return true;
   }
 
-  private hasOverlapWithChannel(bi: BiVo, zg: number, zd: number) {
-    return bi.lowest <= zg && bi.highest >= zd;
-  }
-
   /**
    * 检查笔是否与中枢区间重叠
    * @param bi 笔数据
@@ -261,142 +257,6 @@ export class ChannelService {
     }
   }
 
-  private checkOverlapRange(bis: BiVo[]) {
-    if (bis.length < 3) {
-      return null;
-    }
-    const highests = bis.map((bi) => bi.highest);
-    const lowests = bis.map((bi) => bi.lowest);
-
-    const zg = Math.min(...highests);
-    const zd = Math.max(...lowests);
-    // 无重叠
-    if (zd >= zg) return null;
-    const allOverlap = bis.every((bi) =>
-      this.hasOverlapWithChannel(bi, zg, zd),
-    );
-    // 每笔重叠区间
-    if (!allOverlap) return null;
-    return [zg, zd];
-  }
-
-  private getStrictChannel(bis: BiVo[], overlapRange: number[]): ChannelVo {
-    const resultBis = bis.slice(0, 3);
-    return {
-      zg: overlapRange[0],
-      zd: overlapRange[1],
-      gg: Math.max(...resultBis.map((bi) => bi.highest)),
-      dd: Math.min(...resultBis.map((bi) => bi.lowest)),
-      bis: resultBis,
-      level: ChannelLevel.Bi, // 目前都是笔中枢，后续可能有段中枢
-      type: ChannelType.Complete, // 目前是完成的中枢
-      startId: bis[0].originIds[0],
-      endId:
-        bis[bis.length - 1].originIds[bis[bis.length - 1].originIds.length - 1],
-      trend: bis[0].trend, // 中枢方向就是进入第一笔的方向
-    };
-  }
-
-  // 处理严格中枢状态
-  private handleStrictChannelState(bis: BiVo[]): ChannelVo | null {
-    if (bis.length < 3) {
-      return null;
-    }
-    // 检查笔的方向是否交替
-    if (!this.isTrendAlternating(bis)) {
-      return null;
-    }
-    // 检查前3笔是否重叠
-    const overlapRange = this.checkOverlapRange(bis.slice(0, 3));
-    if (!overlapRange) {
-      return null;
-    }
-
-    const channel = this.getStrictChannel(bis, overlapRange);
-    return channel;
-  }
-
-  private recalculateChannel(channel: ChannelVo, bis: BiVo[]): ChannelVo {
-    return {
-      ...channel,
-      bis: [...channel.bis, ...bis],
-      gg: Math.max(channel.gg, ...bis.map((bi) => bi.highest)),
-      dd: Math.min(channel.dd, ...bis.map((bi) => bi.lowest)),
-    };
-  }
-
-  /**
-   * 重新计算中枢，追加新的bis（不重复原有的）
-   * 注意：延伸中枢时，zg和zd保持不变，只更新gg和dd
-   * 这是缠论的正确逻辑 - 延伸的笔应该"保护"原有的zg-zd重叠区间
-   */
-  private recalculateChannelWithNewBis(
-    channel: ChannelVo,
-    newBis: BiVo[],
-  ): ChannelVo {
-    // 延伸时zg和zd保持不变，只更新gg和dd
-    // 原因：zg-zd是核心重叠区间，延伸的笔应该保护这个区间，而不是改变它
-    const newGg = Math.max(channel.gg, ...newBis.map((bi) => bi.highest));
-    const newDd = Math.min(channel.dd, ...newBis.map((bi) => bi.lowest));
-
-    return {
-      ...channel,
-      bis: [...channel.bis, ...newBis],
-      gg: newGg,
-      dd: newDd,
-    };
-  }
-
-  // 处理扩展中枢状态
-  private handleExtendChannelState(
-    channel: ChannelVo,
-    bis: BiVo[],
-  ): { channel: ChannelVo; offsetIndex: number } {
-    if (bis.length === 0) return { channel, offsetIndex: 0 };
-    const extendedBis: BiVo[] = [];
-    let i = 0;
-    for (i; i < bis.length; i++) {
-      const hasOverlap = this.hasOverlapWithChannel(
-        bis[i],
-        channel.zg,
-        channel.zd,
-      );
-      if (hasOverlap) {
-        extendedBis.push(bis[i]);
-      } else {
-        break; // 如果一旦没有出现重叠，那么延伸处理结束
-      }
-    }
-    if (extendedBis.length === 0) return { channel, offsetIndex: 0 };
-    // 如果最后一笔的方向和起始笔是一样的，说明最后一笔无法构成一个正常中枢，需要进行处理
-    // 这里就需要判断是笔是否用完了
-    if (extendedBis[extendedBis.length - 1].trend === channel.bis[0].trend) {
-      if (i === bis.length) {
-        // 笔用完了，判断成中枢结构未完
-        return {
-          channel: {
-            ...channel,
-            type: ChannelType.UnComplete,
-          },
-          offsetIndex: i,
-        };
-      } else {
-        // 笔未用完，最后一笔为新中枢的起始段，不属于原有中枢
-        const newExtendedBis = [...extendedBis];
-        newExtendedBis.pop();
-        return {
-          channel: this.recalculateChannelWithNewBis(channel, newExtendedBis),
-          offsetIndex: i - 1,
-        };
-      }
-    } else {
-      return {
-        channel: this.recalculateChannelWithNewBis(channel, extendedBis),
-        offsetIndex: i,
-      };
-    }
-  }
-
   /**
    * 延伸中枢
    * @param channel 原始中枢
@@ -411,45 +271,49 @@ export class ChannelService {
       return { channel, usedCount: 0 };
     }
 
-    const extendedBis: BiVo[] = [];
+    const pendingBis: BiVo[] = []; // 暂存区：等待奇数笔确认的偶数笔
+    const confirmedBis: BiVo[] = []; // 确认区：已确认加入中枢的笔
     let currentExtreme = this.calculateInitialExtreme(channel);
 
     for (let i = 0; i < remainingBis.length; i++) {
       const bi = remainingBis[i];
-      const biNumber = channel.bis.length + extendedBis.length + 1;
+      // 计算当前笔的编号（5笔基础中枢 + 已确认笔 + 暂存笔 + 当前笔）
+      const biNumber =
+        channel.bis.length + confirmedBis.length + pendingBis.length + 1;
 
       // 检查重叠
       if (!this.hasOverlap(bi, channel.zg, channel.zd)) {
         break; // 没有重叠，中枢结束
       }
 
-      const isOddNumbered = biNumber >= 7 && biNumber % 2 === 1;
+      const isOddNumbered = biNumber >= 6 && biNumber % 2 === 1; // 第7、9笔...
 
       if (isOddNumbered) {
-        // 奇数笔：检查极值
+        // 奇数笔（第7、9笔...）：检查极值
         if (this.exceedsExtreme(bi, currentExtreme, channel.trend)) {
-          // 延伸成功，更新极值
-          extendedBis.push(bi);
+          // ✅ 奇数笔成功：将暂存的偶数笔 + 当前奇数笔都确认
+          confirmedBis.push(...pendingBis, bi);
+          pendingBis.length = 0; // 清空暂存区
           currentExtreme = this.updateExtreme(
             bi,
             currentExtreme,
             channel.trend,
           );
         } else {
-          // 未超过极值，回退，中枢结束
+          // ❌ 奇数笔失败：暂存的偶数笔丢弃，中枢彻底结束
           break;
         }
       } else {
-        // 偶数笔：无条件延伸
-        extendedBis.push(bi);
+        // 偶数笔（第6、8笔...）：先暂存，等待奇数笔确认
+        pendingBis.push(bi);
       }
     }
 
-    // 重新计算中枢
-    if (extendedBis.length > 0) {
-      const newBis = [...channel.bis, ...extendedBis];
-      const newGg = Math.max(channel.gg, ...extendedBis.map((b) => b.highest));
-      const newDd = Math.min(channel.dd, ...extendedBis.map((b) => b.lowest));
+    // 只返回确认的笔（暂存区中的笔被丢弃）
+    if (confirmedBis.length > 0) {
+      const newBis = [...channel.bis, ...confirmedBis];
+      const newGg = Math.max(channel.gg, ...confirmedBis.map((b) => b.highest));
+      const newDd = Math.min(channel.dd, ...confirmedBis.map((b) => b.lowest));
 
       return {
         channel: {
@@ -457,9 +321,9 @@ export class ChannelService {
           bis: newBis,
           gg: newGg,
           dd: newDd,
-          endId: extendedBis[extendedBis.length - 1].originIds[0],
+          endId: confirmedBis[confirmedBis.length - 1].originIds[0],
         },
-        usedCount: extendedBis.length,
+        usedCount: confirmedBis.length,
       };
     }
 

@@ -643,24 +643,27 @@ describe('ChannelService', () => {
       expect(result.usedCount).toBe(0);
     });
 
-    it('应该延伸 - 偶数笔无条件延伸', () => {
+    it('应该延伸 - 偶数笔需要等待奇数笔确认', () => {
       const bis = [
         createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
         createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
         createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
         createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
         createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
-        // Bi6: 偶数笔，无条件延伸
+        // Bi6: 偶数笔，等待 Bi7 确认
         createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        // Bi7: 奇数笔，超过极值 (115)
+        createTestBi({ highest: 120, lowest: 100, trend: TrendDirection.Up }),
       ];
 
       const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
       const remaining = bis.slice(5);
       const result = (service as any).extendChannel(channel, remaining);
 
-      expect(result.channel.bis.length).toBe(6);
-      expect(result.usedCount).toBe(1);
-      expect(result.channel.gg).toBe(115);
+      // Bi6 和 Bi7 都应该被确认
+      expect(result.channel.bis.length).toBe(7);
+      expect(result.usedCount).toBe(2);
+      expect(result.channel.gg).toBe(120);
       expect(result.channel.dd).toBe(85);
     });
 
@@ -687,7 +690,7 @@ describe('ChannelService', () => {
       expect(result.channel.dd).toBe(85);
     });
 
-    it('应该不延伸 - 奇数笔未超过极值', () => {
+    it('应该不延伸 - 奇数笔未超过极值，偶数笔回退', () => {
       const bis = [
         createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
         createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
@@ -704,8 +707,9 @@ describe('ChannelService', () => {
       const remaining = bis.slice(5);
       const result = (service as any).extendChannel(channel, remaining);
 
-      expect(result.channel.bis.length).toBe(6);
-      expect(result.usedCount).toBe(1);
+      // ✅ 新预期：第6笔应该被回退
+      expect(result.channel.bis.length).toBe(5);
+      expect(result.usedCount).toBe(0);
     });
 
     it('应该不延伸 - 笔不与中枢重叠', () => {
@@ -747,6 +751,83 @@ describe('ChannelService', () => {
       expect(result.channel.bis.length).toBe(7);
       expect(result.usedCount).toBe(2);
       expect(result.channel.dd).toBe(75); // 更新后的最低点
+    });
+
+    it('应该回退多个偶数笔 - 第9笔未超过极值', () => {
+      const bis = [
+        // 前5笔形成中枢
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: 偶数笔，等待 Bi7 确认
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        // Bi7: 奇数笔，超过极值 (115) → Bi6、Bi7 确认
+        createTestBi({ highest: 120, lowest: 100, trend: TrendDirection.Up }),
+        // Bi8: 偶数笔，等待 Bi9 确认
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Down }),
+        // Bi9: 奇数笔，未超过极值 (120) → Bi8 回退
+        createTestBi({ highest: 118, lowest: 98, trend: TrendDirection.Up }),
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      // 只有 Bi6、Bi7 被确认，Bi8 被回退
+      expect(result.channel.bis.length).toBe(7);
+      expect(result.usedCount).toBe(2);
+    });
+
+    it('应该延伸多个偶数笔 - 第9笔超过极值', () => {
+      const bis = [
+        // 前5笔形成中枢
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: 偶数笔
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        // Bi7: 奇数笔，超过极值 (115) → Bi6、Bi7 确认
+        createTestBi({ highest: 120, lowest: 100, trend: TrendDirection.Up }),
+        // Bi8: 偶数笔
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Down }),
+        // Bi9: 奇数笔，超过极值 (120) → Bi8、Bi9 确认
+        createTestBi({ highest: 125, lowest: 105, trend: TrendDirection.Up }),
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      // Bi6、Bi7、Bi8、Bi9 都被确认
+      expect(result.channel.bis.length).toBe(9);
+      expect(result.usedCount).toBe(4);
+      expect(result.channel.gg).toBe(125);
+    });
+
+    it('应该不延伸 - 偶数笔后没有奇数笔确认', () => {
+      const bis = [
+        // 前5笔形成中枢
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: 偶数笔，等待 Bi7 确认
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        // 没有 Bi7...
+      ];
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      // Bi6 没有被确认（等待奇数笔）
+      expect(result.channel.bis.length).toBe(5);
+      expect(result.usedCount).toBe(0);
     });
   });
 
