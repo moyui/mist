@@ -555,44 +555,43 @@ export class ChannelService {
       return { channels, offsetIndex: 0 };
     }
 
-    // 滑动窗口检测所有 5-bi 中枢
-    for (let i = 0; i <= biCount - 5; i++) {
+    // 使用 while 循环代替滑动窗口
+    let i = 0;
+    while (i <= biCount - 5) {
       const channel = this.detectChannel(data.slice(i), data, i);
 
       if (!channel) {
+        i++;
         continue;
       }
 
       // 尝试延伸中枢
       const remainingBis = data.slice(i + 5);
-      const { channel: extendedChannel } = this.extendChannel(
+      const { channel: extendedChannel, usedCount } = this.extendChannel(
         channel,
         remainingBis,
       );
 
-      // 检查第一笔和最后一笔的极值关系
-      // 向上中枢：第一笔的highest < 最后一笔的highest
-      // 向下中枢：第一笔的lowest > 最后一笔的lowest
-      const firstBi = extendedChannel.bis[0];
-      const lastBi = extendedChannel.bis[extendedChannel.bis.length - 1];
+      // 统一验证位置：检查范围条件和极值条件
 
-      let satisfiesExtremeCondition = false;
-      if (extendedChannel.trend === TrendDirection.Up) {
-        satisfiesExtremeCondition = firstBi.highest < lastBi.highest;
-      } else {
-        satisfiesExtremeCondition = firstBi.lowest > lastBi.lowest;
+      // 验证：检查内部笔范围
+      if (!this.validateChannelRange(extendedChannel)) {
+        i++;
+        continue;
       }
 
-      // 只有满足极值条件的中枢才添加到列表
-      if (satisfiesExtremeCondition) {
-        channels.push(extendedChannel);
+      // 验证：检查起笔和结束笔的极值关系
+      if (!this.validateExtremeCondition(extendedChannel)) {
+        i++;
+        continue;
       }
-      // 如果不满足条件，丢弃这个中枢，继续从下一笔开始检测
+
+      // 所有验证通过，添加到列表
+      channels.push(extendedChannel);
+      // 跳过已使用的笔（基础5笔 + 延伸的笔）
+      i += 5 + usedCount;
     }
 
-    // 合并重叠的中枢（保留笔数少的）
-    const mergedChannels = this.mergeOverlappingChannels(channels);
-
-    return { channels: mergedChannels, offsetIndex: biCount };
+    return { channels, offsetIndex: biCount };
   }
 }
