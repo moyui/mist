@@ -457,6 +457,65 @@ export class ChannelService {
   }
 
   /**
+   * 验证中枢内部笔是否在有效范围内
+   *
+   * 下降中枢：内部笔应该在 [结束笔.lowest, 首笔.highest] 范围内
+   * 上升中枢：内部笔应该在 [首笔.lowest, 结束笔.highest] 范围内
+   *
+   * @param channel 中枢对象
+   * @returns 是否满足范围条件
+   */
+  private validateChannelRange(channel: ChannelVo): boolean {
+    if (channel.bis.length < 3) {
+      return false;
+    }
+
+    const firstBi = channel.bis[0];
+    const lastBi = channel.bis[channel.bis.length - 1];
+
+    // 检查所有内部笔（第2笔到倒数第2笔）
+    for (let i = 1; i < channel.bis.length - 1; i++) {
+      const bi = channel.bis[i];
+
+      if (channel.trend === TrendDirection.Down) {
+        // 下降中枢：内部笔应该在 [结束笔.lowest, 首笔.highest] 范围内
+        if (bi.highest > firstBi.highest || bi.lowest < lastBi.lowest) {
+          return false;
+        }
+      } else {
+        // 上升中枢：内部笔应该在 [首笔.lowest, 结束笔.highest] 范围内
+        if (bi.highest > lastBi.highest || bi.lowest < firstBi.lowest) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * 验证起笔和结束笔的极值关系
+   *
+   * 上升中枢：结束笔.highest > 起笔.highest 且 结束笔.lowest > 起笔.lowest
+   * 下降中枢：结束笔.highest < 起笔.highest 且 结束笔.lowest < 起笔.lowest
+   *
+   * @param channel 中枢对象
+   * @returns 是否满足极值条件
+   */
+  private validateExtremeCondition(channel: ChannelVo): boolean {
+    const firstBi = channel.bis[0];
+    const lastBi = channel.bis[channel.bis.length - 1];
+
+    if (channel.trend === TrendDirection.Up) {
+      // 上升中枢：结束笔的极值应该大于起笔的极值
+      return lastBi.highest > firstBi.highest && lastBi.lowest > firstBi.lowest;
+    } else {
+      // 下降中枢：结束笔的极值应该小于起笔的极值
+      return lastBi.highest < firstBi.highest && lastBi.lowest < firstBi.lowest;
+    }
+  }
+
+  /**
    * 合并重叠的中枢（保留笔数少的）
    * @param channels 中枢数组
    * @returns 合并后的中枢数组
