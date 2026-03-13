@@ -200,33 +200,33 @@ export class ChannelService {
       return null;
     }
 
-    // 检查趋势是否交替
-    if (!this.isTrendAlternating(fiveBis)) {
+    // 验证1：检查趋势是否交替
+    if (!this.validateTrendAlternating(fiveBis)) {
       return null;
     }
 
-    // 从前 3 笔计算 zg-zd
-    const zgZd = this.calculateZgZd(fiveBis);
-    if (!zgZd) {
-      return null;
-    }
-
-    const [zg, zd] = zgZd;
-
-    // 检查第 4、5 笔是否与 zg-zd 重叠
+    // 验证2：从前3笔计算zg-zd
+    const zgZdResult = this.validateZgZdOverlap(fiveBis);
     if (
-      !this.hasOverlap(fiveBis[3], zg, zd) ||
-      !this.hasOverlap(fiveBis[4], zg, zd)
+      !zgZdResult.valid ||
+      zgZdResult.zg === undefined ||
+      zgZdResult.zd === undefined
     ) {
       return null;
     }
+    const { zg, zd } = zgZdResult;
 
-    // 计算 gg-dd（只使用前5笔）
+    // 验证3：检查第4、5笔是否与zg-zd重叠
+    if (!this.validateFiveBiOverlap(fiveBis, zg, zd)) {
+      return null;
+    }
+
+    // 计算gg-dd并创建中枢对象
     const initialFiveBis = fiveBis.slice(0, 5);
     const gg = Math.max(...initialFiveBis.map((bi) => bi.highest));
     const dd = Math.min(...initialFiveBis.map((bi) => bi.lowest));
 
-    // 创建中枢对象，使用原始笔数组的 ID（只使用前5笔）
+    // 创建中枢对象
     return {
       bis: [...initialFiveBis],
       zg: zg,
