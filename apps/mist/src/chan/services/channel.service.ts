@@ -91,6 +91,62 @@ export class ChannelService {
   }
 
   /**
+   * 验证笔的趋势是否交替
+   */
+  private validateTrendAlternating(bis: BiVo[]): boolean {
+    for (let i = 0; i < bis.length - 1; i++) {
+      if (bis[i].trend === bis[i + 1].trend) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 验证前3笔是否有重叠区域（zg > zd）
+   * @returns { valid: boolean, zg?: number; zd?: number }
+   */
+  private validateZgZdOverlap(bis: BiVo[]): {
+    valid: boolean;
+    zg?: number;
+    zd?: number;
+  } {
+    if (bis.length < 3) {
+      return { valid: false };
+    }
+
+    const zg = Math.min(bis[0].highest, bis[1].highest, bis[2].highest);
+    const zd = Math.max(bis[0].lowest, bis[1].lowest, bis[2].lowest);
+
+    if (zg <= zd) {
+      return { valid: false };
+    }
+
+    return { valid: true, zg, zd };
+  }
+
+  /**
+   * 验证笔是否与中枢区间重叠
+   */
+  private validateBiOverlap(bi: BiVo, zg: number, zd: number): boolean {
+    return bi.lowest <= zg && bi.highest >= zd;
+  }
+
+  /**
+   * 验证第4、5笔是否与zg-zd重叠
+   */
+  private validateFiveBiOverlap(
+    fiveBis: BiVo[],
+    zg: number,
+    zd: number,
+  ): boolean {
+    return (
+      this.validateBiOverlap(fiveBis[3], zg, zd) &&
+      this.validateBiOverlap(fiveBis[4], zg, zd)
+    );
+  }
+
+  /**
    * 检查笔是否与中枢区间重叠
    * @param bi 笔数据
    * @param zg 中枢高
