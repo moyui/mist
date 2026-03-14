@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ERROR_MESSAGES } from '@app/constants';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { ChannelLevel, ChannelType } from '../enums/channel.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
@@ -18,21 +19,21 @@ export class ChannelService {
   private validateInput(createChannelDto: CreateChannelDto): void {
     if (!createChannelDto || !createChannelDto.bi) {
       throw new HttpException(
-        'Invalid input: bi data is required',
+        ERROR_MESSAGES.BI_DATA_REQUIRED,
         HttpStatus.BAD_REQUEST,
       );
     }
 
     if (!Array.isArray(createChannelDto.bi)) {
       throw new HttpException(
-        'Invalid input: bi must be an array',
+        ERROR_MESSAGES.BI_MUST_BE_ARRAY,
         HttpStatus.BAD_REQUEST,
       );
     }
 
     if (createChannelDto.bi.length === 0) {
       throw new HttpException(
-        'Invalid input: bi array cannot be empty',
+        ERROR_MESSAGES.BI_ARRAY_EMPTY,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -42,19 +43,22 @@ export class ChannelService {
       const bi = createChannelDto.bi[i];
       if (!bi.highest || !bi.lowest) {
         throw new HttpException(
-          `Invalid bi at index ${i}: missing highest or lowest value`,
+          ERROR_MESSAGES.BI_MISSING_HIGH_LOW.replace('{{index}}', String(i)),
           HttpStatus.BAD_REQUEST,
         );
       }
       if (typeof bi.highest !== 'number' || typeof bi.lowest !== 'number') {
         throw new HttpException(
-          `Invalid bi at index ${i}: highest and lowest must be numbers`,
+          ERROR_MESSAGES.BI_INVALID_NUMBER_TYPE.replace('{{index}}', String(i)),
           HttpStatus.BAD_REQUEST,
         );
       }
       if (bi.highest <= bi.lowest) {
         throw new HttpException(
-          `Invalid bi at index ${i}: highest must be greater than lowest`,
+          ERROR_MESSAGES.BI_HIGH_MUST_EXCEED_LOW.replace(
+            '{{index}}',
+            String(i),
+          ),
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -74,7 +78,7 @@ export class ChannelService {
       // 其他笔必须有完整的 startFenxing 和 endFenxing
       if (!bi.startFenxing || !bi.endFenxing) {
         throw new HttpException(
-          `第 ${i + 1} 笔数据不完整：缺少分型信息`,
+          ERROR_MESSAGES.BI_MISSING_FENXING.replace('{{index}}', String(i + 1)),
           HttpStatus.BAD_REQUEST,
         );
       }
