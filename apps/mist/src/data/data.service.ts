@@ -7,6 +7,7 @@ import {
   IndexPeriodDto,
   IndexVo,
 } from '@app/shared-data';
+import { ERROR_MESSAGES } from '@app/constants';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
@@ -55,7 +56,10 @@ export class DataService {
       symbol: indexPeriodDto.symbol,
     });
     if (!foundIndex) {
-      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        ERROR_MESSAGES.INDEX_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const foundPeriod = await this.indexPeriodRepository.find({
       relations: ['indexData'],
@@ -82,7 +86,10 @@ export class DataService {
       symbol: indexDailyDto.symbol,
     });
     if (!foundIndex) {
-      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        ERROR_MESSAGES.INDEX_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const foundDaily = await this.indexDailyRepository.find({
       relations: ['indexData'],
