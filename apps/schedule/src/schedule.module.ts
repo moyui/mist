@@ -3,19 +3,17 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import * as path from 'path';
 import { RunModule } from './run/run.module';
 import { ScheduleController } from './schedule.controller';
 import { ScheduleService } from './schedule.service';
 import { TaskModule } from './task/task.module';
-import { commonEnvSchema } from '@app/config';
+import { scheduleEnvSchema } from '@app/config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: path.join(__dirname, '.env'),
-      validationSchema: commonEnvSchema,
+      validationSchema: scheduleEnvSchema,
       validationOptions: {
         allowUnknown: true,
         abortEarly: false,
