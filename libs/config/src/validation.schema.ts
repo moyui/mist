@@ -67,3 +67,10 @@ export const chanEnvSchema = commonEnvSchema.append({
 export const scheduleEnvSchema = commonEnvSchema.append({
   PORT: Joi.number().port().default(8003),
 });
+
+/**
+ * MCP Server app-specific environment variable validation
+ */
+export const mcpEnvSchema = commonEnvSchema.append({
+  PORT: Joi.number().port().default(8009),
+});
