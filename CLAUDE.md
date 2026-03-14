@@ -17,7 +17,9 @@ pnpm install
 # Development - run specific app in watch mode
 pnpm run start:dev:mist     # Main stock analysis (port 8001)
 pnpm run start:dev:saya     # AI Agent system (port 8002)
+pnpm run start:dev:schedule # Scheduled tasks (port 8003)
 pnpm run start:dev:chan     # Chan Theory test entry (port 8008)
+pnpm run start:dev:mcp-server # MCP server (port 8009)
 
 # Build all projects
 pnpm run build
@@ -39,12 +41,15 @@ pnpm run test:watch         # Watch mode
 
 ### Applications (`apps/`)
 
+All applications use a standardized `PORT` environment variable with Joi validation for type safety.
+
 | App | Purpose | Port | Key Features |
 |-----|---------|------|--------------|
 | **mist** | Main stock analysis application | 8001 | Data collection, technical indicators, Chan Theory analysis |
 | **saya** | AI Agent system | 8002 | Multi-agent analysis using LangChain/LangGraph |
 | **schedule** | Scheduled task runner | 8003 | Periodic data collection and analysis |
 | **chan** | Chan Theory test/debug entry | 8008 | K-line merge, Bi (stroke) calculation, Channel detection |
+| **mcp-server** | MCP server for AI integration | 8009 | Model Context Protocol server |
 
 ### Libraries (`libs/`)
 
