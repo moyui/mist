@@ -11,5 +11,6 @@ import { KMergeService } from './services/k-merge.service';
   imports: [TrendModule, UtilsModule],
   controllers: [ChanController],
   providers: [ChanService, ChannelService, BiService, KMergeService],
+  exports: [ChanService, ChannelService, BiService, KMergeService],
 })
 export class ChanModule {}

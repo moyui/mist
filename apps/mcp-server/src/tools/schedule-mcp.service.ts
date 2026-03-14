@@ -1,0 +1,219 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { MCPTool, MCPToolParam } from '@rekog/mcp-nest';
+import { SchedulerRegistry } from '@nestjs/schedule';
+
+/**
+ * MCP Service for Scheduled Tasks Management
+ *
+ * Provides tools for managing and triggering scheduled data collection tasks:
+ * - Trigger manual data collection
+ * - Get task status
+ * - List scheduled jobs
+ */
+@Injectable()
+export class ScheduleMcpService {
+  private readonly logger = new Logger(ScheduleMcpService.name);
+
+  constructor(private readonly schedulerRegistry: SchedulerRegistry) {}
+
+  /**
+   * Trigger immediate data collection for a specific index and period
+   *
+   * Note: This is a PoC implementation. In production, you would integrate
+   * with the actual schedule app's data collection logic.
+   *
+   * @param symbol - Index symbol (e.g., '000001' for Shanghai Composite)
+   * @param period - Time period to collect
+   * @returns Job execution result
+   */
+  @MCPTool('trigger_data_collection', '触发数据采集任务')
+  async triggerDataCollection(
+    @MCPToolParam('symbol', '指数代码（如：000001）', 'string')
+    symbol: string,
+    @MCPToolParam(
+      'period',
+      '时间周期（ONE/FIVE/FIFTEEN/THIRTY/SIXTY/DAILY）',
+      'string',
+    )
+    period: 'ONE' | 'FIVE' | 'FIFTEEN' | 'THIRTY' | 'SIXTY' | 'DAILY',
+  ) {
+    this.logger.log(`Triggering data collection for ${symbol} (${period})`);
+
+    // PoC: In production, this would call the actual data collection service
+    // For now, return a mock response
+    return {
+      success: true,
+      message: `Data collection triggered for ${symbol} (${period})`,
+      data: {
+        symbol,
+        period,
+        triggeredAt: new Date().toISOString(),
+        status: 'queued',
+        // In production: actual job ID from the scheduler
+        jobId: `job_${Date.now()}`,
+      },
+    };
+  }
+
+  /**
+   * Get status of all scheduled jobs
+   *
+   * @returns List of all scheduled jobs with their status
+   */
+  @MCPTool('list_scheduled_jobs', '列出所有定时任务')
+  async listScheduledJobs() {
+    this.logger.debug('Listing all scheduled jobs');
+
+    const jobs = this.schedulerRegistry.getCronJobs();
+    const jobList = Array.from(jobs.entries()).map(([name, job]) => ({
+      name,
+      nextExecution: job?.next?.toDate?.()?.toISOString(),
+      running: job?.running ?? false,
+    }));
+
+    this.logger.debug(`Found ${jobList.length} scheduled jobs`);
+
+    return {
+      success: true,
+      data: jobList,
+      count: jobList.length,
+    };
+  }
+
+  /**
+   * Get a specific scheduled job information
+   *
+   * @param jobName - Name of the scheduled job
+   * @returns Job information
+   */
+  @MCPTool('get_job_status', '获取定时任务状态')
+  async getJobStatus(
+    @MCPToolParam('jobName', '任务名称', 'string')
+    jobName: string,
+  ) {
+    this.logger.debug(`Getting status for job: ${jobName}`);
+
+    try {
+      const job = this.schedulerRegistry.getCronJob(jobName);
+
+      if (!job) {
+        return {
+          success: false,
+          error: `Job ${jobName} not found`,
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          name: jobName,
+          running: job.running,
+          nextExecution: job?.next?.toDate?.()?.toISOString(),
+          lastExecution: job?.lastDate?.()?.toISOString(),
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error getting job status: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Trigger batch data collection for multiple indices
+   *
+   * @param symbols - Array of index symbols
+   * @param periods - Array of time periods to collect
+   * @returns Batch job execution result
+   */
+  @MCPTool('trigger_batch_collection', '批量触发数据采集')
+  async triggerBatchCollection(
+    @MCPToolParam('symbols', '指数代码数组', 'array')
+    symbols: string[],
+    @MCPToolParam('periods', '时间周期数组', 'array')
+    periods: Array<'ONE' | 'FIVE' | 'FIFTEEN' | 'THIRTY' | 'SIXTY' | 'DAILY'>,
+  ) {
+    this.logger.log(
+      `Triggering batch collection for ${symbols.length} symbols, ${periods.length} periods`,
+    );
+
+    const tasks = [];
+    for (const symbol of symbols) {
+      for (const period of periods) {
+        tasks.push({ symbol, period });
+      }
+    }
+
+    return {
+      success: true,
+      message: `Batch data collection triggered for ${tasks.length} tasks`,
+      data: {
+        taskCount: tasks.length,
+        triggeredAt: new Date().toISOString(),
+        status: 'queued',
+        tasks: tasks.slice(0, 10), // Return first 10 tasks as sample
+        // In production: actual batch job ID
+        batchId: `batch_${Date.now()}`,
+      },
+    };
+  }
+
+  /**
+   * Get data collection schedule configuration
+   *
+   * @returns Current schedule configuration
+   */
+  @MCPTool('get_schedule_config', '获取数据采集计划配置')
+  async getScheduleConfig() {
+    this.logger.debug('Getting schedule configuration');
+
+    // PoC: Return typical schedule configuration
+    // In production, this would read from actual configuration
+    return {
+      success: true,
+      data: {
+        description: 'Mist 数据采集计划配置',
+        schedules: [
+          {
+            name: '日线数据采集',
+            period: 'DAILY',
+            cron: '0 17 * * 1-5', // 工作日 17:00
+            description: '每个工作日下午5点采集日线数据',
+          },
+          {
+            name: '1分钟数据采集',
+            period: 'ONE',
+            cron: '*/1 * 9-15 * * 1-5', // 工作日 9:00-15:00 每分钟
+            description: '交易时间内每分钟采集一次',
+          },
+          {
+            name: '5分钟数据采集',
+            period: 'FIVE',
+            cron: '*/5 * 9-15 * * 1-5', // 工作日 9:00-15:00 每5分钟
+            description: '交易时间内每5分钟采集一次',
+          },
+          {
+            name: '15分钟数据采集',
+            period: 'FIFTEEN',
+            cron: '*/15 * 9-15 * * 1-5', // 工作日 9:00-15:00 每15分钟
+            description: '交易时间内每15分钟采集一次',
+          },
+          {
+            name: '30分钟数据采集',
+            period: 'THIRTY',
+            cron: '*/30 * 9-15 * * 1-5', // 工作日 9:00-15:00 每30分钟
+            description: '交易时间内每30分钟采集一次',
+          },
+          {
+            name: '60分钟数据采集',
+            period: 'SIXTY',
+            cron: '0 * 9-15 * * 1-5', // 工作日 9:00-15:00 每小时
+            description: '交易时间内每小时采集一次',
+          },
+        ],
+      },
+    };
+  }
+}

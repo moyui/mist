@@ -104,6 +104,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/chan/tsconfig.app.json"
       }
+    },
+    "mcp-server": {
+      "type": "application",
+      "root": "apps/mcp-server",
+      "entryFile": "main",
+      "sourceRoot": "apps/mcp-server/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/mcp-server/tsconfig.app.json"
+      }
     }
   }
 }

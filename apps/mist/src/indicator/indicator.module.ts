@@ -8,5 +8,6 @@ import { IndicatorService } from './indicator.service';
   imports: [DataModule, TimezoneModule],
   controllers: [IndicatorController],
   providers: [IndicatorService],
+  exports: [IndicatorService],
 })
 export class IndicatorModule {}
