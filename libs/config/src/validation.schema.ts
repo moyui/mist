@@ -42,4 +42,28 @@ export const sayaEnvSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   TAVILY_API_KEY: Joi.string().required(),
+}).concat(commonEnvSchema);
+
+/**
+ * Mist app-specific environment variable validation
+ */
+export const mistEnvSchema = commonEnvSchema.append({
+  PORT: Joi.number().port().default(8001),
+  redis_server_host: Joi.string().hostname().default('localhost'),
+  redis_server_port: Joi.number().port().default(6379),
+  redis_server_db: Joi.number().default(0),
+});
+
+/**
+ * Chan app-specific environment variable validation
+ */
+export const chanEnvSchema = commonEnvSchema.append({
+  PORT: Joi.number().port().default(8008),
+});
+
+/**
+ * Schedule app-specific environment variable validation
+ */
+export const scheduleEnvSchema = commonEnvSchema.append({
+  PORT: Joi.number().port().default(8003),
 });
