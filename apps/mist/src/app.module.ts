@@ -10,14 +10,14 @@ import { ChanModule } from './chan/chan.module';
 import { DataModule } from './data/data.module';
 import { IndicatorModule } from './indicator/indicator.module';
 import { TrendModule } from './trend/trend.module';
-import { appEnvSchema } from '@app/config';
+import { mistEnvSchema } from '@app/config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: path.join(__dirname, '.env'),
-      validationSchema: appEnvSchema,
+      validationSchema: mistEnvSchema,
       validationOptions: {
         allowUnknown: true,
         abortEarly: false,
