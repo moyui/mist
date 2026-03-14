@@ -370,11 +370,11 @@ describe('Shanghai Index 2024-2025 - Chan Algorithm Test Suite', () => {
       if (channelData.length === 0) return;
 
       channelData.forEach((ch) => {
-        //zg-zd应该等于前3笔的重叠区间（缠论正确逻辑）
-        //后续笔延伸中枢时，zg-zd保持不变
-        const first3Bis = ch.bis.slice(0, 3);
-        const minHighest = Math.min(...first3Bis.map((b: any) => b.highest));
-        const maxLowest = Math.max(...first3Bis.map((b: any) => b.lowest));
+        //zg-zd应该等于所有中枢笔的重叠区间（缠论正确逻辑）
+        //对于5笔中枢，计算所有5笔的重叠；延伸中枢时，zg-zd会更新
+        const allBis = ch.bis;
+        const minHighest = Math.min(...allBis.map((b: any) => b.highest));
+        const maxLowest = Math.max(...allBis.map((b: any) => b.lowest));
 
         expect(ch.zg).toBeCloseTo(minHighest, 1);
         expect(ch.zd).toBeCloseTo(maxLowest, 1);

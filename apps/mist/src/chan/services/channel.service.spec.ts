@@ -814,7 +814,7 @@ describe('ChannelService', () => {
         createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
         createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Up }),
         createTestBi({ highest: 102, lowest: 82, trend: TrendDirection.Down }),
-        // Bi6: 偶数笔
+        // Bi6: 偶数笔，低点大幅跌破zd (87 < 89)，触发突破检测
         createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Up }),
         // Bi7: 奇数笔，超过极值 (80)
         createTestBi({ highest: 100, lowest: 75, trend: TrendDirection.Down }),
@@ -824,9 +824,9 @@ describe('ChannelService', () => {
       const remaining = bis.slice(5);
       const result = (service as any).extendChannel(channel, remaining);
 
-      expect(result.channel.bis.length).toBe(7);
-      expect(result.usedCount).toBe(2);
-      expect(result.channel.dd).toBe(75); // 更新后的最低点
+      // 由于Bi6触发突破检测（lowest=87 < zd-1=89），中枢不延伸
+      expect(result.channel.bis.length).toBe(5);
+      expect(result.usedCount).toBe(0);
     });
 
     it('应该回退多个偶数笔 - 第9笔未超过极值', () => {
@@ -1256,6 +1256,44 @@ describe('ChannelService', () => {
       expect(result.length).toBe(1);
       expect(result[0].bis.length).toBe(1); // 保留笔数最少的
       expect(result[0].zg).toBe(105); // channel1 的 zg
+    });
+  });
+
+  describe('zg/zd calculation bug', () => {
+    it('should calculate zg from all 5 bis, not just first 3', () => {
+      const fiveBis = [
+        createTestBi({
+          highest: 3574.23,
+          lowest: 3115.01,
+          trend: TrendDirection.Down,
+        }),
+        createTestBi({
+          highest: 3401.25,
+          lowest: 3115.01,
+          trend: TrendDirection.Up,
+        }),
+        createTestBi({
+          highest: 3401.25,
+          lowest: 3161.64,
+          trend: TrendDirection.Down,
+        }),
+        createTestBi({
+          highest: 3344.05,
+          lowest: 3161.64,
+          trend: TrendDirection.Up,
+        }),
+        createTestBi({
+          highest: 3344.05,
+          lowest: 2923.49,
+          trend: TrendDirection.Down,
+        }),
+      ];
+
+      const result = (service as any).detectChannel(fiveBis, fiveBis, 0);
+
+      expect(result).not.toBeNull();
+      // zg should be min of ALL 5 bis' highest, not just first 3
+      expect(result.zg).toBe(3344.05); // Currently fails with 3401.25
     });
   });
 });

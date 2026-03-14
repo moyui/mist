@@ -81,15 +81,6 @@ export class ChannelService {
     }
   }
 
-  private isTrendAlternating(bis: BiVo[]) {
-    for (let i = 0; i < bis.length - 1; i++) {
-      if (bis[i].trend === bis[i + 1].trend) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   /**
    * 验证笔的趋势是否交替
    */
@@ -115,8 +106,10 @@ export class ChannelService {
       return { valid: false };
     }
 
-    const zg = Math.min(bis[0].highest, bis[1].highest, bis[2].highest);
-    const zd = Math.max(bis[0].lowest, bis[1].lowest, bis[2].lowest);
+    // Calculate zg/zd from all 5 bis (or all available if less than 5)
+    const bisToCheck = bis.slice(0, Math.min(5, bis.length));
+    const zg = Math.min(...bisToCheck.map((bi) => bi.highest));
+    const zd = Math.max(...bisToCheck.map((bi) => bi.lowest));
 
     if (zg <= zd) {
       return { valid: false };
@@ -156,32 +149,6 @@ export class ChannelService {
   private hasOverlap(bi: BiVo, zg: number, zd: number): boolean {
     // 基本重叠检查：笔的低点 ≤ zg 且笔的高点 ≥ zd
     return bi.lowest <= zg && bi.highest >= zd;
-  }
-
-  /**
-   * 计算 zg-zd（中枢高低点）
-   * zg = 前 3 笔的最低高点
-   * zd = 前 3 笔的最高低点
-   * @param bis 笔数组（至少 3 笔）
-   * @returns [zg, zd] 或 null（无重叠）
-   */
-  private calculateZgZd(bis: BiVo[]): [number, number] | null {
-    if (bis.length < 3) {
-      return null;
-    }
-
-    // zg = 前 3 笔的最低高点
-    const zg = Math.min(bis[0].highest, bis[1].highest, bis[2].highest);
-
-    // zd = 前 3 笔的最高低点
-    const zd = Math.max(bis[0].lowest, bis[1].lowest, bis[2].lowest);
-
-    // 检查是否有重叠
-    if (zg <= zd) {
-      return null;
-    }
-
-    return [zg, zd];
   }
 
   /**
@@ -429,6 +396,10 @@ export class ChannelService {
       const newGg = Math.max(channel.gg, ...confirmedBis.map((b) => b.highest));
       const newDd = Math.min(channel.dd, ...confirmedBis.map((b) => b.lowest));
 
+      // Update zg/zd to reflect all bis in the extended channel
+      const newZg = Math.min(...newBis.map((bi) => bi.highest));
+      const newZd = Math.max(...newBis.map((bi) => bi.lowest));
+
       // 更新 displayEndId：使用最后一个确认笔的中间位置
       const lastConfirmedBi = confirmedBis[confirmedBis.length - 1];
       const lastBiMiddleIndex = Math.floor(
@@ -440,6 +411,8 @@ export class ChannelService {
         channel: {
           ...channel,
           bis: newBis,
+          zg: newZg,
+          zd: newZd,
           gg: newGg,
           dd: newDd,
           endId: confirmedBis[confirmedBis.length - 1].originIds[0],
@@ -534,33 +507,6 @@ export class ChannelService {
       // 下降中枢：结束笔的极值应该小于起笔的极值
       return lastBi.highest < firstBi.highest && lastBi.lowest < firstBi.lowest;
     }
-  }
-
-  /**
-   * 合并重叠的中枢（保留笔数少的）
-   * @param channels 中枢数组
-   * @returns 合并后的中枢数组
-   */
-  private mergeOverlappingChannels(channels: ChannelVo[]): ChannelVo[] {
-    const result: ChannelVo[] = [];
-
-    for (const current of channels) {
-      const overlapIndex = result.findIndex((existing) =>
-        this.hasTimeOverlap(existing, current),
-      );
-
-      if (overlapIndex === -1) {
-        // 无重叠，直接添加
-        result.push(current);
-      } else {
-        // 有重叠，保留笔数少的（更精确）
-        if (current.bis.length < result[overlapIndex].bis.length) {
-          result[overlapIndex] = current;
-        }
-      }
-    }
-
-    return result;
   }
 
   /**
