@@ -429,6 +429,13 @@ export class ChannelService {
       const newGg = Math.max(channel.gg, ...confirmedBis.map((b) => b.highest));
       const newDd = Math.min(channel.dd, ...confirmedBis.map((b) => b.lowest));
 
+      // 更新 displayEndId：使用最后一个确认笔的中间位置
+      const lastConfirmedBi = confirmedBis[confirmedBis.length - 1];
+      const lastBiMiddleIndex = Math.floor(
+        lastConfirmedBi.originIds.length / 2,
+      );
+      const newDisplayEndId = lastConfirmedBi.originIds[lastBiMiddleIndex];
+
       return {
         channel: {
           ...channel,
@@ -437,7 +444,7 @@ export class ChannelService {
           dd: newDd,
           endId: confirmedBis[confirmedBis.length - 1].originIds[0],
           displayStartId: channel.displayStartId,
-          displayEndId: channel.displayEndId,
+          displayEndId: newDisplayEndId,
         },
         usedCount: confirmedBis.length,
       };

@@ -905,6 +905,45 @@ describe('ChannelService', () => {
       expect(result.channel.bis.length).toBe(5);
       expect(result.usedCount).toBe(0);
     });
+
+    it('should update displayEndId when channel extends with sixth bi', () => {
+      const bis = [
+        // Base 5-bi channel
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+        // Bi6: Even bi waiting for Bi7
+        createTestBi({ highest: 107, lowest: 87, trend: TrendDirection.Down }),
+        // Bi7: Odd bi exceeding extreme (115)
+        createTestBi({ highest: 120, lowest: 100, trend: TrendDirection.Up }),
+      ];
+
+      // Set originIds to test display field calculation
+      bis[0].originIds = [1, 2, 3]; // Middle: 2
+      bis[1].originIds = [4, 5, 6]; // Middle: 5
+      bis[2].originIds = [7, 8, 9]; // Middle: 8
+      bis[3].originIds = [10, 11, 12]; // Middle: 11
+      bis[4].originIds = [13, 14, 15]; // Middle: 14
+      bis[5].originIds = [16, 17, 18]; // Middle: 17
+      bis[6].originIds = [19, 20, 21]; // Middle: 20
+
+      const channel = (service as any).detectChannel(bis.slice(0, 5), bis, 0);
+      const remaining = bis.slice(5);
+      const result = (service as any).extendChannel(channel, remaining);
+
+      // Verify channel was extended
+      expect(result.channel.bis.length).toBe(7);
+      expect(result.usedCount).toBe(2);
+
+      // Verify displayStartId remains unchanged (from initial channel)
+      expect(result.channel.displayStartId).toBe(2);
+
+      // Verify displayEndId updates to middle of last confirmed bi (Bi7)
+      // Bi7 has originIds [19, 20, 21], middle index is 1 (floor(3/2))
+      expect(result.channel.displayEndId).toBe(20);
+    });
   });
 
   describe('时间重叠检查', () => {
