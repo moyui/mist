@@ -1,4 +1,4 @@
-import { ERROR_MESSAGES } from '@app/constants/errors';
+import { ERROR_MESSAGES } from '@app/constants';
 import { UtilsService } from '@app/utils';
 import { HttpService } from '@nestjs/axios';
 import {
