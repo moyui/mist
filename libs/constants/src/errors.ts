@@ -48,6 +48,10 @@ export const ERROR_MESSAGES = {
   DATABASE_CONNECTION_FAILED: 'Failed to connect to database',
   DATABASE_QUERY_FAILED: 'Database query failed',
 
+  // === External API Errors ===
+  TRADING_DAY_CHECK_FAILED: 'Failed to check if date is a trading day',
+  LOCAL_SERVICE_REQUEST_FAILED: 'Failed to request local service',
+
   // === General Errors ===
   INTERNAL_SERVER_ERROR: 'Internal server error occurred',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable',

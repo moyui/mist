@@ -1,3 +1,4 @@
+import { ERROR_MESSAGES } from '@app/constants/errors';
 import { UtilsService } from '@app/utils';
 import { HttpService } from '@nestjs/axios';
 import {
@@ -233,7 +234,7 @@ export class TimezoneService {
           catchError((error: AxiosError) => {
             this.logger.error(error.response?.data, TimezoneService);
             throw new HttpException(
-              '请求当前是否是交易时间错误',
+              ERROR_MESSAGES.TRADING_DAY_CHECK_FAILED,
               HttpStatus.SERVICE_UNAVAILABLE,
             );
           }),

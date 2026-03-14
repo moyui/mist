@@ -1,3 +1,4 @@
+import { ERROR_MESSAGES } from '@app/constants/errors';
 import { UtilsService } from '@app/utils';
 import { tool } from '@langchain/core/tools';
 import { HttpService } from '@nestjs/axios';
@@ -43,7 +44,7 @@ export class ToolsService {
           catchError((error: AxiosError) => {
             this.logger.error(error, ToolsService);
             throw new HttpException(
-              `请求本地数据：${localServiceDto.url}出错`,
+              `${ERROR_MESSAGES.LOCAL_SERVICE_REQUEST_FAILED}: ${localServiceDto.url}`,
               HttpStatus.SERVICE_UNAVAILABLE,
             );
           }),
