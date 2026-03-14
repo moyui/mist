@@ -1,3 +1,4 @@
+import { ERROR_MESSAGES } from '@app/constants';
 import {
   CronIndexDailyDto,
   CronIndexPeriodDto,
@@ -69,7 +70,7 @@ export class SharedDataService {
           catchError((error: AxiosError) => {
             this.logger.error(error, SharedDataService);
             throw new HttpException(
-              '请求指数周期数据错误',
+              ERROR_MESSAGES.INDEX_PERIOD_REQUEST_FAILED,
               HttpStatus.SERVICE_UNAVAILABLE,
             );
           }),
@@ -88,7 +89,10 @@ export class SharedDataService {
       symbol: saveIndexDto.symbol,
     });
     if (!foundIndex) {
-      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        ERROR_MESSAGES.INDEX_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
     // 按照指数id、时间戳、类型查找到对应的id
     const foundIndexPeriod = await this.indexPeriodRepository.findOne({
@@ -283,7 +287,7 @@ export class SharedDataService {
           catchError((error: AxiosError) => {
             this.logger.error(error, SharedDataService);
             throw new HttpException(
-              '请求指数日期数据错误',
+              ERROR_MESSAGES.INDEX_DAILY_REQUEST_FAILED,
               HttpStatus.SERVICE_UNAVAILABLE,
             );
           }),
@@ -296,7 +300,10 @@ export class SharedDataService {
     // 首先按照时间找到对应的字段和类型
     const foundIndex = await this.indexDataRepository.findOneBy({ symbol });
     if (!foundIndex) {
-      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        ERROR_MESSAGES.INDEX_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const foundIndexDailyTime = parse(
       data.date,
@@ -338,7 +345,10 @@ export class SharedDataService {
     // 首先按照时间找到对应的字段和类型
     const foundIndex = await this.indexDataRepository.findOneBy({ symbol });
     if (!foundIndex) {
-      throw new HttpException('查询不到该指数信息', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        ERROR_MESSAGES.INDEX_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const batchData = await Promise.all(
       data.map(async (item) => {
