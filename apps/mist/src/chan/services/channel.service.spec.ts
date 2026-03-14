@@ -448,6 +448,82 @@ describe('ChannelService', () => {
     });
   });
 
+  describe('display fields calculation', () => {
+    it('should calculate displayStartId as middle ID of first bi originIds', () => {
+      const originalBis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+      ];
+
+      // Set originIds with 3 elements [1, 2, 3]
+      originalBis[0].originIds = [1, 2, 3];
+      originalBis[1].originIds = [10, 11, 12];
+      originalBis[2].originIds = [13, 14, 15];
+      originalBis[3].originIds = [16, 17, 18];
+      originalBis[4].originIds = [20, 21, 22];
+
+      const slice = originalBis.slice(0);
+      const result = (service as any).detectChannel(slice, originalBis, 0);
+
+      expect(result).not.toBeNull();
+      // Middle index of [1, 2, 3] is 1 (Math.floor(3 / 2) = 1)
+      expect(result!.displayStartId).toBe(2);
+    });
+
+    it('should calculate displayEndId as middle ID of last bi originIds', () => {
+      const originalBis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+      ];
+
+      // Set originIds with 3 elements
+      originalBis[0].originIds = [1, 2, 3];
+      originalBis[1].originIds = [10, 11, 12];
+      originalBis[2].originIds = [13, 14, 15];
+      originalBis[3].originIds = [16, 17, 18];
+      originalBis[4].originIds = [20, 21, 22];
+
+      const slice = originalBis.slice(0);
+      const result = (service as any).detectChannel(slice, originalBis, 0);
+
+      expect(result).not.toBeNull();
+      // Middle index of [20, 21, 22] is 1 (Math.floor(3 / 2) = 1)
+      expect(result!.displayEndId).toBe(21);
+    });
+
+    it('should handle even-length originIds arrays', () => {
+      const originalBis = [
+        createTestBi({ highest: 110, lowest: 90, trend: TrendDirection.Up }),
+        createTestBi({ highest: 105, lowest: 85, trend: TrendDirection.Down }),
+        createTestBi({ highest: 115, lowest: 95, trend: TrendDirection.Up }),
+        createTestBi({ highest: 108, lowest: 88, trend: TrendDirection.Down }),
+        createTestBi({ highest: 112, lowest: 92, trend: TrendDirection.Up }),
+      ];
+
+      // Set originIds with 4 elements (even length)
+      originalBis[0].originIds = [1, 2, 3, 4];
+      originalBis[1].originIds = [10, 11, 12, 13];
+      originalBis[2].originIds = [14, 15, 16, 17];
+      originalBis[3].originIds = [18, 19, 20, 21];
+      originalBis[4].originIds = [22, 23, 24, 25];
+
+      const slice = originalBis.slice(0);
+      const result = (service as any).detectChannel(slice, originalBis, 0);
+
+      expect(result).not.toBeNull();
+      // Middle index of [1, 2, 3, 4] is 2 (Math.floor(4 / 2) = 2)
+      expect(result!.displayStartId).toBe(3);
+      // Middle index of [22, 23, 24, 25] is 2
+      expect(result!.displayEndId).toBe(24);
+    });
+  });
+
   describe('初始极值计算', () => {
     it('应该正确计算向上中枢的初始极值', () => {
       const bis = [

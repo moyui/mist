@@ -226,6 +226,16 @@ export class ChannelService {
     const gg = Math.max(...initialFiveBis.map((bi) => bi.highest));
     const dd = Math.min(...initialFiveBis.map((bi) => bi.lowest));
 
+    // 计算显示范围：使用第一笔和最后一笔的中间位置
+    const firstBi = originalBis[startIndex];
+    const firstBiMiddleIndex = Math.floor(firstBi.originIds.length / 2);
+    const displayStartId = firstBi.originIds[firstBiMiddleIndex];
+
+    const lastBiIndex = startIndex + 4;
+    const lastBi = originalBis[lastBiIndex];
+    const lastBiMiddleIndex = Math.floor(lastBi.originIds.length / 2);
+    const displayEndId = lastBi.originIds[lastBiMiddleIndex];
+
     // 创建中枢对象
     return {
       bis: [...initialFiveBis],
@@ -241,6 +251,8 @@ export class ChannelService {
           originalBis[startIndex + 4].originIds.length - 1
         ],
       trend: fiveBis[0].trend,
+      displayStartId: displayStartId,
+      displayEndId: displayEndId,
     };
   }
 
@@ -424,6 +436,8 @@ export class ChannelService {
           gg: newGg,
           dd: newDd,
           endId: confirmedBis[confirmedBis.length - 1].originIds[0],
+          displayStartId: channel.displayStartId,
+          displayEndId: channel.displayEndId,
         },
         usedCount: confirmedBis.length,
       };

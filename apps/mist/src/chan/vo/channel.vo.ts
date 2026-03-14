@@ -13,4 +13,6 @@ export class ChannelVo {
   startId: number; // 起始的k线索引
   endId: number; // 结束的k线索引
   trend: TrendDirection; // 趋势
+  displayStartId: number; // 第一笔的中间位置K线ID
+  displayEndId: number; // 最后一笔的中间位置K线ID
 }
