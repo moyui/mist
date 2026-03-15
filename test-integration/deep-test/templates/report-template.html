@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后端深度测试报告 - {{timestamp}}</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --info: #2196F3;
+            --dark: #333;
+            --light: #f5f5f5;
+            --border: #e0e0e0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, #45a049 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        header .meta { opacity: 0.9; font-size: 0.95em; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #fafafa;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover { transform: translateY(-3px); }
+
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-value.success { color: var(--primary); }
+        .metric-value.danger { color: var(--danger); }
+        .metric-value.info { color: var(--info); }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section:last-child { border-bottom: none; }
+
+        .section h2 {
+            color: var(--dark);
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-result {
+            background: #fafafa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .test-result:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .test-result.passed { border-left-color: var(--primary); }
+        .test-result.failed { border-left-color: var(--danger); }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .test-name { font-weight: 600; font-size: 1.05em; }
+        .test-status { padding: 4px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; }
+        .test-status.passed { background: #e8f5e9; color: var(--primary); }
+        .test-status.failed { background: #ffebee; color: var(--danger); }
+
+        .test-meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .validation-list {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border);
+        }
+
+        .validation-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 0.9em;
+        }
+
+        .validation-item.passed { color: var(--primary); }
+        .validation-item.failed { color: var(--danger); }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .error-box {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, #45a049 100%);
+            transition: width 0.3s ease;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+            background: #fafafa;
+        }
+
+        @media (max-width: 768px) {
+            .summary-grid { grid-template-columns: 1fr 1fr; }
+            header h1 { font-size: 1.8em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 后端深度测试报告</h1>
+            <div class="meta">
+                <span>生成时间: {{timestamp}}</span> |
+                <span>测试时长: {{duration}}</span>
+            </div>
+        </header>
+
+        <div class="summary-grid">
+            <div class="metric-card">
+                <div class="metric-value info">{{totalTests}}</div>
+                <div class="metric-label">总测试数</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value success">{{passedTests}}</div>
+                <div class="metric-label">通过</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value danger">{{failedTests}}</div>
+                <div class="metric-label">失败</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value success">{{passRate}}</div>
+                <div class="metric-label">通过率</div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{passRate}}"></div>
+        </div>
+
+        {{content}}
+
+        <footer>
+            <p>Mist 后端深度测试系统 | 自动生成</p>
+        </footer>
+    </div>
+</body>
+</html>
