@@ -6,10 +6,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { IndexData, IndexPeriod, IndexDaily } from '@app/shared-data';
 import { ChanModule } from '../../mist/src/chan/chan.module';
 import { IndicatorModule } from '../../mist/src/indicator/indicator.module';
-import { ChanMcpService } from './tools/chan-mcp.service';
-import { IndicatorMcpService } from './tools/indicator-mcp.service';
-import { DataMcpService } from './tools/data-mcp.service';
-import { ScheduleMcpService } from './tools/schedule-mcp.service';
+import { ChanMcpService } from './services/chan-mcp.service';
+import { IndicatorMcpService } from './services/indicator-mcp.service';
+import { DataMcpService } from './services/data-mcp.service';
+import { ScheduleMcpService } from './services/schedule-mcp.service';
 import { mcpEnvSchema } from '@app/config';
 import * as path from 'path';
 
