@@ -109,6 +109,47 @@ pnpm run build
 node dist/apps/mcp-server/main.js
 ```
 
+## 测试
+
+### 运行单元测试
+
+```bash
+# 运行所有测试
+pnpm test
+
+# 运行 mcp-server 测试
+pnpm test -- apps/mcp-server
+
+# 监听模式
+pnpm test:watch -- apps/mcp-server
+
+# 覆盖率报告
+pnpm test:cov -- apps/mcp-server
+```
+
+### 测试结构
+
+```
+apps/mcp-server/src/
+├── base/
+│   └── base-mcp-tool.service.spec.ts    # Base class tests
+├── services/
+│   ├── chan-mcp.service.spec.ts         # Chan Theory tests
+│   ├── indicator-mcp.service.spec.ts    # Technical indicators tests
+│   ├── data-mcp.service.spec.ts         # Data query tests
+│   └── schedule-mcp.service.spec.ts     # Scheduled task tests
+```
+
+### 测试覆盖率
+
+当前测试覆盖率目标：**80%+**
+
+核心测试场景：
+- ✅ 所有 MCP tools 的成功响应
+- ✅ 所有 MCP tools 的错误处理
+- ✅ 参数验证
+- ✅ 边界条件测试
+
 ## 架构
 
 ```
@@ -117,77 +158,136 @@ node dist/apps/mcp-server/main.js
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │ Chan MCP     │  │ Indicator    │  │ Data MCP     │     │
-│  │ Service      │  │ MCP Service  │  │ Service      │     │
+│  │ ChanMcp      │  │ Indicator    │  │ DataMcp      │     │
+│  │ Service      │  │ McpService   │  │ Service      │     │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
 │         │                 │                 │              │
 │  ┌──────┴─────────────────┴─────────────────┴───────┐     │
-│  │              MCP Tools (@rekog/mcp-nest)          │     │
+│  │          BaseMcpToolService (Base Class)          │     │
+│  │  - executeTool() wrapper                          │     │
+│  │  - success() / error() response formatters        │     │
+│  │  - Unified logging and error handling             │     │
 │  └────────────────────────┬────────────────────────┘     │
 └───────────────────────────┼─────────────────────────────┘
                             │
-                    stdio/stderr
+                    stdio (MCP Protocol)
                             │
 ┌───────────────────────────┴─────────────────────────────┐
-│                  AI Agent (AstrBot)                      │
+│                  AI Agent (Claude/AstrBot)              │
 │                   - Task Planning                        │
 │                   - Tool Calling                         │
 │                   - Result Processing                    │
 └───────────────────────────────────────────────────────────┘
 ```
 
-## 与 AstrBot 集成
+### 目录结构
 
-### 1. 安装 AstrBot
-
-参考 [AstrBot 官网](https://astrbot.app/) 和 [GitHub](https://github.com/AstrBotDevs/AstrBot)
-
-### 2. 配置 MCP Server
-
-在 AstrBot 的配置文件中添加 Mist MCP Server：
-
-```yaml
-# astrbot/config/mcp_servers.yaml
-mist:
-  command: node
-  args: ["/path/to/mist/dist/apps/mcp-server/main.js"]
-  env:
-    NODE_ENV: production
-    MYSQL_SERVER_HOST: localhost
-    MYSQL_SERVER_PORT: 3306
-    MYSQL_SERVER_USERNAME: root
-    MYSQL_SERVER_PASSWORD: your_password
-    MYSQL_SERVER_DATABASE: mist
+```
+apps/mcp-server/
+├── src/
+│   ├── base/
+│   │   └── base-mcp-tool.service.ts    # Base class for all MCP tools
+│   ├── services/
+│   │   ├── chan-mcp.service.ts         # Chan Theory (缠论) analysis
+│   │   ├── indicator-mcp.service.ts    # Technical indicators
+│   │   ├── data-mcp.service.ts         # Data query tools
+│   │   └── schedule-mcp.service.ts     # Scheduled task management
+│   ├── types/                          # Shared type definitions
+│   ├── mcp-server.module.ts            # MCP module configuration
+│   └── main.ts                         # Application entry point
+├── test/                               # E2E tests
+├── .env.example                        # Environment variables template
+├── jest.config.js                      # Jest configuration
+└── README.md                           # This file
 ```
 
-### 3. 使用示例
+## 与 AI Agent 集成
 
-在 AstrBot 的工作流中调用 MCP tools：
+### Claude Desktop (MCP)
 
-```python
-# 获取上证指数最新数据
-result = await mcp.call("get_latest_data", symbol="000001")
+在 Claude Desktop 配置文件中添加 Mist MCP Server：
 
-# 进行缠论分析
-kline = await mcp.call("get_daily_kline", symbol="000001", limit=100)
-analysis = await mcp.call("analyze_chan_theory", k=kline["data"])
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-# 计算技术指标
-indicators = await mcp.call("analyze_indicators",
-  highs=[...],
-  lows=[...],
-  closes=[...]
-)
+```json
+{
+  "mcpServers": {
+    "mist": {
+      "command": "node",
+      "args": ["/path/to/mist/dist/apps/mcp-server/main.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "MYSQL_SERVER_HOST": "localhost",
+        "MYSQL_SERVER_PORT": "3306",
+        "MYSQL_SERVER_USERNAME": "root",
+        "MYSQL_SERVER_PASSWORD": "your_password",
+        "MYSQL_SERVER_DATABASE": "mist"
+      }
+    }
+  }
+}
 ```
+
+### 使用示例
+
+在 Claude Desktop 对话中直接调用 MCP tools：
+
+```
+User: 帮我分析一下上证指数最近的缠论形态
+
+Claude: 我来帮你分析上证指数的缠论形态。
+[调用 get_daily_kline 获取数据]
+[调用 analyze_chan_theory 进行分析]
+[生成分析报告...]
+```
+
+### 可用的 MCP Tools
+
+#### 数据查询类
+- `get_index_info` - 获取指数信息
+- `get_kline_data` - 获取分时K线数据
+- `get_daily_kline` - 获取日线K线数据
+- `list_indices` - 列出所有可用指数
+- `get_latest_data` - 获取最新数据
+
+#### 技术指标类
+- `calculate_macd` - 计算MACD指标
+- `calculate_rsi` - 计算RSI指标
+- `calculate_kdj` - 计算KDJ指标
+- `calculate_adx` - 计算ADX指标
+- `calculate_atr` - 计算ATR指标
+- `analyze_indicators` - 完整技术指标分析
+
+#### 缠论分析类
+- `create_bi` - 识别笔
+- `get_fenxing` - 获取分型
+- `analyze_chan_theory` - 完整缠论分析
+
+#### 定时任务类
+- `trigger_data_collection` - 触发数据采集
+- `list_scheduled_jobs` - 列出定时任务
+- `get_job_status` - 获取任务状态
+- `trigger_batch_collection` - 批量触发采集
+- `get_schedule_config` - 获取计划配置
 
 ## API 示例
 
 ### 缠论分析
 
 ```typescript
-// 输入：K线数据
+// 输入：K线数据（必须包含所有字段）
 const k = [
-  { id: 1, time: "2024-01-02 09:30:00", open: 3120, close: 3150, highest: 3160, lowest: 3115, volume: 1000000, price: 1000000000 },
+  {
+    id: 1,
+    symbol: "000001",
+    time: "2024-01-02 09:30:00",
+    amount: 1000000,
+    open: 3120,
+    close: 3150,
+    highest: 3160,
+    lowest: 3115,
+  },
   // ... 更多K线数据
 ];
 
@@ -198,14 +298,45 @@ const result = await mcp.call("analyze_chan_theory", { k });
 {
   success: true,
   data: {
-    mergedK: { count: 50, data: [...] },
-    bis: { count: 15, data: [...] },
-    fenxings: { count: 30, data: [...] },
-    channels: { count: 3, data: [...] }
+    bis: {
+      count: 15,
+      data: [
+        {
+          id: 1,
+          type: "UP",
+          start: { time: "2024-01-02T09:30:00.000Z", price: 3120 },
+          end: { time: "2024-01-02T10:15:00.000Z", price: 3180 }
+        },
+        // ... 更多笔
+      ]
+    },
+    fenxings: {
+      count: 30,
+      data: [
+        {
+          id: 1,
+          type: "TOP",
+          time: "2024-01-02T09:45:00.000Z",
+          price: 3175
+        },
+        // ... 更多分型
+      ]
+    },
+    channels: {
+      count: 3,
+      data: [
+        {
+          id: 1,
+          high: 3200,
+          low: 3100,
+          biCount: 6
+        },
+        // ... 更多中枢
+      ]
+    }
   },
   summary: {
     originalKLines: 100,
-    mergedKLines: 50,
     bisCount: 15,
     fenxingsCount: 30,
     channelsCount: 3
@@ -213,9 +344,64 @@ const result = await mcp.call("analyze_chan_theory", { k });
 }
 ```
 
+### 技术指标
+
+```typescript
+// 计算单个指标
+const macd = await mcp.call("calculate_macd", {
+  prices: [100, 102, 101, 103, 105, 104, 106, 108, 107, 109]
+});
+
+// 返回：
+{
+  success: true,
+  data: {
+    nbElement: 10,
+    macd: [0.5, 1.2, ...],
+    signal: [0.3, 0.8, ...],
+    histogram: [0.2, 0.4, ...]
+  },
+  params: {
+    fastPeriod: 12,
+    slowPeriod: 26,
+    signalPeriod: 9
+  }
+}
+
+// 计算所有指标
+const indicators = await mcp.call("analyze_indicators", {
+  highs: [102, 104, 103, 105, 107, 106, 108, 110, 109, 111],
+  lows: [98, 100, 99, 101, 103, 102, 104, 106, 105, 107],
+  closes: [100, 102, 101, 103, 105, 104, 106, 108, 107, 109]
+});
+```
+
 ### 数据查询
 
 ```typescript
+// 获取指数信息
+const indexInfo = await mcp.call("get_index_info", {
+  symbol: "000001"
+});
+
+// 返回：
+{
+  success: true,
+  data: {
+    id: 1,
+    symbol: "000001",
+    name: "上证指数",
+    type: "index"
+  }
+}
+
+// 获取分时K线数据
+const kline = await mcp.call("get_kline_data", {
+  symbol: "000001",
+  period: "FIVE",  // 5分钟
+  limit: 100
+});
+
 // 获取日线数据
 const dailyKline = await mcp.call("get_daily_kline", {
   symbol: "000001",
@@ -228,30 +414,66 @@ const dailyKline = await mcp.call("get_daily_kline", {
 const latest = await mcp.call("get_latest_data", {
   symbol: "000001"
 });
+
+// 返回：
+{
+  success: true,
+  data: {
+    symbol: "000001",
+    name: "上证指数",
+    daily: { /* 日线数据 */ },
+    "1min": { /* 1分钟数据 */ },
+    "5min": { /* 5分钟数据 */ },
+    "15min": { /* 15分钟数据 */ },
+    "30min": { /* 30分钟数据 */ },
+    "60min": { /* 60分钟数据 */ }
+  }
+}
+
+// 列出所有指数
+const indices = await mcp.call("list_indices");
 ```
 
 ## 开发指南
 
 ### 添加新的 MCP Tool
 
-1. 在对应的 Service 中添加 `@MCPTool` 装饰器：
+1. 创建 Service 并继承 `BaseMcpToolService`：
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { MCPTool, MCPToolParam } from '@rekog/mcp-nest';
+import { Tool } from '@rekog/mcp-nest';
+import { z } from 'zod';
+import { BaseMcpToolService } from '../base/base-mcp-tool.service';
+
+// Define Zod schema for parameters
+const CustomSchema = z.object({
+  symbol: z.string(),
+  period: z.enum(['ONE', 'FIVE', 'FIFTEEN', 'THIRTY', 'SIXTY']),
+  limit: z.number().optional().default(100),
+});
 
 @Injectable()
-export class CustomMcpService {
-  @MCPTool('tool_name', '工具描述')
-  async toolMethod(
-    @MCPToolParam('param_name', '参数描述', 'string')
-    param: string,
-  ) {
-    // 实现逻辑
-    return {
-      success: true,
-      data: result,
-    };
+export class CustomMcpService extends BaseMcpToolService {
+  constructor(/* Inject dependencies */) {
+    super(CustomMcpService.name);
+  }
+
+  @Tool({
+    name: 'custom_tool_name',
+    description: '工具描述',
+  })
+  async customTool(params: z.infer<typeof CustomSchema>) {
+    return this.executeTool('custom_tool_name', async () => {
+      // Implementation logic
+      const result = await this.doSomething(params);
+
+      // Return data (will be wrapped in success response)
+      return {
+        data: result,
+        count: result.length,
+      };
+    });
   }
 }
 ```
@@ -260,44 +482,188 @@ export class CustomMcpService {
 
 ```typescript
 @Module({
+  imports: [
+    // Required modules
+  ],
   providers: [CustomMcpService],
-  // ...
 })
+export class McpServerModule {}
+```
+
+### 统一响应格式
+
+所有 MCP tools 返回统一的响应格式：
+
+**成功响应：**
+```typescript
+{
+  success: true,
+  data: any,
+  ...meta  // Optional metadata (count, params, etc.)
+}
+```
+
+**错误响应：**
+```typescript
+{
+  success: false,
+  error: {
+    message: string,
+    code?: string
+  }
+}
+```
+
+### 使用 executeTool 包装器
+
+`executeTool` 提供自动日志记录和错误处理：
+
+```typescript
+async myTool(param: string) {
+  return this.executeTool('my_tool', async () => {
+    // This code is wrapped in try-catch
+    // Success is automatically logged
+    const result = await this.someAsyncOperation(param);
+    return { data: result };
+  });
+}
+```
+
+### 参数验证
+
+使用 Zod schema 进行运行时参数验证：
+
+```typescript
+const ParamsSchema = z.object({
+  symbol: z.string().min(6).max(6),
+  period: z.enum(['ONE', 'FIVE', 'FIFTEEN', 'THIRTY', 'SIXTY']),
+  limit: z.number().min(1).max(1000).optional(),
+});
+
+@Tool({
+  name: 'get_data',
+  description: 'Get data with validation',
+})
+async getData(params: z.infer<typeof ParamsSchema>) {
+  // params is validated and typed
+  return this.executeTool('get_data', async () => {
+    // ...
+  });
+}
 ```
 
 ## 依赖项
 
+### 核心依赖
 - `@nestjs/common` - NestJS 核心框架
 - `@nestjs/typeorm` - TypeORM 集成
-- `@rekog/mcp-nest` - MCP NestJS 集成
-- `modelcontextprotocol-sdk` - MCP SDK
+- `@nestjs/schedule` - 定时任务支持
+- `@rekog/mcp-nest` - MCP NestJS 集成（Tool 装饰器）
 - `typeorm` - ORM
 - `mysql2` - MySQL 驱动
+- `zod` - 参数验证
+
+### 内部依赖
+- `@app/shared-data` - 共享数据实体
+- ChanModule - 缠论分析服务
+- IndicatorModule - 技术指标计算服务
+
+### 开发依赖
+- `@nestjs/testing` - 测试工具
+- `jest` - 测试框架
+- `ts-jest` - TypeScript Jest 预处理器
+- `@types/jest` - Jest 类型定义
 
 ## 故障排查
 
 ### MCP Server 无法启动
 
-检查数据库连接配置是否正确：
+**检查数据库连接：**
 ```bash
 # 测试数据库连接
 mysql -h localhost -u root -p mist
+
+# 检查环境变量
+cat apps/mcp-server/.env
+```
+
+**检查端口占用：**
+```bash
+# 检查端口 8009 是否被占用
+lsof -i :8009
+# 或
+netstat -an | grep 8009
+```
+
+**查看日志：**
+```bash
+# 启动时应看到以下日志
+[MCP Server] Application is starting...
+[MCP Server] MCP Server is running
+[ChanMcpService] Registered 4 tools
+[IndicatorMcpService] Registered 6 tools
+[DataMcpService] Registered 5 tools
+[ScheduleMcpService] Registered 5 tools
 ```
 
 ### MCP Tools 无法调用
 
-检查日志确认 MCP Server 是否正常运行：
+**验证 Tool 注册：**
+- 检查 Service 是否使用 `@Tool()` 装饰器
+- 检查 Service 是否在 `mcp-server.module.ts` 中注册
+- 查看启动日志确认 tools 数量
+
+**测试 Tool 调用：**
 ```bash
-# 日志应显示
-[MCP Server] MCP Server is running on port 8009
+# 通过 stdio 测试
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node dist/apps/mcp-server/main.js
 ```
 
-### AstrBot 无法连接 MCP Server
+### Claude Desktop 无法连接
 
-确认 MCP Server 的路径配置正确，且有执行权限：
-```bash
-ls -la dist/apps/mcp-server/main.js
+**检查配置文件路径：**
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+**验证配置格式：**
+```json
+{
+  "mcpServers": {
+    "mist": {
+      "command": "node",
+      "args": ["/absolute/path/to/dist/apps/mcp-server/main.js"],
+      "env": { /* ... */ }
+    }
+  }
+}
 ```
+
+**查看 Claude Desktop 日志：**
+- macOS: `~/Library/Logs/Claude/`
+- Windows: `%APPDATA%\Claude\logs\`
+
+### 类型错误
+
+**确保 Zod schema 定义正确：**
+```typescript
+// ✅ 正确
+const Schema = z.object({
+  symbol: z.string(),
+  period: z.enum(['ONE', 'FIVE']),
+});
+
+// ❌ 错误
+const Schema = z.object({
+  symbol: string,  // 缺少 z.string()
+  period: ['ONE', 'FIVE'],  // 缺少 z.enum()
+});
+```
+
+**检查参数类型：**
+- 所有参数必须通过 `z.infer<typeof Schema>` 推断类型
+- 数组参数使用 `z.array()`
+- 可选参数使用 `.optional()`
+- 默认值使用 `.default()`
 
 ## 后续计划
 
@@ -311,5 +677,100 @@ ls -la dist/apps/mcp-server/main.js
 
 - [Mist 项目文档](../../README.md)
 - [缠论算法文档](../../docs/plans/README.md)
-- [AstrBot 官网](https://astrbot.app/)
+- [Claude Desktop](https://claude.ai/download)
 - [MCP 规范](https://modelcontextprotocol.io/)
+
+## 更新日志
+
+### v1.0.0 (2025-03-15)
+
+**重构内容：**
+- ✅ 修复所有编译错误
+- ✅ 创建 BaseMcpToolService 基类
+- ✅ 所有服务继承基类，使用 executeTool 包装器
+- ✅ 更新为 @Tool 装饰器 + Zod 参数验证
+- ✅ 统一响应格式和错误处理
+- ✅ 添加单元测试框架
+
+**MCP Tools 总数：20**
+- Chan Theory: 3 tools
+- Technical Indicators: 6 tools
+- Data Query: 5 tools
+- Scheduled Tasks: 5 tools
+- Base Class: 1 helper
+
+## 性能优化建议
+
+### 数据库查询优化
+
+```typescript
+// ✅ 使用查询构建器限制返回字段
+const data = await this.repository
+  .createQueryBuilder('entity')
+  .select(['entity.id', 'entity.field1', 'entity.field2'])
+  .where('entity.status = :status', { status: 'active' })
+  .limit(100)
+  .getMany();
+
+// ❌ 避免查询所有字段
+const data = await this.repository.find(); // 查询所有字段和记录
+```
+
+### 缓存策略
+
+```typescript
+// 建议为常用查询添加缓存（TODO: Redis 集成）
+@Cacheable('index_info', 300) // 缓存 5 分钟
+async getIndexInfo(symbol: string) {
+  // ...
+}
+```
+
+### 批处理
+
+```typescript
+// ✅ 批量处理使用 trigger_batch_collection
+const result = await this.triggerBatchCollection(
+  ['000001', '000002', '000003'],
+  ['ONE', 'FIVE', 'FIFTEEN']
+);
+
+// ❌ 避免循环调用
+for (const symbol of symbols) {
+  for (const period of periods) {
+    await this.triggerDataCollection(symbol, period); // 慢
+  }
+}
+```
+
+## 贡献指南
+
+### 代码风格
+
+- 使用 ESLint 和 Prettier 格式化代码
+- 遵循 NestJS 最佳实践
+- 所有 MCP services 必须继承 `BaseMcpToolService`
+- 使用 `executeTool` 包装所有工具逻辑
+- 添加适当的 JSDoc 注释
+
+### 提交规范
+
+```bash
+# 功能添加
+git commit -m "feat: add new tool for XXX"
+
+# Bug 修复
+git commit -m "fix: resolve YYY issue in ZZZ"
+
+# 文档更新
+git commit -m "docs: update README for AAA"
+
+# 重构
+git commit -m "refactor: optimize BBB logic"
+```
+
+### 测试要求
+
+- 新功能必须包含单元测试
+- 测试覆盖率目标：80%+
+- 所有测试必须通过：`pnpm test -- apps/mcp-server`
