@@ -65,3 +65,6 @@ aktools*
 #test
 test-results
 scripts
+
+#git worktrees
+.worktrees
