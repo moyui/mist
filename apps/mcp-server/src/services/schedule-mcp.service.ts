@@ -1,6 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { MCPTool, MCPToolParam } from '@rekog/mcp-nest';
+import { Injectable } from '@nestjs/common';
+import { Tool } from '@rekog/mcp-nest';
+import { z } from 'zod';
 import { SchedulerRegistry } from '@nestjs/schedule';
+
+// Zod schemas
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const PeriodEnum = z.enum([
+  'ONE',
+  'FIVE',
+  'FIFTEEN',
+  'THIRTY',
+  'SIXTY',
+  'DAILY',
+]);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const PeriodArrayEnum = z.array(PeriodEnum);
 
 /**
  * MCP Service for Scheduled Tasks Management
@@ -12,8 +26,6 @@ import { SchedulerRegistry } from '@nestjs/schedule';
  */
 @Injectable()
 export class ScheduleMcpService {
-  private readonly logger = new Logger(ScheduleMcpService.name);
-
   constructor(private readonly schedulerRegistry: SchedulerRegistry) {}
 
   /**
@@ -26,19 +38,14 @@ export class ScheduleMcpService {
    * @param period - Time period to collect
    * @returns Job execution result
    */
-  @MCPTool('trigger_data_collection', '触发数据采集任务')
+  @Tool({
+    name: 'trigger_data_collection',
+    description: '触发数据采集任务',
+  })
   async triggerDataCollection(
-    @MCPToolParam('symbol', '指数代码（如：000001）', 'string')
     symbol: string,
-    @MCPToolParam(
-      'period',
-      '时间周期（ONE/FIVE/FIFTEEN/THIRTY/SIXTY/DAILY）',
-      'string',
-    )
-    period: 'ONE' | 'FIVE' | 'FIFTEEN' | 'THIRTY' | 'SIXTY' | 'DAILY',
+    period: z.infer<typeof PeriodEnum>,
   ) {
-    this.logger.log(`Triggering data collection for ${symbol} (${period})`);
-
     // PoC: In production, this would call the actual data collection service
     // For now, return a mock response
     return {
@@ -60,18 +67,16 @@ export class ScheduleMcpService {
    *
    * @returns List of all scheduled jobs with their status
    */
-  @MCPTool('list_scheduled_jobs', '列出所有定时任务')
+  @Tool({
+    name: 'list_scheduled_jobs',
+    description: '列出所有定时任务',
+  })
   async listScheduledJobs() {
-    this.logger.debug('Listing all scheduled jobs');
-
     const jobs = this.schedulerRegistry.getCronJobs();
     const jobList = Array.from(jobs.entries()).map(([name, job]) => ({
       name,
-      nextExecution: job?.next?.toDate?.()?.toISOString(),
       running: job?.running ?? false,
     }));
-
-    this.logger.debug(`Found ${jobList.length} scheduled jobs`);
 
     return {
       success: true,
@@ -86,13 +91,11 @@ export class ScheduleMcpService {
    * @param jobName - Name of the scheduled job
    * @returns Job information
    */
-  @MCPTool('get_job_status', '获取定时任务状态')
-  async getJobStatus(
-    @MCPToolParam('jobName', '任务名称', 'string')
-    jobName: string,
-  ) {
-    this.logger.debug(`Getting status for job: ${jobName}`);
-
+  @Tool({
+    name: 'get_job_status',
+    description: '获取定时任务状态',
+  })
+  async getJobStatus(jobName: string) {
     try {
       const job = this.schedulerRegistry.getCronJob(jobName);
 
@@ -108,12 +111,10 @@ export class ScheduleMcpService {
         data: {
           name: jobName,
           running: job.running,
-          nextExecution: job?.next?.toDate?.()?.toISOString(),
           lastExecution: job?.lastDate?.()?.toISOString(),
         },
       };
     } catch (error) {
-      this.logger.error(`Error getting job status: ${error.message}`);
       return {
         success: false,
         error: error.message,
@@ -128,17 +129,14 @@ export class ScheduleMcpService {
    * @param periods - Array of time periods to collect
    * @returns Batch job execution result
    */
-  @MCPTool('trigger_batch_collection', '批量触发数据采集')
+  @Tool({
+    name: 'trigger_batch_collection',
+    description: '批量触发数据采集',
+  })
   async triggerBatchCollection(
-    @MCPToolParam('symbols', '指数代码数组', 'array')
     symbols: string[],
-    @MCPToolParam('periods', '时间周期数组', 'array')
-    periods: Array<'ONE' | 'FIVE' | 'FIFTEEN' | 'THIRTY' | 'SIXTY' | 'DAILY'>,
+    periods: z.infer<typeof PeriodArrayEnum>,
   ) {
-    this.logger.log(
-      `Triggering batch collection for ${symbols.length} symbols, ${periods.length} periods`,
-    );
-
     const tasks = [];
     for (const symbol of symbols) {
       for (const period of periods) {
@@ -165,10 +163,11 @@ export class ScheduleMcpService {
    *
    * @returns Current schedule configuration
    */
-  @MCPTool('get_schedule_config', '获取数据采集计划配置')
+  @Tool({
+    name: 'get_schedule_config',
+    description: '获取数据采集计划配置',
+  })
   async getScheduleConfig() {
-    this.logger.debug('Getting schedule configuration');
-
     // PoC: Return typical schedule configuration
     // In production, this would read from actual configuration
     return {
