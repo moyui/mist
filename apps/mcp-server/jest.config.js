@@ -1,0 +1,27 @@
+module.exports = {
+  displayName: 'mcp-server',
+  preset: '../../tsconfig.spec.json',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src'],
+  moduleFileExtensions: ['js', 'json', 'ts'],
+  testMatch: ['**/*.spec.ts'],
+  transform: {
+    '^.+\\.(t|j)s$': 'ts-jest',
+  },
+  collectCoverageFrom: ['**/*.(t|j)s'],
+  coverageDirectory: '../../coverage/apps/mcp-server',
+  moduleNameMapper: {
+    '^@app/config/(.*)$': '<rootDir>/../../libs/config/src/$1',
+    '^@app/config$': '<rootDir>/../../libs/config/src',
+    '^@app/constants/(.*)$': '<rootDir>/../../libs/constants/src/$1',
+    '^@app/constants$': '<rootDir>/../../libs/constants/src',
+    '^@app/prompts/(.*)$': '<rootDir>/../../libs/prompts/src/$1',
+    '^@app/prompts$': '<rootDir>/../../libs/prompts/src',
+    '^@app/utils/(.*)$': '<rootDir>/../../libs/utils/src/$1',
+    '^@app/utils$': '<rootDir>/../../libs/utils/src',
+    '^@app/timezone/(.*)$': '<rootDir>/../../libs/timezone/src/$1',
+    '^@app/timezone$': '<rootDir>/../../libs/timezone/src',
+    '^@app/shared-data/(.*)$': '<rootDir>/../../libs/shared-data/src/$1',
+    '^@app/shared-data$': '<rootDir>/../../libs/shared-data/src',
+  },
+};

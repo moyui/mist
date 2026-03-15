@@ -19,9 +19,12 @@ export abstract class BaseMcpToolService {
   /**
    * Unified success response format
    */
-  protected success<T>(data: T, meta?: Record<string, any>) {
+  protected success<T>(
+    data: T,
+    meta?: Record<string, any>,
+  ): { success: true; data: T } & Record<string, any> {
     return {
-      success: true,
+      success: true as const,
       data,
       ...meta,
     };
@@ -30,9 +33,12 @@ export abstract class BaseMcpToolService {
   /**
    * Unified error response format (following MCP protocol)
    */
-  protected error(message: string, code?: string) {
+  protected error(
+    message: string,
+    code?: string,
+  ): { success: false; error: { message: string; code?: string } } {
     return {
-      success: false,
+      success: false as const,
       error: {
         message,
         code,

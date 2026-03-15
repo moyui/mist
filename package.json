@@ -118,7 +118,8 @@
       "^@app/config(|/.*)$": "<rootDir>/libs/config/src/$1",
       "^@app/utils(|/.*)$": "<rootDir>/libs/utils/src/$1",
       "^@app/timezone(|/.*)$": "<rootDir>/libs/timezone/src/$1",
-      "^@app/shared-data(|/.*)$": "<rootDir>/libs/shared-data/src/$1"
+      "^@app/shared-data(|/.*)$": "<rootDir>/libs/shared-data/src/$1",
+      "^@app/constants(|/.*)$": "<rootDir>/libs/constants/src/$1"
     }
   }
 }
