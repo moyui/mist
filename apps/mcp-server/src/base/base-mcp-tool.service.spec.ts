@@ -90,9 +90,9 @@ describe('BaseMcpToolService', () => {
     });
 
     it('should handle errors and return error response', async () => {
-      const result = await service.testExecuteTool('test_tool', async () => {
+      const result = (await service.testExecuteTool('test_tool', async () => {
         throw new Error('Tool failed');
-      });
+      })) as any;
 
       expect(result.success).toBe(false);
       expect(result.error.message).toBe('Tool failed');
@@ -102,9 +102,9 @@ describe('BaseMcpToolService', () => {
       const error = new Error('Validation failed') as any;
       error.code = 'VALIDATION_ERROR';
 
-      const result = await service.testExecuteTool('test_tool', async () => {
+      const result = (await service.testExecuteTool('test_tool', async () => {
         throw error;
-      });
+      })) as any;
 
       expect(result.success).toBe(false);
       expect(result.error.message).toBe('Validation failed');

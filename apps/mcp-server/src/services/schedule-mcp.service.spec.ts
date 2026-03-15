@@ -86,7 +86,9 @@ describe('ScheduleMcpService', () => {
     });
 
     it('should return error when job not found', async () => {
-      jest.spyOn(schedulerRegistry, 'getCronJob').mockReturnValue(null);
+      jest
+        .spyOn(schedulerRegistry, 'getCronJob')
+        .mockReturnValue(undefined as any);
 
       const result = (await service.getJobStatus('nonexistent')) as any;
       expect(result.success).toBe(false);

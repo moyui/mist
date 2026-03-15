@@ -48,7 +48,7 @@ describe('ChanMcpService', () => {
       start: { time: new Date('2024-01-01 09:30:00'), price: 3000 },
       end: { time: new Date('2024-01-01 09:32:00'), price: 3025 },
     },
-  ];
+  ] as any[];
 
   const mockFenxings = [
     {
@@ -75,14 +75,14 @@ describe('ChanMcpService', () => {
         {
           provide: ChanService,
           useValue: {
-            createBi: jest.fn(),
-            getFenxings: jest.fn(),
+            createBi: jest.fn().mockResolvedValue(mockBi) as any,
+            getFenxings: jest.fn().mockResolvedValue(mockFenxings) as any,
           },
         },
         {
           provide: ChannelService,
           useValue: {
-            createChannel: jest.fn(),
+            createChannel: jest.fn().mockResolvedValue(mockChannels) as any,
           },
         },
       ],
@@ -99,54 +99,50 @@ describe('ChanMcpService', () => {
 
   describe('createBi', () => {
     it('should create bi from klines', async () => {
-      jest.spyOn(chanService, 'createBi').mockResolvedValue(mockBi);
+      (jest.spyOn(chanService, 'createBi') as any).mockResolvedValue(mockBi);
 
-      const result = await service.createBi(mockKLines);
+      const result = (await service.createBi(mockKLines)) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        const { data, count } = result;
-        expect(data).toEqual(mockBi);
-        expect(count).toBe(1);
-      }
+      expect(result.data).toEqual(mockBi);
+      expect(result.count).toBe(1);
     });
   });
 
   describe('getFenxing', () => {
     it('should return fenxings from klines', async () => {
-      jest.spyOn(chanService, 'getFenxings').mockResolvedValue(mockFenxings);
+      (jest.spyOn(chanService, 'getFenxings') as any).mockResolvedValue(
+        mockFenxings,
+      );
 
-      const result = await service.getFenxing(mockKLines);
+      const result = (await service.getFenxing(mockKLines)) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        const { data, count } = result;
-        expect(data).toEqual(mockFenxings);
-        expect(count).toBe(1);
-      }
+      expect(result.data).toEqual(mockFenxings);
+      expect(result.count).toBe(1);
     });
   });
 
   describe('analyzeChanTheory', () => {
     it('should perform complete chan theory analysis', async () => {
-      jest.spyOn(chanService, 'createBi').mockResolvedValue(mockBi);
-      jest.spyOn(chanService, 'getFenxings').mockResolvedValue(mockFenxings);
-      jest
-        .spyOn(channelService, 'createChannel')
-        .mockResolvedValue(mockChannels);
+      (jest.spyOn(chanService, 'createBi') as any).mockResolvedValue(mockBi);
+      (jest.spyOn(chanService, 'getFenxings') as any).mockResolvedValue(
+        mockFenxings,
+      );
+      (jest.spyOn(channelService, 'createChannel') as any).mockResolvedValue(
+        mockChannels,
+      );
 
       const result = (await service.analyzeChanTheory(mockKLines)) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.bis.data).toEqual(mockBi);
-        expect(result.data.bis.count).toBe(1);
-        expect(result.data.fenxings.data).toEqual(mockFenxings);
-        expect(result.data.fenxings.count).toBe(1);
-        expect(result.data.channels.data).toEqual(mockChannels);
-        expect(result.data.channels.count).toBe(1);
-        expect(result.data.summary.originalKLines).toBe(3);
-        expect(result.data.summary.bisCount).toBe(1);
-        expect(result.data.summary.fenxingsCount).toBe(1);
-        expect(result.data.summary.channelsCount).toBe(1);
-      }
+      expect(result.data.bis.data).toEqual(mockBi);
+      expect(result.data.bis.count).toBe(1);
+      expect(result.data.fenxings.data).toEqual(mockFenxings);
+      expect(result.data.fenxings.count).toBe(1);
+      expect(result.data.channels.data).toEqual(mockChannels);
+      expect(result.data.channels.count).toBe(1);
+      expect(result.data.summary.originalKLines).toBe(3);
+      expect(result.data.summary.bisCount).toBe(1);
+      expect(result.data.summary.fenxingsCount).toBe(1);
+      expect(result.data.summary.channelsCount).toBe(1);
     });
   });
 
@@ -154,9 +150,7 @@ describe('ChanMcpService', () => {
     it('should return not implemented error', async () => {
       const result = (await service.mergeK(mockKLines)) as any;
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.message).toContain('not directly available');
-      }
+      expect(result.error.message).toContain('not directly available');
     });
   });
 });

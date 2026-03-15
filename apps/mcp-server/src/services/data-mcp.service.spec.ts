@@ -12,14 +12,19 @@ describe('DataMcpService', () => {
   let indexPeriodRepo: Repository<IndexPeriod>;
   let indexDailyRepo: Repository<IndexDaily>;
 
-  const mockIndexData: IndexData = {
+  const mockIndexData = {
     id: 1,
     symbol: '000001',
     name: '上证指数',
     type: 'index',
-  } as IndexData;
+    code: '000001',
+    createTime: new Date(),
+    updateTime: new Date(),
+    indexPeriod: [],
+    indexDaily: [],
+  } as any;
 
-  const mockIndexPeriod: IndexPeriod = {
+  const mockIndexPeriod = {
     id: 1,
     time: '2024-01-01 09:30:00',
     type: 'ONE',
@@ -30,9 +35,12 @@ describe('DataMcpService', () => {
     volume: 1000000,
     amount: 100000000,
     index_id: 1,
-  } as IndexPeriod;
+    indexData: null,
+    createTime: new Date(),
+    updateTime: new Date(),
+  } as any;
 
-  const mockIndexDaily: IndexDaily = {
+  const mockIndexDaily = {
     id: 1,
     time: '2024-01-01',
     open: 3000,
@@ -42,7 +50,10 @@ describe('DataMcpService', () => {
     volume: 1000000,
     amount: 100000000,
     index_id: 1,
-  } as IndexDaily;
+    indexData: null,
+    createTime: new Date(),
+    updateTime: new Date(),
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -90,23 +101,18 @@ describe('DataMcpService', () => {
     it('should return index info when found', async () => {
       jest.spyOn(indexDataRepo, 'findOne').mockResolvedValue(mockIndexData);
 
-      const result = await service.getIndexInfo('000001');
+      const result = (await service.getIndexInfo('000001')) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        const { data } = result;
-        expect(data.symbol).toBe('000001');
-        expect(data.name).toBe('上证指数');
-      }
+      expect(result.data.symbol).toBe('000001');
+      expect(result.data.name).toBe('上证指数');
     });
 
     it('should return error when index not found', async () => {
       jest.spyOn(indexDataRepo, 'findOne').mockResolvedValue(null);
 
-      const result = await service.getIndexInfo('999999');
+      const result = (await service.getIndexInfo('999999')) as any;
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.message).toContain('not found');
-      }
+      expect(result.error.message).toContain('not found');
     });
   });
 
@@ -126,23 +132,18 @@ describe('DataMcpService', () => {
         .spyOn(indexPeriodRepo, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder as any);
 
-      const result = await service.getKlineData('000001', 'ONE', 10);
+      const result = (await service.getKlineData('000001', 'ONE', 10)) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        const { data } = result;
-        expect(data).toHaveLength(1);
-        expect(data[0].time).toBe('2024-01-01 09:30:00');
-      }
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].time).toBe('2024-01-01 09:30:00');
     });
 
     it('should return error when index not found', async () => {
       jest.spyOn(indexDataRepo, 'findOne').mockResolvedValue(null);
 
-      const result = await service.getKlineData('999999', 'ONE', 10);
+      const result = (await service.getKlineData('999999', 'ONE', 10)) as any;
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.message).toContain('not found');
-      }
+      expect(result.error.message).toContain('not found');
     });
   });
 
@@ -162,23 +163,18 @@ describe('DataMcpService', () => {
         .spyOn(indexDailyRepo, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder as any);
 
-      const result = await service.getDailyKline('000001', 10);
+      const result = (await service.getDailyKline('000001', 10)) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        const { data } = result;
-        expect(data).toHaveLength(1);
-        expect(data[0].time).toBe('2024-01-01');
-      }
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].time).toBe('2024-01-01');
     });
 
     it('should return error when index not found', async () => {
       jest.spyOn(indexDataRepo, 'findOne').mockResolvedValue(null);
 
-      const result = await service.getDailyKline('999999', 10);
+      const result = (await service.getDailyKline('999999', 10)) as any;
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.message).toContain('not found');
-      }
+      expect(result.error.message).toContain('not found');
     });
   });
 
@@ -186,13 +182,10 @@ describe('DataMcpService', () => {
     it('should return all indices', async () => {
       jest.spyOn(indexDataRepo, 'find').mockResolvedValue([mockIndexData]);
 
-      const result = await service.listIndices();
+      const result = (await service.listIndices()) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        const { data } = result;
-        expect(data).toHaveLength(1);
-        expect(data[0].symbol).toBe('000001');
-      }
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].symbol).toBe('000001');
     });
   });
 
@@ -215,23 +208,18 @@ describe('DataMcpService', () => {
         .spyOn(indexPeriodRepo, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder as any);
 
-      const result = await service.getLatestData('000001');
+      const result = (await service.getLatestData('000001')) as any;
       expect(result.success).toBe(true);
-      if (result.success) {
-        const { data } = result;
-        expect(data.symbol).toBe('000001');
-        expect(data.name).toBe('上证指数');
-      }
+      expect(result.data.symbol).toBe('000001');
+      expect(result.data.name).toBe('上证指数');
     });
 
     it('should return error when index not found', async () => {
       jest.spyOn(indexDataRepo, 'findOne').mockResolvedValue(null);
 
-      const result = await service.getLatestData('999999');
+      const result = (await service.getLatestData('999999')) as any;
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.message).toContain('not found');
-      }
+      expect(result.error.message).toContain('not found');
     });
   });
 });
