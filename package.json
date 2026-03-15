@@ -28,6 +28,8 @@
     "test:sync": "node tools/sync-test-data.mjs",
     "test:gen-types": "node tools/generate-type-definitions.mjs",
     "test:full": "pnpm run test && pnpm run test:sync",
+    "test:deep": "node test-integration/deep-test/runner.mjs",
+    "test:deep:watch": "nodemon --watch test-integration --exec 'node test-integration/deep-test/runner.mjs'",
     "prepare": "husky"
   },
   "lint-staged": {
