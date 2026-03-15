@@ -1,7 +1,6 @@
-import { MCPModule } from '@rekog/mcp-nest';
+import { McpModule } from '@rekog/mcp-nest';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ConfigModule as MistConfigModule } from '@app/config';
 import { UtilsModule } from '@app/utils';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { IndexData, IndexPeriod, IndexDaily } from '@app/shared-data';
@@ -25,18 +24,17 @@ import * as path from 'path';
         abortEarly: false,
       },
     }),
-    MistConfigModule,
     UtilsModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'mysql',
-        host: configService.get('MYSQL_SERVER_HOST', 'localhost'),
-        port: configService.get('MYSQL_SERVER_PORT', 3306),
-        username: configService.get('MYSQL_SERVER_USERNAME', 'root'),
-        password: configService.get('MYSQL_SERVER_PASSWORD', ''),
-        database: configService.get('MYSQL_SERVER_DATABASE', 'mist'),
+        host: configService.get('mysql_server_host', 'localhost'),
+        port: configService.get('mysql_server_port', 3306),
+        username: configService.get('mysql_server_username', 'root'),
+        password: configService.get('mysql_server_password', ''),
+        database: configService.get('mysql_server_database', 'mist'),
         synchronize: configService.get('NODE_ENV') !== 'production',
         logging: configService.get('NODE_ENV') !== 'production',
         entities: [IndexData, IndexPeriod, IndexDaily],
@@ -50,7 +48,7 @@ import * as path from 'path';
     TypeOrmModule.forFeature([IndexData, IndexPeriod, IndexDaily]),
     ChanModule,
     IndicatorModule,
-    MCPModule.forRootAsync({
+    McpModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: () => ({
         name: 'mist-mcp-server',
