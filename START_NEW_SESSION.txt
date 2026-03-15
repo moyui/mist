@@ -1,0 +1,53 @@
+# MCP Server Refactor - Execution Instructions
+
+## NEW SESSION SETUP
+
+Copy this entire message into your NEW Claude Code session:
+
+---
+
+I want to implement the MCP Server refactor plan.
+
+**Location:** /Users/xiyugao/code/mist/mist
+**Plan File:** docs/plans/2026-03-15-mcp-server-refactor.md
+**Design File:** docs/plans/2026-03-15-mcp-server-refactor-design.md
+
+Please use superpowers:executing-plans to execute this plan task-by-task.
+
+## Context
+This is a NestJS monorepo application. The MCP Server app has compilation errors that need to be fixed:
+- Wrong decorator imports (MCPModule → McpModule, MCPTool → Tool)
+- Missing module imports (ChanModule, IndicatorModule)
+- Need to create BaseMcpToolService
+- Add comprehensive tests (80%+ coverage)
+- Create complete documentation
+
+## Success Criteria
+1. Server starts without errors
+2. All 21 MCP tools registered and callable
+3. Unit test coverage ≥ 80%
+4. E2E tests pass
+5. Code style consistent with monorepo
+6. Complete README.md
+
+## Key Information
+- **Tech Stack:** NestJS, @rekog/mcp-nest, Zod, TypeORM, Jest
+- **Port:** 8009
+- **Database:** MySQL (mist)
+- **Tools:** 21 tools across 4 services (Chan, Indicator, Data, Schedule)
+
+## Commands
+- Start server: `pnpm run start:dev:mcp-server`
+- Run tests: `pnpm run test:mcp-server`
+- E2E tests: `pnpm run test:mcp-server:e2e`
+
+Please start with Phase 1, Task 1.1: Fix module imports in mcp-server.module.ts
+
+---
+
+## CHECKPOINTS
+After each phase, verify:
+- Phase 1: Server starts ✅
+- Phase 2: All services use BaseMcpToolService ✅
+- Phase 3: Test coverage ≥ 80% ✅
+- Phase 4: Documentation complete ✅

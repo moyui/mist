@@ -3,6 +3,7 @@ import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { ChanService } from '../../../mist/src/chan/chan.service';
 import { ChannelService } from '../../../mist/src/chan/services/channel.service';
+import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 
 /**
  * Zod schema for K-line data (matching KVo type)
@@ -31,11 +32,13 @@ const KLineSchema = z.array(
  * - Channel (中枢): Identifies consolidation zones
  */
 @Injectable()
-export class ChanMcpService {
+export class ChanMcpService extends BaseMcpToolService {
   constructor(
     private readonly chanService: ChanService,
     private readonly channelService: ChannelService,
-  ) {}
+  ) {
+    super(ChanMcpService.name);
+  }
 
   @Tool({
     name: 'merge_k',
@@ -58,19 +61,20 @@ export class ChanMcpService {
     description: '从K线数据中识别笔（Bi），基于缠论分型识别',
   })
   async createBi(k: z.infer<typeof KLineSchema>) {
-    // Convert input data to KVo format
-    const kVoData = k.map((kline) => ({
-      ...kline,
-      time: new Date(kline.time),
-    }));
+    return this.executeTool('create_bi', async () => {
+      // Convert input data to KVo format
+      const kVoData = k.map((kline) => ({
+        ...kline,
+        time: new Date(kline.time),
+      }));
 
-    const createBiDto = { k: kVoData };
-    const result = await this.chanService.createBi(createBiDto);
-    return {
-      success: true,
-      data: result,
-      count: result.length,
-    };
+      const createBiDto = { k: kVoData };
+      const result = await this.chanService.createBi(createBiDto);
+      return {
+        data: result,
+        count: result.length,
+      };
+    });
   }
 
   @Tool({
@@ -78,19 +82,20 @@ export class ChanMcpService {
     description: '获取所有分型（Fenxing），识别顶分型和底分型',
   })
   async getFenxing(k: z.infer<typeof KLineSchema>) {
-    // Convert input data to KVo format
-    const kVoData = k.map((kline) => ({
-      ...kline,
-      time: new Date(kline.time),
-    }));
+    return this.executeTool('get_fenxing', async () => {
+      // Convert input data to KVo format
+      const kVoData = k.map((kline) => ({
+        ...kline,
+        time: new Date(kline.time),
+      }));
 
-    const createBiDto = { k: kVoData };
-    const result = await this.chanService.getFenxings(createBiDto);
-    return {
-      success: true,
-      data: result,
-      count: result.length,
-    };
+      const createBiDto = { k: kVoData };
+      const result = await this.chanService.getFenxings(createBiDto);
+      return {
+        data: result,
+        count: result.length,
+      };
+    });
   }
 
   @Tool({
@@ -98,46 +103,48 @@ export class ChanMcpService {
     description: '完整的缠论分析：合并K → 识别笔 → 识别分型 → 识别中枢',
   })
   async analyzeChanTheory(k: z.infer<typeof KLineSchema>) {
-    // Convert input data to KVo format
-    const kVoData = k.map((kline) => ({
-      ...kline,
-      time: new Date(kline.time),
-    }));
+    return this.executeTool('analyze_chan_theory', async () => {
+      // Convert input data to KVo format
+      const kVoData = k.map((kline) => ({
+        ...kline,
+        time: new Date(kline.time),
+      }));
 
-    const createBiDto = { k: kVoData };
+      const createBiDto = { k: kVoData };
 
-    // Step 1: Create Bi (this internally does merge K)
-    const bis = await this.chanService.createBi(createBiDto);
+      // Step 1: Create Bi (this internally does merge K)
+      const bis = await this.chanService.createBi(createBiDto);
 
-    // Step 2: Get Fenxings
-    const fenxings = await this.chanService.getFenxings(createBiDto);
+      // Step 2: Get Fenxings
+      const fenxings = await this.chanService.getFenxings(createBiDto);
 
-    // Step 3: Create Channels from Bi
-    const createChannelDto = { bi: bis };
-    const channels = await this.channelService.createChannel(createChannelDto);
+      // Step 3: Create Channels from Bi
+      const createChannelDto = { bi: bis };
+      const channels =
+        await this.channelService.createChannel(createChannelDto);
 
-    return {
-      success: true,
-      data: {
-        bis: {
-          count: bis.length,
-          data: bis,
+      return {
+        data: {
+          bis: {
+            count: bis.length,
+            data: bis,
+          },
+          fenxings: {
+            count: fenxings.length,
+            data: fenxings,
+          },
+          channels: {
+            count: channels.length,
+            data: channels,
+          },
         },
-        fenxings: {
-          count: fenxings.length,
-          data: fenxings,
+        summary: {
+          originalKLines: k.length,
+          bisCount: bis.length,
+          fenxingsCount: fenxings.length,
+          channelsCount: channels.length,
         },
-        channels: {
-          count: channels.length,
-          data: channels,
-        },
-      },
-      summary: {
-        originalKLines: k.length,
-        bisCount: bis.length,
-        fenxingsCount: fenxings.length,
-        channelsCount: channels.length,
-      },
-    };
+      };
+    });
   }
 }

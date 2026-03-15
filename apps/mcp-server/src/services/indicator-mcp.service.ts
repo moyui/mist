@@ -2,30 +2,34 @@ import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { IndicatorService } from '../../../mist/src/indicator/indicator.service';
+import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 
 // Zod schemas
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PricesSchema = z.array(z.number());
 
 @Injectable()
-export class IndicatorMcpService {
-  constructor(private readonly indicatorService: IndicatorService) {}
+export class IndicatorMcpService extends BaseMcpToolService {
+  constructor(private readonly indicatorService: IndicatorService) {
+    super(IndicatorMcpService.name);
+  }
 
   @Tool({
     name: 'calculate_macd',
     description: '计算MACD指标（移动平均收敛发散）',
   })
   async calculateMacd(prices: z.infer<typeof PricesSchema>) {
-    const result = await this.indicatorService.runMACD(prices);
-    return {
-      success: true,
-      data: result,
-      params: {
-        fastPeriod: 12,
-        slowPeriod: 26,
-        signalPeriod: 9,
-      },
-    };
+    return this.executeTool('calculate_macd', async () => {
+      const result = await this.indicatorService.runMACD(prices);
+      return {
+        data: result,
+        params: {
+          fastPeriod: 12,
+          slowPeriod: 26,
+          signalPeriod: 9,
+        },
+      };
+    });
   }
 
   @Tool({
@@ -36,12 +40,13 @@ export class IndicatorMcpService {
     prices: z.infer<typeof PricesSchema>,
     period: number = 14,
   ) {
-    const result = await this.indicatorService.runRSI(prices, period);
-    return {
-      success: true,
-      data: result,
-      params: { period },
-    };
+    return this.executeTool('calculate_rsi', async () => {
+      const result = await this.indicatorService.runRSI(prices, period);
+      return {
+        data: result,
+        params: { period },
+      };
+    });
   }
 
   @Tool({
@@ -56,19 +61,20 @@ export class IndicatorMcpService {
     kSmoothing: number = 3,
     dSmoothing: number = 3,
   ) {
-    const result = await this.indicatorService.runKDJ({
-      high: highs,
-      low: lows,
-      close: closes,
-      period,
-      kSmoothing,
-      dSmoothing,
+    return this.executeTool('calculate_kdj', async () => {
+      const result = await this.indicatorService.runKDJ({
+        high: highs,
+        low: lows,
+        close: closes,
+        period,
+        kSmoothing,
+        dSmoothing,
+      });
+      return {
+        data: result,
+        params: { period, kSmoothing, dSmoothing },
+      };
     });
-    return {
-      success: true,
-      data: result,
-      params: { period, kSmoothing, dSmoothing },
-    };
   }
 
   @Tool({
@@ -81,17 +87,18 @@ export class IndicatorMcpService {
     closes: z.infer<typeof PricesSchema>,
     period: number = 14,
   ) {
-    const result = await this.indicatorService.runADX({
-      high: highs,
-      low: lows,
-      close: closes,
-      period,
+    return this.executeTool('calculate_adx', async () => {
+      const result = await this.indicatorService.runADX({
+        high: highs,
+        low: lows,
+        close: closes,
+        period,
+      });
+      return {
+        data: result,
+        params: { period },
+      };
     });
-    return {
-      success: true,
-      data: result,
-      params: { period },
-    };
   }
 
   @Tool({
@@ -104,17 +111,18 @@ export class IndicatorMcpService {
     closes: z.infer<typeof PricesSchema>,
     period: number = 14,
   ) {
-    const result = await this.indicatorService.runATR({
-      high: highs,
-      low: lows,
-      close: closes,
-      period,
+    return this.executeTool('calculate_atr', async () => {
+      const result = await this.indicatorService.runATR({
+        high: highs,
+        low: lows,
+        close: closes,
+        period,
+      });
+      return {
+        data: result,
+        params: { period },
+      };
     });
-    return {
-      success: true,
-      data: result,
-      params: { period },
-    };
   }
 
   @Tool({
@@ -126,39 +134,40 @@ export class IndicatorMcpService {
     lows: z.infer<typeof PricesSchema>,
     closes: z.infer<typeof PricesSchema>,
   ) {
-    const [macd, rsi, kdj, adx, atr] = await Promise.all([
-      this.indicatorService.runMACD(closes),
-      this.indicatorService.runRSI(closes),
-      this.indicatorService.runKDJ({
-        high: highs,
-        low: lows,
-        close: closes,
-      }),
-      this.indicatorService.runADX({
-        high: highs,
-        low: lows,
-        close: closes,
-      }),
-      this.indicatorService.runATR({
-        high: highs,
-        low: lows,
-        close: closes,
-      }),
-    ]);
+    return this.executeTool('analyze_indicators', async () => {
+      const [macd, rsi, kdj, adx, atr] = await Promise.all([
+        this.indicatorService.runMACD(closes),
+        this.indicatorService.runRSI(closes),
+        this.indicatorService.runKDJ({
+          high: highs,
+          low: lows,
+          close: closes,
+        }),
+        this.indicatorService.runADX({
+          high: highs,
+          low: lows,
+          close: closes,
+        }),
+        this.indicatorService.runATR({
+          high: highs,
+          low: lows,
+          close: closes,
+        }),
+      ]);
 
-    return {
-      success: true,
-      data: {
-        macd: { nbElement: macd.nbElement, data: macd },
-        rsi: { nbElement: rsi.nbElement, data: rsi },
-        kdj: { nbElement: kdj.nbElement, data: kdj },
-        adx: { count: adx.length, data: adx },
-        atr: { count: atr.length, data: atr },
-      },
-      summary: {
-        candleCount: closes.length,
-        indicatorsCalculated: 5,
-      },
-    };
+      return {
+        data: {
+          macd: { nbElement: macd.nbElement, data: macd },
+          rsi: { nbElement: rsi.nbElement, data: rsi },
+          kdj: { nbElement: kdj.nbElement, data: kdj },
+          adx: { count: adx.length, data: adx },
+          atr: { count: atr.length, data: atr },
+        },
+        summary: {
+          candleCount: closes.length,
+          indicatorsCalculated: 5,
+        },
+      };
+    });
   }
 }
