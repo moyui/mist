@@ -1,0 +1,88 @@
+{
+  "$schema": "./config-schema.json",
+  "testName": "后端深度测试",
+  "description": "通过真实数据验证 mist、mcp-server 和缠论算法的所有功能",
+  "version": "1.0.0",
+  "indices": [
+    {
+      "symbol": "sh000001",
+      "name": "上证指数",
+      "period": "daily",
+      "startDate": "2024-01-01",
+      "endDate": "2024-12-31",
+      "enabled": true
+    },
+    {
+      "symbol": "sh000300",
+      "name": "沪深300",
+      "period": "30min",
+      "startDate": "2024-10-01",
+      "endDate": "2024-12-31",
+      "enabled": true
+    },
+    {
+      "symbol": "sh000905",
+      "name": "中证500",
+      "period": "60min",
+      "startDate": "2024-10-01",
+      "endDate": "2024-12-31",
+      "enabled": true
+    }
+  ],
+  "tests": {
+    "dataLayer": {
+      "enabled": true,
+      "description": "测试数据获取和验证"
+    },
+    "indicatorLayer": {
+      "enabled": true,
+      "indicators": ["MACD", "KDJ", "RSI"],
+      "description": "测试技术指标计算"
+    },
+    "chanLayer": {
+      "enabled": true,
+      "tests": ["merge-k", "bi", "channel"],
+      "description": "测试缠论算法"
+    },
+    "mcpLayer": {
+      "enabled": false,
+      "description": "测试MCP工具（需要单独配置）"
+    },
+    "unitTests": {
+      "enabled": true,
+      "coverage": true,
+      "description": "运行单元测试和生成覆盖率报告"
+    }
+  },
+  "output": {
+    "htmlReport": true,
+    "markdownReport": true,
+    "saveRawData": true,
+    "createArchive": false,
+    "reportsDir": "test-results"
+  },
+  "services": {
+    "mist": {
+      "port": 8001,
+      "startupTimeout": 30000,
+      "healthCheck": {
+        "endpoint": "/app/hello",
+        "interval": 500,
+        "timeout": 30000
+      }
+    },
+    "mcpServer": {
+      "port": 8009,
+      "startupTimeout": 30000
+    },
+    "aktools": {
+      "port": 8080,
+      "startupTimeout": 30000
+    }
+  },
+  "validation": {
+    "minDataRecords": 1,
+    "requireSortedData": true,
+    "strictValidation": false
+  }
+}
