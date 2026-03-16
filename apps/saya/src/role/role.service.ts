@@ -29,7 +29,9 @@ export class RoleService {
       state,
     });
     const agentsConfig = this.configService.get<AngentsConfig>('agents');
-    this.llmService.getLLMByType(agentsConfig['Commander']);
+    if (agentsConfig) {
+      this.llmService.getLLMByType(agentsConfig['Commander']);
+    }
 
     // TODO: Uncomment when Router is ready
     // const response = await llm.withStructuredOutput(Router).invoke(messages);
