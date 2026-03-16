@@ -124,19 +124,17 @@ export class ChanMcpService extends BaseMcpToolService {
         await this.channelService.createChannel(createChannelDto);
 
       return {
-        data: {
-          bis: {
-            count: bis.length,
-            data: bis,
-          },
-          fenxings: {
-            count: fenxings.length,
-            data: fenxings,
-          },
-          channels: {
-            count: channels.length,
-            data: channels,
-          },
+        bis: {
+          count: bis.length,
+          data: bis,
+        },
+        fenxings: {
+          count: fenxings.length,
+          data: fenxings,
+        },
+        channels: {
+          count: channels.length,
+          data: channels,
         },
         summary: {
           originalKLines: k.length,

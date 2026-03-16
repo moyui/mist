@@ -40,12 +40,10 @@ export class DataMcpService extends BaseMcpToolService {
       }
 
       return {
-        data: {
-          id: index.id,
-          symbol: index.symbol,
-          name: index.name,
-          type: index.type,
-        },
+        id: index.id,
+        symbol: index.symbol,
+        name: index.name,
+        type: index.type,
       };
     });
   }
@@ -85,19 +83,15 @@ export class DataMcpService extends BaseMcpToolService {
 
       const data = await queryBuilder.getMany();
 
-      return {
-        data: data.map((item) => ({
-          id: item.id,
-          time: item.time,
-          open: item.open,
-          close: item.close,
-          highest: item.highest,
-          lowest: item.lowest,
-          volume: item.volume,
-        })),
-        count: data.length,
-        params: { symbol, period, limit },
-      };
+      return data.map((item) => ({
+        id: item.id,
+        time: item.time,
+        open: item.open,
+        close: item.close,
+        highest: item.highest,
+        lowest: item.lowest,
+        volume: item.volume,
+      }));
     });
   }
 
@@ -134,20 +128,16 @@ export class DataMcpService extends BaseMcpToolService {
 
       const data = await queryBuilder.getMany();
 
-      return {
-        data: data.map((item) => ({
-          id: item.id,
-          time: item.time,
-          open: item.open,
-          close: item.close,
-          highest: item.highest,
-          lowest: item.lowest,
-          volume: item.volume,
-          amount: item.amount,
-        })),
-        count: data.length,
-        params: { symbol, limit },
-      };
+      return data.map((item) => ({
+        id: item.id,
+        time: item.time,
+        open: item.open,
+        close: item.close,
+        highest: item.highest,
+        lowest: item.lowest,
+        volume: item.volume,
+        amount: item.amount,
+      }));
     });
   }
 
@@ -160,10 +150,7 @@ export class DataMcpService extends BaseMcpToolService {
       const indices = await this.indexDataRepository.find({
         select: ['id', 'symbol', 'name', 'type'],
       });
-      return {
-        data: indices,
-        count: indices.length,
-      };
+      return indices;
     });
   }
 
@@ -207,16 +194,14 @@ export class DataMcpService extends BaseMcpToolService {
       ]);
 
       return {
-        data: {
-          symbol,
-          name: index.name,
-          daily: dailyData,
-          '1min': periodData[0],
-          '5min': periodData[1],
-          '15min': periodData[2],
-          '30min': periodData[3],
-          '60min': periodData[4],
-        },
+        symbol,
+        name: index.name,
+        daily: dailyData,
+        '1min': periodData[0],
+        '5min': periodData[1],
+        '15min': periodData[2],
+        '30min': periodData[3],
+        '60min': periodData[4],
       };
     });
   }
