@@ -4,7 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { TimezoneService } from '@app/timezone';
 import { UtilsService } from '@app/utils';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IndexData, IndexPeriod, IndexDaily } from './entities';
+import { IndexData, IndexPeriod, IndexDaily } from '@app/shared-data';
 
 describe('SharedDataService', () => {
   let service: SharedDataService;

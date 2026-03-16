@@ -89,7 +89,6 @@ describe('ChanMcpService', () => {
 
     service = module.get<ChanMcpService>(ChanMcpService);
     chanService = module.get<ChanService>(ChanService);
-    channelService = module.get<ChannelService>(ChannelService);
   });
 
   it('should be defined', () => {
