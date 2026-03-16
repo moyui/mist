@@ -6,7 +6,6 @@ import { ChannelService } from '../../../mist/src/chan/services/channel.service'
 describe('ChanMcpService', () => {
   let service: ChanMcpService;
   let chanService: ChanService;
-  let channelService: ChannelService;
 
   const mockKLines = [
     {
@@ -90,7 +89,6 @@ describe('ChanMcpService', () => {
 
     service = module.get<ChanMcpService>(ChanMcpService);
     chanService = module.get<ChanService>(ChanService);
-    channelService = module.get<ChannelService>(ChannelService);
   });
 
   it('should be defined', () => {
@@ -103,8 +101,8 @@ describe('ChanMcpService', () => {
 
       const result = (await service.createBi(mockKLines)) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockBi);
-      expect(result.count).toBe(1);
+      expect(result.data.data).toEqual(mockBi);
+      expect(result.data.count).toBe(1);
     });
   });
 
@@ -116,21 +114,13 @@ describe('ChanMcpService', () => {
 
       const result = (await service.getFenxing(mockKLines)) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockFenxings);
-      expect(result.count).toBe(1);
+      expect(result.data.data).toEqual(mockFenxings);
+      expect(result.data.count).toBe(1);
     });
   });
 
   describe('analyzeChanTheory', () => {
     it('should perform complete chan theory analysis', async () => {
-      (jest.spyOn(chanService, 'createBi') as any).mockResolvedValue(mockBi);
-      (jest.spyOn(chanService, 'getFenxings') as any).mockResolvedValue(
-        mockFenxings,
-      );
-      (jest.spyOn(channelService, 'createChannel') as any).mockResolvedValue(
-        mockChannels,
-      );
-
       const result = (await service.analyzeChanTheory(mockKLines)) as any;
       expect(result.success).toBe(true);
       expect(result.data.bis.data).toEqual(mockBi);
@@ -150,7 +140,7 @@ describe('ChanMcpService', () => {
     it('should return not implemented error', async () => {
       const result = (await service.mergeK(mockKLines)) as any;
       expect(result.success).toBe(false);
-      expect(result.error.message).toContain('not directly available');
+      expect(result.error).toContain('not directly available');
     });
   });
 });

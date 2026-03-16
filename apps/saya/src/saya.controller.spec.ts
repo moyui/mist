@@ -15,8 +15,8 @@ describe('SayaController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(sayaController.getHello()).toBe('Hello World!');
+    it('should return "Hello World! Saya"', () => {
+      expect(sayaController.getHello()).toBe('Hello World! Saya');
     });
   });
 });

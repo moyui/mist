@@ -30,27 +30,30 @@ export class LlmService {
       return this.llmCache[type];
     } else if (type === LlmType.Reasoning) {
       const llm = this.createDeepseekLLM({
-        model: this.configService.get('REASONING_MODEL'),
-        baseUrl: this.configService.get('REASONING_BASE_URL'),
-        apiKey: this.configService.get('REASONING_API_KEY'),
+        model: this.configService.get('REASONING_MODEL') || 'default-model',
+        baseUrl:
+          this.configService.get('REASONING_BASE_URL') || 'http://localhost',
+        apiKey: this.configService.get('REASONING_API_KEY') || 'default-key',
       });
       this.llmCache[type] = llm;
       return this.llmCache[type];
     } else if (type === LlmType.Basic) {
       // 暂时还是用deepseek
       const llm = this.createDeepseekLLM({
-        model: this.configService.get('REASONING_MODEL'),
-        baseUrl: this.configService.get('REASONING_BASE_URL'),
-        apiKey: this.configService.get('REASONING_API_KEY'),
+        model: this.configService.get('REASONING_MODEL') || 'default-model',
+        baseUrl:
+          this.configService.get('REASONING_BASE_URL') || 'http://localhost',
+        apiKey: this.configService.get('REASONING_API_KEY') || 'default-key',
       });
       this.llmCache[type] = llm;
       return this.llmCache[type];
     } else if (type === LlmType.Version) {
       // 暂时还是用deepseek
       const llm = this.createDeepseekLLM({
-        model: this.configService.get('REASONING_MODEL'),
-        baseUrl: this.configService.get('REASONING_BASE_URL'),
-        apiKey: this.configService.get('REASONING_API_KEY'),
+        model: this.configService.get('REASONING_MODEL') || 'default-model',
+        baseUrl:
+          this.configService.get('REASONING_BASE_URL') || 'http://localhost',
+        apiKey: this.configService.get('REASONING_API_KEY') || 'default-key',
       });
       this.llmCache[type] = llm;
       return this.llmCache[type];

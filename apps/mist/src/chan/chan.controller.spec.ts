@@ -3,6 +3,7 @@ import { ChanController } from './chan.controller';
 import { ChanService } from './chan.service';
 import { BiService } from './services/bi.service';
 import { KMergeService } from './services/k-merge.service';
+import { ChannelService } from './services/channel.service';
 import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
 import { MergeKDto } from './dto/merge-k.dto';
 import { CreateBiDto } from './dto/create-bi.dto';
@@ -23,6 +24,7 @@ describe('ChanController', () => {
         ChanService,
         BiService,
         KMergeService,
+        ChannelService,
         TrendService,
         UtilsService,
       ],
