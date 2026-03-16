@@ -3,15 +3,15 @@ import {
   CronIndexPeriodDto,
   SharedDataService,
 } from '@app/shared-data';
-import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { DataService } from './data.service';
 
 @Controller('data')
 export class DataController {
-  @Inject()
-  private sharedDataService: SharedDataService;
-
-  constructor(private readonly dataService: DataService) {
+  constructor(
+    private readonly dataService: DataService,
+    private readonly sharedDataService: SharedDataService,
+  ) {
     // 初始化上证指数
     this.dataService.initData();
   }

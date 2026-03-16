@@ -1,13 +1,12 @@
 import { UtilsService } from '@app/utils';
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TrendDirection } from '../chan/enums/trend-direction.enum';
 import { KVo } from '../indicator/vo/k.vo';
 import { BiVo } from '../chan/vo/bi.vo';
 
 @Injectable()
 export class TrendService {
-  @Inject()
-  private readonly utilsService: UtilsService;
+  constructor(private readonly utilsService: UtilsService) {}
 
   /**
    * Judges the trend direction based on two consecutive K-line data points

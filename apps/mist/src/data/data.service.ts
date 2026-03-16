@@ -14,14 +14,14 @@ import { Between, Repository } from 'typeorm';
 
 @Injectable()
 export class DataService {
-  @InjectRepository(IndexData)
-  private indexDataRepository: Repository<IndexData>;
-
-  @InjectRepository(IndexPeriod)
-  private indexPeriodRepository: Repository<IndexPeriod>;
-
-  @InjectRepository(IndexDaily)
-  private indexDailyRepository: Repository<IndexDaily>;
+  constructor(
+    @InjectRepository(IndexData)
+    private indexDataRepository: Repository<IndexData>,
+    @InjectRepository(IndexPeriod)
+    private indexPeriodRepository: Repository<IndexPeriod>,
+    @InjectRepository(IndexDaily)
+    private indexDailyRepository: Repository<IndexDaily>,
+  ) {}
 
   async initData() {
     const indexData =

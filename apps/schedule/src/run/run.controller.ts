@@ -1,7 +1,7 @@
 import { PeriodType, SharedDataService } from '@app/shared-data';
 import { TimezoneService } from '@app/timezone';
 import { UtilsService } from '@app/utils';
-import { Controller, Inject, OnApplicationBootstrap } from '@nestjs/common';
+import { Controller, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { TaskService } from '../task/task.service';
 
@@ -10,16 +10,12 @@ export class RunController implements OnApplicationBootstrap {
   private symbol = '000300'; // 上证指数接口有问题，先用hs300代替
   private isTradingDay = false;
 
-  constructor(private readonly sharedDataService: SharedDataService) {}
-
-  @Inject()
-  private taskService: TaskService;
-
-  @Inject()
-  private timezoneService: TimezoneService;
-
-  @Inject()
-  private utilsService: UtilsService;
+  constructor(
+    private readonly sharedDataService: SharedDataService,
+    private readonly taskService: TaskService,
+    private readonly timezoneService: TimezoneService,
+    private readonly utilsService: UtilsService,
+  ) {}
 
   onApplicationBootstrap() {
     this.handleCronIsTradingDay();

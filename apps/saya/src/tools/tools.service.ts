@@ -2,13 +2,7 @@ import { ERROR_MESSAGES } from '@app/constants/errors';
 import { UtilsService } from '@app/utils';
 import { tool } from '@langchain/core/tools';
 import { HttpService } from '@nestjs/axios';
-import {
-  HttpException,
-  HttpStatus,
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { KDto } from 'apps/mist/src/indicator/dto/k.dto';
 import { KDJDto } from 'apps/mist/src/indicator/dto/kdj.dto';
 import { MACDDto } from 'apps/mist/src/indicator/dto/macd.dto';
@@ -25,11 +19,10 @@ import { LocalServiceDto } from './dto/local-service.dto';
 export class ToolsService {
   private readonly logger = new Logger();
 
-  @Inject()
-  private httpService: HttpService;
-
-  @Inject()
-  private utilsService: UtilsService;
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly utilsService: UtilsService,
+  ) {}
 
   // 封装mist中indicator的接口，形成tools
   private async getLocalService<T, U>(

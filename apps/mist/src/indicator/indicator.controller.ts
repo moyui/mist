@@ -1,5 +1,5 @@
 import { TimezoneService } from '@app/timezone';
-import { Body, Controller, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { IndexVo } from '../../../../libs/shared-data/src/vo/index.vo';
@@ -27,13 +27,11 @@ export function formatIndicator(
 @ApiTags('indicator')
 @Controller('indicator')
 export class IndicatorController {
-  constructor(private readonly indicatorService: IndicatorService) {}
-
-  @Inject()
-  private dataService: DataService;
-
-  @Inject()
-  private timezoneService: TimezoneService;
+  constructor(
+    private readonly indicatorService: IndicatorService,
+    private readonly dataService: DataService,
+    private readonly timezoneService: TimezoneService,
+  ) {}
 
   @Post('macd')
   @Throttle({ default: { limit: 40, ttl: 60000 } }) // 40 requests per minute for MACD

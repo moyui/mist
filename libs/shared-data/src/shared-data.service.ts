@@ -15,13 +15,7 @@ import {
 import { TimezoneService } from '@app/timezone';
 import { UtilsService } from '@app/utils';
 import { HttpService } from '@nestjs/axios';
-import {
-  HttpException,
-  HttpStatus,
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AxiosError } from 'axios';
 import { addMinutes, format, parse } from 'date-fns';
@@ -32,23 +26,17 @@ import { Repository } from 'typeorm';
 export class SharedDataService {
   private readonly logger = new Logger();
 
-  @Inject()
-  private readonly httpService: HttpService;
-
-  @Inject()
-  private readonly timezoneService: TimezoneService;
-
-  @Inject()
-  private readonly utilsService: UtilsService;
-
-  @InjectRepository(IndexData)
-  private indexDataRepository: Repository<IndexData>;
-
-  @InjectRepository(IndexPeriod)
-  private indexPeriodRepository: Repository<IndexPeriod>;
-
-  @InjectRepository(IndexDaily)
-  private indexDailyRepository: Repository<IndexDaily>;
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly timezoneService: TimezoneService,
+    private readonly utilsService: UtilsService,
+    @InjectRepository(IndexData)
+    private indexDataRepository: Repository<IndexData>,
+    @InjectRepository(IndexPeriod)
+    private indexPeriodRepository: Repository<IndexPeriod>,
+    @InjectRepository(IndexDaily)
+    private indexDailyRepository: Repository<IndexDaily>,
+  ) {}
 
   private async getIndexPeriod(
     index: IndexPeriodDto,

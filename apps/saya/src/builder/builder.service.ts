@@ -1,6 +1,6 @@
 import { HumanMessage } from '@langchain/core/messages';
 import { StateGraph } from '@langchain/langgraph';
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { StateAnnotation } from '../role/dto/state.dto';
 import { RoleService } from '../role/role.service';
 
@@ -8,8 +8,7 @@ import { RoleService } from '../role/role.service';
 export class BuilderService implements OnModuleInit {
   private graph: ReturnType<typeof this.buildGraph>;
 
-  @Inject()
-  private roleService: RoleService;
+  constructor(private readonly roleService: RoleService) {}
 
   onModuleInit() {
     this.graph = this.buildGraph();

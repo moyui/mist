@@ -1,13 +1,7 @@
 import { ERROR_MESSAGES } from '@app/constants';
 import { UtilsService } from '@app/utils';
 import { HttpService } from '@nestjs/axios';
-import {
-  HttpException,
-  HttpStatus,
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import {
   addMinutes,
@@ -23,11 +17,10 @@ import { catchError, firstValueFrom } from 'rxjs';
 export class TimezoneService {
   private readonly logger = new Logger();
 
-  @Inject()
-  private httpService: HttpService;
-
-  @Inject()
-  private utilsService: UtilsService;
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly utilsService: UtilsService,
+  ) {}
 
   convertToBeijingTimeWithInterval(
     date: Date,

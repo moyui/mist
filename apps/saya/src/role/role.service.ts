@@ -1,5 +1,5 @@
 import { AngentsConfig } from '@app/config';
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LlmService } from '../llm/llm.service';
 import { TemplateService } from '../template/template.service';
@@ -7,14 +7,11 @@ import { StateAnnotation } from './dto/state.dto';
 
 @Injectable()
 export class RoleService {
-  @Inject()
-  private templateService: TemplateService;
-
-  @Inject()
-  private llmService: LlmService;
-
-  @Inject()
-  private configService: ConfigService;
+  constructor(
+    private readonly templateService: TemplateService,
+    private readonly llmService: LlmService,
+    private readonly configService: ConfigService,
+  ) {}
 
   Planner = async (state: typeof StateAnnotation.State) => {
     await this.templateService.applyPromptTemplate({
