@@ -54,8 +54,8 @@ describe('IndicatorMcpService', () => {
 
       const result = (await service.calculateMacd(mockPrices)) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockMACDResult);
-      expect(result.params).toEqual({
+      expect(result.data.data).toEqual(mockMACDResult);
+      expect(result.data.params).toEqual({
         fastPeriod: 12,
         slowPeriod: 26,
         signalPeriod: 9,
@@ -71,8 +71,8 @@ describe('IndicatorMcpService', () => {
 
       const result = (await service.calculateRsi(mockPrices)) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockRSIResult);
-      expect(result.params).toEqual({ period: 14 });
+      expect(result.data.data).toEqual(mockRSIResult);
+      expect(result.data.params).toEqual({ period: 14 });
     });
 
     it('should calculate RSI with custom period', async () => {
@@ -82,8 +82,8 @@ describe('IndicatorMcpService', () => {
 
       const result = (await service.calculateRsi(mockPrices, 20)) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockRSIResult);
-      expect(result.params).toEqual({ period: 20 });
+      expect(result.data.data).toEqual(mockRSIResult);
+      expect(result.data.params).toEqual({ period: 20 });
     });
   });
 
@@ -99,8 +99,8 @@ describe('IndicatorMcpService', () => {
         mockCloses,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockKDJResult);
-      expect(result.params).toEqual({
+      expect(result.data.data).toEqual(mockKDJResult);
+      expect(result.data.params).toEqual({
         period: 9,
         kSmoothing: 3,
         dSmoothing: 3,
@@ -121,8 +121,8 @@ describe('IndicatorMcpService', () => {
         5,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockKDJResult);
-      expect(result.params).toEqual({
+      expect(result.data.data).toEqual(mockKDJResult);
+      expect(result.data.params).toEqual({
         period: 14,
         kSmoothing: 5,
         dSmoothing: 5,
@@ -142,8 +142,8 @@ describe('IndicatorMcpService', () => {
         mockCloses,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockADXResult);
-      expect(result.params).toEqual({ period: 14 });
+      expect(result.data.data).toEqual(mockADXResult);
+      expect(result.data.params).toEqual({ period: 14 });
     });
 
     it('should calculate ADX with custom period', async () => {
@@ -158,8 +158,8 @@ describe('IndicatorMcpService', () => {
         20,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockADXResult);
-      expect(result.params).toEqual({ period: 20 });
+      expect(result.data.data).toEqual(mockADXResult);
+      expect(result.data.params).toEqual({ period: 20 });
     });
   });
 
@@ -175,8 +175,8 @@ describe('IndicatorMcpService', () => {
         mockCloses,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockATRResult);
-      expect(result.params).toEqual({ period: 14 });
+      expect(result.data.data).toEqual(mockATRResult);
+      expect(result.data.params).toEqual({ period: 14 });
     });
 
     it('should calculate ATR with custom period', async () => {
@@ -191,8 +191,8 @@ describe('IndicatorMcpService', () => {
         20,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockATRResult);
-      expect(result.params).toEqual({ period: 20 });
+      expect(result.data.data).toEqual(mockATRResult);
+      expect(result.data.params).toEqual({ period: 20 });
     });
   });
 
@@ -220,11 +220,11 @@ describe('IndicatorMcpService', () => {
         mockCloses,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data.macd.data).toEqual(mockMACDResult);
-      expect(result.data.rsi.data).toEqual(mockRSIResult);
-      expect(result.data.kdj.data).toEqual(mockKDJResult);
-      expect(result.data.adx.data).toEqual(mockADXResult);
-      expect(result.data.atr.data).toEqual(mockATRResult);
+      expect(result.data.data.macd.data).toEqual(mockMACDResult);
+      expect(result.data.data.rsi.data).toEqual(mockRSIResult);
+      expect(result.data.data.kdj.data).toEqual(mockKDJResult);
+      expect(result.data.data.adx.data).toEqual(mockADXResult);
+      expect(result.data.data.atr.data).toEqual(mockATRResult);
       expect(result.data.summary.indicatorsCalculated).toBe(5);
     });
   });

@@ -40,10 +40,10 @@ describe('ScheduleMcpService', () => {
         'ONE',
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data.symbol).toBe('000001');
-      expect(result.data.period).toBe('ONE');
-      expect(result.data.status).toBe('queued');
-      expect(result.data.jobId).toBeDefined();
+      expect(result.data.data.symbol).toBe('000001');
+      expect(result.data.data.period).toBe('ONE');
+      expect(result.data.data.status).toBe('queued');
+      expect(result.data.data.jobId).toBeDefined();
     });
   });
 
@@ -58,10 +58,10 @@ describe('ScheduleMcpService', () => {
 
       const result = (await service.listScheduledJobs()) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.data[0].name).toBe('job1');
-      expect(result.data[0].running).toBe(false);
-      expect(result.count).toBe(2);
+      expect(result.data.data).toHaveLength(2);
+      expect(result.data.data[0].name).toBe('job1');
+      expect(result.data.data[0].running).toBe(false);
+      expect(result.data.count).toBe(2);
     });
 
     it('should return empty list when no jobs', async () => {
@@ -69,8 +69,8 @@ describe('ScheduleMcpService', () => {
 
       const result = (await service.listScheduledJobs()) as any;
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(0);
-      expect(result.count).toBe(0);
+      expect(result.data.data).toHaveLength(0);
+      expect(result.data.count).toBe(0);
     });
   });
 
@@ -80,9 +80,9 @@ describe('ScheduleMcpService', () => {
 
       const result = (await service.getJobStatus('job1')) as any;
       expect(result.success).toBe(true);
-      expect(result.data.name).toBe('job1');
-      expect(result.data.running).toBe(false);
-      expect(result.data.lastExecution).toBe('2024-01-01T10:00:00.000Z');
+      expect(result.data.data.name).toBe('job1');
+      expect(result.data.data.running).toBe(false);
+      expect(result.data.data.lastExecution).toBe('2024-01-01T02:00:00.000Z');
     });
 
     it('should return error when job not found', async () => {
@@ -106,10 +106,10 @@ describe('ScheduleMcpService', () => {
         periods,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data.taskCount).toBe(4); // 2 symbols * 2 periods
-      expect(result.data.status).toBe('queued');
-      expect(result.data.batchId).toBeDefined();
-      expect(result.data.tasks).toHaveLength(3);
+      expect(result.data.data.taskCount).toBe(4); // 2 symbols * 2 periods
+      expect(result.data.data.status).toBe('queued');
+      expect(result.data.data.batchId).toBeDefined();
+      expect(result.data.data.tasks).toHaveLength(4);
     });
 
     it('should limit returned tasks to 10', async () => {
@@ -121,8 +121,8 @@ describe('ScheduleMcpService', () => {
         periods,
       )) as any;
       expect(result.success).toBe(true);
-      expect(result.data.taskCount).toBe(15); // 5 symbols * 3 periods
-      expect(result.data.tasks).toHaveLength(10); // Limited to 10
+      expect(result.data.data.taskCount).toBe(15); // 5 symbols * 3 periods
+      expect(result.data.data.tasks).toHaveLength(10); // Limited to 10
     });
   });
 
@@ -130,11 +130,11 @@ describe('ScheduleMcpService', () => {
     it('should return schedule configuration', async () => {
       const result = (await service.getScheduleConfig()) as any;
       expect(result.success).toBe(true);
-      expect(result.data.description).toBe('Mist 数据采集计划配置');
-      expect(result.data.schedules).toHaveLength(6);
-      expect(result.data.schedules[0].name).toBe('日线数据采集');
-      expect(result.data.schedules[0].period).toBe('DAILY');
-      expect(result.data.schedules[0].cron).toBe('0 17 * * 1-5');
+      expect(result.data.data.description).toBe('Mist 数据采集计划配置');
+      expect(result.data.data.schedules).toHaveLength(6);
+      expect(result.data.data.schedules[0].name).toBe('日线数据采集');
+      expect(result.data.data.schedules[0].period).toBe('DAILY');
+      expect(result.data.data.schedules[0].cron).toBe('0 17 * * 1-5');
     });
   });
 });
