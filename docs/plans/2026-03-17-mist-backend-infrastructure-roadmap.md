@@ -231,7 +231,19 @@ CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
 
 ### 2.1 GitHub Actions CI/CD
 
-#### 构建可执行文件
+#### 平台支持说明
+
+**Docker镜像**: 仅支持Linux平台（linux/amd64, linux/arm64）
+- 用于Linux服务器部署
+- macOS和Windows用户应该使用可执行文件
+
+**可执行文件**: 支持所有平台
+- **linux-amd64**: Linux x86_64系统
+- **macos-amd64**: macOS Intel芯片
+- **macos-arm64**: macOS Apple芯片（M1/M2/M3）
+- **windows-x86**: Windows x86_64系统
+
+#### 构建可执行文件（全平台支持）
 
 **`.github/workflows/build.yml`:**
 
@@ -247,12 +259,30 @@ on:
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build for ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: [24.x]
+        include:
+          # Linux
+          - platform: linux-amd64
+            runner: ubuntu-latest
+            target: node24-linux-x64
+            output: mist-linux-amd64
+          # macOS
+          - platform: macos-amd64
+            runner: macos-latest
+            target: node24-macos-x64
+            output: mist-macos-amd64
+          - platform: macos-arm64
+            runner: macos-latest
+            target: node24-macos-arm64
+            output: mist-macos-arm64
+          # Windows
+          - platform: windows-x86
+            runner: windows-latest
+            target: node24-win-x64
+            output: mist-windows-x86.exe
 
     steps:
       - name: Checkout code
@@ -261,7 +291,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24.x
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -278,17 +308,19 @@ jobs:
       - name: Package executable
         run: |
           chmod +x tools/build-executable.sh
-          ./tools/build-executable.sh ${{ matrix.os }}
+          ./tools/build-executable.sh ${{ matrix.platform }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mist-${{ matrix.os }}
-          path: dist/executables/mist-*
+          name: mist-${{ matrix.platform }}
+          path: dist/executables/${{ matrix.output }}
           retention-days: 7
 ```
 
-#### 构建Docker镜像
+#### 构建Docker镜像（仅Linux平台）
+
+**说明**: Docker镜像主要用于Linux服务器部署。对于macOS和Windows，用户应该使用可执行文件。
 
 **`.github/workflows/docker.yml`:**
 
@@ -365,7 +397,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build executables
+      - name: Build executables (all platforms)
         run: |
           chmod +x tools/package-release.sh
           ./tools/package-release.sh
@@ -375,10 +407,9 @@ jobs:
         with:
           files: |
             release/mist-linux-amd64
-            release/mist-linux-arm64
-            release/macos-amd64
-            release/macos-arm64
-            release/windows-x86.exe
+            release/mist-macos-amd64
+            release/mist-macos-arm64
+            release/mist-windows-x86.exe
           draft: false
           prerelease: false
         env:
@@ -393,23 +424,32 @@ jobs:
 #!/bin/bash
 set -e
 
-OS=$1
+PLATFORM=$1
 OUTPUT_DIR="dist/executables"
 
 mkdir -p $OUTPUT_DIR
 
-case $OS in
-  ubuntu-latest)
+case $PLATFORM in
+  linux-amd64)
     pkg . --targets node24-linux-x64 --output $OUTPUT_DIR/mist-linux-amd64
     ;;
-  macos-latest)
-    pkg . --targets node24-macos-x64 --output $OUTPUT_DIR/macos-amd64
-    pkg . --targets node24-macos-arm64 --output $OUTPUT_DIR/macos-arm64
+  macos-amd64)
+    pkg . --targets node24-macos-x64 --output $OUTPUT_DIR/mist-macos-amd64
     ;;
-  windows-latest)
-    pkg . --targets node24-win-x64 --output $OUTPUT_DIR/windows-x86.exe
+  macos-arm64)
+    pkg . --targets node24-macos-arm64 --output $OUTPUT_DIR/mist-macos-arm64
+    ;;
+  windows-x86)
+    pkg . --targets node24-win-x64 --output $OUTPUT_DIR/mist-windows-x86.exe
+    ;;
+  *)
+    echo "Unknown platform: $PLATFORM"
+    echo "Supported: linux-amd64, macos-amd64, macos-arm64, windows-x86"
+    exit 1
     ;;
 esac
+
+echo "✅ Build complete for $PLATFORM"
 ```
 
 #### tools/package-release.sh
@@ -418,13 +458,21 @@ esac
 #!/bin/bash
 set -e
 
+echo "Packaging release for all platforms..."
+
 mkdir -p release
 
-./tools/build-executable.sh ubuntu-latest
-./tools/build-executable.sh macos-latest
-./tools/build-executable.sh windows-latest
+# 构建所有平台
+./tools/build-executable.sh linux-amd64
+./tools/build-executable.sh macos-amd64
+./tools/build-executable.sh macos-arm64
+./tools/build-executable.sh windows-x86
 
-cp dist/executables/* release/
+# 复制到release目录
+cp dist/executables/mist-* release/
+
+echo "✅ Release packaging complete"
+ls -lh release/
 ```
 
 ### 2.3 package.json依赖
@@ -570,7 +618,7 @@ mist/
 
 ### 阶段2完成
 - ✅ GitHub Actions构建
-- ✅ 多平台可执行文件
+- ✅ 多平台可执行文件（linux/macos/windows）
 - ✅ Docker镜像（linux/amd64, linux/arm64）
 - ✅ 自动Release
 
