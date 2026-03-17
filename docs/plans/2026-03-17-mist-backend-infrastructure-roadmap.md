@@ -233,15 +233,27 @@ CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
 
 #### 平台支持说明
 
-**Docker镜像**: 仅支持Linux平台（linux/amd64, linux/arm64）
-- 用于Linux服务器部署
-- macOS和Windows用户应该使用可执行文件
+**Docker镜像**: 跨平台支持（通过Docker Desktop虚拟化）
+- **linux/amd64**:
+  - Linux x86_64服务器（原生运行）
+  - macOS Intel（通过Docker Desktop）
+  - Windows x86_64（通过Docker Desktop）
+- **linux/arm64**:
+  - Linux ARM64服务器（原生运行，如AWS Graviton）
+  - macOS Apple芯片 M1/M2/M3（通过Docker Desktop，原生性能）
+  - Windows ARM（通过Docker Desktop）
 
-**可执行文件**: 支持所有平台
+**可执行文件**: 原生运行，无需Docker
 - **linux-amd64**: Linux x86_64系统
 - **macos-amd64**: macOS Intel芯片
 - **macos-arm64**: macOS Apple芯片（M1/M2/M3）
 - **windows-x86**: Windows x86_64系统
+
+**使用建议**:
+- **服务器部署**: 使用Docker镜像（linux/amd64 或 linux/arm64）
+- **本地开发**:
+  - Linux/Mac/Windows都可以使用Docker（统一体验）
+  - 或使用可执行文件（更轻量，启动更快）
 
 #### 构建可执行文件（全平台支持）
 
@@ -318,9 +330,12 @@ jobs:
           retention-days: 7
 ```
 
-#### 构建Docker镜像（仅Linux平台）
+#### 构建Docker镜像（跨平台支持）
 
-**说明**: Docker镜像主要用于Linux服务器部署。对于macOS和Windows，用户应该使用可执行文件。
+**说明**:
+- 构建linux/amd64和linux/arm64两种架构的镜像
+- 这些镜像可以在Linux、macOS、Windows上通过Docker运行
+- macOS和Windows用户通过Docker Desktop获得跨平台支持
 
 **`.github/workflows/docker.yml`:**
 
@@ -619,7 +634,7 @@ mist/
 ### 阶段2完成
 - ✅ GitHub Actions构建
 - ✅ 多平台可执行文件（linux/macos/windows）
-- ✅ Docker镜像（linux/amd64, linux/arm64）
+- ✅ Docker镜像跨平台支持（linux/amd64, linux/arm64，可在所有平台通过Docker Desktop运行）
 - ✅ 自动Release
 
 ### 阶段3完成
@@ -630,6 +645,31 @@ mist/
 ---
 
 ## 使用方式
+
+### 部署方式选择
+
+**使用Docker镜像**（推荐用于服务器部署）:
+```bash
+# Linux服务器
+docker pull ghcr.io/your-repo/mist:latest
+docker run -d -p 8001:8001 ghcr.io/your-repo/mist:latest
+
+# macOS/Windows本地（通过Docker Desktop）
+docker-compose up -d
+```
+
+**使用可执行文件**（推荐用于本地开发）:
+```bash
+# 下载对应平台的可执行文件
+chmod +x mist-linux-amd64
+./mist-linux-amd64
+```
+
+**对比**:
+| 方式 | 优点 | 缺点 | 适用场景 |
+|------|------|------|----------|
+| Docker | 环境一致、依赖完整、易于部署 | 镜像较大（~300MB） | 服务器部署、团队协作 |
+| 可执行文件 | 轻量、启动快、无依赖 | 需要单独安装MySQL、Python | 本地开发、快速测试 |
 
 ### 开发环境
 
