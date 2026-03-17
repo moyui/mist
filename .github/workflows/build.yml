@@ -1,0 +1,68 @@
+name: Build Executables
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build for ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - platform: linux-amd64
+            runner: ubuntu-latest
+            target: node24-linux-x64
+            output: mist-linux-amd64
+          # macOS
+          - platform: macos-amd64
+            runner: macos-latest
+            target: node24-macos-x64
+            output: mist-macos-amd64
+          - platform: macos-arm64
+            runner: macos-latest
+            target: node24-macos-arm64
+            output: mist-macos-arm64
+          # Windows
+          - platform: windows-x86
+            runner: windows-latest
+            target: node24-win-x64
+            output: mist-windows-x86.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Run tests
+        run: pnpm run test
+
+      - name: Package executable
+        run: |
+          chmod +x tools/build-executable.sh
+          ./tools/build-executable.sh ${{ matrix.platform }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mist-${{ matrix.platform }}
+          path: dist/executables/${{ matrix.output }}
+          retention-days: 7
