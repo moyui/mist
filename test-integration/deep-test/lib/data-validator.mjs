@@ -40,7 +40,7 @@ export class DataValidator {
     // Check data structure
     if (data.length > 0) {
       const sample = data[0];
-      const requiredFields = ['time', 'open', 'high', 'low', 'close'];
+      const requiredFields = ['time', 'open', 'highest', 'lowest', 'close'];
       const missing = requiredFields.filter(f => !(f in sample));
 
       if (missing.length > 0) {

@@ -158,7 +158,7 @@ export const validators = {
     if (!Array.isArray(data) || data.length === 0) {
       return { passed: false, details: 'No data to validate' };
     }
-    const required = ['time', 'open', 'high', 'low', 'close', 'amount'];
+    const required = ['time', 'open', 'highest', 'lowest', 'close', 'amount'];
     const sample = data[0];
     const missing = required.filter(f => !(f in sample));
     return {

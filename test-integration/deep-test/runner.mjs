@@ -15,27 +15,27 @@ import fs from 'fs';
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const projectRoot = path.resolve(__dirname, '../..');
 
-// Test configuration
+// Test configuration - 使用实际采集的数据范围 (2024-09-22 到 2026-03-15)
 const TEST_CONFIG = {
   indices: [
     {
-      symbol: 'sh000001',
+      symbol: '000001',
       name: '上证指数',
       period: 'daily',
-      startDate: '2024-01-01',
-      endDate: '2024-12-31'
-    },
-    {
-      symbol: 'sh000300',
-      name: '沪深300',
-      period: '30min',
       startDate: '2024-10-01',
       endDate: '2024-12-31'
     },
     {
-      symbol: 'sh000905',
-      name: '中证500',
-      period: '60min',
+      symbol: '000001',
+      name: '上证指数-2025',
+      period: 'daily',
+      startDate: '2025-01-01',
+      endDate: '2025-03-15'
+    },
+    {
+      symbol: '000300',
+      name: '沪深300',
+      period: 'daily',
       startDate: '2024-10-01',
       endDate: '2024-12-31'
     }
@@ -44,7 +44,7 @@ const TEST_CONFIG = {
     dataLayer: true,
     indicatorLayer: true,
     chanLayer: true,
-    mcpLayer: false  // MCP server needs separate testing
+    mcpLayer: false
   }
 };
 
@@ -157,10 +157,10 @@ class DeepTestRunner {
       endpoint: '/indicator/k',
       body: {
         symbol: idx.symbol,
-        code: idx.symbol,
-        period: idx.period,
-        startDate: idx.startDate,
-        endDate: idx.endDate
+        code: 'sh',
+        daily: true,
+        startDate: new Date(idx.startDate).getTime(),
+        endDate: new Date(idx.endDate).getTime()
       },
       validations: [
         { name: '数据存在', check: validators.hasData },
@@ -200,10 +200,10 @@ class DeepTestRunner {
         endpoint: '/indicator/macd',
         body: {
           symbol: idx.symbol,
-          code: idx.symbol,
-          period: idx.period,
-          startDate: idx.startDate,
-          endDate: idx.endDate
+          code: 'sh',
+          daily: true,
+          startDate: new Date(idx.startDate).getTime(),
+          endDate: new Date(idx.endDate).getTime()
         }
       },
       {
@@ -211,10 +211,10 @@ class DeepTestRunner {
         endpoint: '/indicator/kdj',
         body: {
           symbol: idx.symbol,
-          code: idx.symbol,
-          period: idx.period,
-          startDate: idx.startDate,
-          endDate: idx.endDate
+          code: 'sh',
+          daily: true,
+          startDate: new Date(idx.startDate).getTime(),
+          endDate: new Date(idx.endDate).getTime()
         }
       },
       {
@@ -222,10 +222,10 @@ class DeepTestRunner {
         endpoint: '/indicator/rsi',
         body: {
           symbol: idx.symbol,
-          code: idx.symbol,
-          period: idx.period,
-          startDate: idx.startDate,
-          endDate: idx.endDate
+          code: 'sh',
+          daily: true,
+          startDate: new Date(idx.startDate).getTime(),
+          endDate: new Date(idx.endDate).getTime()
         }
       }
     ];
@@ -263,7 +263,8 @@ class DeepTestRunner {
 
     const kData = JSON.parse(fs.readFileSync(kDataPath, 'utf8'));
 
-    const testCases = [
+    // Step 1: Test merge-k and bi (both use K data, can run in parallel)
+    const step1Tests = [
       {
         name: '合并K',
         endpoint: '/chan/merge-k',
@@ -273,21 +274,42 @@ class DeepTestRunner {
         name: '笔识别',
         endpoint: '/chan/bi',
         body: { k: kData }
-      },
-      {
-        name: '中枢识别',
-        endpoint: '/chan/channel',
-        body: { k: kData }
       }
     ];
 
-    const results = await this.apiTester.runTests(testCases);
+    const step1Results = await this.apiTester.runTests(step1Tests);
+
+    // Step 2: Test channel (uses bi data from step 1)
+    const biResult = step1Results.results.find(r => r.name === '笔识别');
+    let step2Results = { total: 0, passed: 0, failed: 0, results: [] };
+
+    if (biResult?.data) {
+      const step2Tests = [
+        {
+          name: '中枢识别',
+          endpoint: '/chan/channel',
+          body: { bi: biResult.data }
+        }
+      ];
+
+      step2Results = await this.apiTester.runTests(step2Tests);
+    } else {
+      logError('笔识别失败，跳过中枢识别测试\n');
+    }
+
+    // Combine results
+    const allResults = {
+      total: step1Results.total + step2Results.total,
+      passed: step1Results.passed + step2Results.passed,
+      failed: step1Results.failed + step2Results.failed,
+      results: [...step1Results.results, ...step2Results.results]
+    };
 
     // Save raw data
-    for (let i = 0; i < results.results.length; i++) {
-      const result = results.results[i];
+    for (let i = 0; i < allResults.results.length; i++) {
+      const result = allResults.results[i];
       if (result.data) {
-        const filename = `${testCases[i].name.toLowerCase()}.json`;
+        const filename = `${result.name.toLowerCase()}.json`;
         fs.writeFileSync(
           path.join(this.testDir, 'raw/chan-layer', filename),
           JSON.stringify(result.data, null, 2),
@@ -296,9 +318,9 @@ class DeepTestRunner {
       }
     }
 
-    logSuccess(`缠论算法层测试完成: ${results.passed}/${results.total} 通过\n`);
+    logSuccess(`缠论算法层测试完成: ${allResults.passed}/${allResults.total} 通过\n`);
 
-    return results;
+    return allResults;
   }
 
   async phase6_GenerateReports() {
