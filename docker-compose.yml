@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  mist:
+    container_name: mist-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"  # Main mist app
+      - "8008:8008"  # Chan test entry
+      - "8080:8080"  # AKTools
+    environment:
+      - mysql_server_host=host.docker.internal
+      - mysql_server_port=3306
+      - mysql_server_username=${MYSQL_USER}
+      - mysql_server_password=${MYSQL_PASSWORD}
+      - mysql_server_database=mist
+      - NODE_ENV=development
+      - AKTOOLS_BASE_URL=http://localhost:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - mist-network
+    volumes:
+      - ./mist:/app/mist
+      - ./dist:/app/dist
+    command: ["pnpm", "run", "start:dev:mist"]
+
+  mcp-server:
+    container_name: mist-mcp-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8009:8009"  # MCP server
+      - "8081:8080"  # AKTools on different port
+    environment:
+      - PORT=8009
+      - mysql_server_host=host.docker.internal
+      - mysql_server_port=3306
+      - mysql_server_username=${MYSQL_USER}
+      - mysql_server_password=${MYSQL_PASSWORD}
+      - mysql_server_database=mist
+      - NODE_ENV=development
+      - AKTOOLS_BASE_URL=http://localhost:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - mist-network
+    command: ["pnpm", "run", "start:dev:mcp-server"]
+
+networks:
+  mist-network:
+    driver: bridge
