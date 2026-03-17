@@ -61,6 +61,18 @@ describe('IndicatorMcpService', () => {
         signalPeriod: 9,
       });
     });
+
+    it('should return error for empty prices array', async () => {
+      const result = (await service.calculateMacd([])) as any;
+      expect(result.success).toBe(false);
+      expect(result.error.message).toContain('at least 1 element');
+    });
+
+    it('should return error for invalid prices (NaN)', async () => {
+      const result = (await service.calculateMacd([100, NaN, 105])) as any;
+      expect(result.success).toBe(false);
+      expect(result.error.message).toContain('not a valid number');
+    });
   });
 
   describe('calculateRsi', () => {

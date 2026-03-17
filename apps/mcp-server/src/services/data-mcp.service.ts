@@ -7,6 +7,7 @@ import { IndexData } from '@app/shared-data';
 import { IndexPeriod } from '@app/shared-data';
 import { IndexDaily } from '@app/shared-data';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
+import { ValidationHelper } from '../utils/validation.helpers';
 
 // Zod schemas
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -31,12 +32,22 @@ export class DataMcpService extends BaseMcpToolService {
   })
   async getIndexInfo(symbol: string) {
     return this.executeTool('get_index_info', async () => {
+      // Validate symbol
+      const symbolError = ValidationHelper.validateSymbol(symbol);
+      if (symbolError) {
+        throw new Error(symbolError);
+      }
+
+      const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
+
       const index = await this.indexDataRepository.findOne({
-        where: { symbol },
+        where: { symbol: sanitizedSymbol },
       });
 
       if (!index) {
-        throw new Error(`Index with symbol ${symbol} not found`);
+        throw new Error(
+          `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+        );
       }
 
       return {
@@ -60,11 +71,36 @@ export class DataMcpService extends BaseMcpToolService {
     endTime?: string,
   ) {
     return this.executeTool('get_kline_data', async () => {
+      // Validate symbol
+      const symbolError = ValidationHelper.validateSymbol(symbol);
+      if (symbolError) {
+        throw new Error(symbolError);
+      }
+
+      // Validate limit
+      const limitError = ValidationHelper.validateLimit(limit, 10000);
+      if (limitError) {
+        throw new Error(limitError);
+      }
+
+      // Validate date range
+      const dateRangeError = ValidationHelper.validateDateRange(
+        startTime,
+        endTime,
+      );
+      if (dateRangeError) {
+        throw new Error(dateRangeError);
+      }
+
+      const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
+
       const index = await this.indexDataRepository.findOne({
-        where: { symbol },
+        where: { symbol: sanitizedSymbol },
       });
       if (!index) {
-        throw new Error(`Index with symbol ${symbol} not found`);
+        throw new Error(
+          `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+        );
       }
 
       const queryBuilder = this.indexPeriodRepository
@@ -106,11 +142,36 @@ export class DataMcpService extends BaseMcpToolService {
     endDate?: string,
   ) {
     return this.executeTool('get_daily_kline', async () => {
+      // Validate symbol
+      const symbolError = ValidationHelper.validateSymbol(symbol);
+      if (symbolError) {
+        throw new Error(symbolError);
+      }
+
+      // Validate limit
+      const limitError = ValidationHelper.validateLimit(limit, 10000);
+      if (limitError) {
+        throw new Error(limitError);
+      }
+
+      // Validate date range
+      const dateRangeError = ValidationHelper.validateDateRange(
+        startDate,
+        endDate,
+      );
+      if (dateRangeError) {
+        throw new Error(dateRangeError);
+      }
+
+      const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
+
       const index = await this.indexDataRepository.findOne({
-        where: { symbol },
+        where: { symbol: sanitizedSymbol },
       });
       if (!index) {
-        throw new Error(`Index with symbol ${symbol} not found`);
+        throw new Error(
+          `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+        );
       }
 
       const queryBuilder = this.indexDailyRepository

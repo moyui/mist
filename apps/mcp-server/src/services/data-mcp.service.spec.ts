@@ -114,6 +114,12 @@ describe('DataMcpService', () => {
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('not found');
     });
+
+    it('should return error for empty symbol', async () => {
+      const result = (await service.getIndexInfo('  ')) as any;
+      expect(result.success).toBe(false);
+      expect(result.error.message).toContain('cannot be empty');
+    });
   });
 
   describe('getKlineData', () => {
@@ -144,6 +150,24 @@ describe('DataMcpService', () => {
       const result = (await service.getKlineData('999999', 'ONE', 10)) as any;
       expect(result.success).toBe(false);
       expect(result.error.message).toContain('not found');
+    });
+
+    it('should return error for invalid limit', async () => {
+      const result = (await service.getKlineData('000001', 'ONE', 0)) as any;
+      expect(result.success).toBe(false);
+      expect(result.error.message).toContain('limit must be at least 1');
+    });
+
+    it('should return error for invalid date range', async () => {
+      const result = (await service.getKlineData(
+        '000001',
+        'ONE',
+        10,
+        '2024-12-31',
+        '2024-01-01',
+      )) as any;
+      expect(result.success).toBe(false);
+      expect(result.error.message).toContain('start date');
     });
   });
 

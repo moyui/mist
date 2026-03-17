@@ -3,6 +3,7 @@ import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { IndicatorService } from '../../../mist/src/indicator/indicator.service';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
+import { ValidationHelper } from '../utils/validation.helpers';
 
 // Zod schemas
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -20,6 +21,12 @@ export class IndicatorMcpService extends BaseMcpToolService {
   })
   async calculateMacd(prices: z.infer<typeof PricesSchema>) {
     return this.executeTool('calculate_macd', async () => {
+      // Validate prices array
+      const pricesError = ValidationHelper.validatePrices(prices);
+      if (pricesError) {
+        throw new Error(pricesError);
+      }
+
       const result = await this.indicatorService.runMACD(prices);
       return {
         data: result,
@@ -41,6 +48,18 @@ export class IndicatorMcpService extends BaseMcpToolService {
     period: number = 14,
   ) {
     return this.executeTool('calculate_rsi', async () => {
+      // Validate prices array
+      const pricesError = ValidationHelper.validatePrices(prices);
+      if (pricesError) {
+        throw new Error(pricesError);
+      }
+
+      // Validate period
+      const periodError = ValidationHelper.validatePeriod(period, 'period', 2);
+      if (periodError) {
+        throw new Error(periodError);
+      }
+
       const result = await this.indicatorService.runRSI(prices, period);
       return {
         data: result,
@@ -62,6 +81,55 @@ export class IndicatorMcpService extends BaseMcpToolService {
     dSmoothing: number = 3,
   ) {
     return this.executeTool('calculate_kdj', async () => {
+      // Validate prices arrays
+      const highsError = ValidationHelper.validatePrices(highs, 'highs');
+      if (highsError) {
+        throw new Error(highsError);
+      }
+
+      const lowsError = ValidationHelper.validatePrices(lows, 'lows');
+      if (lowsError) {
+        throw new Error(lowsError);
+      }
+
+      const closesError = ValidationHelper.validatePrices(closes, 'closes');
+      if (closesError) {
+        throw new Error(closesError);
+      }
+
+      // Validate array lengths match
+      const lengthError = ValidationHelper.validateMatchingLengths(
+        [highs, lows, closes],
+        ['highs', 'lows', 'closes'],
+      );
+      if (lengthError) {
+        throw new Error(lengthError);
+      }
+
+      // Validate period parameters
+      const periodError = ValidationHelper.validatePeriod(period, 'period', 2);
+      if (periodError) {
+        throw new Error(periodError);
+      }
+
+      const kSmoothingError = ValidationHelper.validatePeriod(
+        kSmoothing,
+        'kSmoothing',
+        1,
+      );
+      if (kSmoothingError) {
+        throw new Error(kSmoothingError);
+      }
+
+      const dSmoothingError = ValidationHelper.validatePeriod(
+        dSmoothing,
+        'dSmoothing',
+        1,
+      );
+      if (dSmoothingError) {
+        throw new Error(dSmoothingError);
+      }
+
       const result = await this.indicatorService.runKDJ({
         high: highs,
         low: lows,

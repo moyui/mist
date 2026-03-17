@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ChanService } from '../../../mist/src/chan/chan.service';
 import { ChannelService } from '../../../mist/src/chan/services/channel.service';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
+import { ValidationHelper } from '../utils/validation.helpers';
 
 /**
  * Zod schema for K-line data (matching KVo type)
@@ -62,6 +63,19 @@ export class ChanMcpService extends BaseMcpToolService {
   })
   async createBi(k: z.infer<typeof KLineSchema>) {
     return this.executeTool('create_bi', async () => {
+      // Validate minimum K-line data (at least 3 K-lines needed for Bi detection)
+      const minLengthError = ValidationHelper.validateMinLength(
+        k,
+        3,
+        'K-line data',
+      );
+      if (minLengthError) {
+        throw new Error(
+          minLengthError +
+            ' Bi detection requires at least 3 K-lines to identify patterns.',
+        );
+      }
+
       // Convert input data to KVo format
       const kVoData = k.map((kline) => ({
         ...kline,
@@ -83,6 +97,19 @@ export class ChanMcpService extends BaseMcpToolService {
   })
   async getFenxing(k: z.infer<typeof KLineSchema>) {
     return this.executeTool('get_fenxing', async () => {
+      // Validate minimum K-line data (at least 3 K-lines needed for Fenxing detection)
+      const minLengthError = ValidationHelper.validateMinLength(
+        k,
+        3,
+        'K-line data',
+      );
+      if (minLengthError) {
+        throw new Error(
+          minLengthError +
+            ' Fenxing detection requires at least 3 K-lines to identify patterns.',
+        );
+      }
+
       // Convert input data to KVo format
       const kVoData = k.map((kline) => ({
         ...kline,
@@ -104,6 +131,19 @@ export class ChanMcpService extends BaseMcpToolService {
   })
   async analyzeChanTheory(k: z.infer<typeof KLineSchema>) {
     return this.executeTool('analyze_chan_theory', async () => {
+      // Validate minimum K-line data (at least 3 K-lines needed for Chan Theory analysis)
+      const minLengthError = ValidationHelper.validateMinLength(
+        k,
+        3,
+        'K-line data',
+      );
+      if (minLengthError) {
+        throw new Error(
+          minLengthError +
+            ' Chan Theory analysis requires at least 3 K-lines to identify patterns.',
+        );
+      }
+
       // Convert input data to KVo format
       const kVoData = k.map((kline) => ({
         ...kline,
