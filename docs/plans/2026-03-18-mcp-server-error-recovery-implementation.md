@@ -304,10 +304,12 @@ Part of Phase 1: Infrastructure"
 **Files:**
 - Modify: `apps/mcp-server/src/base/base-mcp-tool.service.ts`
 
-- [ ] **Step 1: Add import**
+- [ ] **Step 1: Add imports (do this FIRST)**
+
+Add imports at the top of the file (before the class definition):
 
 ```typescript
-import { MCP_ERROR_RECOVERY } from '@app/constants';
+import { MCP_ERROR_RECOVERY, McpError } from '@app/constants';
 ```
 
 - [ ] **Step 2: Update error() method**
@@ -360,15 +362,7 @@ Update the catch block (lines 68-71):
     }
 ```
 
-- [ ] **Step 4: Add imports (do this FIRST)**
-
-Add imports at the top of the file (before the class definition):
-
-```typescript
-import { MCP_ERROR_RECOVERY, McpError } from '@app/constants';
-```
-
-- [ ] **Step 5: Verify TypeScript compilation**
+- [ ] **Step 4: Verify TypeScript compilation**
 
 ```bash
 pnpm run build -- mcp-server
@@ -376,7 +370,7 @@ pnpm run build -- mcp-server
 
 Expected: No errors
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add apps/mcp-server/src/base/base-mcp-tool.service.ts
