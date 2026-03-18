@@ -1,10 +1,17 @@
 {
   "name": "mist",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "version": "1.0.0",
+  "description": "股票市场分析和预警系统 - A-share market analysis and alert system with AI-powered intelligent agents",
+  "author": "moyui",
   "private": true,
   "license": "BSD-3-Clause",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "bin": {
+    "mist": "dist/apps/mist/main.js",
+    "mist-mcp": "dist/apps/mcp-server/main.js"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",

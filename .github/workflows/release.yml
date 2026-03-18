@@ -3,32 +3,154 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'  # 匹配 v1.0.0, v2.1.3 等语义化版本标签
 
 jobs:
   release:
+    name: Create Release and Build Docker Images
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Build executables (all platforms)
-        run: |
-          chmod +x tools/package-release.sh
-          ./tools/package-release.sh
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
         with:
-          files: |
-            release/mist-linux-amd64
-            release/mist-macos-amd64
-            release/mist-macos-arm64
-            release/mist-windows-x86.exe
+          fetch-depth: 0  # 获取完整历史，用于生成 changelog
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # 从 GitHub_REF 中提取版本号（如 refs/tags/v1.0.0 -> 1.0.0）
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          # 获取上一个标签
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          # 生成 changelog
+          if [ -z "$PREV_TAG" ]; then
+            cat > release_notes.md << 'EOF'
+          ### 首次发布
+
+          这是 Mist Backend 的第一个稳定版本。
+
+          ## 主要功能
+
+          - 📊 实时股票数据采集和存储
+          - 📈 164+ 技术分析指标（MACD、RSI、KDJ等）
+          - 🧠 缠论（Chan Theory）自动化分析
+          - 🤖 多智能体AI系统用于交易决策
+          - 🔄 RESTful API with Swagger文档
+          - 🔌 MCP Server for AI应用集成
+          EOF
+          else
+            cat > release_notes.md << EOF
+          ### 更新内容
+
+          自 $PREV_TAG 以来的变更：
+
+          $(git log ${PREV_TAG}..HEAD --oneline --format="* %s (%h)")
+          EOF
+          fi
+
+          echo "" >> release_notes.md
+          echo "## Docker 镜像" >> release_notes.md
+          echo "" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "# 拉取最新版本" >> release_notes.md
+          echo "docker pull ghcr.io/moyui/mist:${{ steps.version.outputs.version }}" >> release_notes.md
+          echo "docker pull ghcr.io/moyui/mist:latest" >> release_notes.md
+          echo '```' >> release_notes.md
+
+          echo "" >> release_notes.md
+          echo "## 快速开始" >> release_notes.md
+          echo "" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "docker run -d \\" >> release_notes.md
+          echo "  -p 8001:8001 \\" >> release_notes.md
+          echo "  -p 8008:8008 \\" >> release_notes.md
+          echo "  -e mysql_server_host=host.docker.internal \\" >> release_notes.md
+          echo "  -e mysql_server_password=your_password \\" >> release_notes.md
+          echo "  ghcr.io/moyui/mist:${{ steps.version.outputs.version }}" >> release_notes.md
+          echo '```' >> release_notes.md
+
+          # 显示 release notes
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Mist ${{ steps.version.outputs.version }}
+          body_path: release_notes.md
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.title=Mist Backend
+            org.opencontainers.image.description=股票市场分析和预警系统
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Release Summary
+        run: |
+          echo "### 🎉 Mist ${{ steps.version.outputs.version }} 发布成功！" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 📦 Docker 镜像标签" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 标签 | 镜像地址 | 用途 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|----------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **latest** | \`ghcr.io/moyui/mist:latest\` | 最新稳定版 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **${{ steps.version.outputs.version }}** | \`ghcr.io/moyui/mist:${{ steps.version.outputs.version }}\` | 语义化版本 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **${{ steps.version.outputs.tag }}** | \`ghcr.io/moyui/mist:${{ steps.version.outputs.tag }}\` | 完整版本号 |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 🚀 使用方法" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# 拉取镜像" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/moyui/mist:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# 运行容器" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -p 8001:8001 \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -p 8008:8008 \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e mysql_server_host=host.docker.internal \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e mysql_server_password=your_password \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ghcr.io/moyui/mist:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
