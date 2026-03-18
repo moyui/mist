@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { MCP_ERROR_RECOVERY, McpError, McpErrorCode } from '@app/constants';
 
 /**
  * Base class for MCP tool services
@@ -32,16 +33,38 @@ export abstract class BaseMcpToolService {
 
   /**
    * Unified error response format (following MCP protocol)
+   *
+   * Enhanced with recovery suggestions to help AI agents handle errors gracefully.
+   * When a code is provided, looks up recovery suggestions from MCP_ERROR_RECOVERY.
    */
   protected error(
     message: string,
     code?: string,
-  ): { success: false; error: { message: string; code?: string } } {
+  ): {
+    success: false;
+    error: {
+      message: string;
+      code?: string;
+      suggestions: string[];
+      next_tool?: {
+        name: string;
+        reason: string;
+        params?: Record<string, any>;
+      };
+    };
+  } {
+    // Look up recovery suggestions if code is provided
+    const recovery = code
+      ? MCP_ERROR_RECOVERY[code as McpErrorCode]
+      : undefined;
+
     return {
       success: false as const,
       error: {
         message,
         code,
+        suggestions: recovery?.suggestions || [],
+        next_tool: recovery?.next_tool,
       },
     };
   }
@@ -58,7 +81,19 @@ export abstract class BaseMcpToolService {
     fn: () => Promise<T>,
   ): Promise<
     | { success: true; data: T }
-    | { success: false; error: { message: string; code?: string } }
+    | {
+        success: false;
+        error: {
+          message: string;
+          code?: string;
+          suggestions: string[];
+          next_tool?: {
+            name: string;
+            reason: string;
+            params?: Record<string, any>;
+          };
+        };
+      }
   > {
     this.logger.debug(`Executing tool: ${toolName}`);
     try {
@@ -67,7 +102,11 @@ export abstract class BaseMcpToolService {
       return this.success(result);
     } catch (error) {
       this.logger.error(`Tool ${toolName} failed:`, error.message);
-      return this.error(error.message, error.code);
+
+      // Extract error code if this is a McpError
+      const errorCode = error instanceof McpError ? error.code : undefined;
+
+      return this.error(error.message, errorCode);
     }
   }
 }
