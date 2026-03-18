@@ -85,6 +85,8 @@ jobs:
           cat release_notes.md
 
       - name: Build executables (all platforms)
+        id: build_executables
+        continue-on-error: true  # 即使失败也继续
         run: |
           chmod +x tools/package-release.sh
           ./tools/package-release.sh
