@@ -88,7 +88,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Mist Backend ${{ steps.version.outputs.version }}
+          name: Mist ${{ steps.version.outputs.version }}
           body_path: release_notes.md
           draft: false
           prerelease: false
@@ -130,7 +130,7 @@ jobs:
 
       - name: Release Summary
         run: |
-          echo "### 🎉 Release ${{ steps.version.outputs.version }} 成功！" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎉 Mist ${{ steps.version.outputs.version }} 发布成功！" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### 📦 Docker 镜像标签" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
