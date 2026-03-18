@@ -3,6 +3,7 @@ import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
+import { McpErrorCode, McpError } from '@app/constants';
 
 // Zod schemas
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -139,7 +140,10 @@ RETURNS: Job object with name, running status, and last execution time.`,
       const job = this.schedulerRegistry.getCronJob(jobName);
 
       if (!job) {
-        throw new Error(`Job ${jobName} not found`);
+        throw new McpError(
+          `Job ${jobName} not found`,
+          McpErrorCode.INVALID_PARAMETER,
+        );
       }
 
       return {
