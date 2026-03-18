@@ -4,9 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Mist Backend** is the core backend system for stock market analysis and alerts, built with NestJS. It combines traditional technical analysis with AI-powered intelligent agents to provide trading insights and alerts for the Shanghai Stock Exchange (上证指数).
+**Mist** is a comprehensive stock market analysis and alert system for A-share market (沪深两市). It combines traditional technical analysis with AI-powered intelligent agents to provide trading insights and alerts.
 
 **Architecture**: Monorepo with multiple applications and shared libraries using pnpm workspaces.
+
+**Key Capabilities**:
+- Real-time stock data collection and storage
+- 164+ technical analysis indicators (MACD, RSI, KDJ, etc.)
+- Chan Theory (缠论) automated analysis
+- Multi-agent AI system for intelligent trading decisions
+- RESTful API with Swagger documentation
+- MCP Server for AI application integration
 
 ## Quick Start
 
@@ -185,25 +193,21 @@ mist/test-data/
         └── ...
 ```
 
-### Sync Workflow
+### Test Data Workflow
 
 ```bash
-# Run tests and sync to frontend
-pnpm run test:full         # Run tests + sync
+# Run tests and generate results
+pnpm run test:full         # Run tests + generate types
 
-# Sync only (without running tests)
-pnpm run test:sync         # Sync test results to frontend
-
-# Generate TypeScript definitions
+# Generate TypeScript definitions only
 pnpm run test:gen-types    # Generate .ts files from JSON results
 ```
 
-### Sync Process
+### Test Data Structure
 
 1. Run backend tests → Generate JSON in `test-data/test-results/raw/`
 2. Auto-generate TypeScript definitions in `test-data/test-results/types/`
-3. Copy to frontend `mist-fe/test-data/`
-4. Frontend imports: `import { shanghaiIndex20242025Results } from '@/test-data/results/types'`
+3. Import in tests: `import { shanghaiIndex20242025Results } from '@test-data/results/types'`
 
 ---
 

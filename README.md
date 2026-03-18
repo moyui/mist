@@ -1,14 +1,14 @@
-# Mist - 后端系统
+# Mist - 智能股票分析系统
 
 <p align="center">
-  <strong>智能股票市场分析与预警系统 - 后端服务</strong>
+  <strong>A 股市场智能分析与预警系统</strong>
 </p>
 
 ---
 
 ## 📖 项目简介
 
-Mist 后端是基于 NestJS 构建的股票市场分析系统，专注于上证指数的技术分析与智能决策支持。采用 Monorepo 架构，集成了传统技术分析、缠论分析以及 AI 智能体系统。
+Mist 是一个功能完整的股票市场分析系统，支持 A 股全市场（沪深两市）的技术分析与智能决策支持。采用 Monorepo 架构，集成了传统技术分析、缠论分析以及 AI 智能体系统，提供完整的 API 服务和 MCP Server 接口。
 
 ### ✨ 核心功能
 
@@ -105,6 +105,36 @@ python -m aktools
 **注意**：AKTools 不会在端口被占用时发出警告，请确保端口 8080 可用。
 
 ### 运行应用
+
+#### 方式一：使用开发脚本（推荐）
+
+```bash
+# 一键启动所有服务（自动检查 MySQL、AKTools、端口）
+./start-dev.sh
+
+# 停止所有服务
+./stop-dev.sh
+
+# 快速重启
+./restart-dev.sh
+
+# 测试 API
+./test-api.sh
+```
+
+**脚本功能：**
+- ✅ 自动检查端口占用（8080, 8001）
+- ✅ 检查 MySQL 连接并创建数据库
+- ✅ 自动安装并启动 AKTools
+- ✅ 启动 Mist 应用
+- ✅ 显示服务状态和访问地址
+
+**服务地址：**
+- Mist 应用: http://localhost:8001
+- API 文档: http://localhost:8001/api-docs
+- AKTools: http://localhost:8080
+
+#### 方式二：手动启动
 
 ```bash
 # 开发模式 - 运行特定应用
@@ -281,18 +311,20 @@ test-data/
         └── shanghai-index-2024-2025-results.ts
 ```
 
-### 同步到前端
+### 测试数据工作流
 
 ```bash
-# 运行测试并同步
+# 运行测试并生成结果
 pnpm run test:full
 
-# 仅同步（不运行测试）
-pnpm run test:sync
-
-# 生成 TypeScript 定义
+# 仅生成类型定义（不运行测试）
 pnpm run test:gen-types
 ```
+
+生成的测试数据可用于：
+- 单元测试和集成测试
+- CI/CD 流程验证
+- 算法正确性验证
 
 ---
 
@@ -308,12 +340,13 @@ pnpm run test:gen-types
 
 | 组件 | 技术 |
 |------|------|
-| 后端框架 | NestJS 10 |
+| 应用框架 | NestJS 10 |
 | AI/LLM | LangChain/LangGraph, DeepSeek |
 | 技术分析 | node-talib (164+ 函数) |
 | 数据库 | MySQL with TypeORM |
 | 调度器 | @nestjs/schedule |
 | 时区 | date-fns-tz |
+| MCP Server | @modelcontextprotocol/sdk |
 
 ---
 
@@ -382,6 +415,216 @@ const kdjResult = KDJ(realData, {
 
 ---
 
+## 🐳 Docker 部署
+
+### 快速启动
+
+```bash
+# 构建所有服务
+pnpm run build
+
+# 使用 Docker Compose 启动
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+```
+
+### Docker Compose 服务
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| **mist** | 8001 | 主应用 - 股票分析 |
+| **saya** | 8002 | AI 智能体系统 |
+| **schedule** | 8003 | 定时任务 |
+| **chan** | 8008 | 缠论测试入口 |
+| **mcp-server** | 8009 | MCP Server |
+| **mysql** | 3306 | MySQL 数据库 |
+| **aktools** | 8080 | AKTools 数据源 |
+
+### 环境变量配置
+
+复制 `.env.example` 到 `.env` 并配置：
+
+```env
+NODE_ENV=production
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=mist
+```
+
+### Docker 特性
+
+- **多阶段构建** - 优化镜像大小
+- **健康检查** - 自动检测服务状态
+- **优雅停机** - 正确处理 SIGTERM 信号
+- **非 root 用户** - 提升安全性
+
+---
+
+## 🚀 CI/CD 和构建
+
+### GitHub Actions 工作流
+
+| 工作流 | 触发条件 | 功能 |
+|--------|----------|------|
+| **build.yml** | push to main/develop, PR | 构建跨平台可执行文件 |
+| **docker.yml** | push to main/develop/feature/* | 构建 Docker 镜像 |
+| **release.yml** | tag push (v*) | 创建 GitHub Release |
+
+### 构建可执行文件
+
+```bash
+# 使用 pkg 构建独立可执行文件
+pnpm run build
+chmod +x tools/build-executable.sh
+
+# Linux AMD64
+./tools/build-executable.sh linux-amd64
+
+# macOS AMD64
+./tools/build-executable.sh macos-amd64
+
+# macOS ARM64 (Apple Silicon)
+./tools/build-executable.sh macos-arm64
+
+# Windows x64
+./tools/build-executable.sh windows-x86
+```
+
+**输出位置**: `dist/executables/`
+
+### 发布新版本
+
+```bash
+# 创建版本标签
+git tag v1.0.0
+git push origin v1.0.0
+
+# GitHub Actions 自动：
+# - 构建所有平台可执行文件
+# - 创建 GitHub Release
+# - 附加构建产物
+```
+
+---
+
+## 🔌 MCP Server
+
+Mist 提供 Model Context Protocol (MCP) Server，用于与 AI 应用集成。
+
+### 启动 MCP Server
+
+```bash
+# 开发模式
+pnpm run start:dev:mcp-server  # Port 8009
+
+# Docker 模式
+docker-compose up mcp-server
+```
+
+### 可用工具
+
+| 工具 | 功能 |
+|------|------|
+| `get_k_line_data` | 获取 K 线数据 |
+| `get_indicator_data` | 计算技术指标（MACD、RSI 等） |
+| `merge_k_lines` | K 线合并（缠论） |
+| `calculate_bi` | 计算笔（缠论） |
+| `detect_channels` | 识别中枢（缠论） |
+| `get_ai_analysis` | AI 智能体分析 |
+
+### 客户端连接示例
+
+```javascript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+
+const transport = new StdioClientTransport({
+  command: 'node',
+  args: ['dist/apps/mcp-server/main.js']
+});
+
+const client = new Client({
+  name: "mist-client",
+  version: "1.0.0"
+});
+
+await client.connect(transport);
+
+// 调用工具
+const result = await client.callTool({
+  name: "get_k_line_data",
+  arguments: {
+    symbol: "sh.000001",
+    period: "daily",
+    limit: 100
+  }
+});
+```
+
+---
+
+## 🐛 故障排查
+
+### 端口被占用
+
+```bash
+# 查看占用端口的进程
+lsof -i :8001
+lsof -i :8080
+
+# 停止进程
+kill -9 <PID>
+```
+
+### MySQL 连接失败
+
+```bash
+# 测试 MySQL 连接
+mysql -h localhost -u root -p
+
+# 检查数据库
+SHOW DATABASES LIKE 'mist';
+
+# 创建数据库
+CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
+```
+
+### AKTools 启动失败
+
+```bash
+# 重新安装 AKTools
+python3 -m pip install aktools --user --force-reinstall
+
+# 手动测试
+python3 -m aktools
+```
+
+### Docker 构建失败
+
+```bash
+# 清理 Docker 缓存
+docker system prune -a
+
+# 无缓存构建
+docker-compose build --no-cache
+```
+
+### 查看日志
+
+```bash
+# 开发环境日志
+tail -f logs/mist.log
+tail -f logs/aktools.log
+
+# Docker 日志
+docker-compose logs -f mist
+docker-compose logs -f saya
+```
+
+---
+
 ## 📝 许可证
 
 BSD-3-Clause
@@ -390,7 +633,8 @@ BSD-3-Clause
 
 ## 📮 相关文档
 
-- [前端项目](../mist-fe/)
+- [开发指南](CLAUDE.md) - Claude Code 开发指引
 - [AI 智能体详细说明](apps/saya/README.md)
 - [缠论算法说明](apps/chan/README.md)
 - [项目路线图](Roadmap.md)
+- [技术指标文档](Talib.md)

@@ -51,7 +51,7 @@ RUN . /app/python-venv/bin/activate && \
 COPY package*.json pnpm-lock.yaml ./
 RUN --mount=type=cache,target=/root/.npm \
     pnpm config set registry https://registry.npmmirror.com && \
-    pnpm install --prod --frozen-lockfile
+    pnpm install --prod --frozen-lockfile --ignore-scripts
 
 # Copy build output from builder stage
 COPY --from=builder /app/dist ./dist
