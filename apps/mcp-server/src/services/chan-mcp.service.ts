@@ -43,7 +43,11 @@ export class ChanMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'merge_k',
-    description: '合并K线，基于包含关系和趋势方向将连续K线分组',
+    description: `Merge consecutive K-lines based on containment relationships.
+
+PURPOSE: Groups K-lines to reduce noise while preserving price action.
+
+NOTE: Low-level operation. Use 'analyze_chan_theory' for complete analysis.`,
   })
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async mergeK(_k: z.infer<typeof KLineSchema>) {
@@ -59,7 +63,13 @@ export class ChanMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'create_bi',
-    description: '从K线数据中识别笔（Bi），基于缠论分型识别',
+    description: `Identify Bi (笔) - significant price movements in Chan Theory.
+
+PURPOSE: Detects trend lines by identifying consecutive top/bottom patterns.
+
+WHEN TO USE: Identifying trends, support/resistance, and pivot points.
+REQUIRES: Array of K-line objects. Min 3 K-lines, 5+ recommended.
+RETURNS: Bi array with times, prices, direction (UP/DOWN), status, and patterns.`,
   })
   async createBi(k: z.infer<typeof KLineSchema>) {
     return this.executeTool('create_bi', async () => {
@@ -93,7 +103,13 @@ export class ChanMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'get_fenxing',
-    description: '获取所有分型（Fenxing），识别顶分型和底分型',
+    description: `Identify Fenxing (分型) - top and bottom patterns in Chan Theory.
+
+PURPOSE: Detects local tops and bottoms, foundational for trend lines.
+
+WHEN TO USE: Finding price extremes, pivot points, and reversals.
+REQUIRES: Array of K-line objects. Min 3 K-lines (middle + two neighbors).
+RETURNS: Fenxing array with type (TOP/BOTTOM), time, prices, and index.`,
   })
   async getFenxing(k: z.infer<typeof KLineSchema>) {
     return this.executeTool('get_fenxing', async () => {
@@ -127,7 +143,18 @@ export class ChanMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'analyze_chan_theory',
-    description: '完整的缠论分析：合并K → 识别笔 → 识别分型 → 识别中枢',
+    description: `Complete Chan Theory analysis in one call.
+
+PURPOSE: Full technical analysis including K-line merge, Bi (trend lines),
+Fenxing (patterns), and Channel (consolidation zones) detection.
+
+WHEN TO USE:
+- Complete analysis using Chan Theory methodology
+- Identifying trends, support/resistance, and pivot points
+- One-stop alternative to calling individual tools
+
+REQUIRES: Array of K-line objects. Min 3 K-lines, 50+ recommended.
+RETURNS: Object with bis array, fenxings array, channels array, and summary.`,
   })
   async analyzeChanTheory(k: z.infer<typeof KLineSchema>) {
     return this.executeTool('analyze_chan_theory', async () => {
