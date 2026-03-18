@@ -71,9 +71,12 @@ export class McpError extends Error {
 }
 
 /**
- * Recovery suggestion for an error code
+ * Recovery suggestions for MCP errors
+ *
+ * Provides agents with actionable guidance when errors occur, including
+ * suggestions for resolving the issue and optional next tool to try.
  */
-interface RecoverySuggestion {
+export interface RecoverySuggestion {
   /** Array of suggestions for resolving the error */
   suggestions: string[];
   /** Optional next tool to try with reasoning */
