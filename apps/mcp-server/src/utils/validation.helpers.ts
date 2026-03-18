@@ -1,28 +1,4 @@
-/**
- * Error code constants for MCP tools
- *
- * Provides standardized error codes for better error handling and debugging
- */
-export enum McpErrorCode {
-  // Validation errors (100-199)
-  INVALID_DATE_RANGE = 'INVALID_DATE_RANGE',
-  INVALID_PARAMETER = 'INVALID_PARAMETER',
-  INSUFFICIENT_DATA = 'INSUFFICIENT_DATA',
-  INVALID_PERIOD = 'INVALID_PERIOD',
-  INVALID_SYMBOL = 'INVALID_SYMBOL',
-
-  // Not found errors (200-299)
-  INDEX_NOT_FOUND = 'INDEX_NOT_FOUND',
-  DATA_NOT_FOUND = 'DATA_NOT_FOUND',
-
-  // Data errors (300-399)
-  DATA_PARSE_ERROR = 'DATA_PARSE_ERROR',
-  INVALID_DATA_FORMAT = 'INVALID_DATA_FORMAT',
-
-  // Calculation errors (400-499)
-  CALCULATION_ERROR = 'CALCULATION_ERROR',
-  INDICATOR_CALCULATION_FAILED = 'INDICATOR_CALCULATION_FAILED',
-}
+// Error codes moved to @app/constants
 
 /**
  * Validation helper functions for MCP tools
