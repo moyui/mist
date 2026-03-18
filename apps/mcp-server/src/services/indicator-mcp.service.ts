@@ -17,7 +17,18 @@ export class IndicatorMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'calculate_macd',
-    description: '计算MACD指标（移动平均收敛发散）',
+    description: `Calculate MACD (Moving Average Convergence Divergence) indicator.
+
+PURPOSE: Trend-following momentum indicator showing relationship between
+two moving averages.
+
+WHEN TO USE: Analyzing trend strength, identifying crossover signals,
+confirming reversals.
+
+REQUIRES: Array of closing prices. Min 26 data points.
+RETURNS: Object with MACD line, Signal line, Histogram values.
+
+INTERPRETATION: MACD above Signal = bullish, below = bearish.`,
   })
   async calculateMacd(prices: z.infer<typeof PricesSchema>) {
     return this.executeTool('calculate_macd', async () => {
@@ -41,7 +52,18 @@ export class IndicatorMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'calculate_rsi',
-    description: '计算RSI指标（相对强弱指数）',
+    description: `Calculate RSI (Relative Strength Index) indicator.
+
+PURPOSE: Momentum oscillator measuring speed and change of price movements.
+Identifies overbought and oversold conditions.
+
+WHEN TO USE: Detecting overbought (RSI > 70) or oversold (RSI < 30) conditions,
+identifying reversals, measuring momentum.
+
+REQUIRES: Array of closing prices. Default period 14, min 2.
+RETURNS: Array of RSI values (0-100 scale).
+
+INTERPRETATION: >70 overbought, <30 oversold, ~50 neutral.`,
   })
   async calculateRsi(
     prices: z.infer<typeof PricesSchema>,
@@ -70,7 +92,17 @@ export class IndicatorMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'calculate_kdj',
-    description: '计算KDJ指标（随机振荡器）',
+    description: `Calculate KDJ (Stochastic Oscillator) indicator.
+
+PURPOSE: Momentum indicator comparing close price to price range.
+
+WHEN TO USE: Identifying overbought/oversold, timing entries/exits.
+
+REQUIRES: Three arrays (highs, lows, closes) with matching lengths.
+Default period 9, min 50 data points recommended.
+
+RETURNS: Object with K, D, and J line values.
+INTERPRETATION: K/D >80 overbought, <20 oversold.`,
   })
   async calculateKdj(
     highs: z.infer<typeof PricesSchema>,
@@ -147,7 +179,18 @@ export class IndicatorMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'calculate_adx',
-    description: '计算ADX指标（平均趋向指数）',
+    description: `Calculate ADX (Average Directional Index) indicator.
+
+PURPOSE: Measures trend strength regardless of direction.
+
+WHEN TO USE: Determining if trend is strong enough to trade,
+filtering ranging vs trending markets.
+
+REQUIRES: Three arrays (highs, lows, closes) with matching lengths.
+Default period 14, min 30 data points recommended.
+
+RETURNS: Array of ADX values (0-100 scale).
+INTERPRETATION: >25 strong trend, <20 weak/no trend.`,
   })
   async calculateAdx(
     highs: z.infer<typeof PricesSchema>,
@@ -171,7 +214,19 @@ export class IndicatorMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'calculate_atr',
-    description: '计算ATR指标（平均真实波幅）',
+    description: `Calculate ATR (Average True Range) indicator.
+
+PURPOSE: Measures market volatility by analyzing price range.
+Useful for position sizing and stop loss placement.
+
+WHEN TO USE: Measuring volatility, setting stop loss levels,
+position sizing (risk management).
+
+REQUIRES: Three arrays (highs, lows, closes) with matching lengths.
+Default period 14, min 14 data points needed.
+
+RETURNS: Array of ATR values in price units.
+INTERPRETATION: Higher ATR = higher volatility, wider stops.`,
   })
   async calculateAtr(
     highs: z.infer<typeof PricesSchema>,
@@ -195,7 +250,18 @@ export class IndicatorMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'analyze_indicators',
-    description: '完整的技术指标分析：MACD、RSI、KDJ、ADX、ATR',
+    description: `Calculate all major technical indicators in one call.
+
+PURPOSE: Comprehensive analysis using 5 key indicators: MACD, RSI,
+KDJ, ADX, and ATR. More efficient than calling each separately.
+
+WHEN TO USE: Complete technical overview, comparing multiple indicators,
+avoiding multiple API calls.
+
+REQUIRES: Three arrays (highs, lows, closes) with matching lengths.
+Recommended 100+ data points.
+
+RETURNS: Object with all 5 indicators: macd, rsi, kdj, adx, atr.`,
   })
   async analyzeIndicators(
     highs: z.infer<typeof PricesSchema>,
