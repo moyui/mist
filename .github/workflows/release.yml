@@ -84,37 +84,12 @@ jobs:
           # 显示 release notes
           cat release_notes.md
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build TypeScript
-        run: pnpm run build
-
-      - name: Build executables (all platforms)
-        id: build_executables
-        run: |
-          chmod +x tools/package-release.sh
-          ./tools/package-release.sh
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Mist Backend ${{ steps.version.outputs.version }}
           body_path: release_notes.md
-          files: |
-            release/mist-linux-amd64
-            release/mist-macos-amd64
-            release/mist-macos-arm64
-            release/mist-windows-x86.exe
           draft: false
           prerelease: false
         env:
