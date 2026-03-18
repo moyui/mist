@@ -5,6 +5,9 @@
   "author": "moyui",
   "private": true,
   "license": "BSD-3-Clause",
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
   "bin": {
     "mist": "dist/apps/mist/main.js",
     "mist-mcp": "dist/apps/mcp-server/main.js"

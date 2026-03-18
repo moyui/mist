@@ -1,6 +1,6 @@
 # Multi-stage build for Mist backend
 # Stage 1: Builder - Compile TypeScript
-FROM node:24-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install pnpm and configure Taobao registry
@@ -18,7 +18,7 @@ COPY . .
 RUN pnpm run build
 
 # Stage 2: Production - Run with Node.js + Python
-FROM node:24-alpine
+FROM node:20-alpine
 
 # Install Python 3.13, build dependencies, and netcat for health checks
 RUN apk add --no-cache \
