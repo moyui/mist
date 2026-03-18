@@ -3,6 +3,7 @@ import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { ChanService } from '../../../mist/src/chan/chan.service';
 import { ChannelService } from '../../../mist/src/chan/services/channel.service';
+import { McpErrorCode, McpError } from '@app/constants';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
 
@@ -39,6 +40,19 @@ export class ChanMcpService extends BaseMcpToolService {
     private readonly channelService: ChannelService,
   ) {
     super(ChanMcpService.name);
+  }
+
+  /**
+   * Map validation error messages to error codes
+   */
+  private getValidationErrorCode(errorMsg: string): McpErrorCode {
+    if (
+      errorMsg.includes('must contain at least') ||
+      errorMsg.includes('elements')
+    ) {
+      return McpErrorCode.INSUFFICIENT_DATA;
+    }
+    return McpErrorCode.INVALID_PARAMETER;
   }
 
   @Tool({
@@ -80,9 +94,10 @@ RETURNS: Bi array with times, prices, direction (UP/DOWN), status, and patterns.
         'K-line data',
       );
       if (minLengthError) {
-        throw new Error(
+        throw new McpError(
           minLengthError +
             ' Bi detection requires at least 3 K-lines to identify patterns.',
+          this.getValidationErrorCode(minLengthError),
         );
       }
 
@@ -120,9 +135,10 @@ RETURNS: Fenxing array with type (TOP/BOTTOM), time, prices, and index.`,
         'K-line data',
       );
       if (minLengthError) {
-        throw new Error(
+        throw new McpError(
           minLengthError +
             ' Fenxing detection requires at least 3 K-lines to identify patterns.',
+          this.getValidationErrorCode(minLengthError),
         );
       }
 
@@ -165,9 +181,10 @@ RETURNS: Object with bis array, fenxings array, channels array, and summary.`,
         'K-line data',
       );
       if (minLengthError) {
-        throw new Error(
+        throw new McpError(
           minLengthError +
             ' Chan Theory analysis requires at least 3 K-lines to identify patterns.',
+          this.getValidationErrorCode(minLengthError),
         );
       }
 
