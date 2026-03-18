@@ -20,7 +20,7 @@ RUN pnpm run build
 # Stage 2: Production - Run with Node.js + Python
 FROM node:24-alpine
 
-# Install Python 3.13 and build dependencies
+# Install Python 3.13, build dependencies, and netcat for health checks
 RUN apk add --no-cache \
     python3 \
     py3-pip \
@@ -28,7 +28,9 @@ RUN apk add --no-cache \
     gcc \
     musl-dev \
     libffi-dev \
-    curl
+    curl \
+    netcat-openbsd \
+    wget
 
 # Verify installation
 RUN python3 --version && pip3 --version
@@ -64,9 +66,9 @@ COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 # 8080: AKTools Python server
 EXPOSE 8001 8008 8009 8080
 
-# Health check - verify main app is responding
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8001/app/hello', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+# Health check - verify main app is responding (using wget for reliability)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD wget -q -O /dev/null http://localhost:8001/app/hello || exit 1
 
 # Copy and prepare startup scripts
 COPY docker-entrypoint.sh ./
