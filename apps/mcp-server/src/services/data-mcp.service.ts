@@ -8,6 +8,7 @@ import { IndexPeriod } from '@app/shared-data';
 import { IndexDaily } from '@app/shared-data';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
+import { McpErrorCode, McpError } from '@app/constants';
 
 // Zod schemas
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -24,6 +25,35 @@ export class DataMcpService extends BaseMcpToolService {
     private readonly indexDailyRepository: Repository<IndexDaily>,
   ) {
     super(DataMcpService.name);
+  }
+
+  /**
+   * Map validation error messages to error codes
+   */
+  private getValidationErrorCode(errorMsg: string): McpErrorCode {
+    if (errorMsg.includes('symbol') || errorMsg.includes('Symbol cannot')) {
+      return McpErrorCode.INVALID_SYMBOL;
+    }
+    if (errorMsg.includes('limit') && errorMsg.includes('must be at least')) {
+      return McpErrorCode.INVALID_PARAMETER;
+    }
+    if (
+      errorMsg.includes('date range') ||
+      errorMsg.includes('must be before') ||
+      errorMsg.includes('Invalid date format')
+    ) {
+      return McpErrorCode.INVALID_DATE_RANGE;
+    }
+    if (errorMsg.includes('not found')) {
+      return McpErrorCode.INDEX_NOT_FOUND;
+    }
+    if (
+      errorMsg.includes('must contain at least') ||
+      errorMsg.includes('elements')
+    ) {
+      return McpErrorCode.INSUFFICIENT_DATA;
+    }
+    return McpErrorCode.INVALID_PARAMETER;
   }
 
   @Tool({
@@ -47,7 +77,10 @@ RETURNS: Index object with id, symbol, name, and type.`,
       // Validate symbol
       const symbolError = ValidationHelper.validateSymbol(symbol);
       if (symbolError) {
-        throw new Error(symbolError);
+        throw new McpError(
+          symbolError,
+          this.getValidationErrorCode(symbolError),
+        );
       }
 
       const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
@@ -57,8 +90,9 @@ RETURNS: Index object with id, symbol, name, and type.`,
       });
 
       if (!index) {
-        throw new Error(
+        throw new McpError(
           `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+          McpErrorCode.INDEX_NOT_FOUND,
         );
       }
 
@@ -100,13 +134,16 @@ RETURNS: Array of K-line objects with time, OHLC, volume.`,
       // Validate symbol
       const symbolError = ValidationHelper.validateSymbol(symbol);
       if (symbolError) {
-        throw new Error(symbolError);
+        throw new McpError(
+          symbolError,
+          this.getValidationErrorCode(symbolError),
+        );
       }
 
       // Validate limit
       const limitError = ValidationHelper.validateLimit(limit, 10000);
       if (limitError) {
-        throw new Error(limitError);
+        throw new McpError(limitError, this.getValidationErrorCode(limitError));
       }
 
       // Validate date range
@@ -115,7 +152,10 @@ RETURNS: Array of K-line objects with time, OHLC, volume.`,
         endTime,
       );
       if (dateRangeError) {
-        throw new Error(dateRangeError);
+        throw new McpError(
+          dateRangeError,
+          this.getValidationErrorCode(dateRangeError),
+        );
       }
 
       const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
@@ -124,8 +164,9 @@ RETURNS: Array of K-line objects with time, OHLC, volume.`,
         where: { symbol: sanitizedSymbol },
       });
       if (!index) {
-        throw new Error(
+        throw new McpError(
           `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+          McpErrorCode.INDEX_NOT_FOUND,
         );
       }
 
@@ -183,13 +224,16 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
       // Validate symbol
       const symbolError = ValidationHelper.validateSymbol(symbol);
       if (symbolError) {
-        throw new Error(symbolError);
+        throw new McpError(
+          symbolError,
+          this.getValidationErrorCode(symbolError),
+        );
       }
 
       // Validate limit
       const limitError = ValidationHelper.validateLimit(limit, 10000);
       if (limitError) {
-        throw new Error(limitError);
+        throw new McpError(limitError, this.getValidationErrorCode(limitError));
       }
 
       // Validate date range
@@ -198,7 +242,10 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
         endDate,
       );
       if (dateRangeError) {
-        throw new Error(dateRangeError);
+        throw new McpError(
+          dateRangeError,
+          this.getValidationErrorCode(dateRangeError),
+        );
       }
 
       const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
@@ -207,8 +254,9 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
         where: { symbol: sanitizedSymbol },
       });
       if (!index) {
-        throw new Error(
+        throw new McpError(
           `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+          McpErrorCode.INDEX_NOT_FOUND,
         );
       }
 
@@ -284,7 +332,10 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
         where: { symbol },
       });
       if (!index) {
-        throw new Error(`Index with symbol ${symbol} not found`);
+        throw new McpError(
+          `Index with symbol ${symbol} not found`,
+          McpErrorCode.INDEX_NOT_FOUND,
+        );
       }
 
       const periods: ('ONE' | 'FIVE' | 'FIFTEEN' | 'THIRTY' | 'SIXTY')[] = [
