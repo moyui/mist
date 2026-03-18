@@ -43,7 +43,19 @@ export class ScheduleMcpService extends BaseMcpToolService {
    */
   @Tool({
     name: 'trigger_data_collection',
-    description: '触发数据采集任务',
+    description: `Manually trigger data collection for a specific index and period.
+
+PURPOSE: On-demand data refresh outside scheduled collection times.
+Useful for getting latest data or filling gaps.
+
+WHEN TO USE: Refreshing data outside scheduled times, filling missing
+historical data, testing data collection.
+
+REQUIRES: symbol (e.g., '000001'), period (ONE/FIVE/FIFTEEN/THIRTY/SIXTY/DAILY).
+
+NOTE: This is a PoC implementation.
+
+RETURNS: Job confirmation with symbol, period, timestamp, and job ID.`,
   })
   async triggerDataCollection(
     symbol: string,
@@ -73,7 +85,17 @@ export class ScheduleMcpService extends BaseMcpToolService {
    */
   @Tool({
     name: 'list_scheduled_jobs',
-    description: '列出所有定时任务',
+    description: `List all configured scheduled data collection jobs.
+
+PURPOSE: Discovery tool to see what scheduled tasks exist and their status.
+Useful for monitoring and debugging.
+
+WHEN TO USE: Checking configured jobs, monitoring job status,
+debugging data collection issues.
+
+REQUIRES: No parameters.
+
+RETURNS: Array of job objects with name and running status.`,
   })
   async listScheduledJobs() {
     return this.executeTool('list_scheduled_jobs', async () => {
@@ -98,7 +120,19 @@ export class ScheduleMcpService extends BaseMcpToolService {
    */
   @Tool({
     name: 'get_job_status',
-    description: '获取定时任务状态',
+    description: `Get detailed status of a specific scheduled job.
+
+PURPOSE: Retrieve status information for a single scheduled job including
+running state and last execution time.
+
+WHEN TO USE: Checking if a specific job is running, monitoring job
+execution, debugging job issues.
+
+REQUIRES: jobName - Name of the scheduled job.
+
+NOTE: Use list_scheduled_jobs to get available job names first.
+
+RETURNS: Job object with name, running status, and last execution time.`,
   })
   async getJobStatus(jobName: string) {
     return this.executeTool('get_job_status', async () => {
@@ -127,7 +161,17 @@ export class ScheduleMcpService extends BaseMcpToolService {
    */
   @Tool({
     name: 'trigger_batch_collection',
-    description: '批量触发数据采集',
+    description: `Trigger data collection for multiple indices and periods.
+
+PURPOSE: Efficiently trigger data collection for multiple combinations
+of indices and time periods in one batch operation.
+
+WHEN TO USE: Collecting data for multiple indices at once, bulk data
+refresh operations, filling gaps across multiple symbols.
+
+REQUIRES: symbols (array of index codes), periods (array of time periods).
+
+RETURNS: Batch job confirmation with task count and sample tasks.`,
   })
   async triggerBatchCollection(
     symbols: string[],
@@ -162,7 +206,18 @@ export class ScheduleMcpService extends BaseMcpToolService {
    */
   @Tool({
     name: 'get_schedule_config',
-    description: '获取数据采集计划配置',
+    description: `Get the data collection schedule configuration.
+
+PURPOSE: View current schedule configuration for all automated data
+collection jobs. Shows cron expressions and descriptions.
+
+WHEN TO USE: Understanding when data is collected, checking automation
+schedule, configuring or debugging schedules.
+
+REQUIRES: No parameters.
+
+RETURNS: Schedule configuration with job names, time periods, cron
+expressions, and human-readable descriptions.`,
   })
   async getScheduleConfig() {
     return this.executeTool('get_schedule_config', async () => {
