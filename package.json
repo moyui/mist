@@ -5,6 +5,10 @@
   "author": "moyui",
   "private": true,
   "license": "BSD-3-Clause",
+  "bin": {
+    "mist": "dist/apps/mist/main.js",
+    "mist-mcp": "dist/apps/mcp-server/main.js"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
