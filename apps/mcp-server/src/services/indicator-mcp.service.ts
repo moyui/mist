@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { IndicatorService } from '../../../mist/src/indicator/indicator.service';
+import { McpErrorCode, McpError } from '@app/constants';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
 
@@ -13,6 +14,41 @@ const PricesSchema = z.array(z.number());
 export class IndicatorMcpService extends BaseMcpToolService {
   constructor(private readonly indicatorService: IndicatorService) {
     super(IndicatorMcpService.name);
+  }
+
+  /**
+   * Map validation error messages to error codes
+   */
+  private getValidationErrorCode(errorMsg: string): McpErrorCode {
+    if (
+      errorMsg.includes('must contain at least') ||
+      errorMsg.includes('elements')
+    ) {
+      return McpErrorCode.INSUFFICIENT_DATA;
+    }
+    if (errorMsg.includes('Array length mismatch')) {
+      return McpErrorCode.ARRAY_LENGTH_MISMATCH;
+    }
+    if (errorMsg.includes('period') && errorMsg.includes('must be at least')) {
+      return McpErrorCode.INVALID_PERIOD;
+    }
+    if (errorMsg.includes('limit') && errorMsg.includes('must be at least')) {
+      return McpErrorCode.INVALID_PARAMETER;
+    }
+    if (errorMsg.includes('symbol') || errorMsg.includes('Symbol cannot')) {
+      return McpErrorCode.INVALID_SYMBOL;
+    }
+    if (
+      errorMsg.includes('date range') ||
+      errorMsg.includes('must be before') ||
+      errorMsg.includes('Invalid date format')
+    ) {
+      return McpErrorCode.INVALID_DATE_RANGE;
+    }
+    if (errorMsg.includes('not a valid number')) {
+      return McpErrorCode.INVALID_DATA_FORMAT;
+    }
+    return McpErrorCode.INVALID_PARAMETER;
   }
 
   @Tool({
@@ -35,7 +71,10 @@ INTERPRETATION: MACD above Signal = bullish, below = bearish.`,
       // Validate prices array
       const pricesError = ValidationHelper.validatePrices(prices);
       if (pricesError) {
-        throw new Error(pricesError);
+        throw new McpError(
+          pricesError,
+          this.getValidationErrorCode(pricesError),
+        );
       }
 
       const result = await this.indicatorService.runMACD(prices);
@@ -73,13 +112,19 @@ INTERPRETATION: >70 overbought, <30 oversold, ~50 neutral.`,
       // Validate prices array
       const pricesError = ValidationHelper.validatePrices(prices);
       if (pricesError) {
-        throw new Error(pricesError);
+        throw new McpError(
+          pricesError,
+          this.getValidationErrorCode(pricesError),
+        );
       }
 
       // Validate period
       const periodError = ValidationHelper.validatePeriod(period, 'period', 2);
       if (periodError) {
-        throw new Error(periodError);
+        throw new McpError(
+          periodError,
+          this.getValidationErrorCode(periodError),
+        );
       }
 
       const result = await this.indicatorService.runRSI(prices, period);
@@ -116,17 +161,20 @@ INTERPRETATION: K/D >80 overbought, <20 oversold.`,
       // Validate prices arrays
       const highsError = ValidationHelper.validatePrices(highs, 'highs');
       if (highsError) {
-        throw new Error(highsError);
+        throw new McpError(highsError, this.getValidationErrorCode(highsError));
       }
 
       const lowsError = ValidationHelper.validatePrices(lows, 'lows');
       if (lowsError) {
-        throw new Error(lowsError);
+        throw new McpError(lowsError, this.getValidationErrorCode(lowsError));
       }
 
       const closesError = ValidationHelper.validatePrices(closes, 'closes');
       if (closesError) {
-        throw new Error(closesError);
+        throw new McpError(
+          closesError,
+          this.getValidationErrorCode(closesError),
+        );
       }
 
       // Validate array lengths match
@@ -135,13 +183,16 @@ INTERPRETATION: K/D >80 overbought, <20 oversold.`,
         ['highs', 'lows', 'closes'],
       );
       if (lengthError) {
-        throw new Error(lengthError);
+        throw new McpError(lengthError, McpErrorCode.ARRAY_LENGTH_MISMATCH);
       }
 
       // Validate period parameters
       const periodError = ValidationHelper.validatePeriod(period, 'period', 2);
       if (periodError) {
-        throw new Error(periodError);
+        throw new McpError(
+          periodError,
+          this.getValidationErrorCode(periodError),
+        );
       }
 
       const kSmoothingError = ValidationHelper.validatePeriod(
@@ -150,7 +201,7 @@ INTERPRETATION: K/D >80 overbought, <20 oversold.`,
         1,
       );
       if (kSmoothingError) {
-        throw new Error(kSmoothingError);
+        throw new McpError(kSmoothingError, McpErrorCode.INVALID_PARAMETER);
       }
 
       const dSmoothingError = ValidationHelper.validatePeriod(
@@ -159,7 +210,7 @@ INTERPRETATION: K/D >80 overbought, <20 oversold.`,
         1,
       );
       if (dSmoothingError) {
-        throw new Error(dSmoothingError);
+        throw new McpError(dSmoothingError, McpErrorCode.INVALID_PARAMETER);
       }
 
       const result = await this.indicatorService.runKDJ({
