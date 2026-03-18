@@ -28,7 +28,19 @@ export class DataMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'get_index_info',
-    description: '根据代码获取指数信息',
+    description: `Get detailed metadata for a specific index.
+
+PURPOSE: Retrieve index information and metadata. Useful for validating
+symbol existence and getting basic details.
+
+WHEN TO USE: Validating a symbol before detailed queries, getting
+index metadata, checking if index exists.
+
+REQUIRES: symbol - Index code (e.g., '000001').
+
+NOTE: Use list_indices to see all available symbols first.
+
+RETURNS: Index object with id, symbol, name, and type.`,
   })
   async getIndexInfo(symbol: string) {
     return this.executeTool('get_index_info', async () => {
@@ -61,7 +73,21 @@ export class DataMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'get_kline_data',
-    description: '获取K线数据（分时数据）',
+    description: `Get intraday K-line (candlestick) data from database.
+
+PURPOSE: Retrieve historical intraday price data for technical analysis.
+Contains OHLC and volume for each time period.
+
+WHEN TO USE: Getting historical data for analysis, feeding data into
+indicator or Chan Theory tools.
+
+REQUIRES: symbol (e.g., '000001'), period (ONE/FIVE/FIFTEEN/THIRTY/SIXTY).
+Optional: limit (default 100), startTime, endTime.
+
+NOTE: Use list_indices first to get available symbols.
+Use get_daily_kline for daily data.
+
+RETURNS: Array of K-line objects with time, OHLC, volume.`,
   })
   async getKlineData(
     symbol: string,
@@ -133,7 +159,19 @@ export class DataMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'get_daily_kline',
-    description: '获取日线K线数据',
+    description: `Get daily K-line (candlestick) data from database.
+
+PURPOSE: Retrieve historical daily price data for longer-term analysis.
+Contains OHLC, volume, and amount.
+
+WHEN TO USE: Daily/swing trading analysis, long-term trends.
+
+REQUIRES: symbol (e.g., '000001').
+Optional: limit (default 100), startDate, endDate.
+
+NOTE: Use list_indices first. Use get_kline_data for intraday.
+
+RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
   })
   async getDailyKline(
     symbol: string,
@@ -204,7 +242,17 @@ export class DataMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'list_indices',
-    description: '获取所有可用的指数列表',
+    description: `List all available stock indices in the database.
+
+PURPOSE: Discovery tool to find available indices for analysis.
+Use BEFORE calling other data tools.
+
+WHEN TO USE: Finding available symbols, validating symbol codes.
+
+REQUIRES: No parameters.
+
+RETURNS: Array of index objects with id, symbol, name, and type.
+NOTE: This should be your first data query tool call.`,
   })
   async listIndices() {
     return this.executeTool('list_indices', async () => {
@@ -217,7 +265,18 @@ export class DataMcpService extends BaseMcpToolService {
 
   @Tool({
     name: 'get_latest_data',
-    description: '获取指数的最新数据（所有周期）',
+    description: `Get the latest K-line data for all time periods.
+
+PURPOSE: Retrieve the most recent data point across all timeframes
+(daily and all intraday periods) in a single call.
+
+WHEN TO USE: Getting current market snapshot, checking data freshness,
+quick status check across all periods.
+
+REQUIRES: symbol - Index code (e.g., '000001').
+
+RETURNS: Object containing latest data for daily, 1min, 5min,
+15min, 30min, 60min. Each has time, OHLC, volume.`,
   })
   async getLatestData(symbol: string) {
     return this.executeTool('get_latest_data', async () => {
