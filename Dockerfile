@@ -3,12 +3,15 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm and configure Taobao registry
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g pnpm
 
 # Copy dependency files
 COPY package*.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.npm \
+    pnpm config set registry https://registry.npmmirror.com && \
+    pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
@@ -30,7 +33,7 @@ RUN apk add --no-cache \
 # Verify installation
 RUN python3 --version && pip3 --version
 
-# Install pnpm
+# Install pnpm and configure Taobao registry
 RUN npm install -g pnpm
 
 WORKDIR /app
@@ -44,9 +47,11 @@ RUN . /app/python-venv/bin/activate && \
     pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Install Node.js production dependencies
+# Install Node.js production dependencies (using Taobao registry)
 COPY package*.json pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile
+RUN --mount=type=cache,target=/root/.npm \
+    pnpm config set registry https://registry.npmmirror.com && \
+    pnpm install --prod --frozen-lockfile
 
 # Copy build output from builder stage
 COPY --from=builder /app/dist ./dist
