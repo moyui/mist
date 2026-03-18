@@ -60,6 +60,9 @@ export class ChanMcpService extends BaseMcpToolService {
     description: `Merge consecutive K-lines based on containment relationships.
 
 PURPOSE: Groups K-lines to reduce noise while preserving price action.
+Preprocessing step for Chan Theory analysis.
+
+WHEN TO USE: DO NOT use directly. Use analyze_chan_theory instead.
 
 NOTE: Low-level operation. Use 'analyze_chan_theory' for complete analysis.`,
   })
@@ -161,16 +164,13 @@ RETURNS: Fenxing array with type (TOP/BOTTOM), time, prices, and index.`,
     name: 'analyze_chan_theory',
     description: `Complete Chan Theory analysis in one call.
 
-PURPOSE: Full technical analysis including K-line merge, Bi (trend lines),
-Fenxing (patterns), and Channel (consolidation zones) detection.
+PURPOSE: Full analysis including K-line merge, Bi, Fenxing, and Channel.
 
-WHEN TO USE:
-- Complete analysis using Chan Theory methodology
-- Identifying trends, support/resistance, and pivot points
-- One-stop alternative to calling individual tools
+WHEN TO USE: Complete analysis, identifying trends and pivot points.
 
 REQUIRES: Array of K-line objects. Min 3 K-lines, 50+ recommended.
-RETURNS: Object with bis array, fenxings array, channels array, and summary.`,
+
+RETURNS: Object with bis, fenxings, channels arrays, and summary.`,
   })
   async analyzeChanTheory(k: z.infer<typeof KLineSchema>) {
     return this.executeTool('analyze_chan_theory', async () => {

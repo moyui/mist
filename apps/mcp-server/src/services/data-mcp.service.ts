@@ -107,21 +107,18 @@ RETURNS: Index object with id, symbol, name, and type.`,
 
   @Tool({
     name: 'get_kline_data',
-    description: `Get intraday K-line (candlestick) data from database.
+    description: `Get intraday K-line data from database.
 
-PURPOSE: Retrieve historical intraday price data for technical analysis.
-Contains OHLC and volume for each time period.
+PURPOSE: Retrieve historical intraday price data.
 
-WHEN TO USE: Getting historical data for analysis, feeding data into
-indicator or Chan Theory tools.
+WHEN TO USE: Getting data for analysis.
 
-REQUIRES: symbol (e.g., '000001'), period (ONE/FIVE/FIFTEEN/THIRTY/SIXTY).
+REQUIRES: symbol, period (ONE/FIFE/FIFTEEN/THIRTY/SIXTY).
 Optional: limit (default 100), startTime, endTime.
 
-NOTE: Use list_indices first to get available symbols.
-Use get_daily_kline for daily data.
+NOTE: Use list_indices first.
 
-RETURNS: Array of K-line objects with time, OHLC, volume.`,
+RETURNS: K-line array with time, OHLC, volume.`,
   })
   async getKlineData(
     symbol: string,
