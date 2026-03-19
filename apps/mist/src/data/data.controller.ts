@@ -3,10 +3,22 @@ import {
   CronIndexPeriodDto,
   SharedDataService,
 } from '@app/shared-data';
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseInterceptors,
+  UseFilters,
+} from '@nestjs/common';
+import { TransformInterceptor } from '../common/interceptors/transform.interceptor';
+import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
 import { DataService } from './data.service';
 
 @Controller('data')
+@UseInterceptors(TransformInterceptor)
+@UseFilters(AllExceptionsFilter)
 export class DataController {
   constructor(
     private readonly dataService: DataService,
