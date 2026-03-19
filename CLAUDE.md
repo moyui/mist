@@ -290,6 +290,39 @@ pnpm run migration:revert
 
 **Swagger UI**: http://localhost:8001/api-docs
 
+### Unified Response Format
+
+All HTTP endpoints return responses in a unified format:
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "SUCCESS",
+  "data": { /* actual response data */ },
+  "timestamp": "2026-03-19T10:30:00.000Z",
+  "requestId": "http-1710819800000-abc123xyz"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "code": 1001,
+  "message": "INVALID_PARAMETER",
+  "timestamp": "2026-03-19T10:30:00.000Z",
+  "requestId": "err-1710819800000-def456uvw"
+}
+```
+
+**Error Code Ranges:**
+- `200`: Success
+- `1xxx`: Client errors (parameter validation, format errors)
+- `2xxx`: Business errors (data not found, insufficient data)
+- `5xxx`: Server errors (database, external services)
+
 ### Chan Test Entry (Port 8008)
 
 Special endpoint for testing Chan Theory algorithms with detailed debugging output.
