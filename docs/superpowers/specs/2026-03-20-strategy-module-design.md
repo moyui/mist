@@ -99,14 +99,18 @@ export class CheckDivergenceDto {
   @IsNotEmpty({ message: '股票代码不能为空' })
   symbol: string;
 
+  @IsInt({ message: '周期必须是整数' })
+  @IsIn([1, 5, 15, 30, 60], { message: '周期必须是 1, 5, 15, 30, 60 之一' })
   @IsNotEmpty({ message: '周期不能为空' })
   period: PeriodType;
 
+  @IsInt({ message: '开始日期必须是13位时间戳' })
   @IsNotEmpty({ message: '开始日期不能为空' })
-  startDate: Date;
+  startDate: number;
 
+  @IsInt({ message: '结束日期必须是13位时间戳' })
   @IsNotEmpty({ message: '结束日期不能为空' })
-  endDate: Date;
+  endDate: number;
 
   @IsOptional()
   @IsEnum(['price', 'strength', 'both'])
@@ -122,6 +126,8 @@ export class CheckRecentDto {
   @IsNotEmpty({ message: '股票代码不能为空' })
   symbol: string;
 
+  @IsInt({ message: '周期必须是整数' })
+  @IsIn([1, 5, 15, 30, 60], { message: '周期必须是 1, 5, 15, 30, 60 之一' })
   @IsNotEmpty({ message: '周期不能为空' })
   period: PeriodType;
 
@@ -142,18 +148,22 @@ export class DivergenceVo {
   hasDivergence!: boolean;
   divergenceType!: 'macd_price' | 'macd_strength';
   type!: 'top' | 'bottom';
-  strength!: number;
+  strength!: number;  // 价格背离: MACD 变化百分比 | 力度背离: 面积比率
 
   bi1!: {
-    price: number;
-    macd: number;
-    area: number;
+    biId!: number;
+    endTime!: Date;
+    price!: number;
+    macd!: number;
+    area!: number;
   };
 
   bi2!: {
-    price: number;
-    macd: number;
-    area: number;
+    biId!: number;
+    endTime!: Date;
+    price!: number;
+    macd!: number;
+    area!: number;
   };
 
   suggestion!: 'buy' | 'sell' | 'hold';
@@ -184,14 +194,40 @@ export class DivergenceListVo {
 **输入**: 两笔同向笔 (bi1, bi2)、MACD 数据、K 线数据
 
 **算法**:
-1. 找到两笔末端在 K 线数据中的索引
-2. 获取对应的 MACD 值（DIF 线）
-3. 比较价格和 MACD 变化：
+1. **找到两笔末端在 K 线数据中的索引**：
+   - 使用 `bi.originData` 获取笔包含的所有 K 线
+   - 找到最后一根 K 线的 `id` 字段作为索引
+   - K 线 ID 与 MACD 数组索引的关系：`macdIndex = klineId - macdResult.begIndex`
+
+2. **获取对应的 MACD 值**：
+   ```typescript
+   const macdIndex = klineId - macdResult.begIndex;
+   if (macdIndex < 0 || macdIndex >= macdData.length) {
+     return null; // MACD 数据不可用
+   }
+   const macdValue = macdData[macdIndex];
+   ```
+
+3. **比较价格和 MACD 变化**：
    - 上升笔：检查顶背离（价格新高 + MACD 未新高）
    - 下降笔：检查底背离（价格新低 + MACD 未新低）
-4. 计算强度：`strength = |ΔMACD| / |ΔPrice|`
+
+4. **计算强度**（改进为百分比）：
+   ```typescript
+   // 价格变化百分比
+   const priceChange = Math.abs((price2 - price1) / price1);
+   // MACD 变化百分比
+   const macdChange = Math.abs((macd2 - macd1) / macd1);
+   // 强度 = MACD 变化 / 价格变化
+   strength = macdChange / priceChange;
+   ```
 
 **输出**: `DivergenceVo | null`
+
+**关键点**：
+- 只比较 `BiStatus.Valid` 且 `BiType.Complete` 的笔
+- 跳过方向不同的笔对
+- 处理 MACD `begIndex` 偏移
 
 ---
 
@@ -216,7 +252,48 @@ export class DivergenceListVo {
 
 ---
 
-### 3. 数据流程
+### 3. Bi 迭代逻辑
+
+**关键理解**: 背离检测比较的是**同向笔对**。由于笔是交替的（上-下-上-下-...），同向笔之间间隔一笔。
+
+**迭代规则**:
+```typescript
+// 过滤有效笔
+const validBis = biData.filter(bi =>
+  bi.status === BiStatus.Valid &&
+  bi.type === BiType.Complete
+);
+
+// 比较 bi[0]&bi[2], bi[1]&bi[3], bi[2]&bi[4], ...
+for (let i = 0; i < validBis.length - 2; i++) {
+  const bi1 = validBis[i];      // 当前笔
+  const bi2 = validBis[i + 2];  // 下一根同向笔
+
+  // 确认方向相同
+  if (bi1.direction !== bi2.direction) {
+    continue; // 跳过，不应该发生（笔是交替的）
+  }
+
+  // 执行背离检测
+  const priceDiv = detectPriceDivergence(bi1, bi2, ...);
+  const strengthDiv = detectStrengthDivergence(bi1, bi2, ...);
+
+  // ...
+}
+```
+
+**示例**:
+```
+笔序列: [上1, 下1, 上2, 下2, 上3, 下3]
+比较对: (上1, 上2), (下1, 下2), (上2, 上3), (下2, 下3)
+```
+
+**注意事项**:
+- 跳过 `BiStatus.Invalid` 的笔
+- 只比较 `BiType.Complete` 的完整笔
+- 方向不同的笔对不应该出现（笔的理论特性）
+
+### 4. 数据流程
 
 ```
 HTTP Request
@@ -241,21 +318,83 @@ HTTP Response
 
 ## ⚠️ 错误处理
 
-### 数据验证错误
+### 错误码定义
 
-- **时间范围无效**: 开始日期 >= 结束日期 → 400 Bad Request
-- **K 线数据为空**: 未找到对应股票和周期的数据 → 404 Not Found
-- **笔数据不足**: 少于 2 笔 → 400 Bad Request
+```typescript
+// Business Error Codes (2xxx)
+enum StrategyErrorCode {
+  INSUFFICIENT_BI_DATA = 2001,        // 笔数据不足（少于 2 笔）
+  NO_KLINE_DATA = 2002,               // K 线数据不存在
+  INVALID_DATE_RANGE = 2003,          // 时间范围无效
+  BI_DATA_INCOMPLETE = 2004,          // 笔数据不完整
+  MACD_INDEX_OUT_OF_BOUNDS = 2005,    // MACD 索引越界
+  ZERO_AREA_CANNOT_DETECT = 2006,     // 面积为零无法检测力度背离
 
-### 计算错误
+  // Feature Not Implemented (5xxx)
+  CHAN_DIVERGENCE_NOT_IMPLEMENTED = 5001,  // 缠论背驰未实现
+}
+```
 
-- **索引越界**: K 线索引或 MACD 索引超出范围 → 返回 null，跳过该笔
-- **方向不一致**: 两笔方向不同 → 跳过比较
-- **MACD 数据缺失**: 无法获取对应值 → 返回 null
+### HTTP 状态码映射
 
-### HTTP 异常
+| 错误码 | HTTP 状态 | 说明 |
+|--------|----------|------|
+| 2001 | 400 | 笔数据不足，无法进行背离检测 |
+| 2002 | 404 | 未找到对应股票和周期的 K 线数据 |
+| 2003 | 400 | 开始日期 >= 结束日期 |
+| 2004 | 400 | 笔数据不完整（缺少 originData） |
+| 2005 | 500 | MACD 索引超出范围（数据异常） |
+| 2006 | 400 | 某笔的 MACD 柱子全为零，无法计算力度 |
+| 5001 | 501 | 缠论背驰功能尚未实现 |
 
-利用现有的 `AllExceptionsFilter` 统一处理和返回格式。
+### 错误响应示例
+
+**笔数据不足**:
+```json
+{
+  "success": false,
+  "code": 2001,
+  "message": "笔数据不足，至少需要 2 笔才能进行背离检测",
+  "timestamp": "2026-03-20T10:30:00.000Z",
+  "requestId": "err-1710899800000-abc123"
+}
+```
+
+**K 线数据不存在**:
+```json
+{
+  "success": false,
+  "code": 2002,
+  "message": "未找到股票 sh.000001 在 5 分钟周期的 K 线数据",
+  "timestamp": "2026-03-20T10:30:00.000Z",
+  "requestId": "err-1710899800000-def456"
+}
+```
+
+**缠论背驰未实现**:
+```json
+{
+  "success": false,
+  "code": 5001,
+  "message": "缠论背驰检测功能开发中，敬请期待",
+  "timestamp": "2026-03-20T10:30:00.000Z",
+  "requestId": "err-1710899800000-ghi789"
+}
+```
+
+### 异常处理策略
+
+**数据验证错误**（在 Controller 层）:
+- 使用 `class-validator` 自动验证 DTO
+- 抛出 `BadRequestException`，自动转换为 1xxx 错误码
+
+**业务逻辑错误**（在 Service 层）:
+- 抛出带有具体错误码的 `HttpException`
+- 利用现有的 `AllExceptionsFilter` 统一处理
+
+**计算错误**（在 Strategy 层）:
+- 索引越界、方向不一致 → 返回 `null`，跳过该笔对
+- 不抛出异常，在循环中优雅处理
 
 ---
 
