@@ -1,4 +1,11 @@
-import { IndexDaily, IndexData, IndexPeriod } from '@app/shared-data';
+import {
+  IndexDaily,
+  IndexData,
+  IndexPeriod,
+  KLineExtensionEF,
+  KLineExtensionTDX,
+  KLineExtensionMQMT,
+} from '@app/shared-data';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -40,7 +47,14 @@ import { mistEnvSchema } from '@app/config';
           database: configService.get('mysql_server_database'),
           synchronize: configService.get('NODE_ENV') !== 'production',
           logging: configService.get('NODE_ENV') !== 'production',
-          entities: [IndexData, IndexPeriod, IndexDaily],
+          entities: [
+            IndexData,
+            IndexPeriod,
+            IndexDaily,
+            KLineExtensionEF,
+            KLineExtensionTDX,
+            KLineExtensionMQMT,
+          ],
           poolSize: 10,
           connectorPackage: 'mysql2',
           extra: {
