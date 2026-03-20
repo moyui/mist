@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { IndexData } from './index-data.entitiy';
+import { IndexData } from './index-data.entity';
 
 @Entity({
   name: 'index_dailys',

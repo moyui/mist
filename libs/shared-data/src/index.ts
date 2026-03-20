@@ -4,7 +4,7 @@ export * from './dto/index-daily.dto';
 export * from './dto/index-period.dto';
 export * from './dto/save-index-period.dto';
 export * from './entities/index-daily.entity';
-export * from './entities/index-data.entitiy';
+export * from './entities/index-data.entity';
 export * from './entities/index-period.entity';
 export * from './entities/stock.entity';
 export * from './entities/stock-source-format.entity';

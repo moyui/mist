@@ -3,7 +3,7 @@ import { UtilsModule } from '@app/utils';
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { IndexData } from './entities/index-data.entitiy';
+import { IndexData } from './entities/index-data.entity';
 import { IndexDaily } from './entities/index-daily.entity';
 import { IndexPeriod } from './entities/index-period.entity';
 import { SharedDataService } from './shared-data.service';

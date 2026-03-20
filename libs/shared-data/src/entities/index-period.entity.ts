@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { PeriodType } from '../enums/index-period.enum';
-import { IndexData } from './index-data.entitiy';
+import { IndexData } from './index-data.entity';
 
 @Entity({
   name: 'index_periods',
