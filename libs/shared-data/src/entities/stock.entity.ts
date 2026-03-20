@@ -2,10 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { StockStatus } from '../enums/stock-status.enum';
+import { StockSourceFormat } from './stock-source-format.entity';
 
 @Entity({
   name: 'stocks',
@@ -36,8 +38,10 @@ export class Stock {
   })
   status: StockStatus;
 
-  // Relationships to be added in Tasks 4 and 5
-  // TODO: Add @OneToMany relationship with StockSourceFormat in Task 4
+  @OneToMany(() => StockSourceFormat, (format) => format.stock)
+  sourceFormats: StockSourceFormat[];
+
+  // Relationships to be added in Task 5
   // TODO: Add @OneToMany relationship with KLine in Task 5
 
   @CreateDateColumn({ name: 'create_time' })

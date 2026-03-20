@@ -7,6 +7,7 @@ export * from './entities/index-daily.entity';
 export * from './entities/index-data.entitiy';
 export * from './entities/index-period.entity';
 export * from './entities/stock.entity';
+export * from './entities/stock-source-format.entity';
 export * from './enums/data-source.enum';
 export * from './enums/index-data.enum';
 export * from './enums/index-period.enum';
