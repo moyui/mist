@@ -130,6 +130,7 @@
       "^@app/timezone(|/.*)$": "<rootDir>/libs/timezone/src/$1",
       "^@app/shared-data(|/.*)$": "<rootDir>/libs/shared-data/src/$1",
       "^@app/constants(|/.*)$": "<rootDir>/libs/constants/src/$1",
+      "^@app/data-collector(|/.*)$": "<rootDir>/apps/mist/src/data-collector/$1",
       "^@test-data(|/.*)$": "<rootDir>/test-data/$1"
     }
   },

@@ -98,4 +98,18 @@ export class UtilsService {
     const roundedMinutes = Math.floor(minutes / interval) * interval;
     return setSeconds(setMilliseconds(setMinutes(date, roundedMinutes), 0), 0); // 舍入到指定间隔并清除秒和毫秒
   }
+
+  /**
+   * Create axios instance with common configuration
+   * @param config Axios configuration
+   * @returns Configured axios instance
+   */
+  createAxiosInstance(config: { baseURL?: string; timeout?: number } = {}): any {
+    // Dynamically import axios to avoid require() issues
+    const axios = require('axios');
+    return axios.create({
+      timeout: config.timeout || 10000,
+      ...config,
+    });
+  }
 }

@@ -11,6 +11,7 @@ export * from './enums/kline-period.enum';
 export * from './enums/stock-status.enum';
 export * from './shared-data.module';
 export * from './shared-data.service';
+export * from './utils/period-mapping.util';
 export * from './vo/index-daily.vo';
 export * from './vo/index-period.vo';
 export * from './vo/index.vo';

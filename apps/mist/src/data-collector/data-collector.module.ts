@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { SourceFetcher } from './interfaces/source-fetcher.interface';
 
 @Module({})
 export class DataCollectorModule {
