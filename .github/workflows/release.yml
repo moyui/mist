@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - 'v*.*.*'  # 匹配 v1.0.0, v2.1.3 等语义化版本标签
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: '版本类型'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: 'patch'
 
 jobs:
   release:
@@ -18,14 +29,69 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 获取完整历史，用于生成 changelog
+          token: ${{ secrets.GITHUB_TOKEN }}  # 需要写入权限来创建 tag
+
+      - name: Calculate and create tag (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        id: create_tag
+        run: |
+          # 获取最新版本标签
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          CURRENT_VERSION=${LATEST_TAG#v}
+
+          # 解析版本号
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]:-0}
+          MINOR=${VERSION_PARTS[1]:-0}
+          PATCH=${VERSION_PARTS[2]:-0}
+
+          # 根据选择的类型计算新版本
+          case "${{ github.event.inputs.version_type }}" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          NEW_TAG="v${NEW_VERSION}"
+
+          echo "📦 Current version: $CURRENT_VERSION"
+          echo "🚀 New version: $NEW_VERSION"
+
+          # 创建标签
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW_TAG" -m "Release $NEW_VERSION"
+          git push origin "$NEW_TAG"
+
+          # 输出给后续步骤使用
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
       - name: Extract version from tag
         id: version
         run: |
-          # 从 GitHub_REF 中提取版本号（如 refs/tags/v1.0.0 -> 1.0.0）
-          VERSION=${GITHUB_REF#refs/tags/v}
+          # 如果是手动触发，使用上一步骤的版本；否则从 tag 中提取
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION=${{ steps.create_tag.outputs.version }}
+            TAG=${{ steps.create_tag.outputs.tag }}
+          else
+            # 从 GitHub_REF 中提取版本号（如 refs/tags/v1.0.0 -> 1.0.0）
+            VERSION=${GITHUB_REF#refs/tags/v}
+            TAG=${GITHUB_REF#refs/tags/}
+          fi
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "📦 Version: $VERSION"
 
       - name: Generate Release Notes
