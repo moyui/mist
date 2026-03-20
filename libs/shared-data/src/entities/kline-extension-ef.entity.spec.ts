@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { KLineExtensionEF } from './kline-extension-ef.entity';
-import { DataSource, KLinePeriod } from '../enums';
+import { DataSource, KLinePeriod } from '../enums/data-source.enum';
 
 describe('KLineExtensionEF', () => {
   let repository: Repository<KLineExtensionEF>;
