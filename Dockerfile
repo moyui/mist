@@ -17,37 +17,17 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 RUN pnpm run build
 
-# Stage 2: Production - Run with Node.js + Python
+# Stage 2: Production - Run with Node.js
 FROM node:24-alpine
 
-# Install Python 3.13, build dependencies, and netcat for health checks
+# Install curl for health checks
 RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    py3-virtualenv \
-    gcc \
-    musl-dev \
-    libffi-dev \
-    curl \
-    netcat-openbsd \
-    wget
-
-# Verify installation
-RUN python3 --version && pip3 --version
+    curl
 
 # Install pnpm and configure Taobao registry
 RUN npm install -g pnpm
 
 WORKDIR /app
-
-# Create Python virtual environment at /app/python-venv
-RUN python3 -m venv /app/python-venv
-
-# Activate and install Python dependencies from requirements.txt
-COPY requirements.txt ./
-RUN . /app/python-venv/bin/activate && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
 
 # Install Node.js production dependencies (using Taobao registry)
 COPY package*.json pnpm-lock.yaml ./
@@ -63,12 +43,11 @@ COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 # 8001: Main mist app
 # 8008: Chan test entry
 # 8009: MCP server
-# 8080: AKTools Python server
-EXPOSE 8001 8008 8009 8080
+EXPOSE 8001 8008 8009
 
-# Health check - verify main app is responding (using wget for reliability)
+# Health check - verify main app is responding
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD wget -q -O /dev/null http://localhost:8001/app/hello || exit 1
+  CMD curl -f http://localhost:8001/app/hello || exit 1
 
 # Copy and prepare startup scripts
 COPY docker-entrypoint.sh ./

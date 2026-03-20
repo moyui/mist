@@ -108,7 +108,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker images
+      - name: Build and push main Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -128,29 +128,46 @@ jobs:
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
             org.opencontainers.image.revision=${{ github.sha }}
 
+      - name: Build and push AKTools Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.aktools
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/aktools:latest
+            ghcr.io/${{ github.repository }}/aktools:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}/aktools:${{ steps.version.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.title=Mist AKTools
+            org.opencontainers.image.description=AKTools 数据源服务
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
       - name: Release Summary
         run: |
           echo "### 🎉 Mist ${{ steps.version.outputs.version }} 发布成功！" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### 📦 Docker 镜像标签" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 标签 | 镜像地址 | 用途 |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|----------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **latest** | \`ghcr.io/moyui/mist:latest\` | 最新稳定版 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **${{ steps.version.outputs.version }}** | \`ghcr.io/moyui/mist:${{ steps.version.outputs.version }}\` | 语义化版本 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **${{ steps.version.outputs.tag }}** | \`ghcr.io/moyui/mist:${{ steps.version.outputs.tag }}\` | 完整版本号 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 服务 | 标签 | 镜像地址 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **主应用** | latest | \`ghcr.io/moyui/mist:latest\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **主应用** | ${{ steps.version.outputs.version }} | \`ghcr.io/moyui/mist:${{ steps.version.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **AKTools** | latest | \`ghcr.io/moyui/mist/aktools:latest\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **AKTools** | ${{ steps.version.outputs.version }} | \`ghcr.io/moyui/mist/aktools:${{ steps.version.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### 🚀 使用方法" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "# 拉取镜像" >> $GITHUB_STEP_SUMMARY
+          echo "# 1. 拉取镜像" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ghcr.io/moyui/mist:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/moyui/mist/aktools:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "# 运行容器" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -d \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -p 8001:8001 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -p 8008:8008 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -e mysql_server_host=host.docker.internal \\" >> $GITHUB_STEP_SUMMARY
-          echo "  -e mysql_server_password=your_password \\" >> $GITHUB_STEP_SUMMARY
-          echo "  ghcr.io/moyui/mist:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "# 2. 使用 docker-compose 启动" >> $GITHUB_STEP_SUMMARY
+          echo "VERSION=${{ steps.version.outputs.version }} docker-compose up -d" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

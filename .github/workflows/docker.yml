@@ -38,7 +38,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push main app
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -50,3 +50,22 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.title=Mist Backend
+            org.opencontainers.image.description=股票市场分析和预警系统
+
+      - name: Build and push AKTools
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.aktools
+          platforms: ${{ matrix.platform.os }}/${{ matrix.platform.arch }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/aktools:latest
+            ghcr.io/${{ github.repository }}/aktools:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.title=Mist AKTools
+            org.opencontainers.image.description=AKTools 数据源服务
