@@ -31,7 +31,7 @@ describe('PeriodMapping', () => {
     it('should throw error for unsupported period', () => {
       expect(() => {
         PeriodMapping.toSourceFormat(KLinePeriod.FIFTEEN_MIN, DataSource.TDX);
-      }).toThrow('数据源 tdx 不支持周期 15min');
+      }).toThrow('Data source tdx does not support period 15min');
     });
   });
 

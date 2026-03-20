@@ -1,6 +1,10 @@
 import { KLinePeriod } from '../enums/kline-period.enum';
 import { DataSource } from '../enums/data-source.enum';
 
+/**
+ * Period format mapping for each data source.
+ * Note: QUARTERLY and YEARLY periods are reserved for future implementation.
+ */
 const PERIOD_MAPPING: Record<
   DataSource,
   Partial<Record<KLinePeriod, string>>
@@ -27,7 +31,9 @@ export class PeriodMapping {
   static toSourceFormat(period: KLinePeriod, source: DataSource): string {
     const mapping = PERIOD_MAPPING[source];
     if (!mapping || !mapping[period]) {
-      throw new Error(`数据源 ${source} 不支持周期 ${period}`);
+      throw new Error(
+        `Data source ${source} does not support period ${period}`,
+      );
     }
     return mapping[period];
   }
