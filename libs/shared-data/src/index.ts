@@ -6,6 +6,7 @@ export * from './dto/save-index-period.dto';
 export * from './entities/index-daily.entity';
 export * from './entities/index-data.entity';
 export * from './entities/index-period.entity';
+export * from './entities/kline.entity';
 export * from './entities/stock.entity';
 export * from './entities/stock-source-format.entity';
 export * from './enums/data-source.enum';

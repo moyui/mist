@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { StockStatus } from '../enums/stock-status.enum';
 import { StockSourceFormat } from './stock-source-format.entity';
+import { KLine } from './kline.entity';
 
 @Entity({
   name: 'stocks',
@@ -41,8 +42,8 @@ export class Stock {
   @OneToMany(() => StockSourceFormat, (format) => format.stock)
   sourceFormats: StockSourceFormat[];
 
-  // Relationships to be added in Task 5
-  // TODO: Add @OneToMany relationship with KLine in Task 5
+  @OneToMany(() => KLine, (kline) => kline.stock)
+  klines: KLine[];
 
   @CreateDateColumn({ name: 'create_time' })
   createTime: Date;
