@@ -1,4 +1,4 @@
-export enum BarPeriod {
+export enum KPeriod {
   ONE_MIN = '1min',
   FIVE_MIN = '5min',
   FIFTEEN_MIN = '15min',
