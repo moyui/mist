@@ -3,12 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { KLine } from '@app/shared-data';
 import { Stock } from '../stock/stock.entity';
 import { DataCollectorService } from './data-collector.service';
+import { DataCollectorController } from './data-collector.controller';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { StockService } from '../stock/stock.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([KLine, Stock])],
+  controllers: [DataCollectorController],
   providers: [DataCollectorService, EastMoneySource, TdxSource, StockService],
   exports: [DataCollectorService],
 })
