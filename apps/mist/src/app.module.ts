@@ -26,6 +26,7 @@ import { ChanModule } from './chan/chan.module';
 import { DataCollectorModule } from './data-collector/data-collector.module';
 import { DataModule } from './data/data.module';
 import { IndicatorModule } from './indicator/indicator.module';
+import { MarketDataModule } from './market-data/market-data.module';
 import { StockModule } from './stock/stock.module';
 import { TrendModule } from './trend/trend.module';
 import { mistEnvSchema } from '@app/config';
@@ -85,6 +86,7 @@ import { mistEnvSchema } from '@app/config';
     DataModule,
     DataCollectorModule,
     IndicatorModule,
+    MarketDataModule,
     StockModule,
     ChanModule,
     TrendModule,
