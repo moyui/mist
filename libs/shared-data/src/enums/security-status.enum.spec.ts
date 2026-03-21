@@ -8,7 +8,9 @@ describe('SecurityStatus', () => {
   });
 
   it('should have three statuses', () => {
-    const values = Object.values(SecurityStatus);
+    const values = Object.values(SecurityStatus).filter(
+      (value) => typeof value === 'number',
+    );
     expect(values).toHaveLength(3);
   });
 });

@@ -12,9 +12,6 @@ import {
 import { Security } from './security.entity';
 import { DataSource } from '../enums/data-source.enum';
 import { BarPeriod } from '../enums/bar-period.enum';
-import { KlineExtensionEf } from './kline-extension-ef.entity';
-import { KlineExtensionTdx } from './kline-extension-tdx.entity';
-import { KlineExtensionMqmt } from './kline-extension-mqmt.entity';
 import { MarketDataExtensionEf } from './market-data-extension-ef.entity';
 import { MarketDataExtensionTdx } from './market-data-extension-tdx.entity';
 import { MarketDataExtensionMqmt } from './market-data-extension-mqmt.entity';
@@ -94,19 +91,6 @@ export class MarketDataBar {
     comment: '成交额',
   })
   amount: number;
-
-  // OneToOne relationships to extension tables
-  @OneToOne(() => KlineExtensionEf, { eager: false })
-  @JoinColumn({ name: 'extension_ef_id' })
-  extensionEf: KlineExtensionEf;
-
-  @OneToOne(() => KlineExtensionTdx, { eager: false })
-  @JoinColumn({ name: 'extension_tdx_id' })
-  extensionTdx: KlineExtensionTdx;
-
-  @OneToOne(() => KlineExtensionMqmt, { eager: false })
-  @JoinColumn({ name: 'extension_mqmt_id' })
-  extensionMqmt: KlineExtensionMqmt;
 
   // OneToOne relationships to market data extension tables
   @OneToOne(() => MarketDataExtensionEf, { eager: false })

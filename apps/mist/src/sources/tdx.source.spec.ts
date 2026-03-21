@@ -7,7 +7,6 @@ import { UtilsService } from '@app/utils';
 
 describe('TdxSource', () => {
   let service: TdxSource;
-  let axiosInstance: jest.Mocked<AxiosInstance>;
 
   beforeEach(async () => {
     const mockAxiosInstance = {
@@ -24,11 +23,9 @@ describe('TdxSource', () => {
           }),
         },
       ],
-    })
-      .compile();
+    }).compile();
 
     service = module.get<TdxSource>(TdxSource);
-    axiosInstance = mockAxiosInstance;
   });
 
   describe('fetchKLine', () => {
@@ -45,7 +42,7 @@ describe('TdxSource', () => {
       const result = await service.fetchKLine(mockParams);
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'TDX API call not yet implemented for code: 000001, period: 1m'
+        'TDX API call not yet implemented for code: 000001, period: 1m',
       );
       expect(result).toEqual([]);
 

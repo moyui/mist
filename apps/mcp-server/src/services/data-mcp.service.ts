@@ -3,26 +3,22 @@ import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IndexData } from '@app/shared-data';
-import { IndexPeriod } from '@app/shared-data';
-import { IndexDaily } from '@app/shared-data';
+import { Security, MarketDataBar, BarPeriod } from '@app/shared-data';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
 import { McpErrorCode, McpError } from '@app/constants';
 
 // Zod schemas
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const PeriodEnum = z.enum(['ONE', 'FIVE', 'FIFTEEN', 'THIRTY', 'SIXTY']);
+const PeriodEnum = z.enum(['1min', '5min', '15min', '30min', '60min', 'daily']);
 
 @Injectable()
 export class DataMcpService extends BaseMcpToolService {
   constructor(
-    @InjectRepository(IndexData)
-    private readonly indexDataRepository: Repository<IndexData>,
-    @InjectRepository(IndexPeriod)
-    private readonly indexPeriodRepository: Repository<IndexPeriod>,
-    @InjectRepository(IndexDaily)
-    private readonly indexDailyRepository: Repository<IndexDaily>,
+    @InjectRepository(Security)
+    private readonly securityRepository: Repository<Security>,
+    @InjectRepository(MarketDataBar)
+    private readonly marketDataBarRepository: Repository<MarketDataBar>,
   ) {
     super(DataMcpService.name);
   }
@@ -85,22 +81,22 @@ RETURNS: Index object with id, symbol, name, and type.`,
 
       const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
 
-      const index = await this.indexDataRepository.findOne({
-        where: { symbol: sanitizedSymbol },
+      const security = await this.securityRepository.findOne({
+        where: { code: sanitizedSymbol },
       });
 
-      if (!index) {
+      if (!security) {
         throw new McpError(
-          `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+          `Security with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
           McpErrorCode.INDEX_NOT_FOUND,
         );
       }
 
       return {
-        id: index.id,
-        symbol: index.symbol,
-        name: index.name,
-        type: index.type,
+        id: security.id,
+        symbol: security.code,
+        name: security.name,
+        type: security.type,
       };
     });
   }
@@ -113,7 +109,7 @@ PURPOSE: Retrieve historical intraday price data.
 
 WHEN TO USE: Getting data for analysis.
 
-REQUIRES: symbol, period (ONE/FIFE/FIFTEEN/THIRTY/SIXTY).
+REQUIRES: symbol, period (1min/5min/15min/30min/60min).
 Optional: limit (default 100), startTime, endTime.
 
 NOTE: Use list_indices first.
@@ -157,40 +153,41 @@ RETURNS: K-line array with time, OHLC, volume.`,
 
       const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
 
-      const index = await this.indexDataRepository.findOne({
-        where: { symbol: sanitizedSymbol },
+      const security = await this.securityRepository.findOne({
+        where: { code: sanitizedSymbol },
       });
-      if (!index) {
+      if (!security) {
         throw new McpError(
-          `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+          `Security with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
           McpErrorCode.INDEX_NOT_FOUND,
         );
       }
 
-      const queryBuilder = this.indexPeriodRepository
-        .createQueryBuilder('ip')
-        .where('ip.index_id = :indexId', { indexId: index.id })
-        .andWhere('ip.type = :period', { period })
-        .orderBy('ip.time', 'DESC')
+      const queryBuilder = this.marketDataBarRepository
+        .createQueryBuilder('bar')
+        .leftJoin('bar.security', 'security')
+        .where('security.id = :securityId', { securityId: security.id })
+        .andWhere('bar.period = :period', { period })
+        .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
 
       if (startTime) {
-        queryBuilder.andWhere('ip.time >= :startTime', { startTime });
+        queryBuilder.andWhere('bar.timestamp >= :startTime', { startTime });
       }
       if (endTime) {
-        queryBuilder.andWhere('ip.time <= :endTime', { endTime });
+        queryBuilder.andWhere('bar.timestamp <= :endTime', { endTime });
       }
 
       const data = await queryBuilder.getMany();
 
       return data.map((item) => ({
         id: item.id,
-        time: item.time,
+        time: item.timestamp,
         open: item.open,
         close: item.close,
-        highest: item.highest,
-        lowest: item.lowest,
-        volume: item.volume,
+        highest: item.high,
+        lowest: item.low,
+        volume: item.volume.toString(),
       }));
     });
   }
@@ -247,39 +244,41 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
 
       const sanitizedSymbol = ValidationHelper.sanitizeString(symbol)!;
 
-      const index = await this.indexDataRepository.findOne({
-        where: { symbol: sanitizedSymbol },
+      const security = await this.securityRepository.findOne({
+        where: { code: sanitizedSymbol },
       });
-      if (!index) {
+      if (!security) {
         throw new McpError(
-          `Index with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
+          `Security with symbol "${sanitizedSymbol}" not found. Use list_indices to see available symbols.`,
           McpErrorCode.INDEX_NOT_FOUND,
         );
       }
 
-      const queryBuilder = this.indexDailyRepository
-        .createQueryBuilder('id')
-        .where('id.index_id = :indexId', { indexId: index.id })
-        .orderBy('id.time', 'DESC')
+      const queryBuilder = this.marketDataBarRepository
+        .createQueryBuilder('bar')
+        .leftJoin('bar.security', 'security')
+        .where('security.id = :securityId', { securityId: security.id })
+        .andWhere('bar.period = :period', { period: BarPeriod.DAILY })
+        .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
 
       if (startDate) {
-        queryBuilder.andWhere('id.time >= :startDate', { startDate });
+        queryBuilder.andWhere('bar.timestamp >= :startDate', { startDate });
       }
       if (endDate) {
-        queryBuilder.andWhere('id.time <= :endDate', { endDate });
+        queryBuilder.andWhere('bar.timestamp <= :endDate', { endDate });
       }
 
       const data = await queryBuilder.getMany();
 
       return data.map((item) => ({
         id: item.id,
-        time: item.time,
+        time: item.timestamp,
         open: item.open,
         close: item.close,
-        highest: item.highest,
-        lowest: item.lowest,
-        volume: item.volume,
+        highest: item.high,
+        lowest: item.low,
+        volume: item.volume.toString(),
         amount: item.amount,
       }));
     });
@@ -301,10 +300,15 @@ NOTE: This should be your first data query tool call.`,
   })
   async listIndices() {
     return this.executeTool('list_indices', async () => {
-      const indices = await this.indexDataRepository.find({
-        select: ['id', 'symbol', 'name', 'type'],
+      const securities = await this.securityRepository.find({
+        select: ['id', 'code', 'name', 'type'],
       });
-      return indices;
+      return securities.map((s) => ({
+        id: s.id,
+        symbol: s.code,
+        name: s.name,
+        type: s.type,
+      }));
     });
   }
 
@@ -325,37 +329,40 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
   })
   async getLatestData(symbol: string) {
     return this.executeTool('get_latest_data', async () => {
-      const index = await this.indexDataRepository.findOne({
-        where: { symbol },
+      const security = await this.securityRepository.findOne({
+        where: { code: symbol },
       });
-      if (!index) {
+      if (!security) {
         throw new McpError(
-          `Index with symbol ${symbol} not found`,
+          `Security with symbol ${symbol} not found`,
           McpErrorCode.INDEX_NOT_FOUND,
         );
       }
 
-      const periods: ('ONE' | 'FIVE' | 'FIFTEEN' | 'THIRTY' | 'SIXTY')[] = [
-        'ONE',
-        'FIVE',
-        'FIFTEEN',
-        'THIRTY',
-        'SIXTY',
+      const periods: BarPeriod[] = [
+        BarPeriod.MIN_1,
+        BarPeriod.MIN_5,
+        BarPeriod.MIN_15,
+        BarPeriod.MIN_30,
+        BarPeriod.MIN_60,
       ];
 
       const [dailyData, ...periodData] = await Promise.all([
-        this.indexDailyRepository
-          .createQueryBuilder('id')
-          .where('id.index_id = :indexId', { indexId: index.id })
-          .orderBy('id.time', 'DESC')
+        this.marketDataBarRepository
+          .createQueryBuilder('bar')
+          .leftJoin('bar.security', 'security')
+          .where('security.id = :securityId', { securityId: security.id })
+          .andWhere('bar.period = :period', { period: BarPeriod.DAILY })
+          .orderBy('bar.timestamp', 'DESC')
           .limit(1)
           .getOne(),
         ...periods.map((period) =>
-          this.indexPeriodRepository
-            .createQueryBuilder('ip')
-            .where('ip.index_id = :indexId', { indexId: index.id })
-            .andWhere('ip.type = :period', { period })
-            .orderBy('ip.time', 'DESC')
+          this.marketDataBarRepository
+            .createQueryBuilder('bar')
+            .leftJoin('bar.security', 'security')
+            .where('security.id = :securityId', { securityId: security.id })
+            .andWhere('bar.period = :period', { period })
+            .orderBy('bar.timestamp', 'DESC')
             .limit(1)
             .getOne(),
         ),
@@ -363,7 +370,7 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
 
       return {
         symbol,
-        name: index.name,
+        name: security.name,
         daily: dailyData,
         '1min': periodData[0],
         '5min': periodData[1],

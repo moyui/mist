@@ -1,27 +1,34 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { KLine, KLinePeriod } from '@app/shared-data';
+import {
+  MarketDataBar,
+  Security,
+  BarPeriod,
+  DataSource,
+} from '@app/shared-data';
 import {
   ISourceFetcher,
   KLineFetchParams,
   KLineData,
 } from './interfaces/source-fetcher.interface';
-import { StockService } from '../stock/stock.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { Period } from '../chan/enums/period.enum';
-import { DataSource } from '@app/shared-data';
-import { Stock } from '../stock/stock.entity';
 
 @Injectable()
 export class DataCollectorService {
   private sources: Map<DataSource, ISourceFetcher> = new Map();
 
   constructor(
-    @InjectRepository(KLine)
-    private readonly kLineRepository: Repository<KLine>,
-    private readonly stockService: StockService,
+    @InjectRepository(MarketDataBar)
+    private readonly marketDataBarRepository: Repository<MarketDataBar>,
+    @InjectRepository(Security)
+    private readonly securityRepository: Repository<Security>,
     private readonly eastMoneySource: EastMoneySource,
     private readonly tdxSource: TdxSource,
   ) {
@@ -40,24 +47,30 @@ export class DataCollectorService {
     endDate: Date,
   ): Promise<void> {
     try {
-      // Validate stock exists and is active
-      const stock = await this.stockService.findByCode(stockCode);
+      // Validate security exists
+      const security = await this.securityRepository.findOne({
+        where: { code: stockCode },
+      });
 
-      // Get the appropriate data source for this stock
-      const sourceConfig = await this.stockService.getSourceFormat(stockCode);
-      const dataSource = this.getSourceType(sourceConfig.type);
+      if (!security) {
+        throw new NotFoundException(
+          `Security with code ${stockCode} not found`,
+        );
+      }
 
+      // Default to East Money data source
+      const dataSource = DataSource.EAST_MONEY;
       const sourceFetcher = this.sources.get(dataSource);
       if (!sourceFetcher) {
         throw new BadRequestException(
-          `Data source ${sourceConfig.type} is not available`,
+          `Data source ${dataSource} is not available`,
         );
       }
 
       // Check if period is supported
       if (!sourceFetcher.isSupportedPeriod(period)) {
         throw new BadRequestException(
-          `Period ${period} is not supported by data source ${sourceConfig.type}`,
+          `Period ${period} is not supported by data source ${dataSource}`,
         );
       }
 
@@ -73,13 +86,13 @@ export class DataCollectorService {
 
       if (kLineData.length === 0) {
         console.warn(
-          `No data returned for stock ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
+          `No data returned for security ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
         );
         return;
       }
 
       // Save data to database
-      await this.saveKLineData(stock, kLineData, dataSource, period);
+      await this.saveKLineData(security, kLineData, dataSource, period);
 
       console.log(
         `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period}`,
@@ -91,16 +104,16 @@ export class DataCollectorService {
   }
 
   private async saveKLineData(
-    stock: Stock,
+    security: Security,
     kLineData: KLineData[],
     dataSource: DataSource,
     period: Period,
   ): Promise<void> {
-    const kLineEntities = kLineData.map((data) => {
-      const kLine = this.kLineRepository.create({
-        stock,
+    const marketDataBarEntities = kLineData.map((data) => {
+      const bar = this.marketDataBarRepository.create({
+        security,
         source: dataSource,
-        period: this.convertPeriodToKLinePeriod(period),
+        period: this.convertPeriodToBarPeriod(period),
         timestamp: data.timestamp,
         open: data.open,
         high: data.high,
@@ -110,10 +123,10 @@ export class DataCollectorService {
         amount: data.amount || 0,
       });
 
-      return kLine;
+      return bar;
     });
 
-    await this.kLineRepository.save(kLineEntities);
+    await this.marketDataBarRepository.save(marketDataBarEntities);
   }
 
   private getSourceType(type: string): DataSource {
@@ -128,18 +141,20 @@ export class DataCollectorService {
     }
   }
 
-  private convertPeriodToKLinePeriod(period: Period): KLinePeriod {
-    const mapping: Record<Period, KLinePeriod> = {
-      [Period.One]: KLinePeriod.ONE_MIN,
-      [Period.FIVE]: KLinePeriod.FIVE_MIN,
-      [Period.FIFTEEN]: KLinePeriod.FIFTEEN_MIN,
-      [Period.THIRTY]: KLinePeriod.THIRTY_MIN,
-      [Period.SIXTY]: KLinePeriod.SIXTY_MIN,
-      [Period.DAY]: KLinePeriod.DAILY,
-      [Period.WEEK]: KLinePeriod.WEEKLY,
-      [Period.MONTH]: KLinePeriod.MONTHLY,
-      [Period.QUARTER]: KLinePeriod.QUARTERLY,
-      [Period.YEAR]: KLinePeriod.YEARLY,
+  private convertPeriodToBarPeriod(period: Period): BarPeriod {
+    const mapping: Record<Period, BarPeriod> = {
+      [Period.One]: BarPeriod.ONE_MIN,
+      [Period.FIVE]: BarPeriod.FIVE_MIN,
+      [Period.FIFTEEN]: BarPeriod.FIFTEEN_MIN,
+      [Period.THIRTY]: BarPeriod.THIRTY_MIN,
+      [Period.SIXTY]: BarPeriod.SIXTY_MIN,
+      [Period.DAY]: BarPeriod.DAILY,
+      // Note: BarPeriod enum only supports up to daily periods
+      // Weekly, monthly, quarterly, yearly periods are not supported
+      [Period.WEEK]: BarPeriod.DAILY, // Fallback to daily
+      [Period.MONTH]: BarPeriod.DAILY, // Fallback to daily
+      [Period.QUARTER]: BarPeriod.DAILY, // Fallback to daily
+      [Period.YEAR]: BarPeriod.DAILY, // Fallback to daily
     };
     return mapping[period];
   }
@@ -155,18 +170,18 @@ export class DataCollectorService {
     lastRecord?: Date;
     firstRecord?: Date;
   }> {
-    const kLinePeriod = this.convertPeriodToKLinePeriod(period);
+    const barPeriod = this.convertPeriodToBarPeriod(period);
 
-    const result = await this.kLineRepository
-      .createQueryBuilder('kline')
-      .leftJoin('kline.stock', 'stock')
+    const result = await this.marketDataBarRepository
+      .createQueryBuilder('bar')
+      .leftJoin('bar.security', 'security')
       .select('COUNT(*)', 'count')
-      .addSelect('MAX(kline.timestamp)', 'lastRecord')
-      .addSelect('MIN(kline.timestamp)', 'firstRecord')
-      .where('stock.code = :stockCode', { stockCode })
-      .andWhere('kline.period = :period', { period: kLinePeriod })
-      .andWhere('kline.timestamp >= :startDate', { startDate })
-      .andWhere('kline.timestamp <= :endDate', { endDate })
+      .addSelect('MAX(bar.timestamp)', 'lastRecord')
+      .addSelect('MIN(bar.timestamp)', 'firstRecord')
+      .where('security.code = :stockCode', { stockCode })
+      .andWhere('bar.period = :period', { period: barPeriod })
+      .andWhere('bar.timestamp >= :startDate', { startDate })
+      .andWhere('bar.timestamp <= :endDate', { endDate })
       .getRawOne();
 
     return {
@@ -183,17 +198,17 @@ export class DataCollectorService {
     stockCode: string,
     period: Period,
   ): Promise<number> {
-    const kLinePeriod = this.convertPeriodToKLinePeriod(period);
+    const barPeriod = this.convertPeriodToBarPeriod(period);
 
     // Find duplicates by grouping by timestamp
-    const duplicateQuery = this.kLineRepository
-      .createQueryBuilder('kline')
-      .leftJoin('kline.stock', 'stock')
-      .select('kline.timestamp', 'timestamp')
+    const duplicateQuery = this.marketDataBarRepository
+      .createQueryBuilder('bar')
+      .leftJoin('bar.security', 'security')
+      .select('bar.timestamp', 'timestamp')
       .addSelect('COUNT(*)', 'count')
-      .where('stock.code = :stockCode', { stockCode })
-      .andWhere('kline.period = :period', { period: kLinePeriod })
-      .groupBy('kline.timestamp')
+      .where('security.code = :stockCode', { stockCode })
+      .andWhere('bar.period = :period', { period: barPeriod })
+      .groupBy('bar.timestamp')
       .having('COUNT(*) > 1')
       .getRawMany();
 
@@ -205,16 +220,16 @@ export class DataCollectorService {
 
     const timestamps = duplicates.map((d) => d.timestamp);
 
-    // Keep only the latest record for each timestamp (based on create_time)
-    const deleteResult = await this.kLineRepository
+    // Keep only the latest record for each timestamp (based on created_at)
+    const deleteResult = await this.marketDataBarRepository
       .createQueryBuilder()
       .delete()
-      .from(KLine)
-      .where('kline.stock.code = :stockCode', { stockCode })
-      .andWhere('kline.period = :period', { period: kLinePeriod })
-      .andWhere('kline.timestamp IN (:...timestamps)', { timestamps })
+      .from(MarketDataBar)
+      .where('bar.security.code = :stockCode', { stockCode })
+      .andWhere('bar.period = :period', { period: barPeriod })
+      .andWhere('bar.timestamp IN (:...timestamps)', { timestamps })
       .andWhere(
-        'kline.id NOT IN (SELECT id FROM (SELECT id FROM k_lines k1 WHERE k1.stock.code = :stockCode AND k1.period = :period AND k1.timestamp IN (:...timestamps) ORDER BY k1.create_time DESC LIMIT 1) AS latest)',
+        'bar.id NOT IN (SELECT id FROM (SELECT id FROM market_data_bars b1 WHERE b1.security.code = :stockCode AND b1.period = :period AND b1.timestamp IN (:...timestamps) ORDER BY b1.created_at DESC LIMIT 1) AS latest)',
       )
       .execute();
 

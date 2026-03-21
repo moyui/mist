@@ -6,6 +6,7 @@ export * from './dto/save-index-period.dto';
 export * from './entities';
 export * from './enums/bar-period.enum';
 export * from './enums/data-source.enum';
+export * from './enums/index-period.enum';
 export * from './enums/security-status.enum';
 export * from './enums/security-type.enum';
 export * from './enums/stock-status.enum';

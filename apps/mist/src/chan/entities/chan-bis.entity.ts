@@ -1,4 +1,4 @@
-import { IndexData } from '@app/shared-data';
+import { Security } from '@app/shared-data';
 import {
   Column,
   CreateDateColumn,
@@ -34,9 +34,9 @@ export class ChanBi {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => IndexData)
+  @ManyToOne(() => Security)
   @JoinColumn()
-  indexData: IndexData;
+  security: Security;
 
   @Column({
     type: 'enum',

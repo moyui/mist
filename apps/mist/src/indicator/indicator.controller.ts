@@ -2,7 +2,6 @@ import { TimezoneService } from '@app/timezone';
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IndexVo } from '../../../../libs/shared-data/src/vo/index.vo';
 import { DataService } from '../data/data.service';
 import { KDto } from './dto/k.dto';
 import { KDJDto } from './dto/kdj.dto';
@@ -51,7 +50,7 @@ export class IndicatorController {
       MACDDto.startDate,
     );
     const endDate = this.timezoneService.convertTimestamp2Date(MACDDto.endDate);
-    let data = [] as IndexVo[];
+    let data = [] as any[];
     if (MACDDto.daily) {
       data = await this.dataService.findIndexDailyById({
         symbol: MACDDto.symbol,
@@ -81,7 +80,7 @@ export class IndicatorController {
         macdResult.histogram,
       ),
       symbol: item.code,
-      timestamp: item.timestamp,
+      time: item.timestamp,
       close: item.close,
     }));
   }
@@ -104,7 +103,7 @@ export class IndicatorController {
     );
     const endDate = this.timezoneService.convertTimestamp2Date(KDJDto.endDate);
 
-    let data = [] as IndexVo[];
+    let data = [] as any[];
 
     if (KDJDto.daily) {
       data = await this.dataService.findIndexDailyById({
@@ -142,7 +141,7 @@ export class IndicatorController {
       d: formatIndicator(kdjResult.begIndex, index, kdjResult.D),
       j: formatIndicator(kdjResult.begIndex, index, kdjResult.J),
       symbol: item.code,
-      timestamp: item.timestamp,
+      time: item.timestamp,
       close: item.close,
     }));
   }
@@ -165,7 +164,7 @@ export class IndicatorController {
     );
     const endDate = this.timezoneService.convertTimestamp2Date(RSIDto.endDate);
 
-    let data = [] as IndexVo[];
+    let data = [] as any[];
 
     if (RSIDto.daily) {
       data = await this.dataService.findIndexDailyById({
@@ -190,7 +189,7 @@ export class IndicatorController {
     return data.map((item, index) => ({
       rsi: formatIndicator(rsiResult.begIndex, index, rsiResult.rsi),
       symbol: item.code,
-      timestamp: item.timestamp,
+      time: item.timestamp,
       close: item.close,
     }));
   }
@@ -214,7 +213,7 @@ export class IndicatorController {
     );
     const endDate = this.timezoneService.convertTimestamp2Date(KDto.endDate);
 
-    let data = [] as IndexVo[];
+    let data = [] as any[];
 
     if (KDto.daily) {
       data = await this.dataService.findIndexDailyById({
@@ -240,7 +239,7 @@ export class IndicatorController {
       open: item.open,
       close: item.close,
       symbol: item.code,
-      timestamp: item.timestamp,
+      time: item.timestamp,
       amount: item.amount,
     }));
   }

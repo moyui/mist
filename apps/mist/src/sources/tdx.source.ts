@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ISourceFetcher, KLineFetchParams, KLineData } from '../data-collector';
 import { AxiosInstance } from 'axios';
 import { UtilsService } from '@app/utils';
-import { PeriodMapping, DataSource, KLinePeriod } from '@app/shared-data';
+import { PeriodMapping, DataSource, BarPeriod } from '@app/shared-data';
 import { Period } from '../chan/enums/period.enum';
 
 @Injectable()
@@ -16,19 +16,20 @@ export class TdxSource implements ISourceFetcher {
     });
   }
 
-  // Helper function to convert Period enum to KLinePeriod enum
-  private periodToKLinePeriod(period: Period): KLinePeriod {
-    const mapping: Record<Period, KLinePeriod> = {
-      [Period.One]: KLinePeriod.ONE_MIN,
-      [Period.FIVE]: KLinePeriod.FIVE_MIN,
-      [Period.FIFTEEN]: KLinePeriod.FIFTEEN_MIN,
-      [Period.THIRTY]: KLinePeriod.THIRTY_MIN,
-      [Period.SIXTY]: KLinePeriod.SIXTY_MIN,
-      [Period.DAY]: KLinePeriod.DAILY,
-      [Period.WEEK]: KLinePeriod.WEEKLY,
-      [Period.MONTH]: KLinePeriod.MONTHLY,
-      [Period.QUARTER]: KLinePeriod.QUARTERLY,
-      [Period.YEAR]: KLinePeriod.YEARLY,
+  // Helper function to convert Period enum to BarPeriod enum
+  private periodToKLinePeriod(period: Period): BarPeriod {
+    const mapping: Record<Period, BarPeriod> = {
+      [Period.One]: BarPeriod.ONE_MIN,
+      [Period.FIVE]: BarPeriod.FIVE_MIN,
+      [Period.FIFTEEN]: BarPeriod.FIFTEEN_MIN,
+      [Period.THIRTY]: BarPeriod.THIRTY_MIN,
+      [Period.SIXTY]: BarPeriod.SIXTY_MIN,
+      [Period.DAY]: BarPeriod.DAILY,
+      // Note: BarPeriod only supports up to daily
+      [Period.WEEK]: BarPeriod.DAILY,
+      [Period.MONTH]: BarPeriod.DAILY,
+      [Period.QUARTER]: BarPeriod.DAILY,
+      [Period.YEAR]: BarPeriod.DAILY,
     };
     return mapping[period];
   }
@@ -38,20 +39,27 @@ export class TdxSource implements ISourceFetcher {
 
     // Map the period to TDX format
     const klinePeriod = this.periodToKLinePeriod(period);
-    const periodFormat = PeriodMapping.toSourceFormat(klinePeriod, DataSource.TDX);
+    const periodFormat = PeriodMapping.toSourceFormat(
+      klinePeriod,
+      DataSource.TDX,
+    );
 
-    // Convert dates to timestamps
-    const startTimestamp = Math.floor(startDate.getTime() / 1000);
-    const endTimestamp = Math.floor(endDate.getTime() / 1000);
+    // Dates will be used when TDX API is implemented
+    void startDate;
+    void endDate;
 
     try {
       // TODO: Implement actual TDX API call
       // For now, return empty array to indicate API not yet implemented
-      console.warn(`TDX API call not yet implemented for code: ${code}, period: ${periodFormat}`);
+      console.warn(
+        `TDX API call not yet implemented for code: ${code}, period: ${periodFormat}`,
+      );
 
       return [];
     } catch (error) {
-      throw new Error(`Failed to fetch K-line data from TDX API: ${error.message}`);
+      throw new Error(
+        `Failed to fetch K-line data from TDX API: ${error.message}`,
+      );
     }
   }
 

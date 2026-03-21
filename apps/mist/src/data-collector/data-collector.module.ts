@@ -1,18 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { KLine } from '@app/shared-data';
-import { Stock } from '../stock/stock.entity';
+import { MarketDataBar, Security } from '@app/shared-data';
 import { DataCollectorService } from './data-collector.service';
 import { DataCollectorController } from './data-collector.controller';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
-import { StockService } from '../stock/stock.service';
 import { UtilsModule } from '@app/utils';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([KLine, Stock]), UtilsModule],
+  imports: [TypeOrmModule.forFeature([MarketDataBar, Security]), UtilsModule],
   controllers: [DataCollectorController],
-  providers: [DataCollectorService, EastMoneySource, TdxSource, StockService],
+  providers: [DataCollectorService, EastMoneySource, TdxSource],
   exports: [DataCollectorService],
 })
 export class DataCollectorModule {

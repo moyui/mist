@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UtilsModule } from '@app/utils';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { IndexData, IndexPeriod, IndexDaily } from '@app/shared-data';
+import { Security, MarketDataBar } from '@app/shared-data';
 import { ChanModule } from '../../mist/src/chan/chan.module';
 import { IndicatorModule } from '../../mist/src/indicator/indicator.module';
 import { ChanMcpService } from './services/chan-mcp.service';
@@ -38,7 +38,7 @@ import * as path from 'path';
         database: configService.get('mysql_server_database', 'mist'),
         synchronize: configService.get('NODE_ENV') !== 'production',
         logging: configService.get('NODE_ENV') !== 'production',
-        entities: [IndexData, IndexPeriod, IndexDaily],
+        entities: [Security, MarketDataBar],
         poolSize: 10,
         connectorPackage: 'mysql2',
         extra: {
@@ -46,7 +46,7 @@ import * as path from 'path';
         },
       }),
     }),
-    TypeOrmModule.forFeature([IndexData, IndexPeriod, IndexDaily]),
+    TypeOrmModule.forFeature([Security, MarketDataBar]),
     ChanModule,
     IndicatorModule,
     McpModule.forRootAsync({

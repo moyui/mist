@@ -24,8 +24,7 @@ describe('EastMoneySource', () => {
           }),
         },
       ],
-    })
-      .compile();
+    }).compile();
 
     service = module.get<EastMoneySource>(EastMoneySource);
     axiosInstance = mockAxiosInstance;

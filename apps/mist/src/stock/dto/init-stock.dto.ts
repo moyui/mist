@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsNumber, IsEnum, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum StockType {
@@ -17,7 +24,10 @@ export class SourceConfig {
   @IsEnum(SourceType)
   type: SourceType;
 
-  @ApiProperty({ description: 'Source-specific configuration', required: false })
+  @ApiProperty({
+    description: 'Source-specific configuration',
+    required: false,
+  })
   @IsString()
   config?: string;
 }
@@ -41,7 +51,10 @@ export class InitStockDto {
   @IsNumber({}, { each: true })
   periods?: number[];
 
-  @ApiProperty({ description: 'Source configuration', type: () => SourceConfig })
+  @ApiProperty({
+    description: 'Source configuration',
+    type: () => SourceConfig,
+  })
   @ValidateNested()
   @Type(() => SourceConfig)
   source: SourceConfig;
@@ -53,7 +66,10 @@ export class AddSourceDto {
   @IsString()
   code: string;
 
-  @ApiProperty({ description: 'Source configuration', type: () => SourceConfig })
+  @ApiProperty({
+    description: 'Source configuration',
+    type: () => SourceConfig,
+  })
   @ValidateNested()
   @Type(() => SourceConfig)
   source: SourceConfig;

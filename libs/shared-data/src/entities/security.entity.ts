@@ -5,7 +5,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  Unique,
 } from 'typeorm';
 import { SecurityType } from '../enums/security-type.enum';
 import { SecurityStatus } from '../enums/security-status.enum';
@@ -13,7 +12,6 @@ import { SecuritySourceConfig } from './security-source-config.entity';
 import { MarketDataBar } from './market-data-bar.entity';
 
 @Entity({ name: 'securities' })
-@Unique(['code'])
 export class Security {
   @PrimaryGeneratedColumn()
   id: number;

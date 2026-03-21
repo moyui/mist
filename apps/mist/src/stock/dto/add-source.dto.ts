@@ -11,7 +11,10 @@ export class SourceConfig {
   @IsEnum(SourceType)
   type: SourceType;
 
-  @ApiProperty({ description: 'Source-specific configuration', required: false })
+  @ApiProperty({
+    description: 'Source-specific configuration',
+    required: false,
+  })
   @IsString()
   config?: string;
 }

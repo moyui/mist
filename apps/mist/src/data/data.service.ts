@@ -40,6 +40,10 @@ export class DataService {
     await this.securityRepository.save(security2);
   }
 
+  async index() {
+    return await this.securityRepository.find();
+  }
+
   async findBarsById(queryDto: any): Promise<MarketDataBar[]> {
     const foundSecurity = await this.securityRepository.findOneBy({
       code: queryDto.symbol,
@@ -69,5 +73,50 @@ export class DataService {
       },
     });
     return foundBars;
+  }
+
+  /**
+   * @deprecated Legacy method for API compatibility.
+   * Maps period numbers to BarPeriod enum and calls findBarsById.
+   * TODO: Update API clients to use findBarsById directly with BarPeriod enum.
+   */
+  async findIndexPeriodById(queryDto: any): Promise<MarketDataBar[]> {
+    // Map legacy period numbers to BarPeriod enum
+    const periodMapping: Record<number, BarPeriod> = {
+      1: BarPeriod.ONE_MIN,
+      5: BarPeriod.FIVE_MIN,
+      15: BarPeriod.FIFTEEN_MIN,
+      30: BarPeriod.THIRTY_MIN,
+      60: BarPeriod.SIXTY_MIN,
+    };
+
+    const period = periodMapping[queryDto.period];
+    if (!period) {
+      throw new HttpException(
+        `Invalid period: ${queryDto.period}. Supported periods: 1, 5, 15, 30, 60`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return this.findBarsById({
+      symbol: queryDto.symbol,
+      period,
+      startDate: queryDto.startDate,
+      endDate: queryDto.endDate,
+    });
+  }
+
+  /**
+   * @deprecated Legacy method for API compatibility.
+   * Calls findBarsById with BarPeriod.DAILY.
+   * TODO: Update API clients to use findBarsById directly with BarPeriod.DAILY.
+   */
+  async findIndexDailyById(queryDto: any): Promise<MarketDataBar[]> {
+    return this.findBarsById({
+      symbol: queryDto.symbol,
+      period: BarPeriod.DAILY,
+      startDate: queryDto.startDate,
+      endDate: queryDto.endDate,
+    });
   }
 }

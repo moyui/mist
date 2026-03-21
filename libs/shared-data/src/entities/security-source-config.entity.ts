@@ -5,17 +5,18 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import { Security } from './security.entity';
 import { DataSource } from '../enums/data-source.enum';
 
 @Entity({ name: 'security_source_configs' })
-@Unique(['securityId', 'source'])
 export class SecuritySourceConfig {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ name: 'security_id' })
+  securityId: number;
 
   @ManyToOne(() => Security, (security) => security.sourceConfigs, {
     onDelete: 'CASCADE',

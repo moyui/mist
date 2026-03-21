@@ -7,6 +7,7 @@ import {
   setMinutes,
   setSeconds,
 } from 'date-fns';
+import axios from 'axios';
 
 @Injectable()
 export class UtilsService {
@@ -104,9 +105,9 @@ export class UtilsService {
    * @param config Axios configuration
    * @returns Configured axios instance
    */
-  createAxiosInstance(config: { baseURL?: string; timeout?: number } = {}): any {
-    // Dynamically import axios to avoid require() issues
-    const axios = require('axios');
+  createAxiosInstance(
+    config: { baseURL?: string; timeout?: number } = {},
+  ): any {
     return axios.create({
       timeout: config.timeout || 10000,
       ...config,

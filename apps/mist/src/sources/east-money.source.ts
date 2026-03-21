@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ISourceFetcher, KLineFetchParams, KLineData } from '../data-collector';
 import { AxiosInstance } from 'axios';
 import { UtilsService } from '@app/utils';
-import { PeriodMapping, DataSource, KLinePeriod } from '@app/shared-data';
+import { PeriodMapping, DataSource, BarPeriod } from '@app/shared-data';
 import { Period } from '../chan/enums/period.enum';
 
 @Injectable()
@@ -16,19 +16,20 @@ export class EastMoneySource implements ISourceFetcher {
     });
   }
 
-  // Helper function to convert Period enum to KLinePeriod enum
-  private periodToKLinePeriod(period: Period): KLinePeriod {
-    const mapping: Record<Period, KLinePeriod> = {
-      [Period.One]: KLinePeriod.ONE_MIN,
-      [Period.FIVE]: KLinePeriod.FIVE_MIN,
-      [Period.FIFTEEN]: KLinePeriod.FIFTEEN_MIN,
-      [Period.THIRTY]: KLinePeriod.THIRTY_MIN,
-      [Period.SIXTY]: KLinePeriod.SIXTY_MIN,
-      [Period.DAY]: KLinePeriod.DAILY,
-      [Period.WEEK]: KLinePeriod.WEEKLY,
-      [Period.MONTH]: KLinePeriod.MONTHLY,
-      [Period.QUARTER]: KLinePeriod.QUARTERLY,
-      [Period.YEAR]: KLinePeriod.YEARLY,
+  // Helper function to convert Period enum to BarPeriod enum
+  private periodToKLinePeriod(period: Period): BarPeriod {
+    const mapping: Record<Period, BarPeriod> = {
+      [Period.One]: BarPeriod.ONE_MIN,
+      [Period.FIVE]: BarPeriod.FIVE_MIN,
+      [Period.FIFTEEN]: BarPeriod.FIFTEEN_MIN,
+      [Period.THIRTY]: BarPeriod.THIRTY_MIN,
+      [Period.SIXTY]: BarPeriod.SIXTY_MIN,
+      [Period.DAY]: BarPeriod.DAILY,
+      // Note: BarPeriod only supports up to daily
+      [Period.WEEK]: BarPeriod.DAILY,
+      [Period.MONTH]: BarPeriod.DAILY,
+      [Period.QUARTER]: BarPeriod.DAILY,
+      [Period.YEAR]: BarPeriod.DAILY,
     };
     return mapping[period];
   }
@@ -38,7 +39,10 @@ export class EastMoneySource implements ISourceFetcher {
 
     // Map the period to East Money format
     const klinePeriod = this.periodToKLinePeriod(period);
-    const periodFormat = PeriodMapping.toSourceFormat(klinePeriod, DataSource.EAST_MONEY);
+    const periodFormat = PeriodMapping.toSourceFormat(
+      klinePeriod,
+      DataSource.EAST_MONEY,
+    );
 
     // Convert dates to timestamps
     const startTimestamp = Math.floor(startDate.getTime() / 1000);
@@ -55,7 +59,9 @@ export class EastMoneySource implements ISourceFetcher {
       });
 
       if (!response.data || !Array.isArray(response.data)) {
-        throw new Error(`Invalid response format from East Money API: ${JSON.stringify(response.data)}`);
+        throw new Error(
+          `Invalid response format from East Money API: ${JSON.stringify(response.data)}`,
+        );
       }
 
       return response.data.map((item: any) => ({
@@ -69,7 +75,9 @@ export class EastMoneySource implements ISourceFetcher {
         period,
       }));
     } catch (error) {
-      throw new Error(`Failed to fetch K-line data from East Money API: ${error.message}`);
+      throw new Error(
+        `Failed to fetch K-line data from East Money API: ${error.message}`,
+      );
     }
   }
 
