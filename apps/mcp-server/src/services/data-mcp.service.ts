@@ -3,7 +3,7 @@ import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Security, MarketDataBar, BarPeriod } from '@app/shared-data';
+import { Security, MarketDataBar, KPeriod } from '@app/shared-data';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
 import { McpErrorCode, McpError } from '@app/constants';
@@ -339,12 +339,12 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
         );
       }
 
-      const periods: BarPeriod[] = [
-        BarPeriod.MIN_1,
-        BarPeriod.MIN_5,
-        BarPeriod.MIN_15,
-        BarPeriod.MIN_30,
-        BarPeriod.MIN_60,
+      const periods: KPeriod[] = [
+        KPeriod.MIN_1,
+        KPeriod.MIN_5,
+        KPeriod.MIN_15,
+        KPeriod.MIN_30,
+        KPeriod.MIN_60,
       ];
 
       const [dailyData, ...periodData] = await Promise.all([
@@ -352,7 +352,7 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
           .createQueryBuilder('bar')
           .leftJoin('bar.security', 'security')
           .where('security.id = :securityId', { securityId: security.id })
-          .andWhere('bar.period = :period', { period: BarPeriod.DAILY })
+          .andWhere('bar.period = :period', { period: KPeriod.DAILY })
           .orderBy('bar.timestamp', 'DESC')
           .limit(1)
           .getOne(),

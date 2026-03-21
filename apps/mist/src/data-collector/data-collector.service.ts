@@ -5,12 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  MarketDataBar,
-  Security,
-  BarPeriod,
-  DataSource,
-} from '@app/shared-data';
+import { MarketDataBar, Security, KPeriod, DataSource } from '@app/shared-data';
 import {
   ISourceFetcher,
   KLineFetchParams,
@@ -141,20 +136,20 @@ export class DataCollectorService {
     }
   }
 
-  private convertPeriodToBarPeriod(period: Period): BarPeriod {
-    const mapping: Record<Period, BarPeriod> = {
-      [Period.One]: BarPeriod.ONE_MIN,
-      [Period.FIVE]: BarPeriod.FIVE_MIN,
-      [Period.FIFTEEN]: BarPeriod.FIFTEEN_MIN,
-      [Period.THIRTY]: BarPeriod.THIRTY_MIN,
-      [Period.SIXTY]: BarPeriod.SIXTY_MIN,
-      [Period.DAY]: BarPeriod.DAILY,
-      // Note: BarPeriod enum only supports up to daily periods
+  private convertPeriodToBarPeriod(period: Period): KPeriod {
+    const mapping: Record<Period, KPeriod> = {
+      [Period.One]: KPeriod.MIN_1,
+      [Period.FIVE]: KPeriod.MIN_5,
+      [Period.FIFTEEN]: KPeriod.MIN_15,
+      [Period.THIRTY]: KPeriod.MIN_30,
+      [Period.SIXTY]: KPeriod.MIN_60,
+      [Period.DAY]: KPeriod.DAILY,
+      // Note: KPeriod enum only supports up to daily periods
       // Weekly, monthly, quarterly, yearly periods are not supported
-      [Period.WEEK]: BarPeriod.DAILY, // Fallback to daily
-      [Period.MONTH]: BarPeriod.DAILY, // Fallback to daily
-      [Period.QUARTER]: BarPeriod.DAILY, // Fallback to daily
-      [Period.YEAR]: BarPeriod.DAILY, // Fallback to daily
+      [Period.WEEK]: KPeriod.DAILY, // Fallback to daily
+      [Period.MONTH]: KPeriod.DAILY, // Fallback to daily
+      [Period.QUARTER]: KPeriod.DAILY, // Fallback to daily
+      [Period.YEAR]: KPeriod.DAILY, // Fallback to daily
     };
     return mapping[period];
   }
