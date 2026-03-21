@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ISourceFetcher, KLineFetchParams, KLineData } from '../data-collector';
 import { AxiosInstance } from 'axios';
 import { UtilsService } from '@app/utils';
-import { PeriodMapping, DataSource, BarPeriod } from '@app/shared-data';
+import { PeriodMapping, DataSource, KPeriod } from '@app/shared-data';
 import { Period } from '../chan/enums/period.enum';
 
 @Injectable()
@@ -16,20 +16,20 @@ export class EastMoneySource implements ISourceFetcher {
     });
   }
 
-  // Helper function to convert Period enum to BarPeriod enum
-  private periodToKLinePeriod(period: Period): BarPeriod {
-    const mapping: Record<Period, BarPeriod> = {
-      [Period.One]: BarPeriod.ONE_MIN,
-      [Period.FIVE]: BarPeriod.FIVE_MIN,
-      [Period.FIFTEEN]: BarPeriod.FIFTEEN_MIN,
-      [Period.THIRTY]: BarPeriod.THIRTY_MIN,
-      [Period.SIXTY]: BarPeriod.SIXTY_MIN,
-      [Period.DAY]: BarPeriod.DAILY,
-      // Note: BarPeriod only supports up to daily
-      [Period.WEEK]: BarPeriod.DAILY,
-      [Period.MONTH]: BarPeriod.DAILY,
-      [Period.QUARTER]: BarPeriod.DAILY,
-      [Period.YEAR]: BarPeriod.DAILY,
+  // Helper function to convert Period enum to KPeriod enum
+  private periodToKLinePeriod(period: Period): KPeriod {
+    const mapping: Record<Period, KPeriod> = {
+      [Period.One]: KPeriod.ONE_MIN,
+      [Period.FIVE]: KPeriod.FIVE_MIN,
+      [Period.FIFTEEN]: KPeriod.FIFTEEN_MIN,
+      [Period.THIRTY]: KPeriod.THIRTY_MIN,
+      [Period.SIXTY]: KPeriod.SIXTY_MIN,
+      [Period.DAY]: KPeriod.DAILY,
+      // Note: KPeriod only supports up to daily
+      [Period.WEEK]: KPeriod.DAILY,
+      [Period.MONTH]: KPeriod.DAILY,
+      [Period.QUARTER]: KPeriod.DAILY,
+      [Period.YEAR]: KPeriod.DAILY,
     };
     return mapping[period];
   }

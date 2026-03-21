@@ -1,7 +1,7 @@
 import {
   MarketDataBar,
   Security,
-  BarPeriod,
+  KPeriod,
   SecurityType,
 } from '@app/shared-data';
 import { ERROR_MESSAGES } from '@app/constants';
@@ -62,7 +62,7 @@ export class DataService {
           id: foundSecurity.id,
           code: foundSecurity.code,
         },
-        period: queryDto.period as BarPeriod,
+        period: queryDto.period as KPeriod,
         timestamp: Between(
           new Date(queryDto.startDate),
           new Date(queryDto.endDate),
@@ -77,17 +77,17 @@ export class DataService {
 
   /**
    * @deprecated Legacy method for API compatibility.
-   * Maps period numbers to BarPeriod enum and calls findBarsById.
-   * TODO: Update API clients to use findBarsById directly with BarPeriod enum.
+   * Maps period numbers to KPeriod enum and calls findBarsById.
+   * TODO: Update API clients to use findBarsById directly with KPeriod enum.
    */
   async findIndexPeriodById(queryDto: any): Promise<MarketDataBar[]> {
-    // Map legacy period numbers to BarPeriod enum
-    const periodMapping: Record<number, BarPeriod> = {
-      1: BarPeriod.ONE_MIN,
-      5: BarPeriod.FIVE_MIN,
-      15: BarPeriod.FIFTEEN_MIN,
-      30: BarPeriod.THIRTY_MIN,
-      60: BarPeriod.SIXTY_MIN,
+    // Map legacy period numbers to KPeriod enum
+    const periodMapping: Record<number, KPeriod> = {
+      1: KPeriod.ONE_MIN,
+      5: KPeriod.FIVE_MIN,
+      15: KPeriod.FIFTEEN_MIN,
+      30: KPeriod.THIRTY_MIN,
+      60: KPeriod.SIXTY_MIN,
     };
 
     const period = periodMapping[queryDto.period];
@@ -108,13 +108,13 @@ export class DataService {
 
   /**
    * @deprecated Legacy method for API compatibility.
-   * Calls findBarsById with BarPeriod.DAILY.
-   * TODO: Update API clients to use findBarsById directly with BarPeriod.DAILY.
+   * Calls findBarsById with KPeriod.DAILY.
+   * TODO: Update API clients to use findBarsById directly with KPeriod.DAILY.
    */
   async findIndexDailyById(queryDto: any): Promise<MarketDataBar[]> {
     return this.findBarsById({
       symbol: queryDto.symbol,
-      period: BarPeriod.DAILY,
+      period: KPeriod.DAILY,
       startDate: queryDto.startDate,
       endDate: queryDto.endDate,
     });

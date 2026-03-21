@@ -11,14 +11,14 @@ import {
 } from 'typeorm';
 import { Security } from './security.entity';
 import { DataSource } from '../enums/data-source.enum';
-import { BarPeriod } from '../enums/bar-period.enum';
+import { KPeriod } from '../enums/k-period.enum';
 import { MarketDataExtensionEf } from './market-data-extension-ef.entity';
 import { MarketDataExtensionTdx } from './market-data-extension-tdx.entity';
 import { MarketDataExtensionMqmt } from './market-data-extension-mqmt.entity';
 
 @Entity({ name: 'market_data_bars' })
 @Unique(['securityId', 'source', 'period', 'timestamp'])
-export class MarketDataBar {
+export class K {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -37,10 +37,10 @@ export class MarketDataBar {
 
   @Column({
     type: 'enum',
-    enum: BarPeriod,
+    enum: KPeriod,
     comment: 'K线周期：1min, 5min, 15min, 30min, 60min, daily等',
   })
-  period: BarPeriod;
+  period: KPeriod;
 
   @Column({
     type: 'datetime',

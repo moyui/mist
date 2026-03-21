@@ -1,4 +1,4 @@
-export * from './market-data-bar.entity';
+export * from './k.entity';
 export * from './market-data-extension-ef.entity';
 export * from './market-data-extension-tdx.entity';
 export * from './market-data-extension-mqmt.entity';

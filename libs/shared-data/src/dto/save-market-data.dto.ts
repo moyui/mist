@@ -8,7 +8,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { BarPeriod, DataSource } from '../enums';
+import { KPeriod, DataSource } from '../enums';
 
 export class SaveMarketDataDto {
   @IsNotEmpty({
@@ -27,10 +27,10 @@ export class SaveMarketDataDto {
   @IsNotEmpty({
     message: '周期不能为空',
   })
-  @IsEnum(BarPeriod, {
+  @IsEnum(KPeriod, {
     message: '周期只能是 1min、5min、15min、30min、60min 或 daily',
   })
-  period: BarPeriod;
+  period: KPeriod;
 
   @IsNotEmpty({
     message: '时间戳不能为空',

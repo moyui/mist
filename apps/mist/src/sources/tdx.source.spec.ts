@@ -106,7 +106,7 @@ describe('TdxSource', () => {
   });
 
   describe('periodToKLinePeriod', () => {
-    it('should correctly map Period enum to BarPeriod enum', () => {
+    it('should correctly map Period enum to KPeriod enum', () => {
       // This tests the private method through public interface
       expect(service.getPeriodFormat(Period.One)).toBe('1m');
       expect(service.getPeriodFormat(Period.FIVE)).toBe('5m');
