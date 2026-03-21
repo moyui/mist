@@ -1,4 +1,9 @@
-import { MarketDataBar, Security, BarPeriod } from '@app/shared-data';
+import {
+  MarketDataBar,
+  Security,
+  BarPeriod,
+  SecurityType,
+} from '@app/shared-data';
 import { ERROR_MESSAGES } from '@app/constants';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,7 +25,7 @@ export class DataService {
       })) || new Security();
     security.code = '000001';
     security.name = '上证指数';
-    security.type = 'INDEX';
+    security.type = SecurityType.INDEX;
     security.exchange = 'SH';
     await this.securityRepository.save(security);
 
@@ -30,7 +35,7 @@ export class DataService {
       })) || new Security();
     security2.code = '000300';
     security2.name = '沪深300';
-    security2.type = 'INDEX';
+    security2.type = SecurityType.INDEX;
     security2.exchange = 'SH';
     await this.securityRepository.save(security2);
   }
