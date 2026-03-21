@@ -9,7 +9,6 @@ import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('StockService', () => {
   let service: StockService;
-  let repository: Repository<Stock>;
 
   const mockStockRepository = {
     findOne: jest.fn(),
@@ -97,7 +96,9 @@ describe('StockService', () => {
         updatedAt: new Date(),
       });
 
-      await expect(service.initStock(initStockDto)).rejects.toThrow(ConflictException);
+      await expect(service.initStock(initStockDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should use default periods if not provided', async () => {
@@ -169,7 +170,9 @@ describe('StockService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockStockRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.addSource(addSourceDto)).rejects.toThrow(NotFoundException);
+      await expect(service.addSource(addSourceDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -199,14 +202,18 @@ describe('StockService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockStockRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findByCode('000001.SH')).rejects.toThrow(NotFoundException);
+      await expect(service.findByCode('000001.SH')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw not found exception if stock is inactive', async () => {
       // The findOne call in findByCode includes isActive: true filter, so inactive stocks won't be returned
       mockStockRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findByCode('000001.SH')).rejects.toThrow(NotFoundException);
+      await expect(service.findByCode('000001.SH')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -291,7 +298,9 @@ describe('StockService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockStockRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.deactivateStock('000001.SH')).rejects.toThrow(NotFoundException);
+      await expect(service.deactivateStock('000001.SH')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -310,7 +319,9 @@ describe('StockService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockStockRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.activateStock('000001.SH')).rejects.toThrow(NotFoundException);
+      await expect(service.activateStock('000001.SH')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

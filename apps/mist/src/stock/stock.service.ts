@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Stock } from './stock.entity';
 import { InitStockDto } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
-import { SourceType } from './dto/init-stock.dto';
 
 @Injectable()
 export class StockService {
@@ -25,7 +28,9 @@ export class StockService {
     });
 
     if (existingStock) {
-      throw new ConflictException(`Stock with code ${formattedCode} already exists`);
+      throw new ConflictException(
+        `Stock with code ${formattedCode} already exists`,
+      );
     }
 
     const stock = this.stockRepository.create({
@@ -82,7 +87,9 @@ export class StockService {
     return stock;
   }
 
-  async getSourceFormat(code: string): Promise<{ type: string; config?: string }> {
+  async getSourceFormat(
+    code: string,
+  ): Promise<{ type: string; config?: string }> {
     const stock = await this.findByCode(code);
     return {
       type: stock.source.type,

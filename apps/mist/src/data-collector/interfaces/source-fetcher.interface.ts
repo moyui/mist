@@ -1,6 +1,9 @@
+import { Period } from '../../chan/enums/period.enum';
+
 export interface ISourceFetcher {
   fetchKLine(params: KLineFetchParams): Promise<KLineData[]>;
-  isSupportedPeriod(period: number): boolean;
+  isSupportedPeriod(period: Period): boolean;
+  getPeriodFormat(period: Period): string;
 }
 
 export interface KLineFetchParams {

@@ -1,4 +1,4 @@
-import { Test,TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
@@ -86,8 +86,6 @@ describe('Multi-Data Source Integration Tests', () => {
     });
 
     describe('POST /api/stock/add-source', () => {
-      let stockId: number;
-
       beforeAll(async () => {
         // Create a stock for testing
         const stockRepository = dataSource.getRepository(Stock);
@@ -100,8 +98,7 @@ describe('Multi-Data Source Integration Tests', () => {
             type: 'eastmoney',
           },
         });
-        const createdStock = await stockRepository.save(stock);
-        stockId = createdStock.id;
+        await stockRepository.save(stock);
       });
 
       it('should add data source successfully', async () => {
@@ -396,7 +393,7 @@ describe('Multi-Data Source Integration Tests', () => {
 
         const createdStocks = await stockRepository.save(requests);
 
-        const initRequests = createdStocks.map(stock =>
+        const initRequests = createdStocks.map((stock) =>
           request(app.getHttpServer())
             .post('/api/stock/init')
             .send({
@@ -407,11 +404,11 @@ describe('Multi-Data Source Integration Tests', () => {
               source: {
                 type: 'eastmoney',
               },
-            })
+            }),
         );
 
         const responses = await Promise.all(initRequests);
-        responses.forEach(response => {
+        responses.forEach((response) => {
           expect(response.status).toBe(201);
           expect(response.body.success).toBe(true);
         });
