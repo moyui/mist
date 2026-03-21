@@ -3,7 +3,7 @@ import { DataController } from './data.controller';
 import { DataService } from './data.service';
 import { SharedDataService } from '@app/shared-data';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IndexData, IndexPeriod, IndexDaily } from '@app/shared-data';
+import { Security, MarketDataBar } from '@app/shared-data';
 
 describe('DataController', () => {
   let controller: DataController;
@@ -17,23 +17,22 @@ describe('DataController', () => {
           useValue: {
             initData: jest.fn(),
             index: jest.fn(),
-            findIndexPeriodById: jest.fn(),
+            findBarsById: jest.fn(),
           },
         },
         {
           provide: SharedDataService,
+          useValue: {
+            cronIndexPeriod: jest.fn(),
+            cronIndexDaily: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Security),
           useValue: {},
         },
         {
-          provide: getRepositoryToken(IndexData),
-          useValue: {},
-        },
-        {
-          provide: getRepositoryToken(IndexPeriod),
-          useValue: {},
-        },
-        {
-          provide: getRepositoryToken(IndexDaily),
+          provide: getRepositoryToken(MarketDataBar),
           useValue: {},
         },
       ],

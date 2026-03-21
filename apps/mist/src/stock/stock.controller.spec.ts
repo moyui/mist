@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StockController } from './stock.controller';
 import { StockService } from './stock.service';
-import { InitStockDto } from './dto/init-stock.dto';
+import { InitStockDto, StockType, SourceType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
@@ -40,9 +40,9 @@ describe('StockController', () => {
     const initStockDto: InitStockDto = {
       code: '000001.SH',
       name: '平安银行',
-      type: 'stock',
+      type: StockType.STOCK,
       source: {
-        type: 'aktools',
+        type: SourceType.AKTOOLS,
         config: '',
       },
     };
@@ -84,7 +84,7 @@ describe('StockController', () => {
     const addSourceDto: AddSourceDto = {
       code: '000001.SH',
       source: {
-        type: 'aktools',
+        type: SourceType.AKTOOLS,
         config: '',
       },
     };
@@ -93,10 +93,10 @@ describe('StockController', () => {
       id: 1,
       code: '000001.SH',
       name: '平安银行',
-      type: 'stock',
+      type: StockType.STOCK,
       periods: [1, 5, 15, 30, 60, 1440],
       source: {
-        type: 'aktools',
+        type: SourceType.AKTOOLS,
         config: '',
       },
       isActive: true,

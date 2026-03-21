@@ -4,7 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { TimezoneService } from '@app/timezone';
 import { UtilsService } from '@app/utils';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IndexData, IndexPeriod, IndexDaily } from '@app/shared-data';
+import { Security, MarketDataBar } from '@app/shared-data';
 
 describe('SharedDataService', () => {
   let service: SharedDataService;
@@ -29,21 +29,14 @@ describe('SharedDataService', () => {
           useValue: {},
         },
         {
-          provide: getRepositoryToken(IndexData),
+          provide: getRepositoryToken(Security),
           useValue: {
             findOne: jest.fn(),
             save: jest.fn(),
           },
         },
         {
-          provide: getRepositoryToken(IndexPeriod),
-          useValue: {
-            find: jest.fn(),
-            save: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(IndexDaily),
+          provide: getRepositoryToken(MarketDataBar),
           useValue: {
             find: jest.fn(),
             save: jest.fn(),
@@ -57,5 +50,21 @@ describe('SharedDataService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('cronIndexPeriod', () => {
+    it('should throw NotImplementedException', async () => {
+      await expect(service.cronIndexPeriod({} as any)).rejects.toThrow(
+        'cronIndexPeriod needs to be rewritten',
+      );
+    });
+  });
+
+  describe('cronIndexDaily', () => {
+    it('should throw NotImplementedException', async () => {
+      await expect(service.cronIndexDaily({} as any)).rejects.toThrow(
+        'cronIndexDaily needs to be rewritten',
+      );
+    });
   });
 });

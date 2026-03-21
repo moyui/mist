@@ -57,39 +57,56 @@ describe('TdxSource', () => {
   });
 
   describe('isSupportedPeriod', () => {
-    it('should return true for supported periods', () => {
+    it('should return true for directly supported periods', () => {
       expect(service.isSupportedPeriod(Period.One)).toBe(true); // 1m
       expect(service.isSupportedPeriod(Period.FIVE)).toBe(true); // 5m
       expect(service.isSupportedPeriod(Period.DAY)).toBe(true); // 1d
     });
 
+    it('should return true for periods that map to daily', () => {
+      // These periods are mapped to DAILY which TDX supports
+      expect(service.isSupportedPeriod(Period.WEEK)).toBe(true); // maps to daily
+      expect(service.isSupportedPeriod(Period.MONTH)).toBe(true); // maps to daily
+      expect(service.isSupportedPeriod(Period.QUARTER)).toBe(true); // maps to daily
+      expect(service.isSupportedPeriod(Period.YEAR)).toBe(true); // maps to daily
+    });
+
     it('should return false for unsupported periods', () => {
-      expect(service.isSupportedPeriod(Period.FIFTEEN)).toBe(false); // 15m
-      expect(service.isSupportedPeriod(Period.THIRTY)).toBe(false); // 30m
-      expect(service.isSupportedPeriod(Period.SIXTY)).toBe(false); // 60m
-      expect(service.isSupportedPeriod(Period.WEEK)).toBe(false); // weekly
-      expect(service.isSupportedPeriod(Period.MONTH)).toBe(false); // monthly
-      expect(service.isSupportedPeriod(Period.QUARTER)).toBe(false); // quarterly
-      expect(service.isSupportedPeriod(Period.YEAR)).toBe(false); // yearly
+      expect(service.isSupportedPeriod(Period.FIFTEEN)).toBe(false); // 15m not in TDX mapping
+      expect(service.isSupportedPeriod(Period.THIRTY)).toBe(false); // 30m not in TDX mapping
+      expect(service.isSupportedPeriod(Period.SIXTY)).toBe(false); // 60m not in TDX mapping
     });
   });
 
   describe('getPeriodFormat', () => {
-    it('should return correct period format for supported periods', () => {
+    it('should return correct period format for directly supported periods', () => {
       expect(service.getPeriodFormat(Period.One)).toBe('1m');
       expect(service.getPeriodFormat(Period.FIVE)).toBe('5m');
       expect(service.getPeriodFormat(Period.DAY)).toBe('1d');
+    });
+
+    it('should return daily format for periods that map to daily', () => {
+      expect(service.getPeriodFormat(Period.WEEK)).toBe('1d');
+      expect(service.getPeriodFormat(Period.MONTH)).toBe('1d');
+      expect(service.getPeriodFormat(Period.QUARTER)).toBe('1d');
+      expect(service.getPeriodFormat(Period.YEAR)).toBe('1d');
     });
 
     it('should throw error for unsupported period', () => {
       expect(() => service.getPeriodFormat(Period.FIFTEEN)).toThrow(
         'Data source tdx does not support period 15min',
       );
+      expect(() => service.getPeriodFormat(Period.THIRTY)).toThrow(
+        'Data source tdx does not support period 30min',
+      );
+      expect(() => service.getPeriodFormat(Period.SIXTY)).toThrow(
+        'Data source tdx does not support period 60min',
+      );
     });
   });
 
   describe('periodToKLinePeriod', () => {
-    it('should correctly map Period enum to KLinePeriod enum', () => {
+    it('should correctly map Period enum to BarPeriod enum', () => {
       // This tests the private method through public interface
       expect(service.getPeriodFormat(Period.One)).toBe('1m');
       expect(service.getPeriodFormat(Period.FIVE)).toBe('5m');

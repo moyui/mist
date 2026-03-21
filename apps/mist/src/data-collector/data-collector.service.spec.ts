@@ -4,15 +4,21 @@ import { StockService } from '../stock/stock.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { Period } from '../chan/enums/period.enum';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { MarketDataBar, Security } from '@app/shared-data';
 
-const mockKLineRepository = {
+const mockMarketDataBarRepository = {
   create: jest.fn(),
   save: jest.fn(),
   find: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
   createQueryBuilder: jest.fn(),
+};
+
+const mockSecurityRepository = {
+  findOne: jest.fn(),
 };
 
 const mockStockService = {
@@ -39,6 +45,14 @@ describe('DataCollectorService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DataCollectorService,
+        {
+          provide: getRepositoryToken(MarketDataBar),
+          useValue: mockMarketDataBarRepository,
+        },
+        {
+          provide: getRepositoryToken(Security),
+          useValue: mockSecurityRepository,
+        },
         {
           provide: StockService,
           useValue: mockStockService,
@@ -106,8 +120,8 @@ describe('DataCollectorService', () => {
       });
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
       mockEastMoneySource.fetchKLine.mockResolvedValue(mockKLineData);
-      mockKLineRepository.create.mockImplementation((data) => data);
-      mockKLineRepository.save.mockResolvedValue(null);
+      mockMarketDataBarRepository.create.mockImplementation((data) => data);
+      mockMarketDataBarRepository.save.mockResolvedValue(null);
     });
 
     it('should successfully collect and save K-line data', async () => {
@@ -121,8 +135,8 @@ describe('DataCollectorService', () => {
       expect(mockStockService.findByCode).toHaveBeenCalledWith('000001');
       expect(mockStockService.getSourceFormat).toHaveBeenCalledWith('000001');
       expect(mockEastMoneySource.fetchKLine).toHaveBeenCalled();
-      expect(mockKLineRepository.create).toHaveBeenCalledTimes(2);
-      expect(mockKLineRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockMarketDataBarRepository.create).toHaveBeenCalledTimes(2);
+      expect(mockMarketDataBarRepository.save).toHaveBeenCalledTimes(1);
     });
 
     it('should throw NotFoundException when stock not found', async () => {
@@ -202,7 +216,7 @@ describe('DataCollectorService', () => {
     });
 
     it('should return status when data exists', async () => {
-      mockKLineRepository.createQueryBuilder.mockReturnValue({
+      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -230,7 +244,7 @@ describe('DataCollectorService', () => {
     });
 
     it('should return status when no data exists', async () => {
-      mockKLineRepository.createQueryBuilder.mockReturnValue({
+      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -260,7 +274,7 @@ describe('DataCollectorService', () => {
 
   describe('removeDuplicateData', () => {
     beforeEach(() => {
-      mockKLineRepository.createQueryBuilder.mockReturnValue({
+      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -284,7 +298,7 @@ describe('DataCollectorService', () => {
     });
 
     it('should return 0 when no duplicates found', async () => {
-      mockKLineRepository.createQueryBuilder.mockReturnValue({
+      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),

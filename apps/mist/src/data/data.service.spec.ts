@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataService } from './data.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IndexData, IndexPeriod, IndexDaily } from '@app/shared-data';
+import { Security, MarketDataBar } from '@app/shared-data';
 
 describe('DataService', () => {
   let service: DataService;
@@ -11,7 +11,7 @@ describe('DataService', () => {
       providers: [
         DataService,
         {
-          provide: getRepositoryToken(IndexData),
+          provide: getRepositoryToken(Security),
           useValue: {
             findOne: jest.fn(),
             find: jest.fn(),
@@ -19,13 +19,7 @@ describe('DataService', () => {
           },
         },
         {
-          provide: getRepositoryToken(IndexPeriod),
-          useValue: {
-            find: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(IndexDaily),
+          provide: getRepositoryToken(MarketDataBar),
           useValue: {
             find: jest.fn(),
           },

@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { StockService } from './stock.service';
 import { Stock } from './stock.entity';
@@ -30,7 +29,6 @@ describe('StockService', () => {
     }).compile();
 
     service = module.get<StockService>(StockService);
-    repository = module.get<Repository<Stock>>(getRepositoryToken(Stock));
   });
 
   afterEach(() => {
