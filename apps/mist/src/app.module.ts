@@ -2,9 +2,9 @@ import {
   IndexDaily,
   IndexData,
   IndexPeriod,
-  KLineExtensionEF,
-  KLineExtensionTDX,
-  KLineExtensionMQMT,
+  KlineExtensionEf,
+  KlineExtensionTdx,
+  KlineExtensionMqmt,
 } from '@app/shared-data';
 import { Stock } from './stock/stock.entity';
 import { Module } from '@nestjs/common';
@@ -54,9 +54,9 @@ import { mistEnvSchema } from '@app/config';
             IndexData,
             IndexPeriod,
             IndexDaily,
-            KLineExtensionEF,
-            KLineExtensionTDX,
-            KLineExtensionMQMT,
+            KlineExtensionEf,
+            KlineExtensionTdx,
+            KlineExtensionMqmt,
             Stock,
           ],
           poolSize: 10,
