@@ -80,8 +80,8 @@ export class IndicatorController {
         index,
         macdResult.histogram,
       ),
-      symbol: item.symbol,
-      time: item.time,
+      symbol: item.code,
+      timestamp: item.timestamp,
       close: item.close,
     }));
   }
@@ -141,8 +141,8 @@ export class IndicatorController {
       k: formatIndicator(kdjResult.begIndex, index, kdjResult.K),
       d: formatIndicator(kdjResult.begIndex, index, kdjResult.D),
       j: formatIndicator(kdjResult.begIndex, index, kdjResult.J),
-      symbol: item.symbol,
-      time: item.time,
+      symbol: item.code,
+      timestamp: item.timestamp,
       close: item.close,
     }));
   }
@@ -189,8 +189,8 @@ export class IndicatorController {
 
     return data.map((item, index) => ({
       rsi: formatIndicator(rsiResult.begIndex, index, rsiResult.rsi),
-      symbol: item.symbol,
-      time: item.time,
+      symbol: item.code,
+      timestamp: item.timestamp,
       close: item.close,
     }));
   }
@@ -239,8 +239,8 @@ export class IndicatorController {
       lowest: item.lowest,
       open: item.open,
       close: item.close,
-      symbol: item.symbol,
-      time: item.time,
+      symbol: item.code,
+      timestamp: item.timestamp,
       amount: item.amount,
     }));
   }
