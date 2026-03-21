@@ -2,7 +2,7 @@ import {
   CronIndexDailyDto,
   CronIndexPeriodDto,
   Security,
-  MarketDataBar,
+  K,
 } from '@app/shared-data';
 import { TimezoneService } from '@app/timezone';
 import { UtilsService } from '@app/utils';
@@ -13,10 +13,10 @@ import { Repository } from 'typeorm';
 
 /**
  * @deprecated This service uses old entity architecture (IndexData, IndexPeriod, IndexDaily).
- * It needs to be rewritten to use the new unified schema (Security, MarketDataBar).
+ * It needs to be rewritten to use the new unified schema (Security, K).
  * The cron methods below are stubs to maintain API compatibility during migration.
  *
- * TODO: Rewrite cronIndexPeriod and cronIndexDaily to use Security and MarketDataBar entities.
+ * TODO: Rewrite cronIndexPeriod and cronIndexDaily to use Security and K entities.
  * The new architecture should fetch data from AKTools and save to market_data_bars table.
  */
 @Injectable()
@@ -29,13 +29,13 @@ export class SharedDataService {
     private readonly utilsService: UtilsService,
     @InjectRepository(Security)
     private securityRepository: Repository<Security>,
-    @InjectRepository(MarketDataBar)
-    private marketDataBarRepository: Repository<MarketDataBar>,
+    @InjectRepository(K)
+    private kRepository: Repository<K>,
   ) {}
 
   /**
    * @deprecated Stub method for API compatibility.
-   * TODO: Rewrite to use Security and MarketDataBar entities.
+   * TODO: Rewrite to use Security and K entities.
    * Should fetch period data from AKTools and save to market_data_bars table.
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -44,14 +44,14 @@ export class SharedDataService {
       'cronIndexPeriod is deprecated and needs to be rewritten for the new unified schema',
     );
     throw new NotImplementedException(
-      'cronIndexPeriod needs to be rewritten to use Security and MarketDataBar entities. ' +
+      'cronIndexPeriod needs to be rewritten to use Security and K entities. ' +
         'See migration plan in docs/superpowers/plans/2026-03-21-unified-data-schema.md',
     );
   }
 
   /**
    * @deprecated Stub method for API compatibility.
-   * TODO: Rewrite to use Security and MarketDataBar entities.
+   * TODO: Rewrite to use Security and K entities.
    * Should fetch daily data from AKTools and save to market_data_bars table with period='daily'.
    */
   /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -64,7 +64,7 @@ export class SharedDataService {
       'cronIndexDaily is deprecated and needs to be rewritten for the new unified schema',
     );
     throw new NotImplementedException(
-      'cronIndexDaily needs to be rewritten to use Security and MarketDataBar entities. ' +
+      'cronIndexDaily needs to be rewritten to use Security and K entities. ' +
         'See migration plan in docs/superpowers/plans/2026-03-21-unified-data-schema.md',
     );
   }

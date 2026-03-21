@@ -1,8 +1,8 @@
 import {
-  MarketDataBar,
-  MarketDataExtensionEf,
-  MarketDataExtensionTdx,
-  MarketDataExtensionMqmt,
+  K,
+  KExtensionEf,
+  KExtensionTdx,
+  KExtensionMqmt,
   Security,
   SecuritySourceConfig,
 } from '@app/shared-data';
@@ -51,10 +51,10 @@ import { mistEnvSchema } from '@app/config';
           synchronize: configService.get('NODE_ENV') !== 'production',
           logging: configService.get('NODE_ENV') !== 'production',
           entities: [
-            MarketDataBar,
-            MarketDataExtensionEf,
-            MarketDataExtensionTdx,
-            MarketDataExtensionMqmt,
+            K,
+            KExtensionEf,
+            KExtensionTdx,
+            KExtensionMqmt,
             Security,
             SecuritySourceConfig,
           ],

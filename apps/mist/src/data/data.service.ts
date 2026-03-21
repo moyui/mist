@@ -1,9 +1,4 @@
-import {
-  MarketDataBar,
-  Security,
-  KPeriod,
-  SecurityType,
-} from '@app/shared-data';
+import { K, Security, KPeriod, SecurityType } from '@app/shared-data';
 import { ERROR_MESSAGES } from '@app/constants';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,8 +9,8 @@ export class DataService {
   constructor(
     @InjectRepository(Security)
     private securityRepository: Repository<Security>,
-    @InjectRepository(MarketDataBar)
-    private marketDataBarRepository: Repository<MarketDataBar>,
+    @InjectRepository(K)
+    private kRepository: Repository<K>,
   ) {}
 
   async initData() {
@@ -44,7 +39,7 @@ export class DataService {
     return await this.securityRepository.find();
   }
 
-  async findBarsById(queryDto: any): Promise<MarketDataBar[]> {
+  async findBarsById(queryDto: any): Promise<K[]> {
     const foundSecurity = await this.securityRepository.findOneBy({
       code: queryDto.symbol,
     });
@@ -55,7 +50,7 @@ export class DataService {
       );
     }
 
-    const foundBars = await this.marketDataBarRepository.find({
+    const foundBars = await this.kRepository.find({
       relations: ['security'],
       where: {
         security: {
@@ -80,7 +75,7 @@ export class DataService {
    * Maps period numbers to KPeriod enum and calls findBarsById.
    * TODO: Update API clients to use findBarsById directly with KPeriod enum.
    */
-  async findIndexPeriodById(queryDto: any): Promise<MarketDataBar[]> {
+  async findIndexPeriodById(queryDto: any): Promise<K[]> {
     // Map legacy period numbers to KPeriod enum
     const periodMapping: Record<number, KPeriod> = {
       1: KPeriod.ONE_MIN,
@@ -111,7 +106,7 @@ export class DataService {
    * Calls findBarsById with KPeriod.DAILY.
    * TODO: Update API clients to use findBarsById directly with KPeriod.DAILY.
    */
-  async findIndexDailyById(queryDto: any): Promise<MarketDataBar[]> {
+  async findIndexDailyById(queryDto: any): Promise<K[]> {
     return this.findBarsById({
       symbol: queryDto.symbol,
       period: KPeriod.DAILY,

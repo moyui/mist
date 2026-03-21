@@ -22,7 +22,7 @@ export class K {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Security, (security) => security.marketDataBars, {
+  @ManyToOne(() => Security, (security) => security.ks, {
     onDelete: 'CASCADE',
     eager: false,
   })

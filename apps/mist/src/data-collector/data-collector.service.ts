@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MarketDataBar, Security, KPeriod, DataSource } from '@app/shared-data';
+import { K, Security, KPeriod, DataSource } from '@app/shared-data';
 import {
   ISourceFetcher,
   KLineFetchParams,
@@ -20,8 +20,8 @@ export class DataCollectorService {
   private sources: Map<DataSource, ISourceFetcher> = new Map();
 
   constructor(
-    @InjectRepository(MarketDataBar)
-    private readonly marketDataBarRepository: Repository<MarketDataBar>,
+    @InjectRepository(K)
+    private readonly kRepository: Repository<K>,
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
     private readonly eastMoneySource: EastMoneySource,
@@ -104,8 +104,8 @@ export class DataCollectorService {
     dataSource: DataSource,
     period: Period,
   ): Promise<void> {
-    const marketDataBarEntities = kLineData.map((data) => {
-      const bar = this.marketDataBarRepository.create({
+    const kEntities = kLineData.map((data) => {
+      const bar = this.kRepository.create({
         security,
         source: dataSource,
         period: this.convertPeriodToBarPeriod(period),
@@ -121,7 +121,7 @@ export class DataCollectorService {
       return bar;
     });
 
-    await this.marketDataBarRepository.save(marketDataBarEntities);
+    await this.kRepository.save(kEntities);
   }
 
   private getSourceType(type: string): DataSource {
@@ -167,7 +167,7 @@ export class DataCollectorService {
   }> {
     const barPeriod = this.convertPeriodToBarPeriod(period);
 
-    const result = await this.marketDataBarRepository
+    const result = await this.kRepository
       .createQueryBuilder('bar')
       .leftJoin('bar.security', 'security')
       .select('COUNT(*)', 'count')
@@ -196,7 +196,7 @@ export class DataCollectorService {
     const barPeriod = this.convertPeriodToBarPeriod(period);
 
     // Find duplicates by grouping by timestamp
-    const duplicateQuery = this.marketDataBarRepository
+    const duplicateQuery = this.kRepository
       .createQueryBuilder('bar')
       .leftJoin('bar.security', 'security')
       .select('bar.timestamp', 'timestamp')
@@ -216,10 +216,10 @@ export class DataCollectorService {
     const timestamps = duplicates.map((d) => d.timestamp);
 
     // Keep only the latest record for each timestamp (based on created_at)
-    const deleteResult = await this.marketDataBarRepository
+    const deleteResult = await this.kRepository
       .createQueryBuilder()
       .delete()
-      .from(MarketDataBar)
+      .from(K)
       .where('bar.security.code = :stockCode', { stockCode })
       .andWhere('bar.period = :period', { period: barPeriod })
       .andWhere('bar.timestamp IN (:...timestamps)', { timestamps })

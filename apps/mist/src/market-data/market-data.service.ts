@@ -1,4 +1,4 @@
-import { MarketDataBar, Security } from '@app/shared-data';
+import { K, Security } from '@app/shared-data';
 import { ERROR_MESSAGES } from '@app/constants';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,11 +9,11 @@ export class MarketDataService {
   constructor(
     @InjectRepository(Security)
     private securityRepository: Repository<Security>,
-    @InjectRepository(MarketDataBar)
-    private marketDataBarRepository: Repository<MarketDataBar>,
+    @InjectRepository(K)
+    private kRepository: Repository<K>,
   ) {}
 
-  async findBarsById(queryDto: any): Promise<MarketDataBar[]> {
+  async findBarsById(queryDto: any): Promise<K[]> {
     const foundSecurity = await this.securityRepository.findOneBy({
       code: queryDto.symbol,
     });
@@ -24,7 +24,7 @@ export class MarketDataService {
       );
     }
 
-    return await this.marketDataBarRepository.find({
+    return await this.kRepository.find({
       relations: ['security'],
       where: {
         security: {
