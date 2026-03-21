@@ -2,6 +2,8 @@ import {
   IndexDaily,
   IndexData,
   IndexPeriod,
+  MarketDataBar,
+  Security,
   SharedDataModule,
 } from '@app/shared-data';
 import { TimezoneModule } from '@app/timezone';
@@ -17,7 +19,13 @@ import { DataService } from './data.service';
       timeout: 5000,
       maxRedirects: 5,
     }),
-    TypeOrmModule.forFeature([IndexData, IndexPeriod, IndexDaily]),
+    TypeOrmModule.forFeature([
+      IndexData,
+      IndexPeriod,
+      IndexDaily,
+      Security,
+      MarketDataBar,
+    ]),
     TimezoneModule,
     SharedDataModule,
   ],

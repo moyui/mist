@@ -1,11 +1,9 @@
 import {
   DataType,
-  IndexDaily,
-  IndexDailyDto,
   IndexData,
-  IndexPeriod,
-  IndexPeriodDto,
   IndexVo,
+  MarketDataBar,
+  Security,
 } from '@app/shared-data';
 import { ERROR_MESSAGES } from '@app/constants';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
@@ -17,96 +15,87 @@ export class DataService {
   constructor(
     @InjectRepository(IndexData)
     private indexDataRepository: Repository<IndexData>,
-    @InjectRepository(IndexPeriod)
-    private indexPeriodRepository: Repository<IndexPeriod>,
-    @InjectRepository(IndexDaily)
-    private indexDailyRepository: Repository<IndexDaily>,
+    @InjectRepository(Security)
+    private securityRepository: Repository<Security>,
+    @InjectRepository(MarketDataBar)
+    private marketDataBarRepository: Repository<MarketDataBar>,
   ) {}
 
   async initData() {
-    const indexData =
-      (await this.indexDataRepository.findOne({
-        where: { symbol: '000001' },
-      })) || new IndexData();
-    indexData.symbol = '000001';
-    indexData.type = DataType.LARGE;
-    indexData.code = 'sh';
-    indexData.name = '上证指数';
-    await this.indexDataRepository.save(indexData);
+    const security =
+      (await this.securityRepository.findOne({
+        where: { code: '000001' },
+      })) || new Security();
+    security.code = '000001';
+    security.name = '上证指数';
+    security.type = DataType.LARGE;
+    security.exchange = 'SH';
+    await this.securityRepository.save(security);
 
-    const indexData2 =
-      (await this.indexDataRepository.findOne({
-        where: { symbol: '000300' },
-      })) || new IndexData();
-    indexData2.symbol = '000300';
-    indexData2.type = DataType.LARGE;
-    indexData2.code = 'sh';
-    indexData2.name = '沪深300';
-    await this.indexDataRepository.save(indexData2);
+    const security2 =
+      (await this.securityRepository.findOne({
+        where: { code: '000300' },
+      })) || new Security();
+    security2.code = '000300';
+    security2.name = '沪深300';
+    security2.type = DataType.LARGE;
+    security2.exchange = 'SH';
+    await this.securityRepository.save(security2);
   }
 
   async index() {
     return await this.indexDataRepository.find();
   }
 
-  async findIndexPeriodById(
-    indexPeriodDto: IndexPeriodDto,
-  ): Promise<IndexVo[]> {
-    const foundIndex = await this.indexDataRepository.findOneBy({
-      symbol: indexPeriodDto.symbol,
+  async findBarsById(queryDto: any): Promise<IndexVo[]> {
+    const foundSecurity = await this.securityRepository.findOneBy({
+      code: queryDto.symbol,
     });
-    if (!foundIndex) {
+    if (!foundSecurity) {
       throw new HttpException(
         ERROR_MESSAGES.INDEX_NOT_FOUND,
         HttpStatus.BAD_REQUEST,
       );
     }
-    const foundPeriod = await this.indexPeriodRepository.find({
-      relations: ['indexData'],
+
+    const foundBars = await this.marketDataBarRepository.find({
+      relations: ['security'],
       where: {
-        indexData: {
-          id: foundIndex.id,
-          symbol: foundIndex.symbol,
+        security: {
+          id: foundSecurity.id,
+          code: foundSecurity.code,
         },
-        type: indexPeriodDto.period,
-        time: Between(indexPeriodDto.startDate, indexPeriodDto.endDate),
+        period: queryDto.period,
+        timestamp: Between(
+          new Date(queryDto.startDate),
+          new Date(queryDto.endDate),
+        ),
       },
       order: {
-        time: 'ASC',
+        timestamp: 'ASC',
       },
     });
-    return foundPeriod.map((item) => ({
-      symbol: item.indexData.symbol,
+    return foundBars.map((item) => ({
+      symbol: item.security.code,
       ...item,
     }));
   }
 
   async findIndexDailyById(indexDailyDto: IndexDailyDto): Promise<IndexVo[]> {
-    const foundIndex = await this.indexDataRepository.findOneBy({
+    return this.findBarsById({
       symbol: indexDailyDto.symbol,
+      period: 'daily',
+      startDate: indexDailyDto.startDate,
+      endDate: indexDailyDto.endDate,
     });
-    if (!foundIndex) {
-      throw new HttpException(
-        ERROR_MESSAGES.INDEX_NOT_FOUND,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    const foundDaily = await this.indexDailyRepository.find({
-      relations: ['indexData'],
-      where: {
-        indexData: {
-          id: foundIndex.id,
-          symbol: foundIndex.symbol,
-        },
-        time: Between(indexDailyDto.startDate, indexDailyDto.endDate),
-      },
-      order: {
-        time: 'ASC',
-      },
+  }
+
+  async findIndexPeriodById(indexPeriodDto: any): Promise<IndexVo[]> {
+    return this.findBarsById({
+      symbol: indexPeriodDto.symbol,
+      period: indexPeriodDto.period,
+      startDate: indexPeriodDto.startDate,
+      endDate: indexPeriodDto.endDate,
     });
-    return foundDaily.map((item) => ({
-      symbol: item.indexData.symbol,
-      ...item,
-    }));
   }
 }
