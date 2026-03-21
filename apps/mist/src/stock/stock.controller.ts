@@ -10,7 +10,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { StockService } from './stock.service';
-import { InitStockDto, AddSourceDto } from './dto/init-stock.dto';
+import { InitStockDto } from './dto/init-stock.dto';
+import { AddSourceDto } from './dto/add-source.dto';
 import { Stock } from './stock.entity';
 
 @ApiTags('stocks')
