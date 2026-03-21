@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 
 @Injectable()
-export class MarketDataService {
+export class KService {
   constructor(
     @InjectRepository(Security)
     private securityRepository: Repository<Security>,
