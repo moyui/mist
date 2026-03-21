@@ -245,6 +245,12 @@ pnpm run start:prod:mist
 - 笔（Bi）- 显著价格变动识别
 - 中枢（Channel）- 整理区间识别
 
+**多数据源管理**：
+- 支持多个数据源（东方财富、TDX等）
+- 统一的股票管理接口
+- 灵活的数据采集配置
+- 自动数据源切换和故障转移
+
 **API 文档**：http://localhost:8001/api-docs
 
 ### AI 智能体系统 (saya)
@@ -351,6 +357,15 @@ pnpm run build
 | `/chan/bi` | POST | 笔识别 |
 | `/chan/channel` | POST | 中枢识别 |
 | `/chan/fenxing` | POST | 分型识别 |
+
+### 多数据源管理 API
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/stock/init` | POST | 初始化股票 |
+| `/api/stock/add-source` | POST | 添加/更新数据源 |
+| `/api/data-collector/collect` | POST | 采集 K 线数据 |
+| `/api/data-collector/status/:code/:period` | GET | 获取采集状态 |
 
 ---
 

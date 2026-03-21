@@ -7,9 +7,10 @@ import { DataCollectorController } from './data-collector.controller';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { StockService } from '../stock/stock.service';
+import { UtilsModule } from '@app/utils';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([KLine, Stock])],
+  imports: [TypeOrmModule.forFeature([KLine, Stock]), UtilsModule],
   controllers: [DataCollectorController],
   providers: [DataCollectorService, EastMoneySource, TdxSource, StockService],
   exports: [DataCollectorService],

@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 164+ technical analysis indicators (MACD, RSI, KDJ, etc.)
 - Chan Theory (缠论) automated analysis
 - Multi-agent AI system for intelligent trading decisions
+- Multi-data source management (East Money, TDX, AKTools)
 - RESTful API with Swagger documentation
 - MCP Server for AI application integration
 
@@ -287,6 +288,15 @@ pnpm run migration:revert
 | `/chan/merge-k` | POST | K-line merging |
 | `/chan/bi` | POST | Bi recognition |
 | `/chan/channel` | POST | Channel detection |
+
+### Multi-Data Source Management API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/stock/init` | POST | Initialize a new stock with source configuration |
+| `/api/stock/add-source` | POST | Add or update data source for existing stock |
+| `/api/data-collector/collect` | POST | Collect K-line data from configured sources |
+| `/api/data-collector/status/:code/:period` | GET | Get collection status for specific stock and period |
 
 **Swagger UI**: http://localhost:8001/api-docs
 

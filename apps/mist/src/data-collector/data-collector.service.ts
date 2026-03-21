@@ -210,12 +210,11 @@ export class DataCollectorService {
       .createQueryBuilder()
       .delete()
       .from(KLine)
-      .leftJoin('kline.stock', 'stock')
-      .where('stock.code = :stockCode', { stockCode })
-      .andWhere('period = :period', { period: kLinePeriod })
-      .andWhere('timestamp IN (:...timestamps)', { timestamps })
+      .where('kline.stock.code = :stockCode', { stockCode })
+      .andWhere('kline.period = :period', { period: kLinePeriod })
+      .andWhere('kline.timestamp IN (:...timestamps)', { timestamps })
       .andWhere(
-        'id NOT IN (SELECT id FROM (SELECT id FROM k_lines k1 WHERE k1.stock.code = :stockCode AND k1.period = :period AND k1.timestamp IN (:...timestamps) ORDER BY k1.create_time DESC LIMIT 1) AS latest)',
+        'kline.id NOT IN (SELECT id FROM (SELECT id FROM k_lines k1 WHERE k1.stock.code = :stockCode AND k1.period = :period AND k1.timestamp IN (:...timestamps) ORDER BY k1.create_time DESC LIMIT 1) AS latest)',
       )
       .execute();
 

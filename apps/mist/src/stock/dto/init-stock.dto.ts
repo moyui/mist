@@ -46,3 +46,20 @@ export class InitStockDto {
   @Type(() => SourceConfig)
   source: SourceConfig;
 }
+
+export class AddSourceDto {
+  @ApiProperty({ description: 'Stock code (e.g., 000001.SH, 399006.SZ)' })
+  @IsNotEmpty()
+  @IsString()
+  code: string;
+
+  @ApiProperty({ description: 'Source configuration', type: () => SourceConfig })
+  @ValidateNested()
+  @Type(() => SourceConfig)
+  source: SourceConfig;
+
+  @ApiProperty({ description: 'Supported periods (minutes)', required: false })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  periods?: number[];
+}
