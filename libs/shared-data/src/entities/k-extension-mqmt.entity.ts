@@ -6,7 +6,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { MarketDataBar } from './market-data-bar.entity';
+import { K } from './k.entity';
 
 /**
  * Market data extension entity for miniQMT data source
@@ -15,13 +15,13 @@ import { MarketDataBar } from './market-data-bar.entity';
 @Entity({
   name: 'market_data_extensions_mqmt',
 })
-export class MarketDataExtensionMqmt {
+export class KExtensionMqmt {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => MarketDataBar, { onDelete: 'CASCADE' })
+  @OneToOne(() => K, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'bar_id' })
-  bar: MarketDataBar;
+  bar: K;
 
   @Column({
     type: 'decimal',
