@@ -56,9 +56,9 @@ Three database refactors left behind obsolete files that are no longer reference
 - `!` for framework-managed properties (TypeORM auto-initializes these)
 - Default values for data columns (ensures valid state before TypeORM hydration)
 
-**Affected Files (~14 entities):**
+**Affected Files (13 entities):**
 ```
-libs/shared-data/src/entities/
+libs/shared-data/src/entities/ (6 files)
 ├── k.entity.ts
 ├── security.entity.ts
 ├── security-source-config.entity.ts
@@ -66,7 +66,7 @@ libs/shared-data/src/entities/
 ├── k-extension-tdx.entity.ts
 └── k-extension-mqmt.entity.ts
 
-apps/mist/src/chan/entities/
+apps/mist/src/chan/entities/ (5 files)
 ├── chan-fenxings.entity.ts
 ├── chan-index-daily.entity.ts
 ├── chan-bis.entity.ts
@@ -123,7 +123,32 @@ export class K {
 
 **Rationale:** VOs are data containers populated externally (from database queries or API responses). Properties are guaranteed to be set before use, but TypeScript can't see this.
 
-**Affected Files (3 VOs):**
+**All VO Files (12 total):**
+```
+libs/shared-data/src/vo/
+├── k.vo.ts (13 properties - needs fix)
+└── index-period.vo.ts (10 properties - needs fix)
+
+apps/mist/src/k/vo/
+└── bars.vo.ts (8 properties - needs fix)
+
+apps/mist/src/indicator/vo/
+├── k.vo.ts (✅ already uses !)
+├── macd.vo.ts (✅ already uses !)
+├── rsi.vo.ts (✅ already uses !)
+└── kdj.vo.ts (✅ already uses !)
+
+apps/mist/src/chan/vo/
+├── bi.vo.ts (✅ already uses !)
+├── merged-k.vo.ts (✅ already uses !)
+├── fenxing.vo.ts (✅ already uses !)
+└── channel.vo.ts (✅ already uses !)
+
+apps/mist/src/trend/vo/
+└── judge-trend.vo.ts (✅ already uses !)
+```
+
+**Files Needing Fix (3):**
 ```
 libs/shared-data/src/vo/k.vo.ts
 libs/shared-data/src/vo/index-period.vo.ts
@@ -160,10 +185,10 @@ export class KVo {
 
 Properties are guaranteed to be set during these processes.
 
-**Affected Files (~35 DTOs):**
+**Affected Files (33 DTOs):**
 ```
 libs/shared-data/src/dto/*.ts (8 files)
-apps/mist/src/*/dto/*.ts (27 files)
+apps/mist/src/*/dto/*.ts (25 files)
 ```
 
 **Example Fix:**
@@ -307,9 +332,14 @@ export * from './enums/stock-status.enum';
 
 | Type | Files | Properties |
 |------|-------|------------|
-| Entities | 14 | ~100 |
-| VOs | 3 | ~31 |
-| DTOs | 35 | ~200 |
-| **Total** | **52** | **~331** |
+| Entities | 13 | ~100 |
+| VOs | 12 | ~80 |
+| DTOs | 33 | ~200 |
+| **Total** | **58** | **~380** |
 
 Plus 4 files to delete.
+
+**Note:**
+- 3 VO files need fixing (others already use `!`)
+- All 33 DTO files need fixing
+- All 13 entity files need fixing
