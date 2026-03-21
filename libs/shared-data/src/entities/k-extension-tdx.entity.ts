@@ -17,11 +17,11 @@ import { K } from './k.entity';
 })
 export class KExtensionTdx {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @OneToOne(() => K, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'bar_id' })
-  bar: K;
+  bar!: K;
 
   @Column({
     type: 'decimal',
@@ -30,7 +30,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '前复权因子：用于处理复权数据',
   })
-  forwardFactor: number;
+  forwardFactor: number = 0;
 
   @Column({
     type: 'decimal',
@@ -39,7 +39,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '后复权因子：用于处理复权数据',
   })
-  backwardFactor: number;
+  backwardFactor: number = 0;
 
   @Column({
     type: 'decimal',
@@ -48,7 +48,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '成交量比',
   })
-  volumeRatio: number;
+  volumeRatio: number = 0;
 
   @Column({
     type: 'decimal',
@@ -57,7 +57,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '换手率（%）',
   })
-  turnoverRate: number;
+  turnoverRate: number = 0;
 
   @Column({
     type: 'decimal',
@@ -66,7 +66,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '换手金额',
   })
-  turnoverAmount: number;
+  turnoverAmount: number = 0;
 
   @Column({
     type: 'decimal',
@@ -75,7 +75,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '总市值',
   })
-  totalMarketValue: number;
+  totalMarketValue: number = 0;
 
   @Column({
     type: 'decimal',
@@ -84,7 +84,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '流通市值',
   })
-  floatMarketValue: number;
+  floatMarketValue: number = 0;
 
   @Column({
     type: 'decimal',
@@ -93,7 +93,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '每股收益',
   })
-  earningsPerShare: number;
+  earningsPerShare: number = 0;
 
   @Column({
     type: 'decimal',
@@ -102,7 +102,7 @@ export class KExtensionTdx {
     nullable: true,
     comment: '市盈率',
   })
-  priceEarningsRatio: number;
+  priceEarningsRatio: number = 0;
 
   @Column({
     type: 'decimal',
@@ -111,8 +111,8 @@ export class KExtensionTdx {
     nullable: true,
     comment: '市净率',
   })
-  priceToBookRatio: number;
+  priceToBookRatio: number = 0;
 
   @CreateDateColumn({ name: 'create_time' })
-  createTime: Date;
+  createTime!: Date;
 }
