@@ -15,6 +15,9 @@ import { BarPeriod } from '../enums/bar-period.enum';
 import { KlineExtensionEf } from './kline-extension-ef.entity';
 import { KlineExtensionTdx } from './kline-extension-tdx.entity';
 import { KlineExtensionMqmt } from './kline-extension-mqmt.entity';
+import { MarketDataExtensionEf } from './market-data-extension-ef.entity';
+import { MarketDataExtensionTdx } from './market-data-extension-tdx.entity';
+import { MarketDataExtensionMqmt } from './market-data-extension-mqmt.entity';
 
 @Entity({ name: 'market_data_bars' })
 @Unique(['securityId', 'source', 'period', 'timestamp'])
@@ -104,6 +107,19 @@ export class MarketDataBar {
   @OneToOne(() => KlineExtensionMqmt, { eager: false })
   @JoinColumn({ name: 'extension_mqmt_id' })
   extensionMqmt: KlineExtensionMqmt;
+
+  // OneToOne relationships to market data extension tables
+  @OneToOne(() => MarketDataExtensionEf, { eager: false })
+  @JoinColumn({ name: 'market_extension_ef_id' })
+  marketExtensionEf: MarketDataExtensionEf;
+
+  @OneToOne(() => MarketDataExtensionTdx, { eager: false })
+  @JoinColumn({ name: 'market_extension_tdx_id' })
+  marketExtensionTdx: MarketDataExtensionTdx;
+
+  @OneToOne(() => MarketDataExtensionMqmt, { eager: false })
+  @JoinColumn({ name: 'market_extension_mqmt_id' })
+  marketExtensionMqmt: MarketDataExtensionMqmt;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -5,8 +5,16 @@ import {
   KlineExtensionEf,
   KlineExtensionTdx,
   KlineExtensionMqmt,
+  MarketDataBar,
+  MarketDataExtensionEf,
+  MarketDataExtensionTdx,
+  MarketDataExtensionMqmt,
+  Security,
+  SecuritySourceConfig,
 } from '@app/shared-data';
 import { Stock } from './stock/stock.entity';
+import { Security } from '../libs/shared-data/src/entities/security.entity';
+import { SecuritySourceConfig } from '../libs/shared-data/src/entities/security-source-config.entity';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -57,7 +65,13 @@ import { mistEnvSchema } from '@app/config';
             KlineExtensionEf,
             KlineExtensionTdx,
             KlineExtensionMqmt,
+            MarketDataBar,
+            MarketDataExtensionEf,
+            MarketDataExtensionTdx,
+            MarketDataExtensionMqmt,
             Stock,
+            Security,
+            SecuritySourceConfig,
           ],
           poolSize: 10,
           connectorPackage: 'mysql2',
