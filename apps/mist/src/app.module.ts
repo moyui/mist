@@ -6,6 +6,7 @@ import {
   KLineExtensionTDX,
   KLineExtensionMQMT,
 } from '@app/shared-data';
+import { Stock } from './stock/stock.entity';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -14,8 +15,10 @@ import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ChanModule } from './chan/chan.module';
+import { DataCollectorModule } from './data-collector/data-collector.module';
 import { DataModule } from './data/data.module';
 import { IndicatorModule } from './indicator/indicator.module';
+import { StockModule } from './stock/stock.module';
 import { TrendModule } from './trend/trend.module';
 import { mistEnvSchema } from '@app/config';
 
@@ -54,6 +57,7 @@ import { mistEnvSchema } from '@app/config';
             KLineExtensionEF,
             KLineExtensionTDX,
             KLineExtensionMQMT,
+            Stock,
           ],
           poolSize: 10,
           connectorPackage: 'mysql2',
@@ -65,7 +69,9 @@ import { mistEnvSchema } from '@app/config';
       inject: [ConfigService],
     }),
     DataModule,
+    DataCollectorModule,
     IndicatorModule,
+    StockModule,
     ChanModule,
     TrendModule,
   ],
