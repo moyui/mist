@@ -2,6 +2,11 @@
 
 **目标**：重构数据表架构，统一股票和指数数据，支持多数据源，规范命名，提升扩展性。
 
+**实施策略**：
+- **数据迁移**：废弃旧数据，重新采集（不迁移历史数据）
+- **接口切换**：一次性全面替换，无过渡期
+- **表结构**：删除旧表（stocks, index_datas, index_dailys, index_periods, k_lines 及相关扩展表），使用新表
+
 **设计原则**：
 - 数据库表名和字段名使用 `snake_case`
 - TypeScript 实体类名使用 `PascalCase`
@@ -517,7 +522,7 @@ export class MarketDataExtensionTdx {
 | id | INT PK FK | 关联 market_data_bars.id | id: number |
 | created_at | DATETIME(6) | 创建时间 | createdAt: Date |
 
-**注**：当前为占位表，待补充 miniQMT 特有字段
+**注**：**v1 版本占位表**。miniQMT 数据源当前未启用，此表保留结构但不包含业务字段。待 miniQMT 集成时补充特有字段。
 
 **索引**：
 - UNIQUE KEY `UNIQ_id` (`id`)
@@ -547,18 +552,29 @@ export class MarketDataExtensionMqmt {
 
 ## 数据库迁移脚本
 
-### 迁移步骤
+### 迁移策略
 
-1. **创建新表结构**
-2. **迁移现有数据**
-   - Stocks → Securities (type='STOCK')
-   - IndexData → Securities (type='INDEX')
-   - KLines → MarketDataBars
-   - IndexDailys/IndexPeriods → MarketDataBars
-3. **更新外键关联**
-4. **删除旧表**
+**重要**：本项目采用**废弃旧数据、重新采集**的策略，不进行数据迁移。
 
-### SQL 示例
+**实施步骤**：
+
+1. **备份现有数据库**（可选，用于回滚）
+2. **创建新表结构**（securities, security_source_configs, market_data_bars, 扩展表）
+3. **删除旧表**：
+   - `stocks`, `stock_source_formats`
+   - `k_lines`, `k_line_extensions_ef`, `k_line_extensions_tdx`, `k_line_extensions_mqmt`
+   - `index_datas`, `index_dailys`, `index_periods`
+4. **重新初始化证券数据**（从代码列表或配置文件）
+5. **重新采集 K 线数据**（使用数据采集服务）
+
+### 回滚策略
+
+如果迁移失败需要回滚：
+1. 从备份恢复数据库
+2. 恢复旧版本代码
+3. 验证数据完整性
+
+### SQL 示例（创建新表）
 
 ```sql
 -- 1. 创建 securities 表
@@ -578,51 +594,81 @@ CREATE TABLE `securities` (
   KEY `IDX_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. 迁移 stocks 数据
-INSERT INTO `securities` (`code`, `name`, `type`, `exchange`, `status`, `created_at`, `updated_at`)
-SELECT
-  `code`,
-  `name`,
-  'STOCK' as `type`,
-  CASE
-    WHEN `code` LIKE '6%' THEN 'SH'
-    WHEN `code` LIKE '0%' OR `code` LIKE '3%' THEN 'SZ'
-    ELSE 'UNKNOWN'
-  END as `exchange`,
-  `status`,
-  `create_time`,
-  `update_time`
-FROM `stocks`;
+-- 2. 创建 security_source_configs 表
+CREATE TABLE `security_source_configs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `security_id` int NOT NULL COMMENT '关联 securities.id',
+  `source` enum('ef','tdx','mqmt') NOT NULL COMMENT '数据源',
+  `format_code` varchar(50) NOT NULL COMMENT '数据源特定代码',
+  `priority` int NOT NULL DEFAULT '0' COMMENT '优先级',
+  `enabled` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否启用',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UNIQ_security_source` (`security_id`, `source`),
+  KEY `IDX_security_id` (`security_id`),
+  KEY `IDX_priority` (`priority`),
+  CONSTRAINT `fk_security_source_configs_security` FOREIGN KEY (`security_id`) REFERENCES `securities` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. 迁移 index_data 数据
-INSERT INTO `securities` (`code`, `name`, `type`, `exchange`, `status`, `created_at`, `updated_at`)
-SELECT
-  `symbol` as `code`,
-  `name`,
-  'INDEX' as `type`,
-  UPPER(`code`) as `exchange`,
-  1 as `status`,
-  `create_time`,
-  `update_time`
-FROM `index_datas`;
+-- 3. 创建 market_data_bars 表
+CREATE TABLE `market_data_bars` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `security_id` int NOT NULL COMMENT '关联 securities.id',
+  `source` enum('ef','tdx','mqmt') NOT NULL COMMENT '数据源',
+  `period` enum('1min','5min','15min','30min','60min','daily') NOT NULL COMMENT 'K线周期',
+  `timestamp` datetime NOT NULL COMMENT 'K线时间戳',
+  `open` decimal(12,2) NOT NULL COMMENT '开盘价',
+  `high` decimal(12,2) NOT NULL COMMENT '最高价',
+  `low` decimal(12,2) NOT NULL COMMENT '最低价',
+  `close` decimal(12,2) NOT NULL COMMENT '收盘价',
+  `volume` bigint NOT NULL COMMENT '成交量 (手)',
+  `amount` double NOT NULL COMMENT '成交额 (元)',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UNIQ_bar` (`security_id`, `source`, `period`, `timestamp`),
+  KEY `IDX_security_id` (`security_id`),
+  KEY `IDX_source` (`source`),
+  KEY `IDX_period` (`period`),
+  KEY `IDX_timestamp` (`timestamp`),
+  KEY `IDX_security_period_time` (`security_id`, `period`, `timestamp`),
+  CONSTRAINT `fk_market_data_bars_security` FOREIGN KEY (`security_id`) REFERENCES `securities` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ... 其他表的迁移脚本
+-- 4. 创建扩展表（示例：EF）
+CREATE TABLE `market_data_extensions_ef` (
+  `id` int NOT NULL,
+  `amplitude` decimal(10,2) NULL COMMENT '振幅（%）',
+  `change_pct` decimal(10,2) NULL COMMENT '涨跌幅（%）',
+  `change_amt` decimal(10,2) NULL COMMENT '涨跌额（元）',
+  `turnover_rate` decimal(10,2) NULL COMMENT '换手率（%）',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_market_data_extensions_ef_bar` FOREIGN KEY (`id`) REFERENCES `market_data_bars` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 其他扩展表（TDX, MQMT）类似创建
 ```
 
 ---
 
 ## API 接口变更
 
-### 查询接口统一
+### 切换策略
 
-**旧接口**：
-```
-GET /data/index-daily?symbol=000001&startDate=xxx&endDate=xxx
-GET /data/index-period?symbol=000001&period=5&startDate=xxx&endDate=xxx
-POST /indicator/k (使用 IndexVo)
-```
+**一次性全面替换**：旧接口直接废弃，新接口立即生效，无过渡期。
 
-**新接口**：
+**需要更新的接口**：
+- `/data/index-daily` → `/market-data/bars?period=daily`
+- `/data/index-period` → `/market-data/bars?period=5min` (或其他分钟周期)
+- `/indicator/k` → 更新为使用 `MarketDataBarVo`
+- `/indicator/macd` → 更新数据源
+- `/indicator/kdj` → 更新数据源
+- `/indicator/rsi` → 更新数据源
+
+### 新接口设计
+
+**统一查询接口**：
 ```
 GET /market-data/bars?code=000001&period=daily&startDate=xxx&endDate=xxx
 GET /market-data/bars?code=000001&period=5min&startDate=xxx&endDate=xxx
@@ -660,6 +706,8 @@ interface MarketDataBarVo {
 
 ## 文件结构
 
+### TypeORM 实体文件
+
 ```
 libs/shared-data/src/
 ├── entities/
@@ -677,10 +725,31 @@ libs/shared-data/src/
 ├── dto/
 │   ├── query-market-data.dto.ts        # 查询DTO
 │   └── save-market-data.dto.ts         # 保存DTO
-├── vo/
-│   └── market-data-bar.vo.ts           # 返回VO
-└── migrations/
-    └── 2026-03-21-unified-schema.ts    # 迁移脚本
+└── vo/
+    └── market-data-bar.vo.ts           # 返回VO
+```
+
+### TypeORM 迁移文件
+
+TypeORM 迁移文件位于各个应用目录下：
+
+```
+apps/mist/src/migrations/
+└── 20260321000000-UnifiedDataSchema.ts  # TypeORM 迁移文件
+```
+
+生成命令：
+```bash
+pnpm run migration:generate -- -n UnifiedDataSchema
+```
+
+### 自定义脚本（可选）
+
+如果需要复杂的初始化逻辑（如从配置文件初始化证券列表），可以创建自定义脚本：
+
+```
+apps/mist/src/scripts/
+└── init-securities.ts  # 初始化证券数据的脚本
 ```
 
 ---
