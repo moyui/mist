@@ -1,11 +1,4 @@
-import {
-  IndexDaily,
-  IndexData,
-  IndexPeriod,
-  MarketDataBar,
-  Security,
-  SharedDataModule,
-} from '@app/shared-data';
+import { MarketDataBar, Security } from '@app/shared-data';
 import { TimezoneModule } from '@app/timezone';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
@@ -19,15 +12,8 @@ import { DataService } from './data.service';
       timeout: 5000,
       maxRedirects: 5,
     }),
-    TypeOrmModule.forFeature([
-      IndexData,
-      IndexPeriod,
-      IndexDaily,
-      Security,
-      MarketDataBar,
-    ]),
+    TypeOrmModule.forFeature([Security, MarketDataBar]),
     TimezoneModule,
-    SharedDataModule,
   ],
   controllers: [DataController],
   providers: [DataService],
