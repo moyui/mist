@@ -3,7 +3,7 @@ import { DataController } from './data.controller';
 import { DataService } from './data.service';
 import { SharedDataService } from '@app/shared-data';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Security, MarketDataBar } from '@app/shared-data';
+import { Security, K } from '@app/shared-data';
 
 describe('DataController', () => {
   let controller: DataController;
@@ -32,7 +32,7 @@ describe('DataController', () => {
           useValue: {},
         },
         {
-          provide: getRepositoryToken(MarketDataBar),
+          provide: getRepositoryToken(K),
           useValue: {},
         },
       ],

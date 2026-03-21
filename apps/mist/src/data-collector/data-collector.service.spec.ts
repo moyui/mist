@@ -6,9 +6,9 @@ import { TdxSource } from '../sources/tdx.source';
 import { Period } from '../chan/enums/period.enum';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { MarketDataBar, Security } from '@app/shared-data';
+import { K, Security } from '@app/shared-data';
 
-const mockMarketDataBarRepository = {
+const mockKRepository = {
   create: jest.fn(),
   save: jest.fn(),
   find: jest.fn(),
@@ -46,8 +46,8 @@ describe('DataCollectorService', () => {
       providers: [
         DataCollectorService,
         {
-          provide: getRepositoryToken(MarketDataBar),
-          useValue: mockMarketDataBarRepository,
+          provide: getRepositoryToken(K),
+          useValue: mockKRepository,
         },
         {
           provide: getRepositoryToken(Security),
@@ -120,8 +120,8 @@ describe('DataCollectorService', () => {
       });
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
       mockEastMoneySource.fetchKLine.mockResolvedValue(mockKLineData);
-      mockMarketDataBarRepository.create.mockImplementation((data) => data);
-      mockMarketDataBarRepository.save.mockResolvedValue(null);
+      mockKRepository.create.mockImplementation((data) => data);
+      mockKRepository.save.mockResolvedValue(null);
     });
 
     it('should successfully collect and save K-line data', async () => {
@@ -135,8 +135,8 @@ describe('DataCollectorService', () => {
       expect(mockStockService.findByCode).toHaveBeenCalledWith('000001');
       expect(mockStockService.getSourceFormat).toHaveBeenCalledWith('000001');
       expect(mockEastMoneySource.fetchKLine).toHaveBeenCalled();
-      expect(mockMarketDataBarRepository.create).toHaveBeenCalledTimes(2);
-      expect(mockMarketDataBarRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockKRepository.create).toHaveBeenCalledTimes(2);
+      expect(mockKRepository.save).toHaveBeenCalledTimes(1);
     });
 
     it('should throw NotFoundException when stock not found', async () => {
@@ -216,7 +216,7 @@ describe('DataCollectorService', () => {
     });
 
     it('should return status when data exists', async () => {
-      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
+      mockKRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -244,7 +244,7 @@ describe('DataCollectorService', () => {
     });
 
     it('should return status when no data exists', async () => {
-      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
+      mockKRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -274,7 +274,7 @@ describe('DataCollectorService', () => {
 
   describe('removeDuplicateData', () => {
     beforeEach(() => {
-      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
+      mockKRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -298,7 +298,7 @@ describe('DataCollectorService', () => {
     });
 
     it('should return 0 when no duplicates found', async () => {
-      mockMarketDataBarRepository.createQueryBuilder.mockReturnValue({
+      mockKRepository.createQueryBuilder.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),

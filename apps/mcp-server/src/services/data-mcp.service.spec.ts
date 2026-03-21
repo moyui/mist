@@ -2,12 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DataMcpService } from './data-mcp.service';
-import { Security, MarketDataBar, KPeriod } from '@app/shared-data';
+import { Security, K, KPeriod } from '@app/shared-data';
 
 describe('DataMcpService', () => {
   let service: DataMcpService;
   let securityRepository: Repository<Security>;
-  let marketDataBarRepository: Repository<MarketDataBar>;
+  let kRepository: Repository<K>;
 
   const mockSecurity = {
     id: 1,
@@ -22,7 +22,7 @@ describe('DataMcpService', () => {
     marketDataBars: [],
   } as any;
 
-  const mockMarketDataBar = {
+  const mockK = {
     id: 1,
     security: mockSecurity,
     source: 'aktools',
@@ -50,7 +50,7 @@ describe('DataMcpService', () => {
           },
         },
         {
-          provide: getRepositoryToken(MarketDataBar),
+          provide: getRepositoryToken(K),
           useValue: {
             createQueryBuilder: jest.fn(),
           },
@@ -62,9 +62,7 @@ describe('DataMcpService', () => {
     securityRepository = module.get<Repository<Security>>(
       getRepositoryToken(Security),
     );
-    marketDataBarRepository = module.get<Repository<MarketDataBar>>(
-      getRepositoryToken(MarketDataBar),
-    );
+    kRepository = module.get<Repository<K>>(getRepositoryToken(K));
   });
 
   it('should be defined', () => {
@@ -93,11 +91,11 @@ describe('DataMcpService', () => {
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([mockMarketDataBar]),
+        getRawMany: jest.fn().mockResolvedValue([mockK]),
       };
 
       jest
-        .spyOn(marketDataBarRepository, 'createQueryBuilder')
+        .spyOn(kRepository, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder as any);
 
       const result = await service.getKlineData('000001', '1min', 10);
