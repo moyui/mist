@@ -14,7 +14,7 @@ import { K } from './k.entity';
 @Entity({ name: 'securities' })
 export class Security {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({
     type: 'varchar',
@@ -22,45 +22,45 @@ export class Security {
     unique: true,
     comment: '纯代码，如 000001, 000300',
   })
-  code: string;
+  code: string = '';
 
   @Column({
     type: 'varchar',
     length: 100,
     comment: '证券名称',
   })
-  name: string;
+  name: string = '';
 
   @Column({
     type: 'enum',
     enum: SecurityType,
     comment: '证券类型：STOCK=股票，INDEX=指数',
   })
-  type: SecurityType;
+  type: SecurityType = SecurityType.STOCK;
 
   @Column({
     type: 'varchar',
     length: 10,
     comment: '交易所：SH=上交所，SZ=深交所，CSI=中证指数',
   })
-  exchange: string;
+  exchange: string = '';
 
   @Column({
     type: 'tinyint',
     default: SecurityStatus.ACTIVE,
     comment: '状态：1=正常，0=停牌，-1=退市/终止',
   })
-  status: SecurityStatus;
+  status: SecurityStatus = SecurityStatus.ACTIVE;
 
   @OneToMany(() => SecuritySourceConfig, (config) => config.security)
-  sourceConfigs: SecuritySourceConfig[];
+  sourceConfigs!: SecuritySourceConfig[];
 
   @OneToMany(() => K, (bar) => bar.security)
-  ks: K[];
+  ks!: K[];
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
