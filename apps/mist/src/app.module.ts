@@ -1,10 +1,4 @@
 import {
-  IndexDaily,
-  IndexData,
-  IndexPeriod,
-  KlineExtensionEf,
-  KlineExtensionTdx,
-  KlineExtensionMqmt,
   MarketDataBar,
   MarketDataExtensionEf,
   MarketDataExtensionTdx,
@@ -12,9 +6,6 @@ import {
   Security,
   SecuritySourceConfig,
 } from '@app/shared-data';
-import { Stock } from './stock/stock.entity';
-import { Security } from '../libs/shared-data/src/entities/security.entity';
-import { SecuritySourceConfig } from '../libs/shared-data/src/entities/security-source-config.entity';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -60,17 +51,10 @@ import { mistEnvSchema } from '@app/config';
           synchronize: configService.get('NODE_ENV') !== 'production',
           logging: configService.get('NODE_ENV') !== 'production',
           entities: [
-            IndexData,
-            IndexPeriod,
-            IndexDaily,
-            KlineExtensionEf,
-            KlineExtensionTdx,
-            KlineExtensionMqmt,
             MarketDataBar,
             MarketDataExtensionEf,
             MarketDataExtensionTdx,
             MarketDataExtensionMqmt,
-            Stock,
             Security,
             SecuritySourceConfig,
           ],
