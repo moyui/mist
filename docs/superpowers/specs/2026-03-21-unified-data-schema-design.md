@@ -395,7 +395,8 @@ export enum DataSource {
 
 | 字段名 | 类型 | 说明 | TypeScript 属性 |
 |--------|------|------|----------------|
-| id | INT PK FK | 关联 market_data_bars.id | id: number |
+| id | INT PK | 主键（自增） | id: number |
+| bar_id | INT UK NULL | 关联 market_data_bars.id | barId: number |
 | amplitude | DECIMAL(10,2) NULL | 振幅 (%) | amplitude: number |
 | change_pct | DECIMAL(10,2) NULL | 涨跌幅 (%) | changePct: number |
 | change_amt | DECIMAL(10,2) NULL | 涨跌额 (元) | changeAmt: number |
@@ -403,7 +404,8 @@ export enum DataSource {
 | created_at | DATETIME(6) | 创建时间 | createdAt: Date |
 
 **索引**：
-- UNIQUE KEY `UNIQ_id` (`id`)
+- UNIQUE KEY `UNIQ_bar_id` (`bar_id`) - 确保 1:1 关系
+- INDEX `IDX_bar_id` (`bar_id`)
 
 **TypeORM 实体**：
 
@@ -416,7 +418,7 @@ export class MarketDataExtensionEf {
   @OneToOne(() => MarketDataBar, (bar) => bar.extensionEf, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'id' })
+  @JoinColumn({ name: 'bar_id' })
   marketDataBar: MarketDataBar;
 
   @Column({
@@ -472,12 +474,14 @@ export class MarketDataExtensionEf {
 
 | 字段名 | 类型 | 说明 | TypeScript 属性 |
 |--------|------|------|----------------|
-| id | INT PK FK | 关联 market_data_bars.id | id: number |
+| id | INT PK | 主键（自增） | id: number |
+| bar_id | INT UK NULL | 关联 market_data_bars.id | barId: number |
 | forward_factor | DECIMAL(12,6) NULL | 前复权因子 | forwardFactor: number |
 | created_at | DATETIME(6) | 创建时间 | createdAt: Date |
 
 **索引**：
-- UNIQUE KEY `UNIQ_id` (`id`)
+- UNIQUE KEY `UNIQ_bar_id` (`bar_id`) - 确保 1:1 关系
+- INDEX `IDX_bar_id` (`bar_id`)
 
 **TypeORM 实体**：
 
@@ -490,7 +494,7 @@ export class MarketDataExtensionTdx {
   @OneToOne(() => MarketDataBar, (bar) => bar.extensionTdx, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'id' })
+  @JoinColumn({ name: 'bar_id' })
   marketDataBar: MarketDataBar;
 
   @Column({
@@ -519,13 +523,15 @@ export class MarketDataExtensionTdx {
 
 | 字段名 | 类型 | 说明 | TypeScript 属性 |
 |--------|------|------|----------------|
-| id | INT PK FK | 关联 market_data_bars.id | id: number |
+| id | INT PK | 主键（自增） | id: number |
+| bar_id | INT UK NULL | 关联 market_data_bars.id | barId: number |
 | created_at | DATETIME(6) | 创建时间 | createdAt: Date |
 
 **注**：**v1 版本占位表**。miniQMT 数据源当前未启用，此表保留结构但不包含业务字段。待 miniQMT 集成时补充特有字段。
 
 **索引**：
-- UNIQUE KEY `UNIQ_id` (`id`)
+- UNIQUE KEY `UNIQ_bar_id` (`bar_id`) - 确保 1:1 关系
+- INDEX `IDX_bar_id` (`bar_id`)
 
 **TypeORM 实体**：
 
@@ -538,7 +544,7 @@ export class MarketDataExtensionMqmt {
   @OneToOne(() => MarketDataBar, (bar) => bar.extensionMqmt, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'id' })
+  @JoinColumn({ name: 'bar_id' })
   marketDataBar: MarketDataBar;
 
   // TODO: 待补充 miniQMT 特有字段
@@ -637,17 +643,41 @@ CREATE TABLE `market_data_bars` (
 
 -- 4. 创建扩展表（示例：EF）
 CREATE TABLE `market_data_extensions_ef` (
-  `id` int NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
+  `bar_id` int NULL COMMENT '关联 market_data_bars.id',
   `amplitude` decimal(10,2) NULL COMMENT '振幅（%）',
   `change_pct` decimal(10,2) NULL COMMENT '涨跌幅（%）',
   `change_amt` decimal(10,2) NULL COMMENT '涨跌额（元）',
   `turnover_rate` decimal(10,2) NULL COMMENT '换手率（%）',
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
-  CONSTRAINT `fk_market_data_extensions_ef_bar` FOREIGN KEY (`id`) REFERENCES `market_data_bars` (`id`) ON DELETE CASCADE
+  UNIQUE KEY `UNIQ_bar_id` (`bar_id`),
+  KEY `IDX_bar_id` (`bar_id`),
+  CONSTRAINT `fk_market_data_extensions_ef_bar` FOREIGN KEY (`bar_id`) REFERENCES `market_data_bars` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 其他扩展表（TDX, MQMT）类似创建
+-- 5. 创建扩展表（TDX）
+CREATE TABLE `market_data_extensions_tdx` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `bar_id` int NULL COMMENT '关联 market_data_bars.id',
+  `forward_factor` decimal(12,6) NULL COMMENT '前复权因子',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UNIQ_bar_id` (`bar_id`),
+  KEY `IDX_bar_id` (`bar_id`),
+  CONSTRAINT `fk_market_data_extensions_tdx_bar` FOREIGN KEY (`bar_id`) REFERENCES `market_data_bars` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. 创建扩展表（MQMT）
+CREATE TABLE `market_data_extensions_mqmt` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `bar_id` int NULL COMMENT '关联 market_data_bars.id',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UNIQ_bar_id` (`bar_id`),
+  KEY `IDX_bar_id` (`bar_id`),
+  CONSTRAINT `fk_market_data_extensions_mqmt_bar` FOREIGN KEY (`bar_id`) REFERENCES `market_data_bars` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ---
