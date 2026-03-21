@@ -17,11 +17,11 @@ import { K } from './k.entity';
 })
 export class KExtensionEf {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @OneToOne(() => K, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'bar_id' })
-  bar: K;
+  bar!: K;
 
   @Column({
     type: 'decimal',
@@ -30,7 +30,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '振幅（%）',
   })
-  amplitude: number;
+  amplitude: number = 0;
 
   @Column({
     type: 'decimal',
@@ -39,7 +39,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '涨跌幅（%）',
   })
-  changePct: number;
+  changePct: number = 0;
 
   @Column({
     type: 'decimal',
@@ -48,7 +48,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '涨跌额（元）',
   })
-  changeAmt: number;
+  changeAmt: number = 0;
 
   @Column({
     type: 'decimal',
@@ -57,7 +57,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '换手率（%）',
   })
-  turnoverRate: number;
+  turnoverRate: number = 0;
 
   @Column({
     type: 'bigint',
@@ -103,5 +103,5 @@ export class KExtensionEf {
   prevOpen: number;
 
   @CreateDateColumn({ name: 'create_time' })
-  createTime: Date;
+  createTime!: Date;
 }
