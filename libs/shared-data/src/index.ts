@@ -4,7 +4,7 @@ export * from './dto/index-daily.dto';
 export * from './dto/index-period.dto';
 export * from './dto/save-index-period.dto';
 export * from './entities';
-export * from './enums/bar-period.enum';
+export * from './enums/k-period.enum';
 export * from './enums/data-source.enum';
 export * from './enums/index-period.enum';
 export * from './enums/security-status.enum';
