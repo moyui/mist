@@ -64,7 +64,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '成交笔数',
   })
-  volumeCount: number;
+  volumeCount: number = 0;
 
   @Column({
     type: 'decimal',
@@ -73,7 +73,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '内盘量',
   })
-  innerVolume: number;
+  innerVolume: number = 0;
 
   @Column({
     type: 'decimal',
@@ -82,7 +82,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '外盘量',
   })
-  outerVolume: number;
+  outerVolume: number = 0;
 
   @Column({
     type: 'decimal',
@@ -91,7 +91,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '昨收价',
   })
-  prevClose: number;
+  prevClose: number = 0;
 
   @Column({
     type: 'decimal',
@@ -100,7 +100,7 @@ export class KExtensionEf {
     nullable: true,
     comment: '今开价',
   })
-  prevOpen: number;
+  prevOpen: number = 0;
 
   @CreateDateColumn({ name: 'create_time' })
   createTime!: Date;
