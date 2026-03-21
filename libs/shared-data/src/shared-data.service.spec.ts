@@ -4,7 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { TimezoneService } from '@app/timezone';
 import { UtilsService } from '@app/utils';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Security, MarketDataBar } from '@app/shared-data';
+import { Security, K } from '@app/shared-data';
 
 describe('SharedDataService', () => {
   let service: SharedDataService;
@@ -36,7 +36,7 @@ describe('SharedDataService', () => {
           },
         },
         {
-          provide: getRepositoryToken(MarketDataBar),
+          provide: getRepositoryToken(K),
           useValue: {
             find: jest.fn(),
             save: jest.fn(),

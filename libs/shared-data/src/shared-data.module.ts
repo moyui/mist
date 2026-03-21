@@ -3,7 +3,7 @@ import { UtilsModule } from '@app/utils';
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { MarketDataBar } from './entities/market-data-bar.entity';
+import { K } from './entities/k.entity';
 import { Security } from './entities/security.entity';
 import { SecuritySourceConfig } from './entities/security-source-config.entity';
 import { SharedDataService } from './shared-data.service';
@@ -13,7 +13,7 @@ import { SharedDataService } from './shared-data.service';
     TimezoneModule,
     UtilsModule,
     HttpModule,
-    TypeOrmModule.forFeature([MarketDataBar, Security, SecuritySourceConfig]),
+    TypeOrmModule.forFeature([K, Security, SecuritySourceConfig]),
   ],
   providers: [SharedDataService],
   exports: [SharedDataService],

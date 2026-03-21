@@ -2,12 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DataMcpService } from './data-mcp.service';
-import { Security, MarketDataBar, KPeriod } from '@app/shared-data';
+import { Security, K, KPeriod } from '@app/shared-data';
 
 describe('DataMcpService', () => {
   let service: DataMcpService;
   let securityRepository: Repository<Security>;
-  let marketDataBarRepository: Repository<MarketDataBar>;
+  let kRepository: Repository<K>;
 
   const mockSecurity = {
     id: 1,
@@ -19,10 +19,10 @@ describe('DataMcpService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     sourceConfigs: [],
-    marketDataBars: [],
+    ks: [],
   } as any;
 
-  const mockMarketDataBar = {
+  const mockK = {
     id: 1,
     security: mockSecurity,
     source: 'aktools',
@@ -50,7 +50,7 @@ describe('DataMcpService', () => {
           },
         },
         {
-          provide: getRepositoryToken(MarketDataBar),
+          provide: getRepositoryToken(K),
           useValue: {
             createQueryBuilder: jest.fn(),
           },
@@ -62,9 +62,7 @@ describe('DataMcpService', () => {
     securityRepository = module.get<Repository<Security>>(
       getRepositoryToken(Security),
     );
-    marketDataBarRepository = module.get<Repository<MarketDataBar>>(
-      getRepositoryToken(MarketDataBar),
-    );
+    kRepository = module.get<Repository<K>>(getRepositoryToken(K));
   });
 
   it('should be defined', () => {
@@ -76,11 +74,15 @@ describe('DataMcpService', () => {
       const mockSecurities = [mockSecurity];
       jest.spyOn(securityRepository, 'find').mockResolvedValue(mockSecurities);
 
-      const result = await service.listIndices();
+      const result = (await service.listIndices()) as unknown as {
+        success: boolean;
+        data: any[];
+      };
 
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveProperty('code', '000001');
-      expect(result[0]).toHaveProperty('name', '上证指数');
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]).toHaveProperty('symbol', '000001');
+      expect(result.data[0]).toHaveProperty('name', '上证指数');
     });
   });
 
@@ -89,35 +91,53 @@ describe('DataMcpService', () => {
       jest.spyOn(securityRepository, 'findOne').mockResolvedValue(mockSecurity);
 
       const mockQueryBuilder = {
+        leftJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([mockMarketDataBar]),
+        limit: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([mockK]),
       };
 
       jest
-        .spyOn(marketDataBarRepository, 'createQueryBuilder')
+        .spyOn(kRepository, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder as any);
 
-      const result = await service.getKlineData('000001', '1min', 10);
+      const result = (await service.getKlineData(
+        '000001',
+        '1min' as any,
+        10,
+      )) as unknown as { success: boolean; data: any[] };
 
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveProperty('time');
-      expect(result[0]).toHaveProperty('open', 3000);
-      expect(result[0]).toHaveProperty('close', 3010);
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]).toHaveProperty('time');
+      expect(result.data[0]).toHaveProperty('open', 3000);
+      expect(result.data[0]).toHaveProperty('close', 3010);
     });
 
-    it('should throw error for invalid symbol', async () => {
+    it('should return error for invalid symbol', async () => {
       jest.spyOn(securityRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(
-        service.getKlineData('999999', '1min', 10),
-      ).rejects.toThrow();
+      const result = (await service.getKlineData(
+        '999999',
+        '1min' as any,
+        10,
+      )) as unknown as { success: boolean; error: { message: string } };
+
+      expect(result.success).toBe(false);
+      expect(result.error.message).toContain('not found');
     });
 
-    it('should throw error for invalid limit', async () => {
-      await expect(service.getKlineData('000001', '1min', 0)).rejects.toThrow();
+    it('should return error for invalid limit', async () => {
+      const result = (await service.getKlineData(
+        '000001',
+        '1min' as any,
+        0,
+      )) as unknown as { success: boolean; error: { message: string } };
+
+      expect(result.success).toBe(false);
+      expect(result.error.message).toContain('limit must be at least 1');
     });
   });
 });

@@ -6,7 +6,7 @@ describe('PeriodMapping', () => {
   describe('toSourceFormat', () => {
     it('should convert 1min to east money format', () => {
       const result = PeriodMapping.toSourceFormat(
-        KPeriod.MIN_1,
+        KPeriod.ONE_MIN,
         DataSource.EAST_MONEY,
       );
       expect(result).toBe('1');
@@ -22,7 +22,7 @@ describe('PeriodMapping', () => {
 
     it('should convert 1min to tdx format', () => {
       const result = PeriodMapping.toSourceFormat(
-        KPeriod.MIN_1,
+        KPeriod.ONE_MIN,
         DataSource.TDX,
       );
       expect(result).toBe('1m');
@@ -30,7 +30,7 @@ describe('PeriodMapping', () => {
 
     it('should throw error for unsupported period', () => {
       expect(() => {
-        PeriodMapping.toSourceFormat(KPeriod.MIN_15, DataSource.TDX);
+        PeriodMapping.toSourceFormat(KPeriod.FIFTEEN_MIN, DataSource.TDX);
       }).toThrow('Data source tdx does not support period 15min');
     });
   });
@@ -46,9 +46,9 @@ describe('PeriodMapping', () => {
     });
 
     it('should return false for unsupported periods', () => {
-      expect(PeriodMapping.isSupported(KPeriod.MIN_15, DataSource.TDX)).toBe(
-        false,
-      );
+      expect(
+        PeriodMapping.isSupported(KPeriod.FIFTEEN_MIN, DataSource.TDX),
+      ).toBe(false);
     });
   });
 });

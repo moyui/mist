@@ -1,4 +1,4 @@
-export class MarketDataBarVo {
+export class KVo {
   '时间': string;
   '开盘': number;
   '最高': number;

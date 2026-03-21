@@ -6,7 +6,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { MarketDataBar } from './market-data-bar.entity';
+import { K } from './k.entity';
 
 /**
  * Market data extension entity for East Money (东方财富) data source
@@ -15,13 +15,13 @@ import { MarketDataBar } from './market-data-bar.entity';
 @Entity({
   name: 'market_data_extensions_ef',
 })
-export class MarketDataExtensionEf {
+export class KExtensionEf {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => MarketDataBar, { onDelete: 'CASCADE' })
+  @OneToOne(() => K, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'bar_id' })
-  bar: MarketDataBar;
+  bar: K;
 
   @Column({
     type: 'decimal',

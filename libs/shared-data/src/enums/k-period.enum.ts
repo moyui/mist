@@ -1,8 +1,8 @@
 export enum KPeriod {
-  MIN_1 = '1min',
-  MIN_5 = '5min',
-  MIN_15 = '15min',
-  MIN_30 = '30min',
-  MIN_60 = '60min',
+  ONE_MIN = '1min',
+  FIVE_MIN = '5min',
+  FIFTEEN_MIN = '15min',
+  THIRTY_MIN = '30min',
+  SIXTY_MIN = '60min',
   DAILY = 'daily',
 }

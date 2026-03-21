@@ -1,4 +1,4 @@
-import { MarketDataBar, Security, SharedDataModule } from '@app/shared-data';
+import { K, Security, SharedDataModule } from '@app/shared-data';
 import { TimezoneModule } from '@app/timezone';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
@@ -12,7 +12,7 @@ import { DataService } from './data.service';
       timeout: 5000,
       maxRedirects: 5,
     }),
-    TypeOrmModule.forFeature([Security, MarketDataBar]),
+    TypeOrmModule.forFeature([Security, K]),
     TimezoneModule,
     SharedDataModule,
   ],

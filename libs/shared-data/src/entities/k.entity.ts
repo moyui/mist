@@ -12,17 +12,17 @@ import {
 import { Security } from './security.entity';
 import { DataSource } from '../enums/data-source.enum';
 import { KPeriod } from '../enums/k-period.enum';
-import { MarketDataExtensionEf } from './market-data-extension-ef.entity';
-import { MarketDataExtensionTdx } from './market-data-extension-tdx.entity';
-import { MarketDataExtensionMqmt } from './market-data-extension-mqmt.entity';
+import { KExtensionEf } from './k-extension-ef.entity';
+import { KExtensionTdx } from './k-extension-tdx.entity';
+import { KExtensionMqmt } from './k-extension-mqmt.entity';
 
 @Entity({ name: 'market_data_bars' })
 @Unique(['securityId', 'source', 'period', 'timestamp'])
-export class MarketDataBar {
+export class K {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Security, (security) => security.marketDataBars, {
+  @ManyToOne(() => Security, (security) => security.ks, {
     onDelete: 'CASCADE',
     eager: false,
   })
@@ -93,17 +93,17 @@ export class MarketDataBar {
   amount: number;
 
   // OneToOne relationships to market data extension tables
-  @OneToOne(() => MarketDataExtensionEf, { eager: false })
+  @OneToOne(() => KExtensionEf, { eager: false })
   @JoinColumn({ name: 'market_extension_ef_id' })
-  marketExtensionEf: MarketDataExtensionEf;
+  marketExtensionEf: KExtensionEf;
 
-  @OneToOne(() => MarketDataExtensionTdx, { eager: false })
+  @OneToOne(() => KExtensionTdx, { eager: false })
   @JoinColumn({ name: 'market_extension_tdx_id' })
-  marketExtensionTdx: MarketDataExtensionTdx;
+  marketExtensionTdx: KExtensionTdx;
 
-  @OneToOne(() => MarketDataExtensionMqmt, { eager: false })
+  @OneToOne(() => KExtensionMqmt, { eager: false })
   @JoinColumn({ name: 'market_extension_mqmt_id' })
-  marketExtensionMqmt: MarketDataExtensionMqmt;
+  marketExtensionMqmt: KExtensionMqmt;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -3,7 +3,7 @@ import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Security, MarketDataBar, KPeriod } from '@app/shared-data';
+import { Security, K, KPeriod } from '@app/shared-data';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
 import { McpErrorCode, McpError } from '@app/constants';
@@ -17,8 +17,8 @@ export class DataMcpService extends BaseMcpToolService {
   constructor(
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
-    @InjectRepository(MarketDataBar)
-    private readonly marketDataBarRepository: Repository<MarketDataBar>,
+    @InjectRepository(K)
+    private readonly kRepository: Repository<K>,
   ) {
     super(DataMcpService.name);
   }
@@ -163,7 +163,7 @@ RETURNS: K-line array with time, OHLC, volume.`,
         );
       }
 
-      const queryBuilder = this.marketDataBarRepository
+      const queryBuilder = this.kRepository
         .createQueryBuilder('bar')
         .leftJoin('bar.security', 'security')
         .where('security.id = :securityId', { securityId: security.id })
@@ -254,11 +254,11 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
         );
       }
 
-      const queryBuilder = this.marketDataBarRepository
+      const queryBuilder = this.kRepository
         .createQueryBuilder('bar')
         .leftJoin('bar.security', 'security')
         .where('security.id = :securityId', { securityId: security.id })
-        .andWhere('bar.period = :period', { period: BarPeriod.DAILY })
+        .andWhere('bar.period = :period', { period: KPeriod.DAILY })
         .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
 
@@ -340,15 +340,15 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
       }
 
       const periods: KPeriod[] = [
-        KPeriod.MIN_1,
-        KPeriod.MIN_5,
-        KPeriod.MIN_15,
-        KPeriod.MIN_30,
-        KPeriod.MIN_60,
+        KPeriod.ONE_MIN,
+        KPeriod.FIVE_MIN,
+        KPeriod.FIFTEEN_MIN,
+        KPeriod.THIRTY_MIN,
+        KPeriod.SIXTY_MIN,
       ];
 
       const [dailyData, ...periodData] = await Promise.all([
-        this.marketDataBarRepository
+        this.kRepository
           .createQueryBuilder('bar')
           .leftJoin('bar.security', 'security')
           .where('security.id = :securityId', { securityId: security.id })
@@ -357,7 +357,7 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
           .limit(1)
           .getOne(),
         ...periods.map((period) =>
-          this.marketDataBarRepository
+          this.kRepository
             .createQueryBuilder('bar')
             .leftJoin('bar.security', 'security')
             .where('security.id = :securityId', { securityId: security.id })

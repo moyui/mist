@@ -1,4 +1,4 @@
-import { Security, MarketDataBar } from '@app/shared-data';
+import { Security, K } from '@app/shared-data';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
@@ -30,7 +30,7 @@ import { scheduleEnvSchema } from '@app/config';
           database: configService.get('mysql_server_database'),
           synchronize: configService.get('NODE_ENV') !== 'production',
           logging: configService.get('NODE_ENV') !== 'production',
-          entities: [Security, MarketDataBar],
+          entities: [Security, K],
           poolSize: 10,
           connectorPackage: 'mysql2',
           extra: {

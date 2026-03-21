@@ -7,16 +7,16 @@ import { DataSource } from '../enums/data-source.enum';
  */
 const PERIOD_MAPPING: Record<DataSource, Partial<Record<KPeriod, string>>> = {
   [DataSource.EAST_MONEY]: {
-    [KPeriod.MIN_1]: '1',
-    [KPeriod.MIN_5]: '5',
-    [KPeriod.MIN_15]: '15',
-    [KPeriod.MIN_30]: '30',
-    [KPeriod.MIN_60]: '60',
+    [KPeriod.ONE_MIN]: '1',
+    [KPeriod.FIVE_MIN]: '5',
+    [KPeriod.FIFTEEN_MIN]: '15',
+    [KPeriod.THIRTY_MIN]: '30',
+    [KPeriod.SIXTY_MIN]: '60',
     [KPeriod.DAILY]: 'daily',
   },
   [DataSource.TDX]: {
-    [KPeriod.MIN_1]: '1m',
-    [KPeriod.MIN_5]: '5m',
+    [KPeriod.ONE_MIN]: '1m',
+    [KPeriod.FIVE_MIN]: '5m',
     [KPeriod.DAILY]: '1d',
   },
   [DataSource.MINI_QMT]: {},

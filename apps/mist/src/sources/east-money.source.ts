@@ -19,11 +19,11 @@ export class EastMoneySource implements ISourceFetcher {
   // Helper function to convert Period enum to KPeriod enum
   private periodToKLinePeriod(period: Period): KPeriod {
     const mapping: Record<Period, KPeriod> = {
-      [Period.One]: KPeriod.MIN_1,
-      [Period.FIVE]: KPeriod.MIN_5,
-      [Period.FIFTEEN]: KPeriod.MIN_15,
-      [Period.THIRTY]: KPeriod.MIN_30,
-      [Period.SIXTY]: KPeriod.MIN_60,
+      [Period.One]: KPeriod.ONE_MIN,
+      [Period.FIVE]: KPeriod.FIVE_MIN,
+      [Period.FIFTEEN]: KPeriod.FIFTEEN_MIN,
+      [Period.THIRTY]: KPeriod.THIRTY_MIN,
+      [Period.SIXTY]: KPeriod.SIXTY_MIN,
       [Period.DAY]: KPeriod.DAILY,
       // Note: KPeriod only supports up to daily
       [Period.WEEK]: KPeriod.DAILY,

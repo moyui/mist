@@ -144,13 +144,11 @@ describe('EastMoneySource', () => {
       expect(service.isSupportedPeriod(Period.THIRTY)).toBe(true);
       expect(service.isSupportedPeriod(Period.SIXTY)).toBe(true);
       expect(service.isSupportedPeriod(Period.DAY)).toBe(true);
+      // WEEK, MONTH, QUARTER, YEAR map to daily and are supported
       expect(service.isSupportedPeriod(Period.WEEK)).toBe(true);
       expect(service.isSupportedPeriod(Period.MONTH)).toBe(true);
-    });
-
-    it('should return false for unsupported periods', () => {
-      expect(service.isSupportedPeriod(Period.QUARTER)).toBe(false);
-      expect(service.isSupportedPeriod(Period.YEAR)).toBe(false);
+      expect(service.isSupportedPeriod(Period.QUARTER)).toBe(true);
+      expect(service.isSupportedPeriod(Period.YEAR)).toBe(true);
     });
   });
 
@@ -159,14 +157,11 @@ describe('EastMoneySource', () => {
       expect(service.getPeriodFormat(Period.One)).toBe('1');
       expect(service.getPeriodFormat(Period.FIVE)).toBe('5');
       expect(service.getPeriodFormat(Period.DAY)).toBe('daily');
-      expect(service.getPeriodFormat(Period.WEEK)).toBe('weekly');
-      expect(service.getPeriodFormat(Period.MONTH)).toBe('monthly');
-    });
-
-    it('should throw error for unsupported period', () => {
-      expect(() => service.getPeriodFormat(Period.QUARTER)).toThrow(
-        `Data source ef does not support period quarterly`,
-      );
+      // WEEK, MONTH, QUARTER, YEAR all map to 'daily' in EastMoney
+      expect(service.getPeriodFormat(Period.WEEK)).toBe('daily');
+      expect(service.getPeriodFormat(Period.MONTH)).toBe('daily');
+      expect(service.getPeriodFormat(Period.QUARTER)).toBe('daily');
+      expect(service.getPeriodFormat(Period.YEAR)).toBe('daily');
     });
   });
 });

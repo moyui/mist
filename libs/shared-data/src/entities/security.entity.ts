@@ -9,7 +9,7 @@ import {
 import { SecurityType } from '../enums/security-type.enum';
 import { SecurityStatus } from '../enums/security-status.enum';
 import { SecuritySourceConfig } from './security-source-config.entity';
-import { MarketDataBar } from './market-data-bar.entity';
+import { K } from './k.entity';
 
 @Entity({ name: 'securities' })
 export class Security {
@@ -55,8 +55,8 @@ export class Security {
   @OneToMany(() => SecuritySourceConfig, (config) => config.security)
   sourceConfigs: SecuritySourceConfig[];
 
-  @OneToMany(() => MarketDataBar, (bar) => bar.security)
-  marketDataBars: MarketDataBar[];
+  @OneToMany(() => K, (bar) => bar.security)
+  ks: K[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1,13 +1,13 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { QueryBarsDto } from './dto/query-bars.dto';
-import { MarketDataService } from './market-data.service';
+import { KService } from './k.service';
 import { BarsVo } from './vo/bars.vo';
 
 @ApiTags('market-data')
 @Controller('market-data')
-export class MarketDataController {
-  constructor(private readonly marketDataService: MarketDataService) {}
+export class KController {
+  constructor(private readonly kService: KService) {}
 
   @Post('bars')
   @ApiOperation({
@@ -22,7 +22,7 @@ export class MarketDataController {
     type: [BarsVo],
   })
   async queryBars(@Body() queryBarsDto: QueryBarsDto): Promise<BarsVo[]> {
-    const bars = await this.marketDataService.findBarsById(queryBarsDto);
+    const bars = await this.kService.findBarsById(queryBarsDto);
     return bars.map((bar) => ({
       id: bar.id,
       highest: bar.high,
