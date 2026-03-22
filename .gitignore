@@ -68,3 +68,6 @@ scripts
 
 #git worktrees
 .worktrees
+#atkools
+aktools*
+aktools_*.log
