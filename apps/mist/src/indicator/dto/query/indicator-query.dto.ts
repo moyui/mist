@@ -1,5 +1,5 @@
 import { DataSource, KPeriod } from '@app/shared-data';
-import { IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 
 /**
  * Unified query DTO for all indicator endpoints
@@ -26,10 +26,22 @@ export class IndicatorQueryDto {
   @IsNotEmpty({
     message: '开始日期不能为空，格式为13位时间戳',
   })
-  startDate!: string;
+  @IsNumber(
+    {},
+    {
+      message: '开始日期必须是13位时间戳数字',
+    },
+  )
+  startDate!: number;
 
   @IsNotEmpty({
     message: '结束日期不能为空，格式为13位时间戳',
   })
-  endDate!: string;
+  @IsNumber(
+    {},
+    {
+      message: '结束日期必须是13位时间戳数字',
+    },
+  )
+  endDate!: number;
 }

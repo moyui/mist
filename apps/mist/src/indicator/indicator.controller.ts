@@ -3,16 +3,13 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { DataService } from '../data/data.service';
-import { KDto } from './dto/k.dto';
-import { KDJDto } from './dto/kdj.dto';
-import { MACDDto } from './dto/macd.dto';
-import { RSIDto } from './dto/rsi.dto';
+import { IndicatorQueryDto } from './dto/query/indicator-query.dto';
 import { RunKDJDto } from './dto/run-kdj.dto';
 import { IndicatorService } from './indicator.service';
-import { KVo } from './vo/k.vo';
 import { KDJVo } from './vo/kdj.vo';
 import { MACDVo } from './vo/macd.vo';
 import { RSIVo } from './vo/rsi.vo';
+import { KVo } from './vo/k.vo';
 
 export function formatIndicator(
   begIndex: number,
@@ -45,28 +42,22 @@ export class IndicatorController {
       'Returns array of MACD values with MACD line, signal line, and histogram',
     type: [MACDVo],
   })
-  async macd(@Body() MACDDto: MACDDto): Promise<MACDVo[]> {
+  async macd(@Body() queryDto: IndicatorQueryDto): Promise<MACDVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
-      MACDDto.startDate,
+      queryDto.startDate,
     );
-    const endDate = this.timezoneService.convertTimestamp2Date(MACDDto.endDate);
-    let data = [] as any[];
-    if (MACDDto.daily) {
-      data = await this.dataService.findIndexDailyById({
-        symbol: MACDDto.symbol,
-        code: MACDDto.code,
-        startDate,
-        endDate,
-      });
-    }
-    if (MACDDto.period) {
-      data = await this.dataService.findIndexPeriodById({
-        symbol: MACDDto.symbol,
-        period: MACDDto.period,
-        startDate,
-        endDate,
-      });
-    }
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
+
+    const data = await this.dataService.findBars({
+      symbol: queryDto.symbol,
+      period: queryDto.period,
+      startDate,
+      endDate,
+      source: queryDto.source,
+    });
+
     const macdResult = await this.indicatorService.runMACD(
       data.map((item) => item.close),
     );
@@ -79,7 +70,7 @@ export class IndicatorController {
         index,
         macdResult.histogram,
       ),
-      symbol: item.code,
+      symbol: item.security.code,
       time: item.timestamp,
       close: item.close,
     }));
@@ -97,34 +88,26 @@ export class IndicatorController {
     description: 'Returns array of KDJ values with K, D, and J lines',
     type: [KDJVo],
   })
-  async kdj(@Body() KDJDto: KDJDto): Promise<KDJVo[]> {
+  async kdj(@Body() queryDto: IndicatorQueryDto): Promise<KDJVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
-      KDJDto.startDate,
+      queryDto.startDate,
     );
-    const endDate = this.timezoneService.convertTimestamp2Date(KDJDto.endDate);
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
 
-    let data = [] as any[];
+    const data = await this.dataService.findBars({
+      symbol: queryDto.symbol,
+      period: queryDto.period,
+      startDate,
+      endDate,
+      source: queryDto.source,
+    });
 
-    if (KDJDto.daily) {
-      data = await this.dataService.findIndexDailyById({
-        symbol: KDJDto.symbol,
-        code: KDJDto.code,
-        startDate,
-        endDate,
-      });
-    }
-    if (KDJDto.period) {
-      data = await this.dataService.findIndexPeriodById({
-        symbol: KDJDto.symbol,
-        period: KDJDto.period,
-        startDate,
-        endDate,
-      });
-    }
     const KDJParams = data.reduce<RunKDJDto>(
       (prev, cur) => {
-        prev.high.push(cur.highest);
-        prev.low.push(cur.lowest);
+        prev.high.push(cur.high);
+        prev.low.push(cur.low);
         prev.close.push(cur.close);
         return prev;
       },
@@ -143,7 +126,7 @@ export class IndicatorController {
       k: formatIndicator(kdjResult.begIndex, index, kdjResult.K),
       d: formatIndicator(kdjResult.begIndex, index, kdjResult.D),
       j: formatIndicator(kdjResult.begIndex, index, kdjResult.J),
-      symbol: item.code,
+      symbol: item.security.code,
       time: item.timestamp,
       close: item.close,
     }));
@@ -161,37 +144,29 @@ export class IndicatorController {
     description: 'Returns array of RSI values (0-100 range)',
     type: [RSIVo],
   })
-  async rsi(@Body() RSIDto: RSIDto): Promise<RSIVo[]> {
+  async rsi(@Body() queryDto: IndicatorQueryDto): Promise<RSIVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
-      RSIDto.startDate,
+      queryDto.startDate,
     );
-    const endDate = this.timezoneService.convertTimestamp2Date(RSIDto.endDate);
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
 
-    let data = [] as any[];
+    const data = await this.dataService.findBars({
+      symbol: queryDto.symbol,
+      period: queryDto.period,
+      startDate,
+      endDate,
+      source: queryDto.source,
+    });
 
-    if (RSIDto.daily) {
-      data = await this.dataService.findIndexDailyById({
-        symbol: RSIDto.symbol,
-        code: RSIDto.code,
-        startDate,
-        endDate,
-      });
-    }
-    if (RSIDto.period) {
-      data = await this.dataService.findIndexPeriodById({
-        symbol: RSIDto.symbol,
-        period: RSIDto.period,
-        startDate,
-        endDate,
-      });
-    }
     const rsiResult = await this.indicatorService.runRSI(
       data.map((item) => item.close),
     );
 
     return data.map((item, index) => ({
       rsi: formatIndicator(rsiResult.begIndex, index, rsiResult.rsi),
-      symbol: item.code,
+      symbol: item.security.code,
       time: item.timestamp,
       close: item.close,
     }));
@@ -210,38 +185,29 @@ export class IndicatorController {
       'Returns array of K-line data with open, high, low, close, and volume',
     type: [KVo],
   })
-  async k(@Body() KDto: KDto): Promise<KVo[]> {
+  async k(@Body() queryDto: IndicatorQueryDto): Promise<KVo[]> {
     const startDate = this.timezoneService.convertTimestamp2Date(
-      KDto.startDate,
+      queryDto.startDate,
     );
-    const endDate = this.timezoneService.convertTimestamp2Date(KDto.endDate);
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
 
-    let data = [] as any[];
-
-    if (KDto.daily) {
-      data = await this.dataService.findIndexDailyById({
-        symbol: KDto.symbol,
-        code: KDto.code,
-        startDate,
-        endDate,
-      });
-    }
-    if (KDto.period) {
-      data = await this.dataService.findIndexPeriodById({
-        symbol: KDto.symbol,
-        period: KDto.period,
-        startDate,
-        endDate,
-      });
-    }
+    const data = await this.dataService.findBars({
+      symbol: queryDto.symbol,
+      period: queryDto.period,
+      startDate,
+      endDate,
+      source: queryDto.source,
+    });
 
     return data.map((item) => ({
       id: item.id,
-      highest: item.highest,
-      lowest: item.lowest,
+      highest: item.high,
+      lowest: item.low,
       open: item.open,
       close: item.close,
-      symbol: item.code,
+      symbol: item.security.code,
       time: item.timestamp,
       amount: item.amount,
     }));
