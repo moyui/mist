@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TdxSource } from './tdx.source';
 import { AxiosInstance } from 'axios';
-import { KLineFetchParams } from '../data-collector';
+import { KLineFetchParams } from '../collector/interfaces/source-fetcher.interface';
 import { Period } from '../chan/enums/period.enum';
-import { UtilsService } from '@app/utils';
+import { UtilsService, PeriodMappingService } from '@app/utils';
+import { KPeriod } from '@app/shared-data';
 
 describe('TdxSource', () => {
   let service: TdxSource;
@@ -21,6 +22,29 @@ describe('TdxSource', () => {
           useFactory: () => ({
             createAxiosInstance: jest.fn(() => mockAxiosInstance),
           }),
+        },
+        {
+          provide: PeriodMappingService,
+          useValue: {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            toSourceFormat: jest.fn((kPeriod: KPeriod, _source) => {
+              // Map KPeriod to TDX format, throw error for unsupported periods
+              if (kPeriod === KPeriod.ONE_MIN) return '1m';
+              if (kPeriod === KPeriod.FIVE_MIN) return '5m';
+              if (kPeriod === KPeriod.DAILY) return '1d';
+              throw new Error(
+                `Data source ${_source} does not support period ${kPeriod}`,
+              );
+            }),
+            isSupported: jest.fn((kPeriod: KPeriod) => {
+              // TDX only supports: ONE_MIN, FIVE_MIN, DAILY
+              return (
+                kPeriod === KPeriod.ONE_MIN ||
+                kPeriod === KPeriod.FIVE_MIN ||
+                kPeriod === KPeriod.DAILY
+              );
+            }),
+          },
         },
       ],
     }).compile();

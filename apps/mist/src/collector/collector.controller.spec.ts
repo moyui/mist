@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CollectorController } from './data-collector.controller';
-import { CollectorService } from './data-collector.service';
+import { CollectorController } from './collector.controller';
+import { CollectorService } from './collector.service';
 import { CollectKLineDto } from './dto/collect-kline.dto';
 import { Period } from '../chan/enums/period.enum';
 import { NotFoundException } from '@nestjs/common';

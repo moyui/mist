@@ -3,6 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DataMcpService } from './data-mcp.service';
 import { Security, K, KPeriod } from '@app/shared-data';
+import { DataSourceService } from '@app/utils';
+import { DataSource } from '@app/shared-data';
 
 describe('DataMcpService', () => {
   let service: DataMcpService;
@@ -53,6 +55,24 @@ describe('DataMcpService', () => {
           provide: getRepositoryToken(K),
           useValue: {
             createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: DataSourceService,
+          useValue: {
+            select: jest.fn((source?: string) => {
+              if (!source) return DataSource.EAST_MONEY;
+              if (source === 'ef' || source === 'EAST_MONEY')
+                return DataSource.EAST_MONEY;
+              if (source === 'tdx' || source === 'TDX') return DataSource.TDX;
+              if (source === 'mqmt' || source === 'MINI_QMT')
+                return DataSource.MINI_QMT;
+              return DataSource.EAST_MONEY;
+            }),
+            selectOrFail: jest.fn(),
+            normalize: jest.fn(),
+            isValid: jest.fn(),
+            getDefault: jest.fn(() => DataSource.EAST_MONEY),
           },
         },
       ],

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CollectorService } from './data-collector.service';
+import { CollectorService } from './collector.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { Period } from '../chan/enums/period.enum';

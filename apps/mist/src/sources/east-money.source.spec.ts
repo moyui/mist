@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EastMoneySource } from './east-money.source';
 import { AxiosInstance } from 'axios';
-import { KLineFetchParams } from '../data-collector';
+import { KLineFetchParams } from '../collector/interfaces/source-fetcher.interface';
 import { Period } from '../chan/enums/period.enum';
-import { UtilsService } from '@app/utils';
+import { UtilsService, PeriodMappingService } from '@app/utils';
+import { KPeriod } from '@app/shared-data';
 
 describe('EastMoneySource', () => {
   let service: EastMoneySource;
@@ -22,6 +23,26 @@ describe('EastMoneySource', () => {
           useFactory: () => ({
             createAxiosInstance: jest.fn(() => mockAxiosInstance),
           }),
+        },
+        {
+          provide: PeriodMappingService,
+          useValue: {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            toSourceFormat: jest.fn((kPeriod: KPeriod) => {
+              // Map KPeriod to East Money format
+              if (kPeriod === KPeriod.ONE_MIN) return '1';
+              if (kPeriod === KPeriod.FIVE_MIN) return '5';
+              if (kPeriod === KPeriod.FIFTEEN_MIN) return '15';
+              if (kPeriod === KPeriod.THIRTY_MIN) return '30';
+              if (kPeriod === KPeriod.SIXTY_MIN) return '60';
+              if (kPeriod === KPeriod.DAILY) return 'daily';
+              return '1';
+            }),
+            isSupported: jest.fn(() => {
+              // East Money supports all periods
+              return true;
+            }),
+          },
         },
       ],
     }).compile();
