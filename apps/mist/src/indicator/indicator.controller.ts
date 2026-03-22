@@ -4,12 +4,21 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { DataService } from '../data/data.service';
 import { IndicatorQueryDto } from './dto/query/indicator-query.dto';
-import { RunKDJDto } from './dto/run-kdj.dto';
 import { IndicatorService } from './indicator.service';
 import { KDJVo } from './vo/kdj.vo';
 import { MACDVo } from './vo/macd.vo';
 import { RSIVo } from './vo/rsi.vo';
 import { KVo } from './vo/k.vo';
+
+// Internal interface for KDJ calculation
+interface RunKDJDto {
+  high: number[];
+  low: number[];
+  close: number[];
+  period?: number;
+  kSmoothing?: number;
+  dSmoothing?: number;
+}
 
 export function formatIndicator(
   begIndex: number,

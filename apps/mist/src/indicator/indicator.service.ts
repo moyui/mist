@@ -5,10 +5,36 @@ import {
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
-import { RunADXDto } from './dto/run-adx.dto';
-import { RunATRDto } from './dto/run-atr.dto';
-import { RunDualMADto } from './dto/run-dualma.dto';
-import { RunKDJDto } from './dto/run-kdj.dto';
+
+// Internal interfaces for indicator calculations
+interface RunKDJDto {
+  high: number[];
+  low: number[];
+  close: number[];
+  period?: number;
+  kSmoothing?: number;
+  dSmoothing?: number;
+}
+
+interface RunADXDto {
+  high: number[];
+  low: number[];
+  close: number[];
+  period?: number;
+}
+
+interface RunATRDto {
+  high: number[];
+  low: number[];
+  close: number[];
+  period?: number;
+}
+
+interface RunDualMADto {
+  close: number[];
+  shortPeriod?: number;
+  longPeriod?: number;
+}
 
 @Injectable()
 export class IndicatorService implements OnModuleInit {
