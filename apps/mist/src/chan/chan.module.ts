@@ -6,9 +6,10 @@ import { BiService } from './services/bi.service';
 import { ChannelService } from './services/channel.service';
 import { KMergeService } from './services/k-merge.service';
 import { TrendService } from './services/trend.service';
+import { IndicatorModule } from '../indicator/indicator.module';
 
 @Module({
-  imports: [UtilsModule],
+  imports: [UtilsModule, IndicatorModule],
   controllers: [ChanController],
   providers: [
     ChanService,

@@ -8,7 +8,7 @@ import { MergeKDto } from './dto/merge-k.dto';
 import { ChanQueryDto } from './dto/query/chan-query.dto';
 import { ChannelService } from './services/channel.service';
 import { KMergeService } from './services/k-merge.service';
-import { DataService } from '../data/data.service';
+import { IndicatorService } from '../indicator/indicator.service';
 import { PeriodMappingService } from '@app/utils';
 import { KVo } from '../indicator/vo/k.vo';
 
@@ -19,7 +19,7 @@ export class ChanController {
     private readonly chanService: ChanService,
     private readonly kMergeService: KMergeService,
     private readonly channelService: ChannelService,
-    private readonly dataService: DataService,
+    private readonly indicatorService: IndicatorService,
     private readonly periodMappingService: PeriodMappingService,
   ) {}
 
@@ -110,8 +110,8 @@ export class ChanController {
       ? new Date(chanQueryDto.endDate)
       : new Date();
 
-    // Fetch K-line data using DataService
-    const kEntities = await this.dataService.findBars({
+    // Fetch K-line data using IndicatorService
+    const kEntities = await this.indicatorService.findKData({
       symbol: chanQueryDto.symbol,
       period: kPeriod,
       startDate,

@@ -2,7 +2,6 @@ import { TimezoneService } from '@app/timezone';
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { DataService } from '../data/data.service';
 import { IndicatorQueryDto } from './dto/query/indicator-query.dto';
 import { IndicatorService } from './indicator.service';
 import { KDJVo } from './vo/kdj.vo';
@@ -34,7 +33,6 @@ export function formatIndicator(
 export class IndicatorController {
   constructor(
     private readonly indicatorService: IndicatorService,
-    private readonly dataService: DataService,
     private readonly timezoneService: TimezoneService,
   ) {}
 
@@ -59,7 +57,7 @@ export class IndicatorController {
       queryDto.endDate,
     );
 
-    const data = await this.dataService.findBars({
+    const data = await this.indicatorService.findKData({
       symbol: queryDto.symbol,
       period: queryDto.period,
       startDate,
@@ -105,7 +103,7 @@ export class IndicatorController {
       queryDto.endDate,
     );
 
-    const data = await this.dataService.findBars({
+    const data = await this.indicatorService.findKData({
       symbol: queryDto.symbol,
       period: queryDto.period,
       startDate,
@@ -161,7 +159,7 @@ export class IndicatorController {
       queryDto.endDate,
     );
 
-    const data = await this.dataService.findBars({
+    const data = await this.indicatorService.findKData({
       symbol: queryDto.symbol,
       period: queryDto.period,
       startDate,
@@ -202,7 +200,7 @@ export class IndicatorController {
       queryDto.endDate,
     );
 
-    const data = await this.dataService.findBars({
+    const data = await this.indicatorService.findKData({
       symbol: queryDto.symbol,
       period: queryDto.period,
       startDate,
