@@ -4,19 +4,19 @@ export class RunKDJDto {
   @IsNotEmpty({
     message: '最高价不能为空',
   })
-  high: number[];
+  high!: number[];
 
   @IsNotEmpty({
     message: '最低价不能为空',
   })
-  low: number[];
+  low!: number[];
 
   @IsNotEmpty({
     message: '收盘价不能为空',
   })
-  close: number[];
+  close!: number[];
 
-  period?: number; // 周期
-  kSmoothing?: number;
-  dSmoothing?: number;
+  period!: number; // 周期
+  kSmoothing!: number;
+  dSmoothing!: number;
 }

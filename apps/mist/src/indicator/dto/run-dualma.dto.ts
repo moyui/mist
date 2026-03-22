@@ -4,9 +4,9 @@ export class RunDualMADto {
   @IsNotEmpty({
     message: '收盘价不能为空',
   })
-  close: number[];
+  close!: number[];
 
-  shortPeriod?: number;
+  shortPeriod!: number;
 
-  longPeriod?: number;
+  longPeriod!: number;
 }
