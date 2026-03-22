@@ -52,6 +52,13 @@ export const mistEnvSchema = commonEnvSchema.append({
   redis_server_host: Joi.string().hostname().default('localhost'),
   redis_server_port: Joi.number().port().default(6379),
   redis_server_db: Joi.number().default(0),
+
+  // Data source configuration
+  // Accepts enum values ('ef', 'tdx', 'mqmt') or enum keys ('EAST_MONEY', 'TDX', 'MINI_QMT')
+  DEFAULT_DATA_SOURCE: Joi.string()
+    .valid('ef', 'tdx', 'mqmt', 'EAST_MONEY', 'TDX', 'MINI_QMT')
+    .default('ef')
+    .description('Default data source for queries (enum value or key)'),
 });
 
 /**
