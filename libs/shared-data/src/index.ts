@@ -11,4 +11,3 @@ export * from './enums/security-status.enum';
 export * from './enums/security-type.enum';
 export * from './shared-data.module';
 export * from './shared-data.service';
-export * from './utils/period-mapping.util';

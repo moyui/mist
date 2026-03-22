@@ -1,15 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ISourceFetcher, KLineFetchParams, KLineData } from '../data-collector';
 import { AxiosInstance } from 'axios';
-import { UtilsService } from '@app/utils';
-import { PeriodMapping, DataSource, KPeriod } from '@app/shared-data';
+import { UtilsService, PeriodMappingService } from '@app/utils';
+import { DataSource, KPeriod } from '@app/shared-data';
 import { Period } from '../chan/enums/period.enum';
 
 @Injectable()
 export class EastMoneySource implements ISourceFetcher {
   private readonly axios: AxiosInstance;
 
-  constructor(private readonly utilsService: UtilsService) {
+  constructor(
+    private readonly utilsService: UtilsService,
+    private readonly periodMappingService: PeriodMappingService,
+  ) {
     this.axios = this.utilsService.createAxiosInstance({
       baseURL: 'http://127.0.0.1:8080',
       timeout: 30000,
@@ -39,7 +42,7 @@ export class EastMoneySource implements ISourceFetcher {
 
     // Map the period to East Money format
     const klinePeriod = this.periodToKLinePeriod(period);
-    const periodFormat = PeriodMapping.toSourceFormat(
+    const periodFormat = this.periodMappingService.toSourceFormat(
       klinePeriod,
       DataSource.EAST_MONEY,
     );
@@ -83,11 +86,17 @@ export class EastMoneySource implements ISourceFetcher {
 
   isSupportedPeriod(period: Period): boolean {
     const klinePeriod = this.periodToKLinePeriod(period);
-    return PeriodMapping.isSupported(klinePeriod, DataSource.EAST_MONEY);
+    return this.periodMappingService.isSupported(
+      klinePeriod,
+      DataSource.EAST_MONEY,
+    );
   }
 
   getPeriodFormat(period: Period): string {
     const klinePeriod = this.periodToKLinePeriod(period);
-    return PeriodMapping.toSourceFormat(klinePeriod, DataSource.EAST_MONEY);
+    return this.periodMappingService.toSourceFormat(
+      klinePeriod,
+      DataSource.EAST_MONEY,
+    );
   }
 }
