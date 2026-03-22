@@ -3,12 +3,12 @@ import {
   IsEnum,
   IsDate,
   IsDecimal,
-  IsBigInt,
   IsOptional,
   Min,
+  IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { KPeriod, DataSource } from '../enums';
+import { KPeriod, DataSource } from '@app/shared-data';
 
 export class SaveMarketDataDto {
   @IsNotEmpty({
@@ -100,10 +100,10 @@ export class SaveMarketDataDto {
   @IsNotEmpty({
     message: '成交量不能为空',
   })
-  @IsBigInt(
+  @IsNumber(
     {},
     {
-      message: '成交量必须是有效的整数',
+      message: '成交量必须是有效的数字',
     },
   )
   @Min(0, {

@@ -6,7 +6,7 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
-import { SecurityType, SecurityStatus } from '../enums';
+import { SecurityType, SecurityStatus } from '@app/shared-data';
 
 export class SaveSecurityDto {
   @IsNotEmpty({

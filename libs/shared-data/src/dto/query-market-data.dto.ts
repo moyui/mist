@@ -7,7 +7,7 @@ import {
   IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { KPeriod, DataSource } from '../enums';
+import { KPeriod, DataSource } from '@app/shared-data';
 
 export class QueryMarketDataDto {
   @IsNotEmpty({
