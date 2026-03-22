@@ -2,11 +2,16 @@ import { K, Security } from '@app/shared-data';
 import { Module } from '@nestjs/common';
 import { TimezoneModule } from '@app/timezone';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UtilsModule } from '@app/utils';
 import { IndicatorController } from './indicator.controller';
 import { IndicatorService } from './indicator.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([K, Security]), TimezoneModule],
+  imports: [
+    TypeOrmModule.forFeature([K, Security]),
+    UtilsModule,
+    TimezoneModule,
+  ],
   controllers: [IndicatorController],
   providers: [IndicatorService],
   exports: [IndicatorService],
