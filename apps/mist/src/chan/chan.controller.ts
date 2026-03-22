@@ -1,4 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UseInterceptors,
+  UseFilters,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { ChanService } from './chan.service';
@@ -11,9 +17,13 @@ import { KMergeService } from './services/k-merge.service';
 import { IndicatorService } from '../indicator/indicator.service';
 import { PeriodMappingService } from '@app/utils';
 import { KVo } from '../indicator/vo/k.vo';
+import { TransformInterceptor } from '../interceptors/transform.interceptor';
+import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 
 @ApiTags('chan')
 @Controller('chan')
+@UseInterceptors(TransformInterceptor)
+@UseFilters(AllExceptionsFilter)
 export class ChanController {
   constructor(
     private readonly chanService: ChanService,
