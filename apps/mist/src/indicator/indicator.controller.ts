@@ -132,6 +132,9 @@ export class IndicatorController {
         high: [],
         low: [],
         close: [],
+        period: 14,
+        kSmoothing: 3,
+        dSmoothing: 3,
       },
     );
     const kdjResult = await this.indicatorService.runKDJ(KDJParams);
