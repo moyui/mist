@@ -8,6 +8,7 @@ import { ScheduleController } from './schedule.controller';
 import { ScheduleService } from './schedule.service';
 import { TaskModule } from './task/task.module';
 import { scheduleEnvSchema } from '@app/config';
+import { UtilsModule } from '@app/utils';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { scheduleEnvSchema } from '@app/config';
       inject: [ConfigService],
     }),
     NestScheduleModule.forRoot(),
+    UtilsModule,
     RunModule,
     TaskModule,
   ],
