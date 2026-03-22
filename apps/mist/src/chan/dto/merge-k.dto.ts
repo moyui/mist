@@ -5,5 +5,5 @@ export class MergeKDto {
   @IsNotEmpty({
     message: 'K线数据不能为空',
   })
-  k: KVo[];
+  k!: KVo[];
 }

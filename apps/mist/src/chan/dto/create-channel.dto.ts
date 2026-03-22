@@ -5,5 +5,5 @@ export class CreateChannelDto {
   @IsNotEmpty({
     message: '笔数据不能为空',
   })
-  bi: BiVo[];
+  bi!: BiVo[];
 }

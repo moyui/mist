@@ -4,22 +4,22 @@ export class UpdateBiDto {
   @IsNotEmpty({
     message: '指数代码不能为空',
   })
-  symbol: string;
+  symbol!: string;
 
   @IsNotEmpty({
     message: '交易所不能为空',
   })
-  code: string;
+  code!: string;
 
   @IsNotEmpty({
     message: '开始时间不能为空',
   })
-  startDate: Date;
+  startDate!: Date;
 
   @IsNotEmpty({
     message: '结束时间不能为空',
   })
-  endDate: Date;
+  endDate!: Date;
 
-  period: number;
+  period!: number;
 }
