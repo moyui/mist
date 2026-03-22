@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { SecurityService } from './service';
-import { Stock } from './entity';
-import { InitStockDto, SourceType } from './dto/init-stock.dto';
+import { SecurityService } from './security.service';
+import { Security } from './security.entity';
+import { InitSecurityDto, SourceType, StockType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
@@ -22,7 +22,7 @@ describe('SecurityService', () => {
       providers: [
         SecurityService,
         {
-          provide: getRepositoryToken(Stock),
+          provide: getRepositoryToken(Security),
           useValue: mockSecurityRepository,
         },
       ],
@@ -42,11 +42,11 @@ describe('SecurityService', () => {
     });
   });
 
-  describe('initStock', () => {
-    const initStockDto: InitStockDto = {
+  describe('initSecurity', () => {
+    const initSecurityDto: InitSecurityDto = {
       code: '000001.SH',
       name: '平安银行',
-      type: SecurityType.STOCK,
+      type: StockType.STOCK,
       periods: [1, 5, 15],
       source: {
         type: SourceType.AKTOOLS,
@@ -60,7 +60,7 @@ describe('SecurityService', () => {
         id: 1,
         code: '000001.SH',
         name: '平安银行',
-        type: SecurityType.STOCK,
+        type: StockType.STOCK,
         periods: [1, 5, 15],
         source: {
           type: SourceType.AKTOOLS,
@@ -71,7 +71,7 @@ describe('SecurityService', () => {
         updatedAt: new Date(),
       });
 
-      const result = await service.initStock(initStockDto);
+      const result = await service.initSecurity(initSecurityDto);
 
       expect(result.code).toBe('000001.SH');
       expect(mockSecurityRepository.findOne).toHaveBeenCalledWith({
@@ -84,7 +84,7 @@ describe('SecurityService', () => {
         id: 1,
         code: '000001.SH',
         name: '平安银行',
-        type: SecurityType.STOCK,
+        type: StockType.STOCK,
         periods: [1, 5, 15],
         source: {
           type: SourceType.AKTOOLS,
@@ -94,14 +94,14 @@ describe('SecurityService', () => {
         updatedAt: new Date(),
       });
 
-      await expect(service.initStock(initStockDto)).rejects.toThrow(
+      await expect(service.initSecurity(initSecurityDto)).rejects.toThrow(
         ConflictException,
       );
     });
 
     it('should use default periods if not provided', async () => {
-      const dtoWithoutPeriods: InitStockDto = {
-        ...initStockDto,
+      const dtoWithoutPeriods: InitSecurityDto = {
+        ...initSecurityDto,
         periods: undefined,
       };
 
@@ -110,7 +110,7 @@ describe('SecurityService', () => {
         id: 1,
         code: '000001.SH',
         name: '平安银行',
-        type: SecurityType.STOCK,
+        type: StockType.STOCK,
         periods: [1, 5, 15, 30, 60, 1440],
         source: {
           type: SourceType.AKTOOLS,
@@ -120,7 +120,7 @@ describe('SecurityService', () => {
         updatedAt: new Date(),
       });
 
-      const result = await service.initStock(dtoWithoutPeriods);
+      const result = await service.initSecurity(dtoWithoutPeriods);
       expect(result.periods).toEqual([1, 5, 15, 30, 60, 1440]);
     });
   });
@@ -135,11 +135,11 @@ describe('SecurityService', () => {
       periods: [1, 5, 15, 30],
     };
 
-    const existingStock = {
+    const existingSecurity = {
       id: 1,
       code: '000001.SH',
       name: '平安银行',
-      type: SecurityType.STOCK,
+      type: StockType.STOCK,
       periods: [1, 5],
       source: {
         type: SourceType.AKTOOLS,
@@ -151,9 +151,9 @@ describe('SecurityService', () => {
     };
 
     it('should successfully add source to existing stock', async () => {
-      mockSecurityRepository.findOne.mockResolvedValue(existingStock);
+      mockSecurityRepository.findOne.mockResolvedValue(existingSecurity);
       mockSecurityRepository.save.mockResolvedValue({
-        ...existingStock,
+        ...existingSecurity,
         source: addSourceDto.source,
         periods: addSourceDto.periods,
       });
@@ -180,7 +180,7 @@ describe('SecurityService', () => {
         id: 1,
         code: '000001.SH',
         name: '平安银行',
-        type: SecurityType.STOCK,
+        type: StockType.STOCK,
         periods: [1, 5],
         source: {
           type: SourceType.AKTOOLS,
@@ -221,7 +221,7 @@ describe('SecurityService', () => {
         id: 1,
         code: '000001.SH',
         name: '平安银行',
-        type: SecurityType.STOCK,
+        type: StockType.STOCK,
         periods: [1, 5],
         source: {
           type: SourceType.AKTOOLS,
@@ -246,12 +246,12 @@ describe('SecurityService', () => {
   describe('findAll', () => {
     it('should return all active stocks', async () => {
       const stocks = [
-        mockInactiveStock(),
+        mockInactiveSecurity(),
         {
           id: 1,
           code: '000001.SH',
           name: '平安银行',
-          type: SecurityType.STOCK,
+          type: StockType.STOCK,
           periods: [1, 5],
           source: { type: SourceType.AKTOOLS },
           isActive: true,
@@ -262,7 +262,7 @@ describe('SecurityService', () => {
           id: 2,
           code: '399006.SZ',
           name: '创业板指',
-          type: SecurityType.INDEX,
+          type: StockType.INDEX,
           periods: [1, 5, 15, 30, 60, 1440],
           source: { type: SourceType.AKTOOLS },
           isActive: true,
@@ -281,11 +281,11 @@ describe('SecurityService', () => {
     });
   });
 
-  describe('deactivateStock', () => {
+  describe('deactivateSecurity', () => {
     it('should deactivate existing stock', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.deactivateStock('000001.SH');
+      await service.deactivateSecurity('000001.SH');
 
       expect(mockSecurityRepository.update).toHaveBeenCalledWith(
         { code: '000001.SH' },
@@ -296,17 +296,17 @@ describe('SecurityService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.deactivateStock('000001.SH')).rejects.toThrow(
+      await expect(service.deactivateSecurity('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  describe('activateStock', () => {
+  describe('activateSecurity', () => {
     it('should activate existing stock', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.activateStock('000001.SH');
+      await service.activateSecurity('000001.SH');
 
       expect(mockSecurityRepository.update).toHaveBeenCalledWith(
         { code: '000001.SH' },
@@ -317,18 +317,18 @@ describe('SecurityService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.activateStock('000001.SH')).rejects.toThrow(
+      await expect(service.activateSecurity('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  function mockInactiveStock() {
+  function mockInactiveSecurity() {
     return {
       id: 3,
       code: '600000.SH',
       name: '浦发银行',
-      type: SecurityType.STOCK,
+      type: StockType.STOCK,
       periods: [1, 5],
       source: { type: SourceType.AKTOOLS },
       isActive: false,

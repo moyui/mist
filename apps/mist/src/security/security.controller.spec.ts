@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SecurityController } from './controller';
-import { SecurityService } from './service';
-import { InitStockDto, SourceType } from './dto/init-stock.dto';
+import { SecurityController } from './security.controller';
+import { SecurityService } from './security.service';
+import { InitStockDto, SourceType, StockType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
@@ -40,7 +40,7 @@ describe('SecurityController', () => {
     const initStockDto: InitStockDto = {
       code: '000001.SH',
       name: '平安银行',
-      type: SecurityType.STOCK,
+      type: StockType.STOCK,
       source: {
         type: SourceType.AKTOOLS,
         config: '',
@@ -93,7 +93,7 @@ describe('SecurityController', () => {
       id: 1,
       code: '000001.SH',
       name: '平安银行',
-      type: SecurityType.STOCK,
+      type: StockType.STOCK,
       periods: [1, 5, 15, 30, 60, 1440],
       source: {
         type: SourceType.AKTOOLS,
