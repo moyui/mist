@@ -15,7 +15,7 @@ export class CollectKLineDto {
   })
   @IsNotEmpty()
   @IsString()
-  code: string;
+  code!: string;
 
   @ApiProperty({
     description: 'K-line period',
@@ -24,7 +24,7 @@ export class CollectKLineDto {
   })
   @IsNotEmpty()
   @IsEnum(Period)
-  period: Period;
+  period!: Period;
 
   @ApiProperty({
     description: 'Start date for data collection',
@@ -32,7 +32,7 @@ export class CollectKLineDto {
   })
   @IsNotEmpty()
   @IsDateString()
-  startDate: string;
+  startDate!: string;
 
   @ApiProperty({
     description:
@@ -42,24 +42,24 @@ export class CollectKLineDto {
   })
   @IsDateString()
   @IsOptional()
-  endDate?: string;
+  endDate!: string;
 }
 
 export class CollectKLineResponse {
   @ApiProperty({ description: 'Success status' })
-  success: boolean;
+  success!: boolean;
 
   @ApiProperty({ description: 'Response code' })
-  code: number;
+  code!: number;
 
   @ApiProperty({ description: 'Response message' })
-  message: string;
+  message!: string;
 
   @ApiProperty({ description: 'Number of records collected' })
-  recordCount: number;
+  recordCount!: number;
 
   @ApiProperty({ description: 'Collection status information' })
-  data: {
+  data!: {
     hasData: boolean;
     recordCount: number;
     lastRecord?: Date;
@@ -67,8 +67,8 @@ export class CollectKLineResponse {
   };
 
   @ApiProperty({ description: 'Timestamp' })
-  timestamp: string;
+  timestamp!: string;
 
   @ApiProperty({ description: 'Request ID' })
-  requestId: string;
+  requestId!: string;
 }

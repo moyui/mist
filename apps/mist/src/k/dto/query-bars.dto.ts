@@ -3,17 +3,17 @@ import { KPeriod } from '@app/shared-data';
 
 export class QueryBarsDto {
   @IsNotEmpty()
-  symbol: string;
+  symbol!: string;
 
   @IsNotEmpty()
   @IsEnum(KPeriod)
-  period: KPeriod;
+  period!: KPeriod;
 
   @IsNotEmpty()
   @IsDateString()
-  startDate: string;
+  startDate!: string;
 
   @IsNotEmpty()
   @IsDateString()
-  endDate: string;
+  endDate!: string;
 }

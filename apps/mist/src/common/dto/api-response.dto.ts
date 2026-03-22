@@ -2,22 +2,22 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class ApiResponseDto<T> {
   @ApiProperty({ example: true })
-  success: boolean;
+  success!: boolean;
 
   @ApiProperty({ example: 200 })
-  code: number;
+  code!: number;
 
   @ApiProperty({ example: 'SUCCESS' })
-  message: string;
+  message!: string;
 
   @ApiProperty({ required: false })
-  data?: T;
+  data!: T;
 
   @ApiProperty({ example: '2026-03-19T10:30:00.000Z' })
-  timestamp: string;
+  timestamp!: string;
 
   @ApiProperty({ example: 'http-1710819800000-abc123xyz' })
-  requestId: string;
+  requestId!: string;
 }
 
 export class ApiErrorDto {
@@ -25,14 +25,14 @@ export class ApiErrorDto {
   success: false;
 
   @ApiProperty({ example: 1001 })
-  code: number;
+  code!: number;
 
   @ApiProperty({ example: 'INVALID_PARAMETER' })
-  message: string;
+  message!: string;
 
   @ApiProperty({ example: '2026-03-19T10:30:00.000Z' })
-  timestamp: string;
+  timestamp!: string;
 
   @ApiProperty({ example: 'err-1710819800000-def456uvw' })
-  requestId: string;
+  requestId!: string;
 }

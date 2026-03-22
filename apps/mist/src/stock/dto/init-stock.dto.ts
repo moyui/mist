@@ -22,34 +22,34 @@ export enum SourceType {
 export class SourceConfig {
   @ApiProperty({ description: 'Source type', enum: SourceType })
   @IsEnum(SourceType)
-  type: SourceType;
+  type!: SourceType;
 
   @ApiProperty({
     description: 'Source-specific configuration',
     required: false,
   })
   @IsString()
-  config?: string;
+  config!: string;
 }
 
 export class InitStockDto {
   @ApiProperty({ description: 'Stock code (e.g., 000001.SH, 399006.SZ)' })
   @IsNotEmpty()
   @IsString()
-  code: string;
+  code!: string;
 
   @ApiProperty({ description: 'Stock name', required: false })
   @IsString()
-  name?: string;
+  name!: string;
 
   @ApiProperty({ description: 'Stock type', enum: StockType })
   @IsEnum(StockType)
-  type: StockType;
+  type!: StockType;
 
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   @IsArray()
   @IsNumber({}, { each: true })
-  periods?: number[];
+  periods!: number[];
 
   @ApiProperty({
     description: 'Source configuration',
@@ -57,14 +57,14 @@ export class InitStockDto {
   })
   @ValidateNested()
   @Type(() => SourceConfig)
-  source: SourceConfig;
+  source!: SourceConfig;
 }
 
 export class AddSourceDto {
   @ApiProperty({ description: 'Stock code (e.g., 000001.SH, 399006.SZ)' })
   @IsNotEmpty()
   @IsString()
-  code: string;
+  code!: string;
 
   @ApiProperty({
     description: 'Source configuration',
@@ -72,10 +72,10 @@ export class AddSourceDto {
   })
   @ValidateNested()
   @Type(() => SourceConfig)
-  source: SourceConfig;
+  source!: SourceConfig;
 
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   @IsArray()
   @IsNumber({}, { each: true })
-  periods?: number[];
+  periods!: number[];
 }

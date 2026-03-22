@@ -9,26 +9,26 @@ export enum SourceType {
 export class SourceConfig {
   @ApiProperty({ description: 'Source type', enum: SourceType })
   @IsEnum(SourceType)
-  type: SourceType;
+  type!: SourceType;
 
   @ApiProperty({
     description: 'Source-specific configuration',
     required: false,
   })
   @IsString()
-  config?: string;
+  config!: string;
 }
 
 export class AddSourceDto {
   @ApiProperty({ description: 'Stock code' })
   @IsNotEmpty()
   @IsString()
-  code: string;
+  code!: string;
 
   @ApiProperty({ description: 'Source configuration', type: SourceConfig })
-  source: SourceConfig;
+  source!: SourceConfig;
 
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   @IsArray()
-  periods?: number[];
+  periods!: number[];
 }
