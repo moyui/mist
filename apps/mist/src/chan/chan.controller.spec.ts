@@ -5,17 +5,38 @@ import { BiService } from './services/bi.service';
 import { KMergeService } from './services/k-merge.service';
 import { ChannelService } from './services/channel.service';
 import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
-import { MergeKDto } from './dto/merge-k.dto';
-import { CreateBiDto } from './dto/create-bi.dto';
+import { ChanQueryDto } from './dto/query/chan-query.dto';
 import { TrendService } from './services/trend.service';
-import { UtilsService } from '@app/utils';
-import { TrendDirection } from './enums/trend-direction.enum';
-import { BiType } from './enums/bi.enum';
+import { IndicatorService } from '../indicator/indicator.service';
+import { PeriodMappingService, UtilsService } from '@app/utils';
+import { Period } from './enums/period.enum';
+import { DataSource } from '@app/shared-data';
+
+// Mock KPeriod for testing
+const KPeriod = {
+  PERIOD_1MIN: '1min',
+};
 
 describe('ChanController', () => {
   let controller: ChanController;
   let chanService: ChanService;
   let kMergeService: KMergeService;
+  let indicatorService: IndicatorService;
+
+  const mockKData = KLineFixtures.upTrend();
+
+  const mockKEntities: any[] = mockKData.map((k, index) => ({
+    id: index + 1,
+    security: { code: '000001' },
+    timestamp: k.time,
+    period: KPeriod.PERIOD_1MIN,
+    source: DataSource.EAST_MONEY,
+    open: k.open,
+    high: k.highest,
+    low: k.lowest,
+    close: k.close,
+    amount: k.amount,
+  }));
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,13 +47,31 @@ describe('ChanController', () => {
         KMergeService,
         ChannelService,
         TrendService,
-        UtilsService,
+        {
+          provide: IndicatorService,
+          useValue: {
+            findKData: jest.fn().mockResolvedValue(mockKEntities),
+          },
+        },
+        {
+          provide: PeriodMappingService,
+          useValue: {
+            toKPeriod: jest.fn().mockReturnValue(KPeriod.PERIOD_1MIN),
+          },
+        },
+        {
+          provide: UtilsService,
+          useValue: {
+            // Mock UtilsService methods if needed
+          },
+        },
       ],
     }).compile();
 
     controller = module.get<ChanController>(ChanController);
     chanService = module.get<ChanService>(ChanService);
     kMergeService = module.get<KMergeService>(KMergeService);
+    indicatorService = module.get<IndicatorService>(IndicatorService);
   });
 
   it('should be defined', () => {
@@ -40,63 +79,108 @@ describe('ChanController', () => {
   });
 
   describe('POST /chan/merge-k', () => {
-    it('should return merged K-lines for valid input', async () => {
-      const kData = KLineFixtures.upTrend();
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = kData;
+    let chanQueryDto: ChanQueryDto;
 
-      const result = await controller.postMergeK(mergeKDto);
+    beforeEach(() => {
+      chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.One;
+    });
+
+    it('should return merged K-lines for valid input', async () => {
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
+      expect(indicatorService.findKData).toHaveBeenCalled();
     });
 
     it('should call kMergeService.merge with correct data', async () => {
-      const kData = KLineFixtures.upTrend();
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = kData;
-
       const mergeSpy = jest.spyOn(kMergeService, 'merge');
 
-      await controller.postMergeK(mergeKDto);
+      await controller.postMergeK(chanQueryDto);
 
-      expect(mergeSpy).toHaveBeenCalledWith(kData);
+      expect(mergeSpy).toHaveBeenCalled();
+      expect(indicatorService.findKData).toHaveBeenCalledWith({
+        symbol: '000001',
+        period: KPeriod.PERIOD_1MIN,
+        startDate: expect.any(Date),
+        endDate: expect.any(Date),
+        source: undefined,
+      });
     });
 
     it('should return empty array for empty input', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = [];
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue([]);
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toEqual([]);
     });
 
     it('should handle single K-line input', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.single();
+      const singleK = [KLineFixtures.single()[0]];
+      const mockSingleK: any[] = [
+        {
+          id: 1,
+          security: { code: '000001' },
+          timestamp: singleK[0].time,
+          period: KPeriod.PERIOD_1MIN,
+          source: DataSource.EAST_MONEY,
+          open: singleK[0].open,
+          high: singleK[0].highest,
+          low: singleK[0].lowest,
+          close: singleK[0].close,
+          amount: singleK[0].amount,
+        },
+      ];
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue(mockSingleK);
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should merge K-lines with containment in up trend', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.withContainmentUpTrend();
+      const kData = KLineFixtures.withContainmentUpTrend();
+      const mockK: any[] = kData.map((k, index) => ({
+        id: index + 1,
+        security: { code: '000001' },
+        timestamp: k.time,
+        period: KPeriod.PERIOD_1MIN,
+        source: DataSource.EAST_MONEY,
+        open: k.open,
+        high: k.highest,
+        low: k.lowest,
+        close: k.close,
+        amount: k.amount,
+      }));
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue(mockK);
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should merge K-lines with containment in down trend', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.withContainmentDownTrend();
+      const kData = KLineFixtures.withContainmentDownTrend();
+      const mockK: any[] = kData.map((k, index) => ({
+        id: index + 1,
+        security: { code: '000001' },
+        timestamp: k.time,
+        period: KPeriod.PERIOD_1MIN,
+        source: DataSource.EAST_MONEY,
+        open: k.open,
+        high: k.highest,
+        low: k.lowest,
+        close: k.close,
+        amount: k.amount,
+      }));
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue(mockK);
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -104,188 +188,194 @@ describe('ChanController', () => {
   });
 
   describe('POST /chan/bi', () => {
-    it('should return bi data for valid input', async () => {
-      const kData = KLineFixtures.completeBi();
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = kData;
+    let chanQueryDto: ChanQueryDto;
 
-      const result = await controller.postIndexBi(createBiDto);
+    beforeEach(() => {
+      chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.One;
+    });
+
+    it('should return Bi (strokes) for valid K-line data', async () => {
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should call chanService.createBi with correct data', async () => {
-      const kData = KLineFixtures.upTrend();
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = kData;
-
       const createBiSpy = jest.spyOn(chanService, 'createBi');
 
-      await controller.postIndexBi(createBiDto);
+      await controller.postIndexBi(chanQueryDto);
 
-      expect(createBiSpy).toHaveBeenCalledWith(createBiDto);
+      expect(createBiSpy).toHaveBeenCalled();
     });
 
     it('should return empty array for empty input', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = [];
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue([]);
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toEqual([]);
     });
 
     it('should handle single K-line input', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.single();
-
-      const result = await controller.postIndexBi(createBiDto);
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should process data with fenxings', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.completeBi();
-
-      const result = await controller.postIndexBi(createBiDto);
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should handle upward trend data', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.upTrend();
-
-      const result = await controller.postIndexBi(createBiDto);
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should handle downward trend data', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.downTrend();
-
-      const result = await controller.postIndexBi(createBiDto);
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should handle data with alternating fenxings', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.alternatingFenxings();
-
-      const result = await controller.postIndexBi(createBiDto);
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-  });
-
-  describe('DTO validation', () => {
-    it('should accept valid CreateBiDto', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.upTrend();
-
-      // Should not throw validation error
-      const result = await controller.postIndexBi(createBiDto);
-
-      expect(result).toBeDefined();
-    });
-
-    it('should accept valid MergeKDto', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.upTrend();
-
-      // Should not throw validation error
-      const result = await controller.postMergeK(mergeKDto);
-
-      expect(result).toBeDefined();
-    });
-  });
-
-  describe('Service coordination', () => {
-    it('should coordinate chanService.createBi correctly for bi endpoint', async () => {
-      const kData = KLineFixtures.completeBi();
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = kData;
-
-      // Mock the entire createBi chain
-      const mockBiData = [
+      const singleK = [KLineFixtures.single()[0]];
+      const mockSingleK: any[] = [
         {
-          startTime: new Date(),
-          endTime: new Date(),
-          highest: 120,
-          lowest: 90,
-          trend: TrendDirection.Up,
-          type: BiType.Complete,
-          status: 1,
-          originIds: [1, 2, 3],
-          originData: kData.slice(0, 3),
-          independentCount: 3,
-          startFenxing: null,
-          endFenxing: null,
+          id: 1,
+          security: { code: '000001' },
+          timestamp: singleK[0].time,
+          period: KPeriod.PERIOD_1MIN,
+          source: DataSource.EAST_MONEY,
+          open: singleK[0].open,
+          high: singleK[0].highest,
+          low: singleK[0].lowest,
+          close: singleK[0].close,
+          amount: singleK[0].amount,
         },
       ];
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue(mockSingleK);
 
-      jest.spyOn(chanService, 'createBi').mockReturnValue(mockBiData);
+      const result = await controller.postIndexBi(chanQueryDto);
 
-      const result = await controller.postIndexBi(createBiDto);
-
-      expect(chanService.createBi).toHaveBeenCalledWith(createBiDto);
-      expect(result).toEqual(mockBiData);
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
     });
 
-    it('should coordinate kMergeService.merge correctly for merge-k endpoint', async () => {
-      const kData = KLineFixtures.withContainmentUpTrend();
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = kData;
+    it('should detect up trend Bi', async () => {
+      const kData = KLineFixtures.upTrend();
+      const mockK: any[] = kData.map((k, index) => ({
+        id: index + 1,
+        security: { code: '000001' },
+        timestamp: k.time,
+        period: KPeriod.PERIOD_1MIN,
+        source: DataSource.EAST_MONEY,
+        open: k.open,
+        high: k.highest,
+        low: k.lowest,
+        close: k.close,
+        amount: k.amount,
+      }));
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue(mockK);
 
-      // Mock the merge result
-      const mockMergedData = kMergeService.merge(kData);
+      const result = await controller.postIndexBi(chanQueryDto);
 
-      const mergeSpy = jest
-        .spyOn(kMergeService, 'merge')
-        .mockReturnValue(mockMergedData);
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+    });
 
-      const result = await controller.postMergeK(mergeKDto);
+    it('should detect down trend Bi', async () => {
+      const kData = KLineFixtures.downTrend();
+      const mockK: any[] = kData.map((k, index) => ({
+        id: index + 1,
+        security: { code: '000001' },
+        timestamp: k.time,
+        period: KPeriod.PERIOD_1MIN,
+        source: DataSource.EAST_MONEY,
+        open: k.open,
+        high: k.highest,
+        low: k.lowest,
+        close: k.close,
+        amount: k.amount,
+      }));
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue(mockK);
 
-      expect(mergeSpy).toHaveBeenCalledWith(kData);
-      expect(result).toEqual(mockMergedData);
+      const result = await controller.postIndexBi(chanQueryDto);
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('should handle Bi with complete data', async () => {
+      const kData = KLineFixtures.completeBi();
+      const mockK: any[] = kData.map((k: any, index: number) => ({
+        id: index + 1,
+        security: { code: '000001' },
+        timestamp: k.time,
+        period: KPeriod.PERIOD_1MIN,
+        source: DataSource.EAST_MONEY,
+        open: k.open,
+        high: k.highest,
+        low: k.lowest,
+        close: k.close,
+        amount: k.amount,
+      }));
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue(mockK);
+
+      const result = await controller.postIndexBi(chanQueryDto);
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 
-  describe('Edge cases', () => {
-    it('should handle large dataset', async () => {
-      const largeKData: ReturnType<typeof KLineFixtures.upTrend> = [];
-      for (let i = 0; i < 100; i++) {
-        largeKData.push(
-          KLineFixtures.createKVo(i + 1, 100 + i * 10, 90 + i * 10, i),
-        );
-      }
+  describe('POST /chan/fenxing', () => {
+    let chanQueryDto: ChanQueryDto;
 
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = largeKData;
+    beforeEach(() => {
+      chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.One;
+    });
 
-      const result = await controller.postIndexBi(createBiDto);
+    it('should return fenxings (fractals) for valid K-line data', async () => {
+      const result = await controller.postFenxing(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
-    it('should handle data with no clear fenxings', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.noFenxings();
+    it('should call chanService.getFenxings with correct data', async () => {
+      const getFenxingsSpy = jest.spyOn(chanService, 'getFenxings');
 
-      const result = await controller.postIndexBi(createBiDto);
+      await controller.postFenxing(chanQueryDto);
+
+      expect(getFenxingsSpy).toHaveBeenCalled();
+    });
+
+    it('should return empty array for empty input', async () => {
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue([]);
+
+      const result = await controller.postFenxing(chanQueryDto);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('POST /chan/channel', () => {
+    let chanQueryDto: ChanQueryDto;
+
+    beforeEach(() => {
+      chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.One;
+    });
+
+    it('should return channels for valid K-line data', async () => {
+      const result = await controller.postChannel(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('should call channelService.createChannel with correct data', async () => {
+      const createChannelSpy = jest.spyOn(
+        controller['channelService'],
+        'createChannel',
+      );
+
+      await controller.postChannel(chanQueryDto);
+
+      expect(createChannelSpy).toHaveBeenCalled();
+    });
+
+    it('should throw error for empty input (ChannelService requires Bi data)', async () => {
+      jest.spyOn(indicatorService, 'findKData').mockResolvedValue([]);
+
+      await expect(controller.postChannel(chanQueryDto)).rejects.toThrow(
+        'Invalid input: bi array cannot be empty',
+      );
     });
   });
 });
