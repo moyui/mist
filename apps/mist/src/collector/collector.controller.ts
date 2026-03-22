@@ -15,15 +15,15 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { DataCollectorService } from './data-collector.service';
+import { CollectorService } from './collector.service';
 import { CollectKLineDto, CollectKLineResponse } from './dto/collect-kline.dto';
 import { Period } from '../chan/enums/period.enum';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 @ApiTags('data-collector')
 @Controller('data-collector')
-export class DataCollectorController {
-  constructor(private readonly dataCollectorService: DataCollectorService) {}
+export class CollectorController {
+  constructor(private readonly collectorService: CollectorService) {}
 
   @Post('collect')
   @HttpCode(HttpStatus.OK)
@@ -51,10 +51,10 @@ export class DataCollectorController {
       }
 
       // Collect data
-      await this.dataCollectorService.collectKLine(code, period, start, end);
+      await this.collectorService.collectKLine(code, period, start, end);
 
       // Get collection status
-      const status = await this.dataCollectorService.getCollectionStatus(
+      const status = await this.collectorService.getCollectionStatus(
         code,
         period,
         start,
@@ -121,7 +121,7 @@ export class DataCollectorController {
         throw new BadRequestException('Start date must be before end date');
       }
 
-      const status = await this.dataCollectorService.getCollectionStatus(
+      const status = await this.collectorService.getCollectionStatus(
         code,
         period,
         start,
@@ -168,7 +168,7 @@ export class DataCollectorController {
     @Param('period') period: Period,
   ) {
     try {
-      const removedCount = await this.dataCollectorService.removeDuplicateData(
+      const removedCount = await this.collectorService.removeDuplicateData(
         code,
         period,
       );

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DataCollectorService } from './data-collector.service';
+import { CollectorService } from './data-collector.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { Period } from '../chan/enums/period.enum';
@@ -32,13 +32,13 @@ const mockTdxSource = {
   getPeriodFormat: jest.fn(),
 };
 
-describe('DataCollectorService', () => {
-  let service: DataCollectorService;
+describe('CollectorService', () => {
+  let service: CollectorService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        DataCollectorService,
+        CollectorService,
         {
           provide: getRepositoryToken(K),
           useValue: mockKRepository,
@@ -58,7 +58,7 @@ describe('DataCollectorService', () => {
       ],
     }).compile();
 
-    service = module.get<DataCollectorService>(DataCollectorService);
+    service = module.get<CollectorService>(CollectorService);
   });
 
   afterEach(() => {

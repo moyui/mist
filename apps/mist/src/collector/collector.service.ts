@@ -16,7 +16,7 @@ import { TdxSource } from '../sources/tdx.source';
 import { Period } from '../chan/enums/period.enum';
 
 @Injectable()
-export class DataCollectorService {
+export class CollectorService {
   private sources: Map<DataSource, ISourceFetcher> = new Map();
 
   constructor(
