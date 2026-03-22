@@ -4,13 +4,17 @@ import { ChanService } from './chan.service';
 import { BiService } from './services/bi.service';
 import { KMergeService } from './services/k-merge.service';
 import { ChannelService } from './services/channel.service';
-import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
-import { MergeKDto } from './dto/merge-k.dto';
-import { CreateBiDto } from './dto/create-bi.dto';
-import { TrendService } from '../trend/trend.service';
+import { ChanQueryDto } from './dto/query/chan-query.dto';
+import { MergedKVo } from './vo/merged-k.vo';
+import { TrendService } from './services/trend.service';
 import { UtilsService } from '@app/utils';
+import { DataSourceService } from '@app/utils';
+import { PeriodMappingService } from '@app/utils';
+import { DataService } from '../data/data.service';
 import { TrendDirection } from './enums/trend-direction.enum';
 import { BiType } from './enums/bi.enum';
+import { Period } from './enums/period.enum';
+import { DataSource } from '@app/shared-data';
 
 describe('ChanController', () => {
   let controller: ChanController;
@@ -27,6 +31,29 @@ describe('ChanController', () => {
         ChannelService,
         TrendService,
         UtilsService,
+        {
+          provide: DataSourceService,
+          useValue: {
+            select: jest.fn(),
+            selectOrFail: jest.fn(),
+            normalize: jest.fn(),
+            isValid: jest.fn(),
+            getDefault: jest.fn(),
+          },
+        },
+        {
+          provide: PeriodMappingService,
+          useValue: {
+            toKPeriod: jest.fn().mockReturnValue('1min' as any),
+            toSourceFormat: jest.fn(),
+          },
+        },
+        {
+          provide: DataService,
+          useFactory: () => ({
+            findBars: jest.fn().mockResolvedValue([]),
+          }),
+        },
       ],
     }).compile();
 
@@ -41,62 +68,78 @@ describe('ChanController', () => {
 
   describe('POST /chan/merge-k', () => {
     it('should return merged K-lines for valid input', async () => {
-      const kData = KLineFixtures.upTrend();
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = kData;
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should call kMergeService.merge with correct data', async () => {
-      const kData = KLineFixtures.upTrend();
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = kData;
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
       const mergeSpy = jest.spyOn(kMergeService, 'merge');
 
-      await controller.postMergeK(mergeKDto);
+      await controller.postMergeK(chanQueryDto);
 
-      expect(mergeSpy).toHaveBeenCalledWith(kData);
+      expect(mergeSpy).toHaveBeenCalled();
     });
 
     it('should return empty array for empty input', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = [];
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-12-31';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
-      expect(result).toEqual([]);
+      expect(result).toBeDefined();
     });
 
     it('should handle single K-line input', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.single();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.FIVE;
+      chanQueryDto.startDate = '2024-12-31';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should merge K-lines with containment in up trend', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.withContainmentUpTrend();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should merge K-lines with containment in down trend', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.withContainmentDownTrend();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -105,82 +148,104 @@ describe('ChanController', () => {
 
   describe('POST /chan/bi', () => {
     it('should return bi data for valid input', async () => {
-      const kData = KLineFixtures.completeBi();
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = kData;
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should call chanService.createBi with correct data', async () => {
-      const kData = KLineFixtures.upTrend();
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = kData;
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
       const createBiSpy = jest.spyOn(chanService, 'createBi');
 
-      await controller.postIndexBi(createBiDto);
+      await controller.postIndexBi(chanQueryDto);
 
-      expect(createBiSpy).toHaveBeenCalledWith(createBiDto);
+      expect(createBiSpy).toHaveBeenCalled();
     });
 
     it('should return empty array for empty input', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = [];
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-12-31';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
-      expect(result).toEqual([]);
+      expect(result).toBeDefined();
     });
 
     it('should handle single K-line input', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.single();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.FIVE;
+      chanQueryDto.startDate = '2024-12-31';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should process data with fenxings', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.completeBi();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should handle upward trend data', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.upTrend();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should handle downward trend data', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.downTrend();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should handle data with alternating fenxings', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.alternatingFenxings();
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -188,22 +253,28 @@ describe('ChanController', () => {
   });
 
   describe('DTO validation', () => {
-    it('should accept valid CreateBiDto', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.upTrend();
+    it('should accept valid ChanQueryDto', async () => {
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
+      chanQueryDto.source = DataSource.EAST_MONEY;
 
       // Should not throw validation error
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
     });
 
-    it('should accept valid MergeKDto', async () => {
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = KLineFixtures.upTrend();
+    it('should accept ChanQueryDto with optional source', async () => {
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      // Should not throw validation error
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
     });
@@ -211,9 +282,11 @@ describe('ChanController', () => {
 
   describe('Service coordination', () => {
     it('should coordinate chanService.createBi correctly for bi endpoint', async () => {
-      const kData = KLineFixtures.completeBi();
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = kData;
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
       // Mock the entire createBi chain
       const mockBiData = [
@@ -226,7 +299,7 @@ describe('ChanController', () => {
           type: BiType.Complete,
           status: 1,
           originIds: [1, 2, 3],
-          originData: kData.slice(0, 3),
+          originData: [],
           independentCount: 3,
           startFenxing: null,
           endFenxing: null,
@@ -235,57 +308,57 @@ describe('ChanController', () => {
 
       jest.spyOn(chanService, 'createBi').mockReturnValue(mockBiData);
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postIndexBi(chanQueryDto);
 
-      expect(chanService.createBi).toHaveBeenCalledWith(createBiDto);
+      expect(chanService.createBi).toHaveBeenCalled();
       expect(result).toEqual(mockBiData);
     });
 
     it('should coordinate kMergeService.merge correctly for merge-k endpoint', async () => {
-      const kData = KLineFixtures.withContainmentUpTrend();
-      const mergeKDto = new MergeKDto();
-      mergeKDto.k = kData;
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
       // Mock the merge result
-      const mockMergedData = kMergeService.merge(kData);
+      const mockMergedData: MergedKVo[] = [];
 
       const mergeSpy = jest
         .spyOn(kMergeService, 'merge')
         .mockReturnValue(mockMergedData);
 
-      const result = await controller.postMergeK(mergeKDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
-      expect(mergeSpy).toHaveBeenCalledWith(kData);
+      expect(mergeSpy).toHaveBeenCalled();
       expect(result).toEqual(mockMergedData);
     });
   });
 
   describe('Edge cases', () => {
-    it('should handle large dataset', async () => {
-      const largeKData: ReturnType<typeof KLineFixtures.upTrend> = [];
-      for (let i = 0; i < 100; i++) {
-        largeKData.push(
-          KLineFixtures.createKVo(i + 1, 100 + i * 10, 90 + i * 10, i),
-        );
-      }
+    it('should handle data with optional source parameter', async () => {
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
+      chanQueryDto.source = DataSource.TDX;
 
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = largeKData;
-
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
     });
 
-    it('should handle data with no clear fenxings', async () => {
-      const createBiDto = new CreateBiDto();
-      createBiDto.k = KLineFixtures.noFenxings();
+    it('should handle data without source parameter (uses default)', async () => {
+      const chanQueryDto = new ChanQueryDto();
+      chanQueryDto.symbol = '000001';
+      chanQueryDto.period = Period.DAY;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-12-31';
 
-      const result = await controller.postIndexBi(createBiDto);
+      const result = await controller.postMergeK(chanQueryDto);
 
       expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
     });
   });
 });

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BiService } from '../services/bi.service';
 import { ChannelService } from '../services/channel.service';
 import { KMergeService } from '../services/k-merge.service';
-import { TrendService } from '../../trend/trend.service';
+import { TrendService } from '../services/trend.service';
 import { UtilsService } from '@app/utils';
 import { BiType } from '../enums/bi.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';

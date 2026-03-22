@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { KVo } from '../../indicator/vo/k.vo';
-import { TrendService } from '../../trend/trend.service';
+import { TrendService } from './trend.service';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import { MergedKVo } from '../vo/merged-k.vo';
 
