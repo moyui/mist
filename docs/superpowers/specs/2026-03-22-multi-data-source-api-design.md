@@ -254,7 +254,7 @@ POST /chan/channel
 export class ChanQueryDto {
   symbol!: string;
   source?: DataSource;          // NEW: Optional data source
-  period!: Period;
+  period!: KPeriod;            // Time period (using KPeriod for consistency)
   startDate?: string;
   endDate?: string;
 }
@@ -323,7 +323,14 @@ export class DataSourceService {
     @Inject(ConfigService) private configService: ConfigService,
   ) {
     const envDefault = this.configService.get<string>('DEFAULT_DATA_SOURCE');
-    this.defaultSource = this.select(envDefault);
+
+    // Validate and set default source
+    if (envDefault && this.isValid(envDefault)) {
+      this.defaultSource = this.select(envDefault);
+    } else {
+      // Fallback to EAST_MONEY if invalid or not specified
+      this.defaultSource = DataSource.EAST_MONEY;
+    }
   }
 
   /**
@@ -415,7 +422,16 @@ export class PeriodMappingService {
       [KPeriod.FIVE_MIN]: '5m',
       [KPeriod.DAILY]: '1d',
     },
-    [DataSource.MINI_QMT]: {},
+    [DataSource.MINI_QMT]: {
+      // Fallback to EAST_MONEY format for MQMT
+      // TODO: Update with MQMT-specific formats when available
+      [KPeriod.ONE_MIN]: '1',
+      [KPeriod.FIVE_MIN]: '5',
+      [KPeriod.FIFTEEN_MIN]: '15',
+      [KPeriod.THIRTY_MIN]: '30',
+      [KPeriod.SIXTY_MIN]: '60',
+      [KPeriod.DAILY]: 'daily',
+    },
   };
 
   /**
@@ -485,7 +501,7 @@ export class UtilsModule {}
 **Purpose:** Unified K-line query service with data source support.
 
 ```typescript
-import { K, Security, KPeriod } from '@app/shared-data';
+import { K, Security, KPeriod, DataSource } from '@app/shared-data';
 import { Injectable, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
@@ -507,7 +523,7 @@ export class DataService {
     period: KPeriod;
     startDate: Date;
     endDate: Date;
-    source?: string;  // Optional data source
+    source?: DataSource;  // Optional data source (enum type)
   }): Promise<K[]> {
     const foundSecurity = await this.securityRepository.findOneBy({
       code: queryDto.symbol,
@@ -580,11 +596,11 @@ export const mistEnvSchema = Joi.object({
   mysql_server_host: Joi.string().default('localhost'),
   // ... other configs
 
-  // NEW: Data source configuration
+  // NEW: Data source configuration (must match DataSource enum values)
   DEFAULT_DATA_SOURCE: Joi.string()
     .valid('EAST_MONEY', 'TDX', 'MQMT')
     .default('EAST_MONEY')
-    .description('Default data source for queries'),
+    .description('Default data source for queries (must match DataSource enum)'),
 });
 ```
 
