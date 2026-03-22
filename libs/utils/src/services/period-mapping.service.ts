@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { KPeriod, DataSource } from '@app/shared-data';
+import { Period } from '../../../../apps/mist/src/chan/enums/period.enum';
 
 @Injectable()
 export class PeriodMappingService {
@@ -33,6 +34,22 @@ export class PeriodMappingService {
   };
 
   /**
+   * Mapping from Chan Period enum to KPeriod enum
+   */
+  private readonly chanToKPeriodMapping: Record<Period, KPeriod> = {
+    [Period.One]: KPeriod.ONE_MIN,
+    [Period.FIVE]: KPeriod.FIVE_MIN,
+    [Period.FIFTEEN]: KPeriod.FIFTEEN_MIN,
+    [Period.THIRTY]: KPeriod.THIRTY_MIN,
+    [Period.SIXTY]: KPeriod.SIXTY_MIN,
+    [Period.DAY]: KPeriod.DAILY,
+    [Period.WEEK]: KPeriod.DAILY, // Fallback to daily for weekly
+    [Period.MONTH]: KPeriod.DAILY, // Fallback to daily for monthly
+    [Period.QUARTER]: KPeriod.DAILY, // Fallback to daily for quarterly
+    [Period.YEAR]: KPeriod.DAILY, // Fallback to daily for yearly
+  };
+
+  /**
    * Convert period to source-specific format
    */
   toSourceFormat(period: KPeriod, source: DataSource): string {
@@ -43,6 +60,17 @@ export class PeriodMappingService {
       );
     }
     return mapping[period]!;
+  }
+
+  /**
+   * Convert Chan Period enum to KPeriod enum
+   */
+  toKPeriod(period: Period): KPeriod {
+    const kPeriod = this.chanToKPeriodMapping[period];
+    if (!kPeriod) {
+      throw new Error(`Unsupported period value: ${period}`);
+    }
+    return kPeriod;
   }
 
   /**

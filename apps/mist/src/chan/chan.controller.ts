@@ -5,8 +5,12 @@ import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { MergeKDto } from './dto/merge-k.dto';
+import { ChanQueryDto } from './dto/query/chan-query.dto';
 import { ChannelService } from './services/channel.service';
 import { KMergeService } from './services/k-merge.service';
+import { DataService } from '../data/data.service';
+import { PeriodMappingService } from '@app/utils';
+import { KVo } from '../indicator/vo/k.vo';
 
 @ApiTags('chan')
 @Controller('chan')
@@ -15,6 +19,8 @@ export class ChanController {
     private readonly chanService: ChanService,
     private readonly kMergeService: KMergeService,
     private readonly channelService: ChannelService,
+    private readonly dataService: DataService,
+    private readonly periodMappingService: PeriodMappingService,
   ) {}
 
   @Post('merge-k')
@@ -29,8 +35,9 @@ export class ChanController {
     description: 'Returns merged K-line data',
     type: [MergeKDto],
   })
-  async postMergeK(@Body() mergeKDto: MergeKDto) {
-    return this.kMergeService.merge(mergeKDto.k);
+  async postMergeK(@Body() chanQueryDto: ChanQueryDto) {
+    const kData = await this.fetchKData(chanQueryDto);
+    return this.kMergeService.merge(kData);
   }
 
   @Post('bi')
@@ -45,7 +52,9 @@ export class ChanController {
     description: 'Returns array of Bi data',
     type: [CreateBiDto],
   })
-  async postIndexBi(@Body() createBiDto: CreateBiDto) {
+  async postIndexBi(@Body() chanQueryDto: ChanQueryDto) {
+    const kData = await this.fetchKData(chanQueryDto);
+    const createBiDto: CreateBiDto = { k: kData };
     return this.chanService.createBi(createBiDto);
   }
 
@@ -60,7 +69,9 @@ export class ChanController {
     status: 200,
     description: 'Returns array of fenxing data',
   })
-  async postFenxing(@Body() createBiDto: CreateBiDto) {
+  async postFenxing(@Body() chanQueryDto: ChanQueryDto) {
+    const kData = await this.fetchKData(chanQueryDto);
+    const createBiDto: CreateBiDto = { k: kData };
     return this.chanService.getFenxings(createBiDto);
   }
 
@@ -76,7 +87,49 @@ export class ChanController {
     description: 'Returns array of channel data',
     type: [CreateChannelDto],
   })
-  async postChannel(@Body() createChannelDto: CreateChannelDto) {
+  async postChannel(@Body() chanQueryDto: ChanQueryDto) {
+    const kData = await this.fetchKData(chanQueryDto);
+    const createBiDto: CreateBiDto = { k: kData };
+    const biData = await this.chanService.createBi(createBiDto);
+    const createChannelDto: CreateChannelDto = { bi: biData };
     return this.channelService.createChannel(createChannelDto);
+  }
+
+  /**
+   * Helper method to fetch K-line data using ChanQueryDto parameters
+   */
+  private async fetchKData(chanQueryDto: ChanQueryDto): Promise<KVo[]> {
+    // Map Period (numeric) to KPeriod enum
+    const kPeriod = this.periodMappingService.toKPeriod(chanQueryDto.period);
+
+    // Parse date strings to Date objects
+    const startDate = chanQueryDto.startDate
+      ? new Date(chanQueryDto.startDate)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: 30 days ago
+    const endDate = chanQueryDto.endDate
+      ? new Date(chanQueryDto.endDate)
+      : new Date();
+
+    // Fetch K-line data using DataService
+    const kEntities = await this.dataService.findBars({
+      symbol: chanQueryDto.symbol,
+      period: kPeriod,
+      startDate,
+      endDate,
+      source: chanQueryDto.source,
+    });
+
+    // Convert K entities to KVo format
+    return kEntities.map((k) => ({
+      id: k.id,
+      symbol: k.security.code,
+      time: k.timestamp,
+      timestamp: k.timestamp.getTime(),
+      open: k.open,
+      highest: k.high,
+      lowest: k.low,
+      close: k.close,
+      amount: k.amount,
+    }));
   }
 }
