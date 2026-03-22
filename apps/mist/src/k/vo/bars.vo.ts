@@ -2,26 +2,26 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class BarsVo {
   @ApiProperty({ description: 'Bar ID' })
-  id: number;
+  id!: number;
 
   @ApiProperty({ description: 'Highest price' })
-  highest: number;
+  highest!: number;
 
   @ApiProperty({ description: 'Lowest price' })
-  lowest: number;
+  lowest!: number;
 
   @ApiProperty({ description: 'Open price' })
-  open: number;
+  open!: number;
 
   @ApiProperty({ description: 'Close price' })
-  close: number;
+  close!: number;
 
   @ApiProperty({ description: 'Symbol code' })
-  symbol: string;
+  symbol!: string;
 
   @ApiProperty({ description: 'Timestamp' })
-  timestamp: Date;
+  timestamp!: Date;
 
   @ApiProperty({ description: 'Amount' })
-  amount: number;
+  amount!: number;
 }
