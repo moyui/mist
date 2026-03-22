@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 
 @Entity('stocks')
-export class Stock {
+export class Security {
   @PrimaryGeneratedColumn()
   id!: number;
 

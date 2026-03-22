@@ -18,7 +18,7 @@ import { CollectorModule } from './collector/collector.module';
 import { DataModule } from './data/data.module';
 import { IndicatorModule } from './indicator/indicator.module';
 import { KModule } from './k/k.module';
-import { StockModule } from './stock/stock.module';
+import { SecurityModule } from './security/security.module';
 import { TrendModule } from './trend/trend.module';
 import { mistEnvSchema } from '@app/config';
 
@@ -71,7 +71,7 @@ import { mistEnvSchema } from '@app/config';
     CollectorModule,
     IndicatorModule,
     KModule,
-    StockModule,
+    SecurityModule,
     ChanModule,
     TrendModule,
   ],

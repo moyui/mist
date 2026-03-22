@@ -5,25 +5,25 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Stock } from './stock.entity';
+import { Security } from './security.entity';
 import { InitStockDto } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 
 @Injectable()
-export class StockService {
+export class SecurityService {
   constructor(
-    @InjectRepository(Stock)
-    private readonly stockRepository: Repository<Stock>,
+    @InjectRepository(Security)
+    private readonly securityRepository: Repository<Security>,
   ) {}
 
   formatCode(code: string): string {
     return code.trim().toUpperCase();
   }
 
-  async initStock(initStockDto: InitStockDto): Promise<Stock> {
+  async initStock(initStockDto: InitStockDto): Promise<Security> {
     const formattedCode = this.formatCode(initStockDto.code);
 
-    const existingStock = await this.stockRepository.findOne({
+    const existingStock = await this.securityRepository.findOne({
       where: { code: formattedCode },
     });
 
@@ -33,7 +33,7 @@ export class StockService {
       );
     }
 
-    const stock = this.stockRepository.create({
+    const stock = this.securityRepository.create({
       code: formattedCode,
       name: initStockDto.name,
       type: initStockDto.type,
@@ -45,13 +45,13 @@ export class StockService {
       isActive: true,
     });
 
-    return await this.stockRepository.save(stock);
+    return await this.securityRepository.save(stock);
   }
 
-  async addSource(addSourceDto: AddSourceDto): Promise<Stock> {
+  async addSource(addSourceDto: AddSourceDto): Promise<Security> {
     const formattedCode = this.formatCode(addSourceDto.code);
 
-    const stock = await this.stockRepository.findOne({
+    const stock = await this.securityRepository.findOne({
       where: { code: formattedCode },
     });
 
@@ -70,13 +70,13 @@ export class StockService {
       stock.periods = addSourceDto.periods;
     }
 
-    return await this.stockRepository.save(stock);
+    return await this.securityRepository.save(stock);
   }
 
-  async findByCode(code: string): Promise<Stock> {
+  async findByCode(code: string): Promise<Security> {
     const formattedCode = this.formatCode(code);
 
-    const stock = await this.stockRepository.findOne({
+    const stock = await this.securityRepository.findOne({
       where: { code: formattedCode, isActive: true },
     });
 
@@ -97,8 +97,8 @@ export class StockService {
     };
   }
 
-  async findAll(): Promise<Stock[]> {
-    return await this.stockRepository.find({
+  async findAll(): Promise<Security[]> {
+    return await this.securityRepository.find({
       where: { isActive: true },
       order: { code: 'ASC' },
     });
@@ -107,7 +107,7 @@ export class StockService {
   async deactivateStock(code: string): Promise<void> {
     const formattedCode = this.formatCode(code);
 
-    const result = await this.stockRepository.update(
+    const result = await this.securityRepository.update(
       { code: formattedCode },
       { isActive: false },
     );
@@ -120,7 +120,7 @@ export class StockService {
   async activateStock(code: string): Promise<void> {
     const formattedCode = this.formatCode(code);
 
-    const result = await this.stockRepository.update(
+    const result = await this.securityRepository.update(
       { code: formattedCode },
       { isActive: true },
     );

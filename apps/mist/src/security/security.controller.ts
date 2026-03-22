@@ -9,15 +9,15 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { StockService } from './stock.service';
+import { SecurityService } from './security.service';
 import { InitStockDto } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
-import { Stock } from './stock.entity';
+import { Security } from './security.entity';
 
 @ApiTags('stocks')
 @Controller('stock')
-export class StockController {
-  constructor(private readonly stockService: StockService) {}
+export class SecurityController {
+  constructor(private readonly securityService: SecurityService) {}
 
   @Post('init')
   @HttpCode(HttpStatus.CREATED)
@@ -25,11 +25,11 @@ export class StockController {
   @ApiResponse({
     status: 201,
     description: 'Stock successfully initialized',
-    type: Stock,
+    type: Security,
   })
   @ApiResponse({ status: 409, description: 'Stock already exists' })
-  async initStock(@Body() initStockDto: InitStockDto): Promise<Stock> {
-    return await this.stockService.initStock(initStockDto);
+  async initStock(@Body() initStockDto: InitStockDto): Promise<Security> {
+    return await this.securityService.initStock(initStockDto);
   }
 
   @Post('add-source')
@@ -37,11 +37,11 @@ export class StockController {
   @ApiResponse({
     status: 200,
     description: 'Source successfully updated',
-    type: Stock,
+    type: Security,
   })
   @ApiResponse({ status: 404, description: 'Stock not found' })
-  async addSource(@Body() addSourceDto: AddSourceDto): Promise<Stock> {
-    return await this.stockService.addSource(addSourceDto);
+  async addSource(@Body() addSourceDto: AddSourceDto): Promise<Security> {
+    return await this.securityService.addSource(addSourceDto);
   }
 
   @Get(':code')
@@ -50,10 +50,10 @@ export class StockController {
     name: 'code',
     description: 'Stock code (e.g., 000001.SH, 399006.SZ)',
   })
-  @ApiResponse({ status: 200, description: 'Stock found', type: Stock })
+  @ApiResponse({ status: 200, description: 'Stock found', type: Security })
   @ApiResponse({ status: 404, description: 'Stock not found' })
-  async getStock(@Param('code') code: string): Promise<Stock> {
-    return await this.stockService.findByCode(code);
+  async getStock(@Param('code') code: string): Promise<Security> {
+    return await this.securityService.findByCode(code);
   }
 
   @Get()
@@ -61,10 +61,10 @@ export class StockController {
   @ApiResponse({
     status: 200,
     description: 'List of all active stocks',
-    type: [Stock],
+    type: [Security],
   })
-  async getAllStocks(): Promise<Stock[]> {
-    return await this.stockService.findAll();
+  async getAllStocks(): Promise<Security[]> {
+    return await this.securityService.findAll();
   }
 
   @Put(':code/deactivate')
@@ -74,7 +74,7 @@ export class StockController {
   @ApiResponse({ status: 200, description: 'Stock successfully deactivated' })
   @ApiResponse({ status: 404, description: 'Stock not found' })
   async deactivateStock(@Param('code') code: string): Promise<void> {
-    await this.stockService.deactivateStock(code);
+    await this.securityService.deactivateStock(code);
   }
 
   @Put(':code/activate')
@@ -84,7 +84,7 @@ export class StockController {
   @ApiResponse({ status: 200, description: 'Stock successfully activated' })
   @ApiResponse({ status: 404, description: 'Stock not found' })
   async activateStock(@Param('code') code: string): Promise<void> {
-    await this.stockService.activateStock(code);
+    await this.securityService.activateStock(code);
   }
 
   @Get(':code/source')
@@ -96,6 +96,6 @@ export class StockController {
   })
   @ApiResponse({ status: 404, description: 'Stock not found' })
   async getSource(@Param('code') code: string) {
-    return await this.stockService.getSourceFormat(code);
+    return await this.securityService.getSourceFormat(code);
   }
 }

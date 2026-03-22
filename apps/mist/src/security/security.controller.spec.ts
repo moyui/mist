@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { StockController } from './stock.controller';
-import { StockService } from './stock.service';
-import { InitStockDto, StockType, SourceType } from './dto/init-stock.dto';
+import { SecurityController } from './controller';
+import { SecurityService } from './service';
+import { InitStockDto, SourceType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
-const mockStockService = {
+const mockSecurityService = {
   initStock: jest.fn(),
   addSource: jest.fn(),
   findByCode: jest.fn(),
@@ -15,21 +15,21 @@ const mockStockService = {
   getSourceFormat: jest.fn(),
 };
 
-describe('StockController', () => {
-  let controller: StockController;
+describe('SecurityController', () => {
+  let controller: SecurityController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [StockController],
+      controllers: [SecurityController],
       providers: [
         {
-          provide: StockService,
-          useValue: mockStockService,
+          provide: SecurityService,
+          useValue: mockSecurityService,
         },
       ],
     }).compile();
 
-    controller = module.get<StockController>(StockController);
+    controller = module.get<SecurityController>(SecurityController);
   });
 
   afterEach(() => {
@@ -40,7 +40,7 @@ describe('StockController', () => {
     const initStockDto: InitStockDto = {
       code: '000001.SH',
       name: '平安银行',
-      type: StockType.STOCK,
+      type: SecurityType.STOCK,
       source: {
         type: SourceType.AKTOOLS,
         config: '',
@@ -61,16 +61,16 @@ describe('StockController', () => {
     };
 
     it('should successfully initialize a new stock', async () => {
-      mockStockService.initStock.mockResolvedValue(mockStock);
+      mockSecurityService.initStock.mockResolvedValue(mockStock);
 
       const result = await controller.initStock(initStockDto);
 
       expect(result).toEqual(mockStock);
-      expect(mockStockService.initStock).toHaveBeenCalledWith(initStockDto);
+      expect(mockSecurityService.initStock).toHaveBeenCalledWith(initStockDto);
     });
 
     it('should throw ConflictException when stock already exists', async () => {
-      mockStockService.initStock.mockRejectedValue(
+      mockSecurityService.initStock.mockRejectedValue(
         new ConflictException('Stock already exists'),
       );
 
@@ -93,7 +93,7 @@ describe('StockController', () => {
       id: 1,
       code: '000001.SH',
       name: '平安银行',
-      type: StockType.STOCK,
+      type: SecurityType.STOCK,
       periods: [1, 5, 15, 30, 60, 1440],
       source: {
         type: SourceType.AKTOOLS,
@@ -103,16 +103,16 @@ describe('StockController', () => {
     };
 
     it('should successfully add source to existing stock', async () => {
-      mockStockService.addSource.mockResolvedValue(mockStock);
+      mockSecurityService.addSource.mockResolvedValue(mockStock);
 
       const result = await controller.addSource(addSourceDto);
 
       expect(result).toEqual(mockStock);
-      expect(mockStockService.addSource).toHaveBeenCalledWith(addSourceDto);
+      expect(mockSecurityService.addSource).toHaveBeenCalledWith(addSourceDto);
     });
 
     it('should throw NotFoundException when stock not found', async () => {
-      mockStockService.addSource.mockRejectedValue(
+      mockSecurityService.addSource.mockRejectedValue(
         new NotFoundException('Stock not found'),
       );
 
@@ -137,16 +137,16 @@ describe('StockController', () => {
     };
 
     it('should successfully get stock by code', async () => {
-      mockStockService.findByCode.mockResolvedValue(mockStock);
+      mockSecurityService.findByCode.mockResolvedValue(mockStock);
 
       const result = await controller.getStock('000001.SH');
 
       expect(result).toEqual(mockStock);
-      expect(mockStockService.findByCode).toHaveBeenCalledWith('000001.SH');
+      expect(mockSecurityService.findByCode).toHaveBeenCalledWith('000001.SH');
     });
 
     it('should throw NotFoundException when stock not found', async () => {
-      mockStockService.findByCode.mockRejectedValue(
+      mockSecurityService.findByCode.mockRejectedValue(
         new NotFoundException('Stock not found'),
       );
 
@@ -185,29 +185,29 @@ describe('StockController', () => {
     ];
 
     it('should return all active stocks', async () => {
-      mockStockService.findAll.mockResolvedValue(mockStocks);
+      mockSecurityService.findAll.mockResolvedValue(mockStocks);
 
       const result = await controller.getAllStocks();
 
       expect(result).toEqual(mockStocks);
-      expect(mockStockService.findAll).toHaveBeenCalled();
+      expect(mockSecurityService.findAll).toHaveBeenCalled();
     });
   });
 
   describe('deactivateStock', () => {
     it('should successfully deactivate a stock', async () => {
-      mockStockService.deactivateStock.mockResolvedValue(undefined);
+      mockSecurityService.deactivateStock.mockResolvedValue(undefined);
 
       await expect(
         controller.deactivateStock('000001.SH'),
       ).resolves.not.toThrow();
-      expect(mockStockService.deactivateStock).toHaveBeenCalledWith(
+      expect(mockSecurityService.deactivateStock).toHaveBeenCalledWith(
         '000001.SH',
       );
     });
 
     it('should throw NotFoundException when stock not found', async () => {
-      mockStockService.deactivateStock.mockRejectedValue(
+      mockSecurityService.deactivateStock.mockRejectedValue(
         new NotFoundException('Stock not found'),
       );
 
@@ -219,16 +219,18 @@ describe('StockController', () => {
 
   describe('activateStock', () => {
     it('should successfully activate a deactivated stock', async () => {
-      mockStockService.activateStock.mockResolvedValue(undefined);
+      mockSecurityService.activateStock.mockResolvedValue(undefined);
 
       await expect(
         controller.activateStock('000001.SH'),
       ).resolves.not.toThrow();
-      expect(mockStockService.activateStock).toHaveBeenCalledWith('000001.SH');
+      expect(mockSecurityService.activateStock).toHaveBeenCalledWith(
+        '000001.SH',
+      );
     });
 
     it('should throw NotFoundException when stock not found', async () => {
-      mockStockService.activateStock.mockRejectedValue(
+      mockSecurityService.activateStock.mockRejectedValue(
         new NotFoundException('Stock not found'),
       );
 
@@ -241,18 +243,18 @@ describe('StockController', () => {
   describe('getSource', () => {
     it('should successfully get source configuration', async () => {
       const mockSource = { type: 'aktools', config: {} };
-      mockStockService.getSourceFormat.mockResolvedValue(mockSource);
+      mockSecurityService.getSourceFormat.mockResolvedValue(mockSource);
 
       const result = await controller.getSource('000001.SH');
 
       expect(result).toEqual(mockSource);
-      expect(mockStockService.getSourceFormat).toHaveBeenCalledWith(
+      expect(mockSecurityService.getSourceFormat).toHaveBeenCalledWith(
         '000001.SH',
       );
     });
 
     it('should throw NotFoundException when stock not found', async () => {
-      mockStockService.getSourceFormat.mockRejectedValue(
+      mockSecurityService.getSourceFormat.mockRejectedValue(
         new NotFoundException('Stock not found'),
       );
 
