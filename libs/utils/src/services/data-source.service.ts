@@ -12,8 +12,15 @@ export class DataSourceService {
     // Validate and set default source
     // Accept either enum value ('ef') or normalized enum key ('EAST_MONEY')
     if (envDefault) {
-      const normalized = this.normalize(envDefault);
-      this.defaultSource = this.selectOrFail(normalized);
+      try {
+        const normalized = this.normalize(envDefault);
+        this.defaultSource = this.selectOrFail(normalized);
+      } catch {
+        console.warn(
+          `Invalid DEFAULT_DATA_SOURCE "${envDefault}", falling back to EAST_MONEY`,
+        );
+        this.defaultSource = DataSource.EAST_MONEY;
+      }
     } else {
       // Fallback to EAST_MONEY if not specified
       this.defaultSource = DataSource.EAST_MONEY;
@@ -29,7 +36,9 @@ export class DataSourceService {
       return this.defaultSource;
     }
 
-    return this.selectOrFail(source);
+    // Trim whitespace to handle user input more gracefully
+    const trimmed = source.trim();
+    return this.selectOrFail(trimmed);
   }
 
   /**
@@ -54,7 +63,10 @@ export class DataSourceService {
 
     // Not found
     throw new Error(
-      `Invalid data source: ${source}. Supported values: ${enumValues.join(', ')} or keys: ${Object.keys(DataSource).join(', ')}`,
+      `Invalid data source "${source}". Supported formats:
+- Enum values: ${enumValues.join(', ')}
+- Enum keys: ${Object.keys(DataSource).join(', ')}
+- User-friendly: east-money, mini-qmt`,
     );
   }
 

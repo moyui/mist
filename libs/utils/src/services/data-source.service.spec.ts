@@ -50,6 +50,11 @@ describe('DataSourceService', () => {
       expect(result).toBe(DataSource.EAST_MONEY);
     });
 
+    it('should fallback to default when source is undefined', () => {
+      const result = service.select();
+      expect(result).toBe(DataSource.EAST_MONEY);
+    });
+
     it('should throw on invalid source', () => {
       expect(() => service.select('INVALID')).toThrow('Invalid data source');
     });
