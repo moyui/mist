@@ -3,14 +3,11 @@ import { UtilsService } from '@app/utils';
 import { tool } from '@langchain/core/tools';
 import { HttpService } from '@nestjs/axios';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { KDto } from 'apps/mist/src/indicator/dto/k.dto';
-import { KDJDto } from 'apps/mist/src/indicator/dto/kdj.dto';
-import { MACDDto } from 'apps/mist/src/indicator/dto/macd.dto';
-import { RSIDto } from 'apps/mist/src/indicator/dto/rsi.dto';
-import { KVo } from 'apps/mist/src/indicator/vo/k.vo';
-import { KDJVo } from 'apps/mist/src/indicator/vo/kdj.vo';
-import { MACDVo } from 'apps/mist/src/indicator/vo/macd.vo';
-import { RSIVo } from 'apps/mist/src/indicator/vo/rsi.vo';
+import { IndicatorQueryDto } from '../../../mist/src/indicator/dto/query/indicator-query.dto';
+import { KVo } from '../../../mist/src/indicator/vo/k.vo';
+import { KDJVo } from '../../../mist/src/indicator/vo/kdj.vo';
+import { MACDVo } from '../../../mist/src/indicator/vo/macd.vo';
+import { RSIVo } from '../../../mist/src/indicator/vo/rsi.vo';
 import { AxiosError } from 'axios';
 import { catchError, firstValueFrom } from 'rxjs';
 import { LocalServiceDto } from './dto/local-service.dto';
@@ -48,8 +45,8 @@ export class ToolsService {
 
   createGetKTool() {
     return tool(
-      async (params: KDto) => {
-        const ks = this.getLocalService<KDto, KVo[]>({
+      async (params: IndicatorQueryDto) => {
+        const ks = this.getLocalService<IndicatorQueryDto, KVo[]>({
           url: this.utilsService.getLocalUrl('k'),
           params,
         });
@@ -65,8 +62,8 @@ export class ToolsService {
 
   createGetKDJTool() {
     return tool(
-      async (params: KDJDto) => {
-        const kdjs = this.getLocalService<KDJDto, KDJVo[]>({
+      async (params: IndicatorQueryDto) => {
+        const kdjs = this.getLocalService<IndicatorQueryDto, KDJVo[]>({
           url: this.utilsService.getLocalUrl('kdj'),
           params,
         });
@@ -82,8 +79,8 @@ export class ToolsService {
 
   createGetMACDTool() {
     return tool(
-      async (params: MACDDto) => {
-        const macds = this.getLocalService<MACDDto, MACDVo[]>({
+      async (params: IndicatorQueryDto) => {
+        const macds = this.getLocalService<IndicatorQueryDto, MACDVo[]>({
           url: this.utilsService.getLocalUrl('macd'),
           params,
         });
@@ -99,8 +96,8 @@ export class ToolsService {
 
   createGetRSITool() {
     return tool(
-      async (params: RSIDto) => {
-        const rsis = this.getLocalService<RSIDto, RSIVo[]>({
+      async (params: IndicatorQueryDto) => {
+        const rsis = this.getLocalService<IndicatorQueryDto, RSIVo[]>({
           url: this.utilsService.getLocalUrl('rsi'),
           params,
         });
