@@ -66,10 +66,20 @@ All applications use a standardized `PORT` environment variable with Joi validat
 |---------|---------|--------------|
 | **prompts** | AI agent prompt templates | Commander, DataEngineer, Strategist, etc. |
 | **config** | Configuration management | Environment-specific configs |
-| **utils** | Shared utilities | Common helper functions |
+| **utils** | Shared utilities | DataSourceService, PeriodMappingService, validation helpers |
 | **timezone** | Time zone handling | Uses date-fns-tz |
 | **shared-data** | Data models and entities | Stock index entities, TypeORM models |
-| **constants** | Constants | Time periods, trend directions, etc. |
+| **constants** | Constants | Time periods, trend directions, error codes |
+
+### Core Services (in `apps/mist/src/`)
+
+| Service | Purpose | Location |
+|---------|---------|----------|
+| **DataSourceService** | Multi-data source selection and validation | `common/data-source.service.ts` |
+| **PeriodMappingService** | Period string to enum mapping | `common/period-mapping.service.ts` |
+| **DataService** | Unified data query interface | `data/data.service.ts` |
+| **SecurityService** | Stock/security management | `security/security.service.ts` |
+| **CollectorService** | Data collection orchestration | `collector/collector.service.ts` |
 
 ---
 
@@ -106,7 +116,45 @@ See `Roadmap.md` for the detailed agent workflow diagram.
 
 ## Data Pipeline
 
-### Data Source
+### Multi-Data Source Architecture
+
+The system supports multiple data sources for K-line data collection and querying:
+
+#### Data Sources
+
+| Source | Code | Description | Default For |
+|--------|------|-------------|-------------|
+| **East Money** | `ef` | 东方财富 - Comprehensive market data | mist app |
+| **TongDaXin** | `tdx` | 通达信 - Professional trading platform data | chan app |
+| **MaQiMaTe** | `mqmt` | 迈吉马克特 - Alternative data source | mcp-server |
+
+#### Data Source Selection
+
+The `DataSourceService` (`@app/utils`) manages source selection:
+
+```typescript
+// Automatic selection (uses app default)
+const source = dataSourceService.select();  // Returns 'ef' for mist app
+
+// Explicit selection
+const source = dataSourceService.select('tdx');  // Returns 'tdx'
+
+// Invalid source throws exception
+dataSourceService.select('invalid');  // Throws Error
+```
+
+#### Environment Configuration
+
+Each application can configure its default data source via environment variables:
+
+```bash
+# .env files
+DEFAULT_DATA_SOURCE=ef          # East Money (default for mist)
+DEFAULT_DATA_SOURCE=tdx         # TongDaXin (default for chan)
+DEFAULT_DATA_SOURCE=mqmt        # MaQiMaTe
+```
+
+### Data Collection
 
 **AKTools** (https://aktools.akfamily.xyz) - Local Python FastAPI server for stock data
 
@@ -133,12 +181,19 @@ python3 -m aktools
 - **Type**: MySQL with TypeORM
 - **Database creation**: `CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;`
 - **Configuration**: Environment-based (see `.env.example` files)
+- **K-line entity** includes `source` field to track data origin
 
 ### Time Periods
 
 Data is stored for multiple timeframes:
 - **1min, 5min, 15min, 30min, 60min** - Intraday periods
 - **daily** - Daily period
+
+Each K-line record includes:
+- `timestamp` - Time of the candlestick
+- `period` - Time period enum
+- `source` - Data source (ef/tdx/mqmt)
+- OHLCV data (open, high, low, close, volume, amount)
 
 ---
 
@@ -259,6 +314,98 @@ pnpm run migration:revert
 
 ---
 
+## Multi-Data Source Usage Examples
+
+### Query K-line Data with Source Selection
+
+```bash
+# Using default source (ef for mist app)
+curl -X POST http://localhost:8001/indicator/k \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "000001",
+    "period": "5min",
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2024-01-02T00:00:00Z"
+  }'
+
+# Explicitly using TongDaXin source
+curl -X POST http://localhost:8001/indicator/k \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "000001",
+    "period": "5min",
+    "source": "tdx",
+    "startDate": "2024-01-01T00:00:00Z",
+    "endDate": "2024-01-02T00:00:00Z"
+  }'
+
+# Using MaQiMaTe source
+curl -X POST http://localhost:8001/indicator/macd \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "000001",
+    "period": "daily",
+    "source": "mqmt"
+  }'
+```
+
+### Chan Theory Analysis with Source
+
+```bash
+# Query Bi (笔) recognition with specific source
+curl -X POST http://localhost:8001/chan/bi \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "000001",
+    "period": "30min",
+    "source": "ef",
+    "startDate": "2024-01-01T00:00:00Z"
+  }'
+```
+
+### Initialize Stock with Source Configuration
+
+```bash
+# Initialize a stock with East Money source
+curl -X POST http://localhost:8001/v1/security/init \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "000001.SH",
+    "name": "平安银行",
+    "type": "stock",
+    "periods": [1, 5, 15, 30, 60],
+    "source": {
+      "type": "aktools",
+      "config": "{}"
+    }
+  }'
+```
+
+### Error Handling
+
+```bash
+# Invalid source returns error
+curl -X POST http://localhost:8001/indicator/k \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "000001",
+    "period": "5min",
+    "source": "invalid_source"
+  }'
+
+# Response:
+# {
+#   "success": false,
+#   "code": 1001,
+#   "message": "Invalid data source: invalid_source. Valid sources: ef, tdx, mqmt",
+#   "timestamp": "2024-03-22T10:30:00.000Z",
+#   "requestId": "err-1710819800000-abc123"
+# }
+```
+
+---
+
 ## Key Dependencies
 
 | Package | Purpose |
@@ -276,27 +423,83 @@ pnpm run migration:revert
 
 ## API Endpoints
 
-### Main App (Port 8001)
+### Main App (Port 8001) - API Version 2.0
+
+#### Multi-Data Source Support
+
+All data query endpoints now support an optional `source` parameter to specify which data source to use:
+
+- **ef** - East Money (东方财富, default)
+- **tdx** - TongDaXin (通达信)
+- **mqmt** - MaQiMaTe (迈吉马克特)
+
+If no source is specified, the application default is used.
+
+#### Indicator Endpoints
+
+| Endpoint | Method | Description | Source Parameter |
+|----------|--------|-------------|------------------|
+| `/indicator/k` | POST | K-line data query | Optional (ef/tdx/mqmt) |
+| `/indicator/macd` | POST | MACD calculation | Optional (ef/tdx/mqmt) |
+| `/indicator/rsi` | POST | RSI calculation | Optional (ef/tdx/mqmt) |
+| `/indicator/kdj` | POST | KDJ calculation | Optional (ef/tdx/mqmt) |
+| `/indicator/adx` | POST | ADX calculation | Optional (ef/tdx/mqmt) |
+| `/indicator/atr` | POST | ATR calculation | Optional (ef/tdx/mqmt) |
+| `/indicator/dualma` | POST | Dual MA calculation | Optional (ef/tdx/mqmt) |
+
+**Unified Query DTO** (`IndicatorQueryDto`):
+```typescript
+{
+  symbol: string;      // Stock code (e.g., '000001')
+  period: string;      // Time period (1min/5min/15min/30min/60min/daily)
+  startDate?: string;  // Start timestamp (optional)
+  endDate?: string;    // End timestamp (optional)
+  source?: 'ef' | 'tdx' | 'mqmt';  // Data source (optional)
+}
+```
+
+#### Chan Theory Endpoints
+
+| Endpoint | Method | Description | Source Parameter |
+|----------|--------|-------------|------------------|
+| `/chan/merge-k` | POST | K-line merging | Optional (ef/tdx/mqmt) |
+| `/chan/bi` | POST | Bi recognition | Optional (ef/tdx/mqmt) |
+| `/chan/fenxing` | POST | Fenxing detection | Optional (ef/tdx/mqmt) |
+| `/chan/channel` | POST | Channel detection | Optional (ef/tdx/mqmt) |
+
+**Chan Query DTO** (`ChanQueryDto`):
+```typescript
+{
+  symbol: string;      // Stock code
+  period: string;      // Time period
+  startDate?: string;  // Start timestamp (optional)
+  endDate?: string;    // End timestamp (optional)
+  source?: 'ef' | 'tdx' | 'mqmt';  // Data source (optional)
+}
+```
+
+#### Security Management API (v1)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/security/init` | POST | Initialize a new stock with source configuration |
+| `/v1/security/add-source` | POST | Add or update data source for existing stock |
+| `/v1/security/deactivate` | POST | Deactivate a stock |
+| `/v1/security/activate` | POST | Activate a deactivated stock |
+| `/v1/security/:code` | GET | Get stock information |
+
+#### Data Collector API (v1)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/collector/collect` | POST | Collect K-line data from configured sources |
+| `/v1/collector/status/:code/:period` | GET | Get collection status for specific stock and period |
+
+#### Health Check
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/app/hello` | GET | Health check |
-| `/indicator/k` | POST | K-line data |
-| `/indicator/macd` | POST | MACD calculation |
-| `/indicator/rsi` | POST | RSI calculation |
-| `/indicator/kdj` | POST | KDJ calculation |
-| `/chan/merge-k` | POST | K-line merging |
-| `/chan/bi` | POST | Bi recognition |
-| `/chan/channel` | POST | Channel detection |
-
-### Multi-Data Source Management API
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/stock/init` | POST | Initialize a new stock with source configuration |
-| `/api/stock/add-source` | POST | Add or update data source for existing stock |
-| `/api/data-collector/collect` | POST | Collect K-line data from configured sources |
-| `/api/data-collector/status/:code/:period` | GET | Get collection status for specific stock and period |
 
 **Swagger UI**: http://localhost:8001/api-docs
 
