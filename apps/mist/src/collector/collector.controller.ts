@@ -21,7 +21,7 @@ import { Period } from '../chan/enums/period.enum';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 @ApiTags('data-collector')
-@Controller('data-collector')
+@Controller('data-collector/v1')
 export class CollectorController {
   constructor(private readonly collectorService: CollectorService) {}
 
