@@ -24,11 +24,11 @@ export interface ChanStateMeta {
 })
 export class ChanState {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @ManyToOne(() => Security)
   @JoinColumn()
-  security: Security;
+  security!: Security;
 
   @Column({
     type: 'enum',
@@ -36,32 +36,32 @@ export class ChanState {
     default: Table.IndexDaily,
     comment: '来源表',
   })
-  dataTable: Table;
+  dataTable: Table = Table.IndexDaily;
 
   @Column({
     comment: '最后数据id',
   })
-  lastDataId: number;
+  lastDataId: number = 0;
 
   @Column({
     comment: '最后笔id',
   })
-  lastBiId: number;
+  lastBiId: number = 0;
 
   @Column({
     comment: '最后分型id',
   })
-  lastFenxingId: number;
+  lastFenxingId: number = 0;
 
   @Column({
     type: 'json',
     comment: '元数据',
   })
-  meta: ChanStateMeta;
+  meta: ChanStateMeta = {};
 
   @CreateDateColumn()
-  createTime: Date;
+  createTime!: Date;
 
   @UpdateDateColumn()
-  updateTime: Date;
+  updateTime!: Date;
 }

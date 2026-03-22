@@ -4,17 +4,17 @@ import { TrendDirection } from '../enums/trend-direction.enum';
 
 export class ChanIndexDaily {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({
     type: 'timestamp',
   })
-  startTime: Date;
+  startTime!: Date;
 
   @Column({
     type: 'timestamp',
   })
-  endTime: Date;
+  endTime!: Date;
 
   @Column({
     type: 'decimal',
@@ -23,7 +23,7 @@ export class ChanIndexDaily {
     default: 0.0,
     comment: '最高',
   })
-  highest: number;
+  highest: number = 0;
 
   @Column({
     type: 'decimal',
@@ -32,7 +32,7 @@ export class ChanIndexDaily {
     default: 0.0,
     comment: '最低',
   })
-  lowest: number;
+  lowest: number = 0;
 
   @Column({
     type: 'enum',
@@ -40,14 +40,14 @@ export class ChanIndexDaily {
     default: TrendDirection.None,
     comment: '趋势',
   })
-  trend: TrendDirection;
+  trend: TrendDirection = TrendDirection.None;
 
   @Column({
     type: 'int',
     default: 0,
     comment: '合并数量',
   })
-  mergeCount: number;
+  mergeCount: number = 0;
 
   @Column({
     type: 'enum',
@@ -55,8 +55,8 @@ export class ChanIndexDaily {
     default: Table.IndexDaily,
     comment: '来源表',
   })
-  dataTable: Table;
+  dataTable: Table = Table.IndexDaily;
 
   @Column({ type: 'json', comment: '合并的原始k线id数组', nullable: true })
-  mergeIds: number[];
+  mergeIds: number[] = [];
 }

@@ -27,11 +27,11 @@ export interface ChanFenxingMeta {
 })
 export class ChanFenxings {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @ManyToOne(() => Security)
   @JoinColumn()
-  security: Security;
+  security!: Security;
 
   @Column({
     type: 'enum',
@@ -39,7 +39,7 @@ export class ChanFenxings {
     default: Period.FIVE,
     comment: '周期',
   })
-  period: Period;
+  period: Period = Period.FIVE;
 
   @Column({
     type: 'enum',
@@ -47,17 +47,17 @@ export class ChanFenxings {
     default: Table.IndexDaily,
     comment: '来源表',
   })
-  dataTable: Table;
+  dataTable: Table = Table.IndexDaily;
 
   @Column({
     comment: '开始k线id',
   })
-  startKlineId: number;
+  startKlineId: number = 0;
 
   @Column({
     comment: '结束k线id',
   })
-  endKlineId: number;
+  endKlineId: number = 0;
 
   @Column({
     type: 'enum',
@@ -65,22 +65,22 @@ export class ChanFenxings {
     default: FenxingType.Top,
     comment: '类型',
   })
-  type: FenxingType;
+  type: FenxingType = FenxingType.Top;
 
   @Column({
     comment: '是否已经完成',
   })
-  completed: boolean;
+  completed: boolean = false;
 
   @Column({
     type: 'json',
     comment: '元数据',
   })
-  meta: ChanFenxingMeta;
+  meta: ChanFenxingMeta = {};
 
   @CreateDateColumn()
-  createTime: Date;
+  createTime!: Date;
 
   @UpdateDateColumn()
-  updateTime: Date;
+  updateTime!: Date;
 }
