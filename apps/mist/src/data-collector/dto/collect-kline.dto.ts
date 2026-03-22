@@ -42,7 +42,7 @@ export class CollectKLineDto {
   })
   @IsDateString()
   @IsOptional()
-  endDate!: string;
+  endDate?: string;
 }
 
 export class CollectKLineResponse {

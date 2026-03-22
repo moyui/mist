@@ -29,7 +29,7 @@ export class CreateDeepSeekLLMDto implements ChatDeepSeekInput {
   })
   model!: string;
 
-  temperature: number = 0.7;
-  baseUrl: string = '';
-  apiKey: string = '';
+  temperature?: number = 0.7;
+  baseUrl?: string = '';
+  apiKey?: string = '';
 }

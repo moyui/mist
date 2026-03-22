@@ -16,7 +16,7 @@ export class RunKDJDto {
   })
   close!: number[];
 
-  period!: number; // 周期
-  kSmoothing!: number;
-  dSmoothing!: number;
+  period?: number = 9; // 周期
+  kSmoothing?: number = 3;
+  dSmoothing?: number = 3;
 }

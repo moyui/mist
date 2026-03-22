@@ -15,5 +15,5 @@ export class RunADXDto {
     message: '收盘价不能为空',
   })
   close!: number[];
-  period!: number; // 周期
+  period?: number = 14; // 周期
 }

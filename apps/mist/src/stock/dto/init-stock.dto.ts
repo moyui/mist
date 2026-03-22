@@ -29,7 +29,7 @@ export class SourceConfig {
     required: false,
   })
   @IsString()
-  config!: string;
+  config?: string;
 }
 
 export class InitStockDto {
@@ -40,7 +40,7 @@ export class InitStockDto {
 
   @ApiProperty({ description: 'Stock name', required: false })
   @IsString()
-  name!: string;
+  name?: string;
 
   @ApiProperty({ description: 'Stock type', enum: StockType })
   @IsEnum(StockType)
@@ -49,7 +49,7 @@ export class InitStockDto {
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   @IsArray()
   @IsNumber({}, { each: true })
-  periods!: number[];
+  periods?: number[];
 
   @ApiProperty({
     description: 'Source configuration',
@@ -77,5 +77,5 @@ export class AddSourceDto {
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   @IsArray()
   @IsNumber({}, { each: true })
-  periods!: number[];
+  periods?: number[];
 }

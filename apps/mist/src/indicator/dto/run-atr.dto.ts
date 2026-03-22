@@ -16,5 +16,5 @@ export class RunATRDto {
   })
   close!: number[];
 
-  period!: number; // 周期
+  period?: number = 14; // 周期
 }

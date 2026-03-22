@@ -30,5 +30,5 @@ export class AddSourceDto {
 
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   @IsArray()
-  periods!: number[];
+  periods?: number[];
 }
