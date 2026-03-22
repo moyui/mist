@@ -30,20 +30,22 @@ This API supports multiple data sources for K-line data:
 Most endpoints accept an optional \`source\` parameter to specify which data source to use.
 If not provided, the default source for the application will be used.
 
-## Version 2.0 Features
+## API Endpoints
 
-- Unified query DTOs with source selection
-- Separate v1 endpoints for security and collector operations
-- Enhanced Chan Theory analysis with multi-source support
-- Improved error handling and validation`,
+- **Health**: \`GET /app/hello\` - Health check
+- **Indicators**: \`POST /indicator/*\` - Technical indicators and K-line data (MACD, RSI, KDJ, K-line)
+- **Chan Theory**: \`POST /chan/*\` - Chan Theory analysis (Merge K, Bi, Fenxing, Channel)
+- **Security**: \`GET|POST|PUT /security/v1/*\` - Security management (v1 versioned)
+
+## Unified Response Format
+
+All HTTP endpoints return responses in a unified format with \`success\`, \`code\`, \`message\`, \`data\`, \`timestamp\`, and \`requestId\` fields.`,
     )
     .setVersion('2.0')
     .addTag('health', 'Health check endpoints')
-    .addTag('indicator', 'Technical Indicators - MACD, RSI, KDJ, ADX, ATR')
-    .addTag('k', 'K-line data retrieval with multi-source support')
-    .addTag('chan', 'Chan Theory Analysis - Bi, Fenxing, and Channel detection')
+    .addTag('indicator', 'Technical Indicators - MACD, RSI, KDJ, K-line data')
+    .addTag('chan', 'Chan Theory Analysis - Merge K, Bi, Fenxing, Channel')
     .addTag('security v1', 'Security management endpoints (v1)')
-    .addTag('collector v1', 'Data collection management endpoints (v1)')
     .addServer('http://localhost:8001', 'Local development')
     .build();
 
