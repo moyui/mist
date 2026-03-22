@@ -32,11 +32,11 @@ export enum Direction {
 })
 export class ChanBi {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @ManyToOne(() => Security)
   @JoinColumn()
-  security: Security;
+  security!: Security;
 
   @Column({
     type: 'enum',
@@ -44,7 +44,7 @@ export class ChanBi {
     default: Period.FIVE,
     comment: '周期',
   })
-  period: Period;
+  period: Period = Period.FIVE;
 
   @Column({
     type: 'enum',
@@ -52,32 +52,42 @@ export class ChanBi {
     default: Table.IndexDaily,
     comment: '来源表',
   })
-  dataTable: Table;
+  dataTable: Table = Table.IndexDaily;
 
   @Column({
+    type: 'int',
+    default: 0,
     comment: '起始分型id',
   })
-  startFenxingId: number;
+  startFenxingId: number = 0;
 
   @Column({
+    type: 'int',
+    default: 0,
     comment: '结束分型id',
   })
-  endFenxingId: number;
+  endFenxingId: number = 0;
 
   @Column({
+    type: 'int',
+    default: 0,
     comment: '开始k线id',
   })
-  startKlineId: number;
+  startKlineId: number = 0;
 
   @Column({
+    type: 'int',
+    default: 0,
     comment: '结束k线id',
   })
-  endKlineId: number;
+  endKlineId: number = 0;
 
   @Column({
+    type: 'boolean',
+    default: false,
     comment: '是否已经完成',
   })
-  completed: boolean;
+  completed: boolean = false;
 
   @Column({
     type: 'enum',
@@ -85,23 +95,25 @@ export class ChanBi {
     default: Direction.Up,
     comment: '笔类型: up-上升笔, down-下降笔',
   })
-  direction: Direction;
+  direction: Direction = Direction.Up;
 
   @Column({
     type: 'int',
+    default: 0,
     comment: '包含的k线数量',
   })
-  count: number;
+  count: number = 0;
 
   @Column({
     type: 'json',
+    default: () => ({}),
     comment: '元数据',
   })
-  meta: ChanBiMeta;
+  meta: ChanBiMeta = {};
 
   @CreateDateColumn()
-  createTime: Date;
+  createTime!: Date;
 
   @UpdateDateColumn()
-  updateTime: Date;
+  updateTime!: Date;
 }
