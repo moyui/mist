@@ -1,16 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
-import { z } from 'zod';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Security, K, KPeriod } from '@app/shared-data';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
 import { McpErrorCode, McpError } from '@app/constants';
-
-// Zod schemas
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const PeriodEnum = z.enum(['1min', '5min', '15min', '30min', '60min', 'daily']);
+import { DataSourceService } from '@app/utils';
 
 @Injectable()
 export class DataMcpService extends BaseMcpToolService {
@@ -19,6 +15,8 @@ export class DataMcpService extends BaseMcpToolService {
     private readonly securityRepository: Repository<Security>,
     @InjectRepository(K)
     private readonly kRepository: Repository<K>,
+    @Inject(DataSourceService)
+    private readonly dataSourceService: DataSourceService,
   ) {
     super(DataMcpService.name);
   }
@@ -110,7 +108,7 @@ PURPOSE: Retrieve historical intraday price data.
 WHEN TO USE: Getting data for analysis.
 
 REQUIRES: symbol, period (1min/5min/15min/30min/60min).
-Optional: limit (default 100), startTime, endTime.
+Optional: limit (default 100), startTime, endTime, source (ef/tdx/mqmt).
 
 NOTE: Use list_indices first.
 
@@ -118,10 +116,11 @@ RETURNS: K-line array with time, OHLC, volume.`,
   })
   async getKlineData(
     symbol: string,
-    period: z.infer<typeof PeriodEnum>,
+    period: '1min' | '5min' | '15min' | '30min' | '60min' | 'daily',
     limit: number = 100,
     startTime?: string,
     endTime?: string,
+    source?: 'ef' | 'tdx' | 'mqmt',
   ) {
     return this.executeTool('get_kline_data', async () => {
       // Validate symbol
@@ -163,11 +162,15 @@ RETURNS: K-line array with time, OHLC, volume.`,
         );
       }
 
+      // Select data source
+      const selectedSource = this.dataSourceService.select(source);
+
       const queryBuilder = this.kRepository
         .createQueryBuilder('bar')
         .leftJoin('bar.security', 'security')
         .where('security.id = :securityId', { securityId: security.id })
         .andWhere('bar.period = :period', { period })
+        .andWhere('bar.source = :source', { source: selectedSource })
         .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
 
@@ -202,7 +205,7 @@ Contains OHLC, volume, and amount.
 WHEN TO USE: Daily/swing trading analysis, long-term trends.
 
 REQUIRES: symbol (e.g., '000001').
-Optional: limit (default 100), startDate, endDate.
+Optional: limit (default 100), startDate, endDate, source (ef/tdx/mqmt).
 
 NOTE: Use list_indices first. Use get_kline_data for intraday.
 
@@ -213,6 +216,7 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
     limit: number = 100,
     startDate?: string,
     endDate?: string,
+    source?: 'ef' | 'tdx' | 'mqmt',
   ) {
     return this.executeTool('get_daily_kline', async () => {
       // Validate symbol
@@ -254,11 +258,15 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
         );
       }
 
+      // Select data source
+      const selectedSource = this.dataSourceService.select(source);
+
       const queryBuilder = this.kRepository
         .createQueryBuilder('bar')
         .leftJoin('bar.security', 'security')
         .where('security.id = :securityId', { securityId: security.id })
         .andWhere('bar.period = :period', { period: KPeriod.DAILY })
+        .andWhere('bar.source = :source', { source: selectedSource })
         .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
 
@@ -323,11 +331,12 @@ WHEN TO USE: Getting current market snapshot, checking data freshness,
 quick status check across all periods.
 
 REQUIRES: symbol - Index code (e.g., '000001').
+Optional: source (ef/tdx/mqmt).
 
 RETURNS: Object containing latest data for daily, 1min, 5min,
 15min, 30min, 60min. Each has time, OHLC, volume.`,
   })
-  async getLatestData(symbol: string) {
+  async getLatestData(symbol: string, source?: 'ef' | 'tdx' | 'mqmt') {
     return this.executeTool('get_latest_data', async () => {
       const security = await this.securityRepository.findOne({
         where: { code: symbol },
@@ -338,6 +347,9 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
           McpErrorCode.INDEX_NOT_FOUND,
         );
       }
+
+      // Select data source
+      const selectedSource = this.dataSourceService.select(source);
 
       const periods: KPeriod[] = [
         KPeriod.ONE_MIN,
@@ -353,6 +365,7 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
           .leftJoin('bar.security', 'security')
           .where('security.id = :securityId', { securityId: security.id })
           .andWhere('bar.period = :period', { period: KPeriod.DAILY })
+          .andWhere('bar.source = :source', { source: selectedSource })
           .orderBy('bar.timestamp', 'DESC')
           .limit(1)
           .getOne(),
@@ -362,6 +375,7 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
             .leftJoin('bar.security', 'security')
             .where('security.id = :securityId', { securityId: security.id })
             .andWhere('bar.period = :period', { period })
+            .andWhere('bar.source = :source', { source: selectedSource })
             .orderBy('bar.timestamp', 'DESC')
             .limit(1)
             .getOne(),
