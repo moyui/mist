@@ -5,7 +5,7 @@ export class ApplyTemplateDto {
   @IsNotEmpty({
     message: '模版名称不能为空',
   })
-  name: string;
+  name!: string;
 
-  state: typeof StateAnnotation.State;
+  state: typeof StateAnnotation.State = null!;
 }

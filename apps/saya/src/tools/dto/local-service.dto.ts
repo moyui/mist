@@ -4,7 +4,7 @@ export class LocalServiceDto<T> {
   @IsNotEmpty({
     message: 'url不能为空',
   })
-  url: string;
+  url!: string;
 
-  params?: T;
+  params: T = null!;
 }
