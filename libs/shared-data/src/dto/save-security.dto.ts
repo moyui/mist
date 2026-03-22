@@ -21,7 +21,7 @@ export class SaveSecurityDto {
   @MaxLength(20, {
     message: '证券代码长度不能超过20个字符',
   })
-  code: string;
+  code!: string;
 
   @IsNotEmpty({
     message: '证券名称不能为空',
@@ -35,7 +35,7 @@ export class SaveSecurityDto {
   @MaxLength(100, {
     message: '证券名称长度不能超过100个字符',
   })
-  name: string;
+  name!: string;
 
   @IsNotEmpty({
     message: '证券类型不能为空',
@@ -43,7 +43,7 @@ export class SaveSecurityDto {
   @IsEnum(SecurityType, {
     message: '证券类型只能是 STOCK 或 INDEX',
   })
-  type: SecurityType;
+  type!: SecurityType;
 
   @IsNotEmpty({
     message: '交易所不能为空',
@@ -54,7 +54,7 @@ export class SaveSecurityDto {
   @MaxLength(10, {
     message: '交易所代码长度不能超过10个字符',
   })
-  exchange: string;
+  exchange!: string;
 
   @IsOptional()
   @IsEnum(SecurityStatus, {

@@ -13,7 +13,7 @@ export class QueryMarketDataDto {
   @IsNotEmpty({
     message: '证券代码不能为空',
   })
-  code: string;
+  code!: string;
 
   @IsNotEmpty({
     message: '数据源不能为空',
@@ -21,7 +21,7 @@ export class QueryMarketDataDto {
   @IsEnum(DataSource, {
     message: '数据源只能是 ef、tdx 或 mqmt',
   })
-  source: DataSource;
+  source!: DataSource;
 
   @IsNotEmpty({
     message: '周期不能为空',
@@ -29,7 +29,7 @@ export class QueryMarketDataDto {
   @IsEnum(KPeriod, {
     message: '周期只能是 1min、5min、15min、30min、60min 或 daily',
   })
-  period: KPeriod;
+  period!: KPeriod;
 
   @IsNotEmpty({
     message: '开始时间不能为空',
@@ -38,7 +38,7 @@ export class QueryMarketDataDto {
   @IsDate({
     message: '开始时间必须是有效的日期格式',
   })
-  startTime: Date;
+  startTime!: Date;
 
   @IsNotEmpty({
     message: '结束时间不能为空',
@@ -47,7 +47,7 @@ export class QueryMarketDataDto {
   @IsDate({
     message: '结束时间必须是有效的日期格式',
   })
-  endTime: Date;
+  endTime!: Date;
 
   @IsOptional()
   @Min(1, {

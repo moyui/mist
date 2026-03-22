@@ -14,7 +14,7 @@ export class SaveMarketDataDto {
   @IsNotEmpty({
     message: '证券代码不能为空',
   })
-  code: string;
+  code!: string;
 
   @IsNotEmpty({
     message: '数据源不能为空',
@@ -22,7 +22,7 @@ export class SaveMarketDataDto {
   @IsEnum(DataSource, {
     message: '数据源只能是 ef、tdx 或 mqmt',
   })
-  source: DataSource;
+  source!: DataSource;
 
   @IsNotEmpty({
     message: '周期不能为空',
@@ -30,7 +30,7 @@ export class SaveMarketDataDto {
   @IsEnum(KPeriod, {
     message: '周期只能是 1min、5min、15min、30min、60min 或 daily',
   })
-  period: KPeriod;
+  period!: KPeriod;
 
   @IsNotEmpty({
     message: '时间戳不能为空',
@@ -39,7 +39,7 @@ export class SaveMarketDataDto {
   @IsDate({
     message: '时间戳必须是有效的日期格式',
   })
-  timestamp: Date;
+  timestamp!: Date;
 
   @IsNotEmpty({
     message: '开盘价不能为空',
@@ -53,7 +53,7 @@ export class SaveMarketDataDto {
   @Min(0, {
     message: '开盘价不能为负数',
   })
-  open: number;
+  open!: number;
 
   @IsNotEmpty({
     message: '最高价不能为空',
@@ -67,7 +67,7 @@ export class SaveMarketDataDto {
   @Min(0, {
     message: '最高价不能为负数',
   })
-  high: number;
+  high!: number;
 
   @IsNotEmpty({
     message: '最低价不能为空',
@@ -81,7 +81,7 @@ export class SaveMarketDataDto {
   @Min(0, {
     message: '最低价不能为负数',
   })
-  low: number;
+  low!: number;
 
   @IsNotEmpty({
     message: '收盘价不能为空',
@@ -95,7 +95,7 @@ export class SaveMarketDataDto {
   @Min(0, {
     message: '收盘价不能为负数',
   })
-  close: number;
+  close!: number;
 
   @IsNotEmpty({
     message: '成交量不能为空',
@@ -109,7 +109,7 @@ export class SaveMarketDataDto {
   @Min(0, {
     message: '成交量不能为负数',
   })
-  volume: bigint;
+  volume!: bigint;
 
   @IsNotEmpty({
     message: '成交额不能为空',
@@ -123,11 +123,11 @@ export class SaveMarketDataDto {
   @Min(0, {
     message: '成交额不能为负数',
   })
-  amount: number;
+  amount!: number;
 
   @IsOptional()
-  precision?: number;
+  precision?: number = 0;
 
   @IsOptional()
-  factor?: number;
+  factor?: number = 1;
 }
