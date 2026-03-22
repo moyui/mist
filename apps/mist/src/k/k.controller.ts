@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { QueryBarsDto } from './dto/query-bars.dto';
+import { KlineQueryDto } from './dto/query/kline-query.dto';
 import { KService } from './k.service';
 import { BarsVo } from './vo/bars.vo';
 
@@ -21,8 +21,8 @@ export class KController {
       'Returns array of market data bars with open, high, low, close, and volume',
     type: [BarsVo],
   })
-  async queryBars(@Body() queryBarsDto: QueryBarsDto): Promise<BarsVo[]> {
-    const bars = await this.kService.findBarsById(queryBarsDto);
+  async queryBars(@Body() klineQueryDto: KlineQueryDto): Promise<BarsVo[]> {
+    const bars = await this.kService.findBarsById(klineQueryDto);
     return bars.map((bar) => ({
       id: bar.id,
       highest: bar.high,
