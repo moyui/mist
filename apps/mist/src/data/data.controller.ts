@@ -12,8 +12,8 @@ import {
   UseInterceptors,
   UseFilters,
 } from '@nestjs/common';
-import { TransformInterceptor } from '../common/interceptors/transform.interceptor';
-import { AllExceptionsFilter } from '../common/filters/all-exceptions.filter';
+import { TransformInterceptor } from '../interceptors/transform.interceptor';
+import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { DataService } from './data.service';
 
 @Controller('data')
