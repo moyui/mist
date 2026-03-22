@@ -3,7 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { DataSource } from 'typeorm';
-import { Stock } from '../../src/stock/stock.entity';
+import { Security } from '../../src/security/security.entity';
 
 describe('Multi-Data Source Integration Tests', () => {
   let app: INestApplication;
@@ -88,8 +88,8 @@ describe('Multi-Data Source Integration Tests', () => {
     describe('POST /api/stock/add-source', () => {
       beforeAll(async () => {
         // Create a stock for testing
-        const stockRepository = dataSource.getRepository(Stock);
-        const stock = stockRepository.create({
+        const securityRepository = dataSource.getRepository(Security);
+        const security = securityRepository.create({
           code: '000001',
           name: '平安银行',
           type: 'stock',
@@ -98,7 +98,7 @@ describe('Multi-Data Source Integration Tests', () => {
             type: 'eastmoney',
           },
         });
-        await stockRepository.save(stock);
+        await securityRepository.save(security);
       });
 
       it('should add data source successfully', async () => {
@@ -163,8 +163,8 @@ describe('Multi-Data Source Integration Tests', () => {
 
       beforeAll(async () => {
         // Create a stock for testing
-        const stockRepository = dataSource.getRepository(Stock);
-        const stock = stockRepository.create({
+        const securityRepository = dataSource.getRepository(Security);
+        const security = securityRepository.create({
           code: '000001',
           name: '平安银行',
           type: 'stock',
@@ -173,8 +173,8 @@ describe('Multi-Data Source Integration Tests', () => {
             type: 'eastmoney',
           },
         });
-        const createdStock = await stockRepository.save(stock);
-        stockCode = createdStock.code;
+        const createdSecurity = await securityRepository.save(security);
+        stockCode = createdSecurity.code;
       });
 
       it('should collect data successfully', async () => {
@@ -288,8 +288,8 @@ describe('Multi-Data Source Integration Tests', () => {
 
       beforeAll(async () => {
         // Create a stock for testing
-        const stockRepository = dataSource.getRepository(Stock);
-        const stock = stockRepository.create({
+        const securityRepository = dataSource.getRepository(Security);
+        const security = securityRepository.create({
           code: '000001',
           name: '平安银行',
           type: 'stock',
@@ -298,8 +298,8 @@ describe('Multi-Data Source Integration Tests', () => {
             type: 'eastmoney',
           },
         });
-        const createdStock = await stockRepository.save(stock);
-        stockCode = createdStock.code;
+        const createdSecurity = await securityRepository.save(security);
+        stockCode = createdSecurity.code;
       });
 
       it('should return collection status', async () => {
@@ -376,12 +376,12 @@ describe('Multi-Data Source Integration Tests', () => {
 
     describe('Performance Testing', () => {
       it('should handle concurrent requests', async () => {
-        const stockRepository = dataSource.getRepository(Stock);
+        const securityRepository = dataSource.getRepository(Security);
 
         const requests = Array.from({ length: 5 }, (_, i) => {
-          const stockCode = `CONCURRENT${i + 1}`;
-          return stockRepository.create({
-            code: stockCode,
+          const securityCode = `CONCURRENT${i + 1}`;
+          return securityRepository.create({
+            code: securityCode,
             name: `Concurrent Test Stock ${i + 1}`,
             type: 'stock',
             periods: [1],
@@ -391,14 +391,14 @@ describe('Multi-Data Source Integration Tests', () => {
           });
         });
 
-        const createdStocks = await stockRepository.save(requests);
+        const createdSecurities = await securityRepository.save(requests);
 
-        const initRequests = createdStocks.map((stock) =>
+        const initRequests = createdSecurities.map((security) =>
           request(app.getHttpServer())
             .post('/api/stock/init')
             .send({
-              code: stock.code,
-              name: `Concurrent Test Stock ${stock.code.slice(-1)}`,
+              code: security.code,
+              name: `Concurrent Test Stock ${security.code.slice(-1)}`,
               type: 'stock',
               periods: [1],
               source: {
