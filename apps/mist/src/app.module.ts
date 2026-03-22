@@ -19,7 +19,6 @@ import { DataModule } from './data/data.module';
 import { IndicatorModule } from './indicator/indicator.module';
 import { KModule } from './k/k.module';
 import { SecurityModule } from './security/security.module';
-import { TrendModule } from './trend/trend.module';
 import { mistEnvSchema } from '@app/config';
 
 @Module({
@@ -73,7 +72,6 @@ import { mistEnvSchema } from '@app/config';
     KModule,
     SecurityModule,
     ChanModule,
-    TrendModule,
   ],
   controllers: [AppController],
   providers: [AppService],
