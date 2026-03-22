@@ -7,7 +7,7 @@ import { ChannelService } from './services/channel.service';
 import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
 import { MergeKDto } from './dto/merge-k.dto';
 import { CreateBiDto } from './dto/create-bi.dto';
-import { TrendService } from '../trend/trend.service';
+import { TrendService } from './services/trend.service';
 import { UtilsService } from '@app/utils';
 import { TrendDirection } from './enums/trend-direction.enum';
 import { BiType } from './enums/bi.enum';

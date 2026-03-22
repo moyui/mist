@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChanService } from './chan.service';
 import { BiService } from './services/bi.service';
 import { KMergeService } from './services/k-merge.service';
-import { TrendService } from '../trend/trend.service';
+import { TrendService } from './services/trend.service';
 import { UtilsService } from '@app/utils';
 import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
 import { CreateBiDto } from './dto/create-bi.dto';
