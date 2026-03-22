@@ -15,7 +15,7 @@ import { AddSourceDto } from './dto/add-source.dto';
 import { Security } from './security.entity';
 
 @ApiTags('stocks')
-@Controller('stock')
+@Controller('stock/v1')
 export class SecurityController {
   constructor(private readonly securityService: SecurityService) {}
 
