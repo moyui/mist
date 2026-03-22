@@ -12,21 +12,24 @@ export class Stock {
   id!: number;
 
   @Column({ unique: true })
-  code!: string;
+  code: string = '';
 
   @Column({ nullable: true })
-  name!: string;
+  name: string = '';
 
   @Column()
-  type!: string;
+  type: string = '';
 
   @Column('json', { nullable: true })
-  periods!: number[];
+  periods: number[] = [];
 
   @Column('json')
-  source!: {
+  source: {
     type: string;
     config?: string;
+  } = {
+    type: 'unknown',
+    config: undefined,
   };
 
   @Column({ default: true })
