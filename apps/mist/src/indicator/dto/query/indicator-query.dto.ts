@@ -1,4 +1,4 @@
-import { DataSource, KPeriod } from '@app/shared-data';
+import { DataSource, Period } from '@app/shared-data';
 import { IsEnum, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 
 /**
@@ -17,11 +17,10 @@ export class IndicatorQueryDto {
   })
   source?: DataSource;
 
-  @IsEnum(KPeriod, {
-    message:
-      '周期只能为1min, 5min, 15min, 30min, 60min, daily，其中 1 分钟数据只能返回当前的, 其余只能返回近期的数据',
+  @IsEnum(Period, {
+    message: `周期必须是以下数值之一: ${Object.values(Period).join(', ')}`,
   })
-  period!: KPeriod;
+  period!: Period;
 
   @IsNotEmpty({
     message: '开始日期不能为空，格式为13位时间戳',

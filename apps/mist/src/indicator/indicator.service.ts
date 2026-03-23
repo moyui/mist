@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
-import { K, Security, KPeriod, DataSource } from '@app/shared-data';
+import { K, Security, Period, DataSource } from '@app/shared-data';
 import { DataSourceService } from '@app/utils';
 
 // Internal interfaces for indicator calculations
@@ -42,7 +42,7 @@ interface RunDualMADto {
 
 interface FindKDataQuery {
   symbol: string;
-  period: KPeriod;
+  period: Period;
   startDate: Date;
   endDate: Date;
   source?: DataSource;
