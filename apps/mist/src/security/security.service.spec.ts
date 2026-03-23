@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SecurityService } from './security.service';
 import { Security } from './security.entity';
-import { InitSecurityDto, SourceType, StockType } from './dto/init-stock.dto';
+import { InitStockDto, SourceType, StockType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
@@ -42,8 +42,8 @@ describe('SecurityService', () => {
     });
   });
 
-  describe('initSecurity', () => {
-    const initSecurityDto: InitSecurityDto = {
+  describe('initStock', () => {
+    const initStockDto: InitStockDto = {
       code: '000001.SH',
       name: '平安银行',
       type: StockType.STOCK,
@@ -71,7 +71,7 @@ describe('SecurityService', () => {
         updatedAt: new Date(),
       });
 
-      const result = await service.initSecurity(initSecurityDto);
+      const result = await service.initStock(initStockDto);
 
       expect(result.code).toBe('000001.SH');
       expect(mockSecurityRepository.findOne).toHaveBeenCalledWith({
@@ -94,14 +94,14 @@ describe('SecurityService', () => {
         updatedAt: new Date(),
       });
 
-      await expect(service.initSecurity(initSecurityDto)).rejects.toThrow(
+      await expect(service.initStock(initStockDto)).rejects.toThrow(
         ConflictException,
       );
     });
 
     it('should use default periods if not provided', async () => {
-      const dtoWithoutPeriods: InitSecurityDto = {
-        ...initSecurityDto,
+      const dtoWithoutPeriods: InitStockDto = {
+        ...initStockDto,
         periods: undefined,
       };
 
@@ -120,7 +120,7 @@ describe('SecurityService', () => {
         updatedAt: new Date(),
       });
 
-      const result = await service.initSecurity(dtoWithoutPeriods);
+      const result = await service.initStock(dtoWithoutPeriods);
       expect(result.periods).toEqual([1, 5, 15, 30, 60, 1440]);
     });
   });
@@ -281,11 +281,11 @@ describe('SecurityService', () => {
     });
   });
 
-  describe('deactivateSecurity', () => {
+  describe('deactivateStock', () => {
     it('should deactivate existing stock', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.deactivateSecurity('000001.SH');
+      await service.deactivateStock('000001.SH');
 
       expect(mockSecurityRepository.update).toHaveBeenCalledWith(
         { code: '000001.SH' },
@@ -296,17 +296,17 @@ describe('SecurityService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.deactivateSecurity('000001.SH')).rejects.toThrow(
+      await expect(service.deactivateStock('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  describe('activateSecurity', () => {
+  describe('activateStock', () => {
     it('should activate existing stock', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.activateSecurity('000001.SH');
+      await service.activateStock('000001.SH');
 
       expect(mockSecurityRepository.update).toHaveBeenCalledWith(
         { code: '000001.SH' },
@@ -317,7 +317,7 @@ describe('SecurityService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.activateSecurity('000001.SH')).rejects.toThrow(
+      await expect(service.activateStock('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
