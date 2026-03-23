@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { IndicatorController } from './indicator.controller';
 import { IndicatorService } from './indicator.service';
-import { DataService } from '../data/data.service';
 import { TimezoneService } from '@app/timezone';
+import { DataSourceService } from '@app/utils';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { K, Security } from '@app/shared-data';
 
 describe('IndicatorController', () => {
   let controller: IndicatorController;
@@ -13,8 +15,27 @@ describe('IndicatorController', () => {
       providers: [
         IndicatorService,
         {
-          provide: DataService,
-          useValue: {},
+          provide: getRepositoryToken(K),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            findOneBy: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Security),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            findOneBy: jest.fn(),
+          },
+        },
+        {
+          provide: DataSourceService,
+          useValue: {
+            select: jest.fn(),
+            getDefault: jest.fn(),
+          },
         },
         {
           provide: TimezoneService,

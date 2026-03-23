@@ -15,9 +15,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ChanModule } from './chan/chan.module';
 import { CollectorModule } from './collector/collector.module';
-import { DataModule } from './data/data.module';
 import { IndicatorModule } from './indicator/indicator.module';
-import { KModule } from './k/k.module';
 import { SecurityModule } from './security/security.module';
 import { mistEnvSchema } from '@app/config';
 
@@ -66,10 +64,8 @@ import { mistEnvSchema } from '@app/config';
       },
       inject: [ConfigService],
     }),
-    DataModule,
     CollectorModule,
     IndicatorModule,
-    KModule,
     SecurityModule,
     ChanModule,
   ],

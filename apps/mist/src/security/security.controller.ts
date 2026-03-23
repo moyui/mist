@@ -7,15 +7,21 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UseFilters,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { TransformInterceptor } from '../interceptors/transform.interceptor';
+import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
+import { Security } from '@app/shared-data';
 import { SecurityService } from './security.service';
 import { InitStockDto } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
-import { Security } from './security.entity';
 
 @ApiTags('security v1')
 @Controller('security/v1')
+@UseInterceptors(TransformInterceptor)
+@UseFilters(AllExceptionsFilter)
 export class SecurityController {
   constructor(private readonly securityService: SecurityService) {}
 
@@ -56,7 +62,7 @@ export class SecurityController {
     return await this.securityService.findByCode(code);
   }
 
-  @Get()
+  @Get('all')
   @ApiOperation({ summary: 'Get all active stocks' })
   @ApiResponse({
     status: 200,

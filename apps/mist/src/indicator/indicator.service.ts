@@ -5,6 +5,10 @@ import {
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Between, Repository } from 'typeorm';
+import { K, Security, KPeriod, DataSource } from '@app/shared-data';
+import { DataSourceService } from '@app/utils';
 
 // Internal interfaces for indicator calculations
 interface RunKDJDto {
@@ -36,9 +40,25 @@ interface RunDualMADto {
   longPeriod?: number;
 }
 
+interface FindKDataQuery {
+  symbol: string;
+  period: KPeriod;
+  startDate: Date;
+  endDate: Date;
+  source?: DataSource;
+}
+
 @Injectable()
 export class IndicatorService implements OnModuleInit {
   private talib: any = null;
+
+  constructor(
+    @InjectRepository(Security)
+    private securityRepository: Repository<Security>,
+    @InjectRepository(K)
+    private kRepository: Repository<K>,
+    private dataSourceService: DataSourceService,
+  ) {}
 
   onModuleInit() {
     this.talib = this.initTalib();
@@ -232,5 +252,53 @@ export class IndicatorService implements OnModuleInit {
     });
 
     return atrResult.result.outReal;
+  }
+
+  /**
+   * Find K-line data from database with optional data source selection.
+   * This method provides read access to K-line data for indicators and Chan Theory.
+   *
+   * @param query - Query parameters including symbol, period, dates, and optional source
+   * @returns Array of K entities
+   */
+  async findKData(query: FindKDataQuery): Promise<K[]> {
+    const foundSecurity = await this.securityRepository.findOneBy({
+      code: query.symbol,
+    });
+    if (!foundSecurity) {
+      throw new HttpException(
+        ERROR_MESSAGES.INDEX_NOT_FOUND,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Resolve data source (use provided or fall back to default)
+    const source = query.source
+      ? this.dataSourceService.select(query.source)
+      : this.dataSourceService.getDefault();
+
+    // TODO: In future iterations, use the resolved source to query from appropriate data source
+    // For now, source is logged for debugging purposes
+    if (query.source) {
+      console.debug(
+        `Finding K data for symbol ${query.symbol} from source: ${source}`,
+      );
+    }
+
+    const foundBars = await this.kRepository.find({
+      relations: ['security'],
+      where: {
+        security: {
+          id: foundSecurity.id,
+          code: foundSecurity.code,
+        },
+        period: query.period,
+        timestamp: Between(query.startDate, query.endDate),
+      },
+      order: {
+        timestamp: 'ASC',
+      },
+    });
+    return foundBars;
   }
 }
