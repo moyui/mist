@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { K, Security, KPeriod, DataSource } from '@app/shared-data';
+import { K, Security, DataSource, Period } from '@app/shared-data';
 import {
   ISourceFetcher,
   KLineFetchParams,
@@ -13,7 +13,6 @@ import {
 } from './interfaces/source-fetcher.interface';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
-import { Period } from '../chan/enums/period.enum';
 
 @Injectable()
 export class CollectorService {
@@ -108,7 +107,7 @@ export class CollectorService {
       const bar = this.kRepository.create({
         security,
         source: dataSource,
-        period: this.convertPeriodToBarPeriod(period),
+        period,
         timestamp: data.timestamp,
         open: data.open,
         high: data.high,
@@ -136,24 +135,6 @@ export class CollectorService {
     }
   }
 
-  private convertPeriodToBarPeriod(period: Period): KPeriod {
-    const mapping: Record<Period, KPeriod> = {
-      [Period.One]: KPeriod.ONE_MIN,
-      [Period.FIVE]: KPeriod.FIVE_MIN,
-      [Period.FIFTEEN]: KPeriod.FIFTEEN_MIN,
-      [Period.THIRTY]: KPeriod.THIRTY_MIN,
-      [Period.SIXTY]: KPeriod.SIXTY_MIN,
-      [Period.DAY]: KPeriod.DAILY,
-      // Note: KPeriod enum only supports up to daily periods
-      // Weekly, monthly, quarterly, yearly periods are not supported
-      [Period.WEEK]: KPeriod.DAILY, // Fallback to daily
-      [Period.MONTH]: KPeriod.DAILY, // Fallback to daily
-      [Period.QUARTER]: KPeriod.DAILY, // Fallback to daily
-      [Period.YEAR]: KPeriod.DAILY, // Fallback to daily
-    };
-    return mapping[period];
-  }
-
   async getCollectionStatus(
     stockCode: string,
     period: Period,
@@ -165,7 +146,7 @@ export class CollectorService {
     lastRecord?: Date;
     firstRecord?: Date;
   }> {
-    const barPeriod = this.convertPeriodToBarPeriod(period);
+    const barPeriod = period;
 
     const result = await this.kRepository
       .createQueryBuilder('bar')
@@ -193,7 +174,7 @@ export class CollectorService {
     stockCode: string,
     period: Period,
   ): Promise<number> {
-    const barPeriod = this.convertPeriodToBarPeriod(period);
+    const barPeriod = period;
 
     // Find duplicates by grouping by timestamp
     const duplicateQuery = this.kRepository

@@ -10,11 +10,11 @@ import {
   SecuritySourceConfig,
   SecurityType,
   SecurityStatus,
+  Period,
 } from '@app/shared-data';
 import { CollectorService } from '../collector/collector.service';
 import { InitStockDto, StockType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
-import { Period } from '../chan/enums/period.enum';
 
 @Injectable()
 export class SecurityService {
@@ -96,14 +96,14 @@ export class SecurityService {
 
   private mapMinutesToPeriod(minutes: number): Period {
     const mapping: Record<number, Period> = {
-      1: Period.One,
-      5: Period.FIVE,
-      15: Period.FIFTEEN,
-      30: Period.THIRTY,
-      60: Period.SIXTY,
+      1: Period.ONE_MIN,
+      5: Period.FIVE_MIN,
+      15: Period.FIFTEEN_MIN,
+      30: Period.THIRTY_MIN,
+      60: Period.SIXTY_MIN,
       1440: Period.DAY,
     };
-    return mapping[minutes] || Period.FIVE; // Default to 5min
+    return mapping[minutes] || Period.FIVE_MIN; // Default to 5min
   }
 
   async addSource(addSourceDto: AddSourceDto): Promise<Security> {

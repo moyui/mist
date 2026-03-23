@@ -19,8 +19,6 @@ import { PeriodMappingService } from '@app/utils';
 import { KVo } from '../indicator/vo/k.vo';
 import { TransformInterceptor } from '../interceptors/transform.interceptor';
 import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
-import { Period } from '@app/shared-data';
-import { KPeriod } from '@app/shared-data/enums/k-period.enum';
 
 @ApiTags('chan')
 @Controller('chan')
@@ -111,9 +109,6 @@ export class ChanController {
    * Helper method to fetch K-line data using ChanQueryDto parameters
    */
   private async fetchKData(chanQueryDto: ChanQueryDto): Promise<KVo[]> {
-    // Map Period (numeric) to KPeriod enum
-    const kPeriod = this.mapPeriodToKPeriod(chanQueryDto.period);
-
     // Parse date strings to Date objects
     const startDate = chanQueryDto.startDate
       ? new Date(chanQueryDto.startDate)
@@ -125,7 +120,7 @@ export class ChanController {
     // Fetch K-line data using IndicatorService
     const kEntities = await this.indicatorService.findKData({
       symbol: chanQueryDto.symbol,
-      period: kPeriod,
+      period: chanQueryDto.period,
       startDate,
       endDate,
       source: chanQueryDto.source,
@@ -143,28 +138,5 @@ export class ChanController {
       close: k.close,
       amount: k.amount,
     }));
-  }
-
-  /**
-   * Map Period enum (numeric) to KPeriod enum (string)
-   * TODO: Remove this mapping once IndicatorService is updated to use Period enum
-   */
-  private mapPeriodToKPeriod(period: Period): KPeriod {
-    switch (period) {
-      case Period.ONE_MIN:
-        return KPeriod.ONE_MIN;
-      case Period.FIVE_MIN:
-        return KPeriod.FIVE_MIN;
-      case Period.FIFTEEN_MIN:
-        return KPeriod.FIFTEEN_MIN;
-      case Period.THIRTY_MIN:
-        return KPeriod.THIRTY_MIN;
-      case Period.SIXTY_MIN:
-        return KPeriod.SIXTY_MIN;
-      case Period.DAY:
-        return KPeriod.DAILY;
-      default:
-        throw new Error(`Unsupported period: ${period}`);
-    }
   }
 }

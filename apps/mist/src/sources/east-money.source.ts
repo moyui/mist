@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ISourceFetcher, KLineFetchParams, KLineData } from '../collector';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
-import { DataSource, KPeriod } from '@app/shared-data';
-import { Period } from '../chan/enums/period.enum';
+import { DataSource, Period } from '@app/shared-data';
 
 @Injectable()
 export class EastMoneySource implements ISourceFetcher {
@@ -19,31 +18,12 @@ export class EastMoneySource implements ISourceFetcher {
     });
   }
 
-  // Helper function to convert Period enum to KPeriod enum
-  private periodToKLinePeriod(period: Period): KPeriod {
-    const mapping: Record<Period, KPeriod> = {
-      [Period.One]: KPeriod.ONE_MIN,
-      [Period.FIVE]: KPeriod.FIVE_MIN,
-      [Period.FIFTEEN]: KPeriod.FIFTEEN_MIN,
-      [Period.THIRTY]: KPeriod.THIRTY_MIN,
-      [Period.SIXTY]: KPeriod.SIXTY_MIN,
-      [Period.DAY]: KPeriod.DAILY,
-      // Note: KPeriod only supports up to daily
-      [Period.WEEK]: KPeriod.DAILY,
-      [Period.MONTH]: KPeriod.DAILY,
-      [Period.QUARTER]: KPeriod.DAILY,
-      [Period.YEAR]: KPeriod.DAILY,
-    };
-    return mapping[period];
-  }
-
   async fetchKLine(params: KLineFetchParams): Promise<KLineData[]> {
     const { code, period, startDate, endDate } = params;
 
     // Map the period to East Money format
-    const klinePeriod = this.periodToKLinePeriod(period);
     const periodFormat = this.periodMappingService.toSourceFormat(
-      klinePeriod,
+      period,
       DataSource.EAST_MONEY,
     );
 
@@ -85,17 +65,12 @@ export class EastMoneySource implements ISourceFetcher {
   }
 
   isSupportedPeriod(period: Period): boolean {
-    const klinePeriod = this.periodToKLinePeriod(period);
-    return this.periodMappingService.isSupported(
-      klinePeriod,
-      DataSource.EAST_MONEY,
-    );
+    return this.periodMappingService.isSupported(period, DataSource.EAST_MONEY);
   }
 
   getPeriodFormat(period: Period): string {
-    const klinePeriod = this.periodToKLinePeriod(period);
     return this.periodMappingService.toSourceFormat(
-      klinePeriod,
+      period,
       DataSource.EAST_MONEY,
     );
   }
