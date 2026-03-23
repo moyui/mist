@@ -1,4 +1,4 @@
-import { PeriodType, SharedDataService } from '@app/shared-data';
+import { Period, SharedDataService } from '@app/shared-data';
 import { TimezoneService } from '@app/timezone';
 import { UtilsService } from '@app/utils';
 import { Controller, OnApplicationBootstrap } from '@nestjs/common';
@@ -34,7 +34,7 @@ export class RunController implements OnApplicationBootstrap {
       if (!this.isTradingDay) return;
       return await this.sharedDataService.cronIndexPeriod({
         symbol: this.symbol,
-        periodType: PeriodType.One,
+        periodType: Period.ONE_MIN,
         time: time,
       });
     });
@@ -49,7 +49,7 @@ export class RunController implements OnApplicationBootstrap {
       if (!this.isTradingDay) return;
       return await this.sharedDataService.cronIndexPeriod({
         symbol: this.symbol,
-        periodType: PeriodType.FIVE,
+        periodType: Period.FIVE_MIN,
         time: time,
       });
     });
@@ -63,7 +63,7 @@ export class RunController implements OnApplicationBootstrap {
       if (!this.isTradingDay) return;
       return await this.sharedDataService.cronIndexPeriod({
         symbol: this.symbol,
-        periodType: PeriodType.FIFTEEN,
+        periodType: Period.FIFTEEN_MIN,
         time: time,
       });
     });
@@ -77,7 +77,7 @@ export class RunController implements OnApplicationBootstrap {
       if (!this.isTradingDay) return;
       return await this.sharedDataService.cronIndexPeriod({
         symbol: this.symbol,
-        periodType: PeriodType.THIRTY,
+        periodType: Period.THIRTY_MIN,
         time: time,
       });
     });
@@ -90,7 +90,7 @@ export class RunController implements OnApplicationBootstrap {
       if (!this.isTradingDay) return;
       return await this.sharedDataService.cronIndexPeriod({
         symbol: this.symbol,
-        periodType: PeriodType.SIXTY,
+        periodType: Period.SIXTY_MIN,
         time: time,
       });
     };
