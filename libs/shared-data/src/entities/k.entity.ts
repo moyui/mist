@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { Security } from './security.entity';
 import { DataSource } from '../enums/data-source.enum';
-import { KPeriod } from '../enums/k-period.enum';
+import { Period } from '../enums/period.enum';
 import { KExtensionEf } from './k-extension-ef.entity';
 import { KExtensionTdx } from './k-extension-tdx.entity';
 import { KExtensionMqmt } from './k-extension-mqmt.entity';
@@ -37,10 +37,11 @@ export class K {
 
   @Column({
     type: 'enum',
-    enum: KPeriod,
-    comment: 'K线周期：1min, 5min, 15min, 30min, 60min, daily等',
+    enum: Period,
+    comment:
+      'K线周期：1, 5, 15, 30, 60, 1440 (day), 10080 (week), 43200 (month)',
   })
-  period: KPeriod = KPeriod.DAILY;
+  period: Period = Period.DAY;
 
   @Column({
     type: 'datetime',
