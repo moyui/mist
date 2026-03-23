@@ -7,7 +7,7 @@ import {
   IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { KPeriod, DataSource } from '@app/shared-data';
+import { Period, DataSource } from '@app/shared-data';
 
 export class QueryMarketDataDto {
   @IsNotEmpty({
@@ -26,10 +26,10 @@ export class QueryMarketDataDto {
   @IsNotEmpty({
     message: '周期不能为空',
   })
-  @IsEnum(KPeriod, {
+  @IsEnum(Period, {
     message: '周期只能是 1min、5min、15min、30min、60min 或 daily',
   })
-  period!: KPeriod;
+  period!: Period;
 
   @IsNotEmpty({
     message: '开始时间不能为空',

@@ -1,5 +1,5 @@
 import { IsNotEmpty } from 'class-validator';
-import { PeriodType } from '@app/shared-data';
+import { Period } from '@app/shared-data';
 
 export class CronIndexPeriodDto {
   @IsNotEmpty({
@@ -10,7 +10,7 @@ export class CronIndexPeriodDto {
   @IsNotEmpty({
     message: '时间类型不能为空',
   })
-  periodType!: PeriodType;
+  periodType!: Period;
 
   @IsNotEmpty({
     message: '当前时间不能为空',

@@ -8,7 +8,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { KPeriod, DataSource } from '@app/shared-data';
+import { Period, DataSource } from '@app/shared-data';
 
 export class SaveMarketDataDto {
   @IsNotEmpty({
@@ -27,10 +27,10 @@ export class SaveMarketDataDto {
   @IsNotEmpty({
     message: '周期不能为空',
   })
-  @IsEnum(KPeriod, {
+  @IsEnum(Period, {
     message: '周期只能是 1min、5min、15min、30min、60min 或 daily',
   })
-  period!: KPeriod;
+  period!: Period;
 
   @IsNotEmpty({
     message: '时间戳不能为空',
