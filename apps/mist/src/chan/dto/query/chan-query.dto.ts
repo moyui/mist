@@ -1,5 +1,4 @@
-import { DataSource } from '@app/shared-data';
-import { Period } from '../../enums/period.enum';
+import { DataSource, Period } from '@app/shared-data';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 /**

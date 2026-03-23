@@ -1,4 +1,4 @@
-import { Security } from '@app/shared-data';
+import { Security, Period } from '@app/shared-data';
 import {
   Column,
   CreateDateColumn,
@@ -9,7 +9,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { FenxingType } from '../enums/fenxing.enum';
-import { Period } from '../enums/period.enum';
 import { Table } from '../enums/table.enum';
 
 /**
@@ -36,10 +35,10 @@ export class ChanFenxings {
   @Column({
     type: 'enum',
     enum: Period,
-    default: Period.FIVE,
+    default: Period.FIVE_MIN,
     comment: '周期',
   })
-  period: Period = Period.FIVE;
+  period: Period = Period.FIVE_MIN;
 
   @Column({
     type: 'enum',
