@@ -5,7 +5,6 @@ export * from './dto/index-period.dto';
 export * from './dto/save-index-period.dto';
 export * from './entities';
 export * from './enums/data-source.enum';
-export * from './enums/index-period.enum';
 export * from './enums/period.enum';
 export * from './enums/security-status.enum';
 export * from './enums/security-type.enum';
