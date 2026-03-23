@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DataMcpService } from './data-mcp.service';
-import { Security, K, KPeriod } from '@app/shared-data';
+import { Security, K, Period } from '@app/shared-data';
 import { DataSourceService } from '@app/utils';
 import { DataSource } from '@app/shared-data';
 
@@ -28,7 +28,7 @@ describe('DataMcpService', () => {
     id: 1,
     security: mockSecurity,
     source: 'aktools',
-    period: '1min' as KPeriod,
+    period: '1min' as Period,
     timestamp: new Date('2024-01-01T09:30:00Z'),
     open: 3000,
     close: 3010,

@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Security, K, KPeriod } from '@app/shared-data';
+import { Security, K, Period } from '@app/shared-data';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { ValidationHelper } from '../utils/validation.helpers';
 import { McpErrorCode, McpError } from '@app/constants';
@@ -265,7 +265,7 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
         .createQueryBuilder('bar')
         .leftJoin('bar.security', 'security')
         .where('security.id = :securityId', { securityId: security.id })
-        .andWhere('bar.period = :period', { period: KPeriod.DAILY })
+        .andWhere('bar.period = :period', { period: Period.DAILY })
         .andWhere('bar.source = :source', { source: selectedSource })
         .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
@@ -351,12 +351,12 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
       // Select data source
       const selectedSource = this.dataSourceService.select(source);
 
-      const periods: KPeriod[] = [
-        KPeriod.ONE_MIN,
-        KPeriod.FIVE_MIN,
-        KPeriod.FIFTEEN_MIN,
-        KPeriod.THIRTY_MIN,
-        KPeriod.SIXTY_MIN,
+      const periods: Period[] = [
+        Period.ONE_MIN,
+        Period.FIVE_MIN,
+        Period.FIFTEEN_MIN,
+        Period.THIRTY_MIN,
+        Period.SIXTY_MIN,
       ];
 
       const [dailyData, ...periodData] = await Promise.all([
@@ -364,7 +364,7 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
           .createQueryBuilder('bar')
           .leftJoin('bar.security', 'security')
           .where('security.id = :securityId', { securityId: security.id })
-          .andWhere('bar.period = :period', { period: KPeriod.DAILY })
+          .andWhere('bar.period = :period', { period: Period.DAILY })
           .andWhere('bar.source = :source', { source: selectedSource })
           .orderBy('bar.timestamp', 'DESC')
           .limit(1)
