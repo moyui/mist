@@ -28,7 +28,7 @@ describe('DataMcpService', () => {
     id: 1,
     security: mockSecurity,
     source: 'aktools',
-    period: '1min' as Period,
+    period: Period.ONE_MIN,
     timestamp: new Date('2024-01-01T09:30:00Z'),
     open: 3000,
     close: 3010,

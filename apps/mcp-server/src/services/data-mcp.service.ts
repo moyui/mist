@@ -265,7 +265,7 @@ RETURNS: Array of daily K-line objects with OHLC, volume, amount.`,
         .createQueryBuilder('bar')
         .leftJoin('bar.security', 'security')
         .where('security.id = :securityId', { securityId: security.id })
-        .andWhere('bar.period = :period', { period: Period.DAILY })
+        .andWhere('bar.period = :period', { period: Period.DAY })
         .andWhere('bar.source = :source', { source: selectedSource })
         .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
@@ -364,7 +364,7 @@ RETURNS: Object containing latest data for daily, 1min, 5min,
           .createQueryBuilder('bar')
           .leftJoin('bar.security', 'security')
           .where('security.id = :securityId', { securityId: security.id })
-          .andWhere('bar.period = :period', { period: Period.DAILY })
+          .andWhere('bar.period = :period', { period: Period.DAY })
           .andWhere('bar.source = :source', { source: selectedSource })
           .orderBy('bar.timestamp', 'DESC')
           .limit(1)

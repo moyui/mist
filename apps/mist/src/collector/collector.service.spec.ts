@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CollectorService } from './collector.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
-import { Period } from '../chan/enums/period.enum';
+import { Period } from '@app/shared-data';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { K, Security } from '@app/shared-data';
@@ -88,7 +88,7 @@ describe('CollectorService', () => {
         close: 10.8,
         volume: 1000000,
         amount: 10500000,
-        period: Period.One,
+        period: Period.ONE_MIN,
       },
       {
         timestamp: new Date('2024-01-01T09:31:00.000Z'),
@@ -98,7 +98,7 @@ describe('CollectorService', () => {
         close: 10.85,
         volume: 800000,
         amount: 8680000,
-        period: Period.One,
+        period: Period.ONE_MIN,
       },
     ];
 
@@ -113,7 +113,7 @@ describe('CollectorService', () => {
     it('should successfully collect and save K-line data', async () => {
       await service.collectKLine(
         '000001',
-        Period.One,
+        Period.ONE_MIN,
         new Date('2024-01-01'),
         new Date('2024-01-02'),
       );
@@ -132,7 +132,7 @@ describe('CollectorService', () => {
       await expect(
         service.collectKLine(
           '999999',
-          Period.One,
+          Period.ONE_MIN,
           new Date('2024-01-01'),
           new Date('2024-01-02'),
         ),
@@ -145,7 +145,7 @@ describe('CollectorService', () => {
       await expect(
         service.collectKLine(
           '000001',
-          Period.One,
+          Period.ONE_MIN,
           new Date('2024-01-01'),
           new Date('2024-01-02'),
         ),
@@ -158,7 +158,7 @@ describe('CollectorService', () => {
       await expect(
         service.collectKLine(
           '000001',
-          Period.One,
+          Period.ONE_MIN,
           new Date('2024-01-01'),
           new Date('2024-01-02'),
         ),
@@ -171,7 +171,7 @@ describe('CollectorService', () => {
       await expect(
         service.collectKLine(
           '000001',
-          Period.One,
+          Period.ONE_MIN,
           new Date('2024-01-01'),
           new Date('2024-01-02'),
         ),
@@ -213,7 +213,7 @@ describe('CollectorService', () => {
 
       const result = await service.getCollectionStatus(
         '000001',
-        Period.One,
+        Period.ONE_MIN,
         new Date('2024-01-01'),
         new Date('2024-01-02'),
       );
@@ -242,7 +242,7 @@ describe('CollectorService', () => {
 
       const result = await service.getCollectionStatus(
         '000001',
-        Period.One,
+        Period.ONE_MIN,
         new Date('2024-01-01'),
         new Date('2024-01-02'),
       );
@@ -286,7 +286,10 @@ describe('CollectorService', () => {
         .mockReturnValueOnce(mockQueryBuilder as any)
         .mockReturnValueOnce(mockDeleteQueryBuilder as any);
 
-      const result = await service.removeDuplicateData('000001', Period.One);
+      const result = await service.removeDuplicateData(
+        '000001',
+        Period.ONE_MIN,
+      );
       expect(result).toBe(2);
     });
 
@@ -314,7 +317,10 @@ describe('CollectorService', () => {
         .mockReturnValueOnce(mockQueryBuilder2 as any)
         .mockReturnValueOnce(mockDeleteQueryBuilder2 as any);
 
-      const result = await service.removeDuplicateData('000001', Period.One);
+      const result = await service.removeDuplicateData(
+        '000001',
+        Period.ONE_MIN,
+      );
       expect(result).toBe(0);
     });
   });

@@ -9,13 +9,8 @@ import { ChanQueryDto } from './dto/query/chan-query.dto';
 import { TrendService } from './services/trend.service';
 import { IndicatorService } from '../indicator/indicator.service';
 import { PeriodMappingService, UtilsService } from '@app/utils';
-import { Period } from './enums/period.enum';
+import { Period } from '@app/shared-data';
 import { DataSource } from '@app/shared-data';
-
-// Mock KPeriod for testing
-const KPeriod = {
-  PERIOD_1MIN: '1min',
-};
 
 describe('ChanController', () => {
   let controller: ChanController;
@@ -29,7 +24,7 @@ describe('ChanController', () => {
     id: index + 1,
     security: { code: '000001' },
     timestamp: k.time,
-    period: KPeriod.PERIOD_1MIN,
+    period: Period.ONE_MIN,
     source: DataSource.EAST_MONEY,
     open: k.open,
     high: k.highest,
@@ -56,7 +51,7 @@ describe('ChanController', () => {
         {
           provide: PeriodMappingService,
           useValue: {
-            toKPeriod: jest.fn().mockReturnValue(KPeriod.PERIOD_1MIN),
+            toKPeriod: jest.fn().mockReturnValue(Period.ONE_MIN),
           },
         },
         {
@@ -84,7 +79,7 @@ describe('ChanController', () => {
     beforeEach(() => {
       chanQueryDto = new ChanQueryDto();
       chanQueryDto.symbol = '000001';
-      chanQueryDto.period = Period.One;
+      chanQueryDto.period = Period.ONE_MIN;
     });
 
     it('should return merged K-lines for valid input', async () => {
@@ -103,7 +98,7 @@ describe('ChanController', () => {
       expect(mergeSpy).toHaveBeenCalled();
       expect(indicatorService.findKData).toHaveBeenCalledWith({
         symbol: '000001',
-        period: KPeriod.PERIOD_1MIN,
+        period: Period.ONE_MIN,
         startDate: expect.any(Date),
         endDate: expect.any(Date),
         source: undefined,
@@ -125,7 +120,7 @@ describe('ChanController', () => {
           id: 1,
           security: { code: '000001' },
           timestamp: singleK[0].time,
-          period: KPeriod.PERIOD_1MIN,
+          period: Period.ONE_MIN,
           source: DataSource.EAST_MONEY,
           open: singleK[0].open,
           high: singleK[0].highest,
@@ -148,7 +143,7 @@ describe('ChanController', () => {
         id: index + 1,
         security: { code: '000001' },
         timestamp: k.time,
-        period: KPeriod.PERIOD_1MIN,
+        period: Period.ONE_MIN,
         source: DataSource.EAST_MONEY,
         open: k.open,
         high: k.highest,
@@ -170,7 +165,7 @@ describe('ChanController', () => {
         id: index + 1,
         security: { code: '000001' },
         timestamp: k.time,
-        period: KPeriod.PERIOD_1MIN,
+        period: Period.ONE_MIN,
         source: DataSource.EAST_MONEY,
         open: k.open,
         high: k.highest,
@@ -193,7 +188,7 @@ describe('ChanController', () => {
     beforeEach(() => {
       chanQueryDto = new ChanQueryDto();
       chanQueryDto.symbol = '000001';
-      chanQueryDto.period = Period.One;
+      chanQueryDto.period = Period.ONE_MIN;
     });
 
     it('should return Bi (strokes) for valid K-line data', async () => {
@@ -226,7 +221,7 @@ describe('ChanController', () => {
           id: 1,
           security: { code: '000001' },
           timestamp: singleK[0].time,
-          period: KPeriod.PERIOD_1MIN,
+          period: Period.ONE_MIN,
           source: DataSource.EAST_MONEY,
           open: singleK[0].open,
           high: singleK[0].highest,
@@ -249,7 +244,7 @@ describe('ChanController', () => {
         id: index + 1,
         security: { code: '000001' },
         timestamp: k.time,
-        period: KPeriod.PERIOD_1MIN,
+        period: Period.ONE_MIN,
         source: DataSource.EAST_MONEY,
         open: k.open,
         high: k.highest,
@@ -271,7 +266,7 @@ describe('ChanController', () => {
         id: index + 1,
         security: { code: '000001' },
         timestamp: k.time,
-        period: KPeriod.PERIOD_1MIN,
+        period: Period.ONE_MIN,
         source: DataSource.EAST_MONEY,
         open: k.open,
         high: k.highest,
@@ -293,7 +288,7 @@ describe('ChanController', () => {
         id: index + 1,
         security: { code: '000001' },
         timestamp: k.time,
-        period: KPeriod.PERIOD_1MIN,
+        period: Period.ONE_MIN,
         source: DataSource.EAST_MONEY,
         open: k.open,
         high: k.highest,
@@ -316,7 +311,7 @@ describe('ChanController', () => {
     beforeEach(() => {
       chanQueryDto = new ChanQueryDto();
       chanQueryDto.symbol = '000001';
-      chanQueryDto.period = Period.One;
+      chanQueryDto.period = Period.ONE_MIN;
     });
 
     it('should return fenxings (fractals) for valid K-line data', async () => {
@@ -349,7 +344,7 @@ describe('ChanController', () => {
     beforeEach(() => {
       chanQueryDto = new ChanQueryDto();
       chanQueryDto.symbol = '000001';
-      chanQueryDto.period = Period.One;
+      chanQueryDto.period = Period.ONE_MIN;
     });
 
     it('should return channels for valid K-line data', async () => {

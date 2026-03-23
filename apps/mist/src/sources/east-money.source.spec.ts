@@ -2,9 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EastMoneySource } from './east-money.source';
 import { AxiosInstance } from 'axios';
 import { KLineFetchParams } from '../collector/interfaces/source-fetcher.interface';
-import { Period } from '../chan/enums/period.enum';
+import { Period } from '@app/shared-data';
 import { UtilsService, PeriodMappingService } from '@app/utils';
-import { KPeriod } from '@app/shared-data';
 
 describe('EastMoneySource', () => {
   let service: EastMoneySource;
@@ -28,14 +27,16 @@ describe('EastMoneySource', () => {
           provide: PeriodMappingService,
           useValue: {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            toSourceFormat: jest.fn((kPeriod: KPeriod) => {
-              // Map KPeriod to East Money format
-              if (kPeriod === KPeriod.ONE_MIN) return '1';
-              if (kPeriod === KPeriod.FIVE_MIN) return '5';
-              if (kPeriod === KPeriod.FIFTEEN_MIN) return '15';
-              if (kPeriod === KPeriod.THIRTY_MIN) return '30';
-              if (kPeriod === KPeriod.SIXTY_MIN) return '60';
-              if (kPeriod === KPeriod.DAILY) return 'daily';
+            toSourceFormat: jest.fn((period: Period) => {
+              // Map Period to East Money format
+              if (period === Period.ONE_MIN) return '1';
+              if (period === Period.FIVE_MIN) return '5';
+              if (period === Period.FIFTEEN_MIN) return '15';
+              if (period === Period.THIRTY_MIN) return '30';
+              if (period === Period.SIXTY_MIN) return '60';
+              if (period === Period.DAY) return 'daily';
+              if (period === Period.WEEK) return '1w';
+              if (period === Period.MONTH) return '1M';
               return '1';
             }),
             isSupported: jest.fn(() => {
@@ -159,11 +160,11 @@ describe('EastMoneySource', () => {
 
   describe('isSupportedPeriod', () => {
     it('should return true for supported periods', () => {
-      expect(service.isSupportedPeriod(Period.One)).toBe(true);
-      expect(service.isSupportedPeriod(Period.FIVE)).toBe(true);
-      expect(service.isSupportedPeriod(Period.FIFTEEN)).toBe(true);
-      expect(service.isSupportedPeriod(Period.THIRTY)).toBe(true);
-      expect(service.isSupportedPeriod(Period.SIXTY)).toBe(true);
+      expect(service.isSupportedPeriod(Period.ONE_MIN)).toBe(true);
+      expect(service.isSupportedPeriod(Period.FIVE_MIN)).toBe(true);
+      expect(service.isSupportedPeriod(Period.FIFTEEN_MIN)).toBe(true);
+      expect(service.isSupportedPeriod(Period.THIRTY_MIN)).toBe(true);
+      expect(service.isSupportedPeriod(Period.SIXTY_MIN)).toBe(true);
       expect(service.isSupportedPeriod(Period.DAY)).toBe(true);
       // WEEK, MONTH, QUARTER, YEAR map to daily and are supported
       expect(service.isSupportedPeriod(Period.WEEK)).toBe(true);
@@ -175,14 +176,14 @@ describe('EastMoneySource', () => {
 
   describe('getPeriodFormat', () => {
     it('should return correct period format', () => {
-      expect(service.getPeriodFormat(Period.One)).toBe('1');
-      expect(service.getPeriodFormat(Period.FIVE)).toBe('5');
+      expect(service.getPeriodFormat(Period.ONE_MIN)).toBe('1');
+      expect(service.getPeriodFormat(Period.FIVE_MIN)).toBe('5');
+      expect(service.getPeriodFormat(Period.FIFTEEN_MIN)).toBe('15');
+      expect(service.getPeriodFormat(Period.THIRTY_MIN)).toBe('30');
+      expect(service.getPeriodFormat(Period.SIXTY_MIN)).toBe('60');
       expect(service.getPeriodFormat(Period.DAY)).toBe('daily');
-      // WEEK, MONTH, QUARTER, YEAR all map to 'daily' in EastMoney
-      expect(service.getPeriodFormat(Period.WEEK)).toBe('daily');
-      expect(service.getPeriodFormat(Period.MONTH)).toBe('daily');
-      expect(service.getPeriodFormat(Period.QUARTER)).toBe('daily');
-      expect(service.getPeriodFormat(Period.YEAR)).toBe('daily');
+      expect(service.getPeriodFormat(Period.WEEK)).toBe('1w');
+      expect(service.getPeriodFormat(Period.MONTH)).toBe('1M');
     });
   });
 });
