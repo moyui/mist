@@ -39,7 +39,7 @@ describe('SecurityController', () => {
 
   describe('initStock', () => {
     const initStockDto: InitStockDto = {
-      code: '000001.SH',
+      code: '000001',
       name: '平安银行',
       type: StockType.STOCK,
       source: {
@@ -50,16 +50,16 @@ describe('SecurityController', () => {
 
     const mockStock: Security = {
       id: 1,
-      code: '000001.SH',
+      code: '000001',
       name: '平安银行',
       type: SecurityType.STOCK,
-      exchange: 'SH',
+      // exchange: 'SH',
       status: 'ACTIVE' as any,
       sourceConfigs: [],
       ks: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as Security;
+      createTime: new Date(),
+      updateTime: new Date(),
+    };
 
     it('should successfully initialize a new stock', async () => {
       mockSecurityService.initStock.mockResolvedValue(mockStock);
@@ -83,7 +83,7 @@ describe('SecurityController', () => {
 
   describe('addSource', () => {
     const addSourceDto: AddSourceDto = {
-      code: '000001.SH',
+      code: '000001',
       source: {
         type: SourceType.AKTOOLS,
         config: '',
@@ -92,16 +92,16 @@ describe('SecurityController', () => {
 
     const mockStock: Security = {
       id: 1,
-      code: '000001.SH',
+      code: '000001',
       name: '平安银行',
       type: SecurityType.STOCK,
-      exchange: 'SH',
+      // exchange: 'SH',
       status: 'ACTIVE' as any,
       sourceConfigs: [],
       ks: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as Security;
+      createTime: new Date(),
+      updateTime: new Date(),
+    };
 
     it('should successfully add source to existing stock', async () => {
       mockSecurityService.addSource.mockResolvedValue(mockStock);
@@ -126,16 +126,15 @@ describe('SecurityController', () => {
   describe('getStock', () => {
     const mockStock: Security = {
       id: 1,
-      code: '000001.SH',
+      code: '000001',
       name: '平安银行',
       type: SecurityType.STOCK,
-      exchange: 'SH',
       status: 'ACTIVE' as any,
       sourceConfigs: [],
       ks: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as Security;
+      createTime: new Date(),
+      updateTime: new Date(),
+    };
 
     it('should successfully get stock by code', async () => {
       mockSecurityService.findByCode.mockResolvedValue(mockStock);
@@ -164,25 +163,23 @@ describe('SecurityController', () => {
         code: '000001.SH',
         name: '平安银行',
         type: SecurityType.STOCK,
-        exchange: 'SH',
         status: 'ACTIVE' as any,
         sourceConfigs: [],
         ks: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Security,
+        createTime: new Date(),
+        updateTime: new Date(),
+      },
       {
         id: 2,
         code: '399006.SZ',
         name: '创业板指',
         type: SecurityType.INDEX,
-        exchange: 'SZ',
         status: 'ACTIVE' as any,
         sourceConfigs: [],
         ks: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as Security,
+        createTime: new Date(),
+        updateTime: new Date(),
+      },
     ];
 
     it('should return all active stocks', async () => {

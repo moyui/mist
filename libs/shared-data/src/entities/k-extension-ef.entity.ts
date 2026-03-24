@@ -1,10 +1,12 @@
 import {
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   Entity,
   JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 import { K } from './k.entity';
 
@@ -13,15 +15,24 @@ import { K } from './k.entity';
  * Contains additional fields specific to EF data format using independent primary key + foreign key design
  */
 @Entity({
-  name: 'market_data_extensions_ef',
+  name: 'k_extensions_ef',
 })
 export class KExtensionEf {
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @Index()
   @OneToOne(() => K, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'bar_id' })
-  bar!: K;
+  @JoinColumn({ name: 'k_id' })
+  k!: K;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    comment: '完整代号',
+  })
+  fullCode: string = '';
 
   @Column({
     type: 'decimal',
@@ -43,8 +54,8 @@ export class KExtensionEf {
 
   @Column({
     type: 'decimal',
-    precision: 10,
-    scale: 2,
+    precision: 12,
+    scale: 3,
     nullable: true,
     comment: '涨跌额（元）',
   })
@@ -64,30 +75,26 @@ export class KExtensionEf {
     nullable: true,
     comment: '成交笔数',
   })
-  volumeCount: number = 0;
+  volumeCount: bigint = 0n;
 
   @Column({
-    type: 'decimal',
-    precision: 12,
-    scale: 2,
+    type: 'bigint',
     nullable: true,
     comment: '内盘量',
   })
-  innerVolume: number = 0;
+  innerVolume: bigint = 0n;
+
+  @Column({
+    type: 'decimal',
+    nullable: true,
+    comment: '外盘量',
+  })
+  outerVolume: bigint = 0n;
 
   @Column({
     type: 'decimal',
     precision: 12,
-    scale: 2,
-    nullable: true,
-    comment: '外盘量',
-  })
-  outerVolume: number = 0;
-
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
+    scale: 3,
     nullable: true,
     comment: '昨收价',
   })
@@ -95,8 +102,8 @@ export class KExtensionEf {
 
   @Column({
     type: 'decimal',
-    precision: 10,
-    scale: 2,
+    precision: 12,
+    scale: 3,
     nullable: true,
     comment: '今开价',
   })
@@ -104,4 +111,7 @@ export class KExtensionEf {
 
   @CreateDateColumn({ name: 'create_time' })
   createTime!: Date;
+
+  @UpdateDateColumn({ name: 'update_time' })
+  updateTime!: Date;
 }

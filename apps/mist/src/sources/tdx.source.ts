@@ -31,19 +31,13 @@ export class TdxSource implements ISourceFetcher {
     void startDate;
     void endDate;
 
-    try {
-      // TODO: Implement actual TDX API call
-      // For now, return empty array to indicate API not yet implemented
-      console.warn(
-        `TDX API call not yet implemented for code: ${code}, period: ${periodFormat}`,
-      );
+    // TODO: Implement actual TDX API call
+    // For now, return empty array to indicate API not yet implemented
+    console.warn(
+      `TDX API call not yet implemented for code: ${code}, period: ${periodFormat}`,
+    );
 
-      return [];
-    } catch (error) {
-      throw new Error(
-        `Failed to fetch K-line data from TDX API: ${error.message}`,
-      );
-    }
+    return [];
   }
 
   isSupportedPeriod(period: Period): boolean {

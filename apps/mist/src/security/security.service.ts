@@ -51,7 +51,6 @@ export class SecurityService {
       code: formattedCode,
       name: initStockDto.name || '',
       type: securityType,
-      exchange: this.extractExchange(formattedCode),
       status: SecurityStatus.ACTIVE,
     });
 
@@ -79,20 +78,20 @@ export class SecurityService {
       : SecurityType.STOCK;
   }
 
-  private extractExchange(code: string): string {
-    if (code.endsWith('.SH') || code.startsWith('6')) {
-      return 'SH';
-    } else if (
-      code.endsWith('.SZ') ||
-      code.startsWith('0') ||
-      code.startsWith('3')
-    ) {
-      return 'SZ';
-    } else if (code.startsWith('5')) {
-      return 'CSI';
-    }
-    return 'SH'; // Default
-  }
+  // private extractExchange(code: string): string {
+  //   if (code.endsWith('.SH') || code.startsWith('6')) {
+  //     return 'SH';
+  //   } else if (
+  //     code.endsWith('.SZ') ||
+  //     code.startsWith('0') ||
+  //     code.startsWith('3')
+  //   ) {
+  //     return 'SZ';
+  //   } else if (code.startsWith('5')) {
+  //     return 'CSI';
+  //   }
+  //   return 'SH'; // Default
+  // }
 
   private mapMinutesToPeriod(minutes: number): Period {
     const mapping: Record<number, Period> = {

@@ -52,9 +52,9 @@ export class SecuritySourceConfig {
   })
   enabled: boolean = true;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  @CreateDateColumn({ name: 'create_time' })
+  createTime!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
+  @UpdateDateColumn({ name: 'update_time' })
+  updateTime!: Date;
 }

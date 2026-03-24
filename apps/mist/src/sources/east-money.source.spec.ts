@@ -153,7 +153,7 @@ describe('EastMoneySource', () => {
       axiosInstance.get.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(service.fetchKLine(mockParams)).rejects.toThrow(
-        'Failed to fetch K-line data from East Money API: Network error',
+        'Network error',
       );
     });
   });

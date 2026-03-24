@@ -39,13 +39,6 @@ export class Security {
   type: SecurityType = SecurityType.STOCK;
 
   @Column({
-    type: 'varchar',
-    length: 10,
-    comment: '交易所：SH=上交所，SZ=深交所，CSI=中证指数',
-  })
-  exchange: string = '';
-
-  @Column({
     type: 'tinyint',
     default: SecurityStatus.ACTIVE,
     comment: '状态：1=正常，0=停牌，-1=退市/终止',
@@ -59,8 +52,8 @@ export class Security {
   ks!: K[];
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  createTime!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
+  updateTime!: Date;
 }

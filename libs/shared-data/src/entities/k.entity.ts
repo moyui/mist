@@ -5,18 +5,17 @@ import {
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
   Unique,
-  JoinColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { Security } from './security.entity';
 import { DataSource } from '../enums/data-source.enum';
 import { Period } from '../enums/period.enum';
 import { KExtensionEf } from './k-extension-ef.entity';
-import { KExtensionTdx } from './k-extension-tdx.entity';
 import { KExtensionMqmt } from './k-extension-mqmt.entity';
+import { KExtensionTdx } from './k-extension-tdx.entity';
+import { Security } from './security.entity';
 
-@Entity({ name: 'market_data_bars' })
+@Entity({ name: 'k' })
 @Unique(['securityId', 'source', 'period', 'timestamp'])
 export class K {
   @PrimaryGeneratedColumn()
@@ -51,7 +50,7 @@ export class K {
 
   @Column({
     type: 'decimal',
-    precision: 12,
+    precision: 20,
     scale: 2,
     comment: '开盘价',
   })
@@ -59,7 +58,7 @@ export class K {
 
   @Column({
     type: 'decimal',
-    precision: 12,
+    precision: 20,
     scale: 2,
     comment: '最高价',
   })
@@ -67,7 +66,7 @@ export class K {
 
   @Column({
     type: 'decimal',
-    precision: 12,
+    precision: 20,
     scale: 2,
     comment: '最低价',
   })
@@ -75,7 +74,7 @@ export class K {
 
   @Column({
     type: 'decimal',
-    precision: 12,
+    precision: 20,
     scale: 2,
     comment: '收盘价',
   })
@@ -88,29 +87,28 @@ export class K {
   volume: bigint = 0n;
 
   @Column({
-    type: 'double',
+    type: 'decimal',
+    precision: 20,
+    scale: 2,
     comment: '成交额',
   })
   amount: number = 0;
 
   // OneToOne relationships to market data extension tables
   @OneToOne(() => KExtensionEf, { eager: false })
-  @JoinColumn({ name: 'market_extension_ef_id' })
-  marketExtensionEf!: KExtensionEf;
+  kExtensionEf!: KExtensionEf;
 
   @OneToOne(() => KExtensionTdx, { eager: false })
-  @JoinColumn({ name: 'market_extension_tdx_id' })
-  marketExtensionTdx!: KExtensionTdx;
+  kExtensionTdx!: KExtensionTdx;
 
   @OneToOne(() => KExtensionMqmt, { eager: false })
-  @JoinColumn({ name: 'market_extension_mqmt_id' })
-  marketExtensionMqmt!: KExtensionMqmt;
+  kExtensionMqmt!: KExtensionMqmt;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  @CreateDateColumn({ name: 'create_time' })
+  createTime!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
+  @UpdateDateColumn({ name: 'update_time' })
+  updateTime!: Date;
 
   // Virtual column for securityId to support the unique constraint
   @Column({ select: false })

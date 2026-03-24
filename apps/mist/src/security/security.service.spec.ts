@@ -89,8 +89,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
         sourceConfigs: [],
         ks: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createTime: new Date(),
+        updateTime: new Date(),
       } as Security);
       mockCollectorService.collectKLine.mockResolvedValue(undefined);
 
@@ -113,8 +113,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
         sourceConfigs: [],
         ks: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createTime: new Date(),
+        updateTime: new Date(),
       } as Security);
 
       await expect(service.initStock(initStockDto)).rejects.toThrow(
@@ -141,8 +141,8 @@ describe('SecurityService', () => {
       status: SecurityStatus.ACTIVE,
       sourceConfigs: [],
       ks: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createTime: new Date(),
+      updateTime: new Date(),
     } as Security;
 
     it('should successfully add source to existing stock (placeholder implementation)', async () => {
@@ -202,8 +202,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.SUSPENDED,
         sourceConfigs: [],
         ks: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createTime: new Date(),
+        updateTime: new Date(),
       };
 
       mockSecurityRepository.findOne.mockResolvedValue(suspendedStock);
@@ -225,8 +225,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
         sourceConfigs: [],
         ks: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createTime: new Date(),
+        updateTime: new Date(),
       } as Security;
 
       const sourceConfigs = [
@@ -235,8 +235,8 @@ describe('SecurityService', () => {
           security: stock,
           source: 'aktools',
           formatCode: '{"base": "shanghai"}',
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createTime: new Date(),
+          updateTime: new Date(),
         },
       ];
 
@@ -269,8 +269,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
         sourceConfigs: [],
         ks: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createTime: new Date(),
+        updateTime: new Date(),
       } as Security;
 
       mockSecurityRepository.findOne.mockResolvedValue(stock);
@@ -295,8 +295,8 @@ describe('SecurityService', () => {
           type: SecurityType.STOCK,
           exchange: 'SH',
           status: SecurityStatus.ACTIVE,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createTime: new Date(),
+          updateTime: new Date(),
         },
         {
           id: 2,
@@ -305,8 +305,8 @@ describe('SecurityService', () => {
           type: SecurityType.INDEX,
           exchange: 'SZ',
           status: SecurityStatus.ACTIVE,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createTime: new Date(),
+          updateTime: new Date(),
         },
       ];
 

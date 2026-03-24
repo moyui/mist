@@ -1,10 +1,12 @@
 import {
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   Entity,
   JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 import { K } from './k.entity';
 
@@ -13,20 +15,29 @@ import { K } from './k.entity';
  * Contains additional fields specific to TDX data format using independent primary key + foreign key design
  */
 @Entity({
-  name: 'market_data_extensions_tdx',
+  name: 'k_extensions_tdx',
 })
 export class KExtensionTdx {
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @Index()
   @OneToOne(() => K, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'bar_id' })
-  bar!: K;
+  @JoinColumn({ name: 'k_id' })
+  k!: K;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    comment: '完整代号',
+  })
+  fullCode: string = '';
 
   @Column({
     type: 'decimal',
-    precision: 12,
-    scale: 6,
+    precision: 16,
+    scale: 8,
     nullable: true,
     comment: '前复权因子：用于处理复权数据',
   })
@@ -34,8 +45,8 @@ export class KExtensionTdx {
 
   @Column({
     type: 'decimal',
-    precision: 12,
-    scale: 6,
+    precision: 16,
+    scale: 8,
     nullable: true,
     comment: '后复权因子：用于处理复权数据',
   })
@@ -61,7 +72,7 @@ export class KExtensionTdx {
 
   @Column({
     type: 'decimal',
-    precision: 8,
+    precision: 20,
     scale: 2,
     nullable: true,
     comment: '换手金额',
@@ -70,7 +81,7 @@ export class KExtensionTdx {
 
   @Column({
     type: 'decimal',
-    precision: 10,
+    precision: 20,
     scale: 2,
     nullable: true,
     comment: '总市值',
@@ -79,7 +90,7 @@ export class KExtensionTdx {
 
   @Column({
     type: 'decimal',
-    precision: 10,
+    precision: 20,
     scale: 2,
     nullable: true,
     comment: '流通市值',
@@ -97,7 +108,7 @@ export class KExtensionTdx {
 
   @Column({
     type: 'decimal',
-    precision: 6,
+    precision: 8,
     scale: 2,
     nullable: true,
     comment: '市盈率',
@@ -115,4 +126,7 @@ export class KExtensionTdx {
 
   @CreateDateColumn({ name: 'create_time' })
   createTime!: Date;
+
+  @UpdateDateColumn({ name: 'update_time' })
+  updateTime!: Date;
 }

@@ -1,10 +1,12 @@
 import {
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   Entity,
   JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 import { K } from './k.entity';
 
@@ -13,142 +15,28 @@ import { K } from './k.entity';
  * Contains additional fields specific to MQMT data format using independent primary key + foreign key design
  */
 @Entity({
-  name: 'market_data_extensions_mqmt',
+  name: 'k_extensions_mqmt',
 })
 export class KExtensionMqmt {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
+  @Index()
   @OneToOne(() => K, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'bar_id' })
-  bar: K;
+  @JoinColumn({ name: 'k_id' })
+  k!: K;
 
   @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 4,
+    type: 'varchar',
+    length: 20,
     nullable: true,
-    comment: 'VWAP（成交量加权平均价）',
+    comment: '完整代号',
   })
-  vwap: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 4,
-    nullable: true,
-    comment: 'Ichimoku转换线',
-  })
-  tenkanSen: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 4,
-    nullable: true,
-    comment: 'Ichimoku基准线',
-  })
-  kijunSen: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 4,
-    nullable: true,
-    comment: 'Ichimoku先行线A',
-  })
-  senkouSpanA: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 4,
-    nullable: true,
-    comment: 'Ichimoku先行线B',
-  })
-  senkouSpanB: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 4,
-    nullable: true,
-    comment: 'Ichimoku滞后线',
-  })
-  chikouSpan: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 8,
-    scale: 2,
-    nullable: true,
-    comment: '布林带上轨',
-  })
-  bollingerUpper: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 8,
-    scale: 2,
-    nullable: true,
-    comment: '布林带中轨',
-  })
-  bollingerMiddle: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 8,
-    scale: 2,
-    nullable: true,
-    comment: '布林带下轨',
-  })
-  bollingerLower: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 6,
-    scale: 2,
-    nullable: true,
-    comment: 'ATR（平均真实范围）',
-  })
-  atr: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 4,
-    nullable: true,
-    comment: '动能指标',
-  })
-  momentum: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 8,
-    scale: 2,
-    nullable: true,
-    comment: 'MACD快线',
-  })
-  macdFast: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 8,
-    scale: 2,
-    nullable: true,
-    comment: 'MACD慢线',
-  })
-  macdSlow: number;
-
-  @Column({
-    type: 'decimal',
-    precision: 8,
-    scale: 2,
-    nullable: true,
-    comment: 'MACD柱状图',
-  })
-  macdHistogram: number;
+  fullCode: string = '';
 
   @CreateDateColumn({ name: 'create_time' })
-  createTime: Date;
+  createTime!: Date;
+
+  @UpdateDateColumn({ name: 'update_time' })
+  updateTime!: Date;
 }

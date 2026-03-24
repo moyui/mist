@@ -31,37 +31,31 @@ export class EastMoneySource implements ISourceFetcher {
     const startTimestamp = Math.floor(startDate.getTime() / 1000);
     const endTimestamp = Math.floor(endDate.getTime() / 1000);
 
-    try {
-      const response = await this.axios.get('/api/kline', {
-        params: {
-          code,
-          period: periodFormat,
-          start: startTimestamp,
-          end: endTimestamp,
-        },
-      });
+    const response = await this.axios.get('/api/kline', {
+      params: {
+        code,
+        period: periodFormat,
+        start: startTimestamp,
+        end: endTimestamp,
+      },
+    });
 
-      if (!response.data || !Array.isArray(response.data)) {
-        throw new Error(
-          `Invalid response format from East Money API: ${JSON.stringify(response.data)}`,
-        );
-      }
-
-      return response.data.map((item: any) => ({
-        timestamp: new Date(item.timestamp),
-        open: Number(item.open),
-        high: Number(item.high),
-        low: Number(item.low),
-        close: Number(item.close),
-        volume: Number(item.volume),
-        amount: item.amount ? Number(item.amount) : undefined,
-        period,
-      }));
-    } catch (error) {
+    if (!response.data || !Array.isArray(response.data)) {
       throw new Error(
-        `Failed to fetch K-line data from East Money API: ${error.message}`,
+        `Invalid response format from East Money API: ${JSON.stringify(response.data)}`,
       );
     }
+
+    return response.data.map((item: any) => ({
+      timestamp: new Date(item.timestamp),
+      open: Number(item.open),
+      high: Number(item.high),
+      low: Number(item.low),
+      close: Number(item.close),
+      volume: Number(item.volume),
+      amount: item.amount ? Number(item.amount) : undefined,
+      period,
+    }));
   }
 
   isSupportedPeriod(period: Period): boolean {
