@@ -1,16 +1,21 @@
 export interface ApiResponse<T = any> {
-  success: boolean;
-  code: number;
+  success: true;
+  statusCode: number;
   message: string;
-  data?: T;
+  data: T;
   timestamp: string;
   requestId: string;
+  path?: string;
 }
 
 export interface ApiError {
   success: false;
-  code: number;
+  statusCode: number;
   message: string;
+  errors?: Record<string, string[]> | null;
   timestamp: string;
   requestId: string;
+  path?: string;
 }
+
+export type ApiResponseType<T = any> = ApiResponse<T> | ApiError;

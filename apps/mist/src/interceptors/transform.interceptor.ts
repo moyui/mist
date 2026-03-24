@@ -21,11 +21,12 @@ export class TransformInterceptor<T>
     return next.handle().pipe(
       map((data) => ({
         success: true,
-        code: 200,
+        statusCode: 200,
         message: 'SUCCESS',
         data,
         timestamp: new Date().toISOString(),
         requestId,
+        path: context.switchToHttp().getRequest().url,
       })),
     );
   }
