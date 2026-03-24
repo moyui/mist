@@ -3,15 +3,13 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
+  HttpStatus,
   Logger,
-  BadRequestException,
-  NotFoundException,
-  UnauthorizedException,
-  ForbiddenException,
-  ConflictException,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { HTTP_ERROR_CODE_MAP, HttpErrorCode } from '@app/constants';
+import { Request } from 'express';
+import { QueryFailedError } from 'typeorm';
+import { ERROR_MESSAGES } from '@app/constants';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -20,72 +18,72 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
-    const requestId = this.generateRequestId();
-    const statusCode = this.getStatusCode(exception);
-    const errorCode = this.mapErrorCode(exception);
-    const messageKey = this.getMessageKey(exception);
+    const status = this.getStatusCode(exception);
+    const message = this.extractMessage(exception);
+    const errors = this.extractErrors(exception);
 
-    // 记录错误日志
+    const errorResponse = {
+      success: false,
+      statusCode: status,
+      message,
+      errors,
+      timestamp: new Date().toISOString(),
+      requestId: this.generateRequestId(),
+      path: request.url,
+    };
+
+    // Log error details
     this.logger.error(
-      `${requestId} - ${messageKey}: ${exception instanceof Error ? exception.message : String(exception)}`,
-      exception instanceof Error ? exception.stack : undefined,
+      `${request.method} ${request.url} - Status: ${status} - Error: ${message}`,
+      exception instanceof Error ? exception.stack : '',
     );
 
-    // 返回统一错误格式
-    response.status(statusCode).json({
-      success: false,
-      code: errorCode,
-      message: messageKey,
-      timestamp: new Date().toISOString(),
-      requestId,
-    });
+    response.status(status).json(errorResponse);
   }
 
   private getStatusCode(exception: unknown): number {
     if (exception instanceof HttpException) {
       return exception.getStatus();
     }
-    return 500;
+    if (this.isQueryFailedError(exception)) {
+      return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+    return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
-  private mapErrorCode(exception: unknown): number {
-    // NestJS内置异常映射
-    if (exception instanceof BadRequestException)
-      return HTTP_ERROR_CODE_MAP[HttpErrorCode.INVALID_PARAMETER];
-    if (exception instanceof NotFoundException)
-      return HTTP_ERROR_CODE_MAP[HttpErrorCode.DATA_NOT_FOUND];
-    if (exception instanceof UnauthorizedException)
-      return HTTP_ERROR_CODE_MAP[HttpErrorCode.UNAUTHORIZED];
-    if (exception instanceof ForbiddenException)
-      return HTTP_ERROR_CODE_MAP[HttpErrorCode.FORBIDDEN];
-    if (exception instanceof ConflictException)
-      return HTTP_ERROR_CODE_MAP[HttpErrorCode.CONFLICT];
-
-    // TypeORM数据库异常
-    if (this.isQueryFailedError(exception))
-      return HTTP_ERROR_CODE_MAP[HttpErrorCode.DATABASE_ERROR];
-
-    // 默认服务器错误
-    return HTTP_ERROR_CODE_MAP[HttpErrorCode.INTERNAL_SERVER_ERROR];
-  }
-
-  private getMessageKey(exception: unknown): string {
+  private extractMessage(exception: unknown): string {
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
-      if (typeof response === 'string') return response;
-      if (typeof response === 'object') {
-        return (response as any).message || 'INTERNAL_SERVER_ERROR';
+      if (typeof response === 'object' && response) {
+        if ('errors' in response && typeof response.errors === 'object') {
+          return (response as any).message || 'VALIDATION_ERROR';
+        }
+        if ('message' in response) {
+          return (response as any).message;
+        }
       }
+      return exception.message;
     }
-    return 'INTERNAL_SERVER_ERROR';
+    if (this.isQueryFailedError(exception)) {
+      return ERROR_MESSAGES.DATABASE_QUERY_FAILED;
+    }
+    return ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
   }
 
-  private isQueryFailedError(exception: unknown): boolean {
-    if (!exception || typeof exception !== 'object') {
-      return false;
+  private extractErrors(exception: unknown): Record<string, string[]> | null {
+    if (exception instanceof HttpException) {
+      const response = exception.getResponse();
+      if (typeof response === 'object' && response && 'errors' in response) {
+        return response.errors as Record<string, string[]>;
+      }
     }
-    return (exception as any).name === 'QueryFailedError';
+    return null;
+  }
+
+  private isQueryFailedError(error: unknown): error is QueryFailedError {
+    return error instanceof Error && error.name === 'QueryFailedError';
   }
 
   private generateRequestId(): string {
