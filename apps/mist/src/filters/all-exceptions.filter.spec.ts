@@ -45,7 +45,7 @@ describe('AllExceptionsFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: 1001,
+        statusCode: 400,
       }),
     );
   });
@@ -65,7 +65,7 @@ describe('AllExceptionsFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: 2001,
+        statusCode: 404,
       }),
     );
   });
@@ -85,7 +85,7 @@ describe('AllExceptionsFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: 1005,
+        statusCode: 401,
       }),
     );
   });
@@ -105,7 +105,7 @@ describe('AllExceptionsFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: 1006,
+        statusCode: 403,
       }),
     );
   });
@@ -125,7 +125,7 @@ describe('AllExceptionsFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: 2004,
+        statusCode: 409,
       }),
     );
   });
@@ -145,7 +145,7 @@ describe('AllExceptionsFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: 5001,
+        statusCode: 500,
       }),
     );
   });
@@ -165,7 +165,7 @@ describe('AllExceptionsFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: false,
-        code: 5000,
+        statusCode: 500,
       }),
     );
   });

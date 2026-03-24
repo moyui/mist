@@ -5,7 +5,7 @@ export class ApiResponseDto<T> {
   success!: boolean;
 
   @ApiProperty({ example: 200 })
-  code!: number;
+  statusCode!: number;
 
   @ApiProperty({ example: 'SUCCESS' })
   message!: string;
@@ -24,8 +24,8 @@ export class ApiErrorDto {
   @ApiProperty({ example: false })
   success: false;
 
-  @ApiProperty({ example: 1001 })
-  code!: number;
+  @ApiProperty({ example: 400 })
+  statusCode!: number;
 
   @ApiProperty({ example: 'INVALID_PARAMETER' })
   message!: string;

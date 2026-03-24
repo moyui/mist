@@ -63,7 +63,7 @@ If not provided, the default source for the application will be used.
 
 ## Unified Response Format
 
-All HTTP endpoints return responses in a unified format with \`success\`, \`code\`, \`message\`, \`data\`, \`timestamp\`, and \`requestId\` fields.`,
+All HTTP endpoints return responses in a unified format with \`success\`, \`statusCode\`, \`message\`, \`data\`, \`timestamp\`, and \`requestId\` fields.`,
     )
     .setVersion('2.0')
     .addTag('health', 'Health check endpoints')
