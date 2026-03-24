@@ -13,8 +13,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true, // Remove undefined fields
       forbidNonWhitelisted: true, // Throw error if extra fields present
-      transform: false, // Disable transform for now to test basic validation
-      validateCustomDecorators: true, // Also validate custom decorators
+      transform: true, // Enable transform for request body transformation
       exceptionFactory: (errors) => {
         const fieldErrors = errors.reduce(
           (acc, err) => {
