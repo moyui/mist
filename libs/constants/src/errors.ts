@@ -7,18 +7,7 @@
  */
 
 export const ERROR_MESSAGES = {
-  // === Service Initialization Errors ===
-  INDICATOR_NOT_INITIALIZED:
-    'IndicatorService not initialized. Please try again later.',
-  DATA_SERVICE_NOT_INITIALIZED:
-    'DataService not initialized. Please try again later.',
-
-  // === Data Access Errors ===
-  INDEX_NOT_FOUND: 'Index information not found',
-  INDEX_PERIOD_REQUEST_FAILED: 'Failed to request index period data',
-  INDEX_DAILY_REQUEST_FAILED: 'Failed to request index daily data',
-
-  // === Validation Errors - Channel (Bi) ===
+  // === 400 Bad Request ===
   BI_DATA_REQUIRED: 'Invalid input: bi data is required',
   BI_MUST_BE_ARRAY: 'Invalid input: bi must be an array',
   BI_ARRAY_EMPTY: 'Invalid input: bi array cannot be empty',
@@ -32,29 +21,39 @@ export const ERROR_MESSAGES = {
     'Bi at index {{index}} is incomplete: missing fenxing information',
   BI_INVALID_DIRECTION:
     'Invalid bi at index {{index}}: invalid direction value',
-
-  // === Validation Errors - General ===
   INVALID_PERIOD: 'Invalid period specified',
   INVALID_DATE_RANGE: 'Invalid date range provided',
-  INSUFFICIENT_DATA: 'Insufficient data for calculation',
   INVALID_DATA_FORMAT: 'Invalid data format provided',
-
-  // === API Errors ===
-  UNAUTHORIZED: 'Unauthorized access',
-  RATE_LIMIT_EXCEEDED: 'Rate limit exceeded. Please try again later.',
   INVALID_API_KEY: 'Invalid API key provided',
 
-  // === Database Errors ===
+  // === 404 Not Found ===
+  INDEX_NOT_FOUND: 'Index information not found',
+  DATA_NOT_FOUND: 'Requested data not found',
+
+  // === 401 Unauthorized ===
+  UNAUTHORIZED: 'Unauthorized access',
+
+  // === 429 Rate Limit ===
+  RATE_LIMIT_EXCEEDED: 'Rate limit exceeded. Please try again later.',
+
+  // === 500 Internal Server Error ===
+  INDICATOR_NOT_INITIALIZED:
+    'IndicatorService not initialized. Please try again later.',
+  DATA_SERVICE_NOT_INITIALIZED:
+    'DataService not initialized. Please try again later.',
   DATABASE_CONNECTION_FAILED: 'Failed to connect to database',
   DATABASE_QUERY_FAILED: 'Database query failed',
+  INTERNAL_SERVER_ERROR: 'Internal server error occurred',
+  INSUFFICIENT_DATA: 'Insufficient data for calculation',
 
-  // === External API Errors ===
+  // === 503 Service Unavailable ===
+  SERVICE_UNAVAILABLE: 'Service temporarily unavailable',
+
+  // === 500 Internal Server Error - External Service Failures ===
+  INDEX_PERIOD_REQUEST_FAILED: 'Failed to request index period data',
+  INDEX_DAILY_REQUEST_FAILED: 'Failed to request index daily data',
   TRADING_DAY_CHECK_FAILED: 'Failed to check if date is a trading day',
   LOCAL_SERVICE_REQUEST_FAILED: 'Failed to request local service',
-
-  // === General Errors ===
-  INTERNAL_SERVER_ERROR: 'Internal server error occurred',
-  SERVICE_UNAVAILABLE: 'Service temporarily unavailable',
 } as const;
 
 export type ErrorMessage = keyof typeof ERROR_MESSAGES;
