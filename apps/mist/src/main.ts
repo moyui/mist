@@ -1,11 +1,36 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './interceptors/transform.interceptor';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Enable global validation with field-level error details
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Remove undefined fields
+      forbidNonWhitelisted: true, // Throw error if extra fields present
+      transform: false, // Disable transform for now to test basic validation
+      validateCustomDecorators: true, // Also validate custom decorators
+      exceptionFactory: (errors) => {
+        const fieldErrors = errors.reduce(
+          (acc, err) => {
+            acc[err.property] = Object.values(err.constraints || {});
+            return acc;
+          },
+          {} as Record<string, string[]>,
+        );
+
+        return new BadRequestException({
+          message: 'VALIDATION_ERROR',
+          errors: fieldErrors,
+        });
+      },
+    }),
+  );
 
   // 全局响应拦截器
   app.useGlobalInterceptors(new TransformInterceptor());
