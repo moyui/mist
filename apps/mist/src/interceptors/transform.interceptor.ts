@@ -26,12 +26,20 @@ export class TransformInterceptor<T>
         data,
         timestamp: new Date().toISOString(),
         requestId,
-        path: context.switchToHttp().getRequest().url,
+        path: this.getPath(context),
       })),
     );
   }
 
   private generateRequestId(): string {
     return `http-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  private getPath(context: ExecutionContext): string {
+    try {
+      return context.switchToHttp().getRequest().url || '/';
+    } catch {
+      return '/';
+    }
   }
 }

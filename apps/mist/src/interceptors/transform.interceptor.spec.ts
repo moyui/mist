@@ -30,7 +30,7 @@ describe('TransformInterceptor', () => {
       .intercept(context, next)
       .subscribe((result: ApiResponse<any>) => {
         expect(result).toHaveProperty('success', true);
-        expect(result).toHaveProperty('code', 200);
+        expect(result).toHaveProperty('statusCode', 200);
         expect(result).toHaveProperty('message', 'SUCCESS');
         expect(result).toHaveProperty('data', data);
         expect(result).toHaveProperty('timestamp');

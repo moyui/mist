@@ -30,7 +30,7 @@ describe('AllExceptionsFilter', () => {
     expect(filter).toBeDefined();
   });
 
-  it('should handle BadRequestException with code 1001', () => {
+  it('should handle BadRequestException', () => {
     const exception = new BadRequestException('Invalid parameter');
     const host = {
       switchToHttp: () => ({
@@ -50,7 +50,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('should handle NotFoundException with code 2001', () => {
+  it('should handle NotFoundException', () => {
     const exception = new NotFoundException('Resource not found');
     const host = {
       switchToHttp: () => ({
@@ -70,7 +70,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('should handle UnauthorizedException with code 1005', () => {
+  it('should handle UnauthorizedException', () => {
     const exception = new UnauthorizedException('Unauthorized');
     const host = {
       switchToHttp: () => ({
@@ -90,7 +90,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('should handle ForbiddenException with code 1006', () => {
+  it('should handle ForbiddenException', () => {
     const exception = new ForbiddenException('Forbidden');
     const host = {
       switchToHttp: () => ({
@@ -110,7 +110,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('should handle ConflictException with code 2004', () => {
+  it('should handle ConflictException', () => {
     const exception = new ConflictException('Conflict');
     const host = {
       switchToHttp: () => ({
@@ -130,7 +130,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('should handle QueryFailedError with code 5001', () => {
+  it('should handle QueryFailedError', () => {
     const exception = { name: 'QueryFailedError', message: 'Database error' };
     const host = {
       switchToHttp: () => ({
@@ -150,7 +150,7 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
-  it('should handle unknown exceptions with code 5000', () => {
+  it('should handle unknown exceptions', () => {
     const exception = new Error('Unknown error');
     const host = {
       switchToHttp: () => ({
