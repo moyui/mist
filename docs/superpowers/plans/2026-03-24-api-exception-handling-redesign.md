@@ -18,9 +18,10 @@
 - `apps/mist/src/main.ts` - Enable global ValidationPipe, update Swagger docs
 - `apps/mist/src/filters/all-exceptions.filter.ts` - Simplify exception handling, remove mapping logic
 - `apps/mist/src/interceptors/transform.interceptor.ts` - Change `code` to `statusCode`, add `path` field
+- `apps/mist/src/interfaces/response.interface.ts` - Update ApiResponse and ApiError interfaces (code → statusCode)
 
 **Tests:**
-- `apps/mist/src/filters/all-exceptions.filter.spec.ts` - Update 7 test assertions (code → statusCode)
+- `apps/mist/src/filters/all-exceptions.filter.spec.ts` - Update all 9 test assertions (code → statusCode)
 - `apps/mist/src/interceptors/transform.interceptor.spec.ts` - Update assertions
 
 **Constants:**
@@ -125,14 +126,14 @@ bootstrap();
 
 - [ ] **Step 2: Add ValidationPipe import**
 
-Add after line 4:
+Add after existing imports (after line 5):
 ```typescript
 import { ValidationPipe } from '@nestjs/common';
 ```
 
 - [ ] **Step 3: Enable global ValidationPipe**
 
-Add after line 11 (after app.useGlobalFilters):
+Add **before** app.useGlobalFilters (after line 8, before line 10):
 ```typescript
   // 全局验证管道
   app.useGlobalPipes(new ValidationPipe({
@@ -152,6 +153,12 @@ Add after line 11 (after app.useGlobalFilters):
       });
     },
   }));
+
+  // 全局响应拦截器
+  app.useGlobalInterceptors(new TransformInterceptor());
+
+  // 全局异常过滤器
+  app.useGlobalFilters(new AllExceptionsFilter());
 ```
 
 - [ ] **Step 4: Run tests to verify no regressions**
@@ -287,6 +294,48 @@ describe('AllExceptionsFilter', () => {
   });
 
   describe('HTTP status code extraction', () => {
+    it('should return 400 for BadRequestException', () => {
+      const exception = new BadRequestException('Invalid parameter');
+
+      filter.catch(exception, mockHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 400,
+          message: 'Invalid parameter'
+        })
+      );
+    });
+
+    it('should return 401 for UnauthorizedException', () => {
+      const exception = new UnauthorizedException('Unauthorized access');
+
+      filter.catch(exception, mockHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 401,
+          message: 'Unauthorized access'
+        })
+      );
+    });
+
+    it('should return 403 for ForbiddenException', () => {
+      const exception = new ForbiddenException('Forbidden');
+
+      filter.catch(exception, mockHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(403);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 403,
+          message: 'Forbidden'
+        })
+      );
+    });
+
     it('should return 404 for NotFoundException', () => {
       const exception = new NotFoundException('Data not found');
 
@@ -301,8 +350,36 @@ describe('AllExceptionsFilter', () => {
       );
     });
 
+    it('should return 409 for ConflictException', () => {
+      const exception = new ConflictException('Resource conflict');
+
+      filter.catch(exception, mockHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(409);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 409,
+          message: 'Resource conflict'
+        })
+      );
+    });
+
     it('should return 500 for unexpected errors', () => {
       const exception = new Error('Unexpected error');
+
+      filter.catch(exception, mockHost);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 500,
+          message: 'INTERNAL_SERVER_ERROR'
+        })
+      );
+    });
+
+    it('should return 500 for TypeORM QueryFailedError', () => {
+      const exception = { name: 'QueryFailedError', message: 'Database error' };
 
       filter.catch(exception, mockHost);
 
@@ -481,14 +558,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
 }
 ```
 
-- [ ] **Step 5: Remove HTTP_ERROR_CODE_MAP import if present**
+- [ ] **Step 5: Remove HTTP_ERROR_CODE_MAP and HttpErrorCode imports**
 
 Check if import exists:
 ```bash
 grep -n "HTTP_ERROR_CODE_MAP\|HttpErrorCode" apps/mist/src/filters/all-exceptions.filter.ts
 ```
 
-If found, remove the import line
+Current import (line 14):
+```typescript
+import { HTTP_ERROR_CODE_MAP, HttpErrorCode } from '@app/constants';
+```
+
+Remove entire import line and replace with:
+```typescript
+import { ERROR_MESSAGES } from '@app/constants';
+```
+
+Verify import was removed:
+```bash
+grep -n "HTTP_ERROR_CODE_MAP\|HttpErrorCode" apps/mist/src/filters/all-exceptions.filter.ts
+```
+
+Expected: No results (imports removed)
 
 - [ ] **Step 6: Run tests to verify they pass**
 
@@ -526,7 +618,98 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 4: Update TransformInterceptor
+## Task 4: Update Response Interface
+
+**Files:**
+- Modify: `apps/mist/src/interfaces/response.interface.ts:1-17`
+
+- [ ] **Step 1: Read current interface**
+
+```bash
+cat apps/mist/src/interfaces/response.interface.ts
+```
+
+Current content:
+```typescript
+export interface ApiResponse<T = any> {
+  success: boolean;
+  code: number;
+  message: string;
+  data?: T;
+  timestamp: string;
+  requestId: string;
+}
+
+export interface ApiError {
+  success: false;
+  code: number;
+  message: string;
+  timestamp: string;
+  requestId: string;
+}
+```
+
+- [ ] **Step 2: Update ApiResponse interface**
+
+Change `code` to `statusCode` on line 3:
+```typescript
+export interface ApiResponse<T = any> {
+  success: boolean;
+  statusCode: number;  // Changed from 'code'
+  message: string;
+  data?: T;
+  timestamp: string;
+  requestId: string;
+}
+```
+
+- [ ] **Step 3: Update ApiError interface**
+
+Change `code` to `statusCode` on line 11:
+```typescript
+export interface ApiError {
+  success: false;
+  statusCode: number;  // Changed from 'code'
+  message: string;
+  timestamp: string;
+  requestId: string;
+}
+```
+
+- [ ] **Step 4: Verify no TypeScript compilation errors**
+
+```bash
+cd apps/mist
+pnpm run build 2>&1 | grep -i "error" || echo "No TypeScript errors"
+```
+
+Expected: No TypeScript errors
+
+- [ ] **Step 5: Run tests to verify interface changes work**
+
+```bash
+cd apps/mist
+pnpm test
+```
+
+Expected: Some tests may fail (need to update interceptor next)
+
+- [ ] **Step 6: Commit interface changes**
+
+```bash
+git add apps/mist/src/interfaces/response.interface.ts
+git commit -m "refactor: update response interface to use statusCode
+
+- Change ApiResponse.code to ApiResponse.statusCode
+- Change ApiError.code to ApiError.statusCode
+- Align interface with new HTTP status code approach
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 5: Update TransformInterceptor
 
 **Files:**
 - Modify: `apps/mist/src/interceptors/transform.interceptor.ts:1-37`
@@ -1068,26 +1251,7 @@ Expected:
 }
 ```
 
-- [ ] **Step 7: Test Chan app integration (port 8008)**
-
-```bash
-# In another terminal
-cd apps/chan
-pnpm run start:dev:chan
-```
-
-```bash
-curl -X POST http://localhost:8008/chan/bi \
-  -H "Content-Type: application/json" \
-  -d '{
-    "symbol": "000001",
-    "period": "daily"
-  }' | jq | head -20
-```
-
-Expected: Chan app endpoints work correctly with new filter
-
-- [ ] **Step 8: Stop dev servers**
+- [ ] **Step 7: Stop dev server**
 
 ```bash
 # Ctrl+C in both terminals
@@ -1108,7 +1272,6 @@ git commit -m "test: validate complete error handling refactor
 - All unit tests pass
 - All E2E tests pass
 - Manual API testing validates new format
-- Chan app integration verified
 - Swagger documentation updated
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
