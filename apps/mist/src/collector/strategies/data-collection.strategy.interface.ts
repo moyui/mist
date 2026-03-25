@@ -1,108 +1,57 @@
-import { Period } from '@app/shared-data';
-import {
-  ITimeWindowStrategy,
-  CollectionWindow,
-} from '../time-window/time-window.strategy.interface';
-import { IKLineMergeService } from '../kline-merge/kline-merge.service';
+import { Security, Period, DataSource } from '@app/shared-data';
 
 /**
- * Collection mode for data collection strategies.
+ * Data collection mode.
  */
-export enum CollectionMode {
-  /**
-   * One-time collection of historical data
-   */
-  ONE_TIME = 'one-time',
-
-  /**
-   * Scheduled recurring collection
-   */
-  SCHEDULED = 'scheduled',
-
-  /**
-   * Real-time streaming via WebSocket
-   */
-  REALTIME = 'realtime',
-}
-
-/**
- * Collection result with metadata.
- */
-export interface CollectionResult {
-  /**
-   * Number of records collected
-   */
-  count: number;
-
-  /**
-   * Time range of collected data
-   */
-  startTime: Date;
-  endTime: Date;
-
-  /**
-   * Data source used
-   */
-  source: string;
-
-  /**
-   * Collection mode used
-   */
-  mode: CollectionMode;
-
-  /**
-   * Whether collection was successful
-   */
-  success: boolean;
-
-  /**
-   * Error message if collection failed
-   */
-  error?: string;
-}
+export type CollectionMode = 'polling' | 'streaming';
 
 /**
  * Data collection strategy interface.
  *
- * Defines the contract for collecting K-line data from different sources.
- * Each data source (East Money, TDX, etc.) implements this interface
- * with its own collection logic, time windows, and merge strategies.
+ * All data sources must implement this interface.
+ * Each strategy encapsulates the collection logic for a specific data source.
+ *
+ * Polling mode (East Money): Actively fetch data on schedule
+ * Streaming mode (TDX, miniQMT): Receive data via WebSocket push
  */
 export interface IDataCollectionStrategy {
   /**
-   * Get the collection mode supported by this strategy.
+   * Data source type (e.g., EAST_MONEY, TDX, MINI_QMT)
    */
-  getCollectionMode(): CollectionMode;
+  readonly source: DataSource;
 
   /**
-   * Collect K-line data for a given security and period.
-   *
-   * @param securityCode - Security code (e.g., '000001.SH')
-   * @param period - Time period for K-line data
-   * @param window - Collection window (time range and recency requirements)
-   * @returns Promise resolving to collection result
+   * Collection mode.
+   * - polling: Actively fetch data on schedule (East Money)
+   * - streaming: Receive data via WebSocket push (TDX, miniQMT)
    */
-  collect(
-    securityCode: string,
+  readonly mode: CollectionMode;
+
+  /**
+   * Collect data for a specific security.
+   *
+   * For polling mode: Fetch data for the given time range
+   * For streaming mode: Subscribe to data feed
+   *
+   * @param security - Security object
+   * @param period - K-line period
+   * @param time - Current time (only used for polling mode)
+   */
+  collectForSecurity(
+    security: Security,
     period: Period,
-    window: CollectionWindow,
-  ): Promise<CollectionResult>;
+    time?: Date,
+  ): Promise<void>;
 
   /**
-   * Get the time window strategy used by this collection strategy.
+   * Start the strategy (for streaming mode).
+   * Establishes WebSocket connection, sets up handlers.
    */
-  getTimeWindowStrategy(): ITimeWindowStrategy;
+  start?(): Promise<void>;
 
   /**
-   * Get the K-line merge service used by this collection strategy.
+   * Stop the strategy (for streaming mode).
+   * Closes WebSocket connection, cleans up resources.
    */
-  getKLineMergeService(): IKLineMergeService;
-
-  /**
-   * Validate if this strategy can collect data for the given security.
-   *
-   * @param securityCode - Security code to validate
-   * @returns true if strategy supports this security, false otherwise
-   */
-  canCollect(securityCode: string): boolean;
+  stop?(): Promise<void>;
 }

@@ -9,6 +9,7 @@ import { ScheduleService } from './schedule.service';
 import { TaskModule } from './task/task.module';
 import { scheduleEnvSchema } from '@app/config';
 import { UtilsModule } from '@app/utils';
+import { TimezoneModule } from '@app/timezone';
 import { DataCollectionScheduleController } from './schedulers/schedule.controller';
 import { CollectorModule } from '../../mist/src/collector/collector.module';
 import { SecurityModule } from '../../mist/src/security/security.module';
@@ -46,6 +47,7 @@ import { SecurityModule } from '../../mist/src/security/security.module';
     }),
     NestScheduleModule.forRoot(),
     UtilsModule,
+    TimezoneModule,
     CollectorModule,
     SecurityModule,
     RunModule,

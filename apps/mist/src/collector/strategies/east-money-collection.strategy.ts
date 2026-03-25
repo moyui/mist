@@ -1,17 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { Period, DataSource } from '@app/shared-data';
+import { Injectable, Logger } from '@nestjs/common';
+import { Security, Period, DataSource } from '@app/shared-data';
+import { CollectorService } from '../collector.service';
+import { EastMoneyTimeWindowStrategy } from '../time-window/east-money-time-window.strategy';
+import { EastMoneyKLineMergeService } from '../kline-merge/east-money-kline-merge.service';
 import {
   IDataCollectionStrategy,
   CollectionMode,
-  CollectionResult,
 } from './data-collection.strategy.interface';
-import {
-  ITimeWindowStrategy,
-  CollectionWindow,
-} from '../time-window/time-window.strategy.interface';
-import { EastMoneyTimeWindowStrategy } from '../time-window/east-money-time-window.strategy';
-import { IKLineMergeService } from '../kline-merge/kline-merge.service';
-import { EastMoneyKLineMergeService } from '../kline-merge/east-money-kline-merge.service';
 
 /**
  * East Money (东方财富) data collection strategy implementation.
@@ -22,119 +17,89 @@ import { EastMoneyKLineMergeService } from '../kline-merge/east-money-kline-merg
  * - Supports all security codes (SH/SZ exchanges)
  * - Integrates with EastMoneyTimeWindowStrategy for time windows
  * - Integrates with EastMoneyKLineMergeService for data merging
- *
- * TODO: Implement actual East Money API integration
- * - HTTP client for East Money API endpoints
- * - Authentication if required
- * - Rate limiting and error handling
- * - Data parsing and validation
  */
 @Injectable()
 export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
-  private readonly timeWindowStrategy: ITimeWindowStrategy;
-  private readonly kLineMergeService: IKLineMergeService;
-  private readonly source: DataSource = DataSource.EAST_MONEY;
+  readonly source = DataSource.EAST_MONEY;
+  readonly mode: CollectionMode = 'polling';
 
-  constructor() {
-    this.timeWindowStrategy = new EastMoneyTimeWindowStrategy();
-    this.kLineMergeService = new EastMoneyKLineMergeService();
-  }
-
-  /**
-   * Get the collection mode supported by this strategy.
-   */
-  getCollectionMode(): CollectionMode {
-    return CollectionMode.SCHEDULED;
-  }
+  constructor(
+    private readonly collectorService: CollectorService,
+    private readonly timeWindowStrategy: EastMoneyTimeWindowStrategy,
+    private readonly kLineMergeService: EastMoneyKLineMergeService,
+    private readonly logger: Logger,
+  ) {}
 
   /**
-   * Get the time window strategy used by this collection strategy.
-   */
-  getTimeWindowStrategy(): ITimeWindowStrategy {
-    return this.timeWindowStrategy;
-  }
-
-  /**
-   * Get the K-line merge service used by this collection strategy.
-   */
-  getKLineMergeService(): IKLineMergeService {
-    return this.kLineMergeService;
-  }
-
-  /**
-   * Validate if this strategy can collect data for the given security.
+   * Collect K-line data for a security.
    *
-   * East Money supports all A-share securities with format:
-   * - 6-digit code + .SH (Shanghai) or .SZ (Shenzhen)
-   * - Examples: 000001.SH, 600000.SH, 000001.SZ, 300001.SZ
-   */
-  canCollect(securityCode: string): boolean {
-    if (!securityCode || securityCode.trim().length === 0) {
-      return false;
-    }
-
-    // Check format: 6 digits + .SH or .SZ
-    const pattern = /^\d{6}\.(SH|SZ)$/;
-    return pattern.test(securityCode);
-  }
-
-  /**
-   * Collect K-line data for a given security and period.
+   * This method:
+   * 1. Validates collection window
+   * 2. Calculates collection window (what time range to collect)
+   * 3. Calls CollectorService with K-line merge post-processing
    *
-   * TODO: Implement actual East Money API call
-   * Current implementation is a stub that returns empty results.
-   *
-   * @param securityCode - Security code (e.g., '000001.SH')
+   * @param security - Security object
    * @param period - Time period for K-line data
-   * @param window - Collection window (time range and recency requirements)
-   * @returns Promise resolving to collection result
+   * @param time - Current time (defaults to now)
    */
-  async collect(
-    securityCode: string,
+  async collectForSecurity(
+    security: Security,
     period: Period,
-    window: CollectionWindow,
-  ): Promise<CollectionResult> {
-    // Validate security code
-    if (!this.canCollect(securityCode)) {
-      return {
-        count: 0,
-        startTime: window.startTime,
-        endTime: window.endTime,
-        source: this.source,
-        mode: this.getCollectionMode(),
-        success: false,
-        error: `Invalid security code format: ${securityCode}`,
-      };
+    time?: Date,
+  ): Promise<void> {
+    const currentTime = time || new Date();
+
+    // 1. Calculate collection window
+    const window = this.timeWindowStrategy.calculateCollectionWindow(
+      period,
+      currentTime,
+    );
+
+    // 2. Validate collection window (East Money allows collection at any time)
+    if (!this.timeWindowStrategy.isValidCollectionWindow()) {
+      this.logger.debug(
+        `Collection window not valid for ${security.code} ${period} at ${currentTime}`,
+      );
+      return;
     }
 
-    try {
-      // TODO: Implement actual East Money API call
-      // 1. Construct API URL based on security code and period
-      // 2. Make HTTP request to East Money API
-      // 3. Parse response and validate data
-      // 4. Merge data if needed using kLineMergeService
-      // 5. Store data in database
-      // 6. Return collection result
+    // 3. Extract start and end times from window
+    const startTime = window.startTime;
+    const endTime = window.endTime;
 
-      // Stub implementation: return empty result
-      return {
-        count: 0,
-        startTime: window.startTime,
-        endTime: window.endTime,
-        source: this.source,
-        mode: this.getCollectionMode(),
-        success: true,
-      };
+    // 3. Collect data with post-processing (K-line merge)
+    try {
+      await this.collectorService.collectKLineForSource(
+        security.code,
+        period,
+        startTime,
+        endTime,
+        this.source,
+        async (rawData) => {
+          // Apply K-line merge to collected data
+          const mergedData = this.kLineMergeService.mergeKLineData(
+            rawData,
+            period,
+            Period.ONE_MIN,
+          );
+
+          // Save merged data (Note: CollectorService already saves rawData,
+          // this callback is for additional processing if needed)
+          this.logger.debug(
+            `Merged ${rawData.length} records into ${mergedData.length} for ${security.code} ${period}`,
+          );
+        },
+      );
+
+      this.logger.log(
+        `Successfully collected ${security.code} ${period} from ${startTime.toISOString()} to ${endTime.toISOString()}`,
+      );
     } catch (error) {
-      return {
-        count: 0,
-        startTime: window.startTime,
-        endTime: window.endTime,
-        source: this.source,
-        mode: this.getCollectionMode(),
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
+      this.logger.error(
+        `Failed to collect ${security.code} ${period}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
   }
 }

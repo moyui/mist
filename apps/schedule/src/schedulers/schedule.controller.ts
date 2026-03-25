@@ -3,7 +3,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
 import { EastMoneyCollectionStrategy } from '@app/mist';
 import { DataCollectionScheduler } from '@app/mist';
-import { SecurityService } from '@app/mist';
+import { CollectorService } from '@app/mist';
+import { EastMoneyTimeWindowStrategy } from '@app/mist';
+import { EastMoneyKLineMergeService } from '@app/mist';
+import { TimezoneService } from '@app/timezone';
 
 /**
  * Schedule Controller with Cron Jobs.
@@ -22,11 +25,11 @@ import { SecurityService } from '@app/mist';
 @Controller('schedule')
 export class ScheduleController implements OnModuleInit {
   private readonly logger = new Logger(ScheduleController.name);
-  private strategies: Map<Period, EastMoneyCollectionStrategy> = new Map();
 
   constructor(
     private readonly dataCollectionScheduler: DataCollectionScheduler,
-    private readonly securityService: SecurityService,
+    private readonly collectorService: CollectorService,
+    private readonly timezoneService: TimezoneService,
   ) {}
 
   /**
@@ -43,13 +46,25 @@ export class ScheduleController implements OnModuleInit {
 
   /**
    * Register collection strategies for all supported periods.
+   *
+   * Creates a single EastMoneyCollectionStrategy instance and registers it
+   * for all periods (ONE_MIN through DAY).
    */
   private async registerStrategies(): Promise<void> {
     this.logger.log('Registering collection strategies...');
 
-    // Create and register a single strategy for all periods
-    // EastMoneyCollectionStrategy can handle all periods
-    const strategy = new EastMoneyCollectionStrategy();
+    // Create strategy instances with proper dependencies
+    const timeWindowStrategy = new EastMoneyTimeWindowStrategy(
+      this.timezoneService,
+    );
+    const kLineMergeService = new EastMoneyKLineMergeService();
+
+    const strategy = new EastMoneyCollectionStrategy(
+      this.collectorService,
+      timeWindowStrategy,
+      kLineMergeService,
+      new Logger('EastMoneyStrategy'),
+    );
 
     const periods = [
       Period.ONE_MIN,
@@ -61,7 +76,6 @@ export class ScheduleController implements OnModuleInit {
     ];
 
     for (const period of periods) {
-      // Register strategy with scheduler for each period
       this.dataCollectionScheduler.registerStrategy(period, strategy);
       this.logger.debug(`Registered strategy for period ${period}`);
     }
@@ -106,26 +120,14 @@ export class ScheduleController implements OnModuleInit {
       return;
     }
 
+    this.logger.debug('Starting 1min K-line collection...');
+
     try {
-      this.logger.debug('Starting 1min K-line collection...');
-
-      // Get all active securities
-      const securityCodes = await this.securityService.getActiveSecurities();
-
-      if (securityCodes.length === 0) {
-        this.logger.debug('No active securities found for 1min collection');
-        return;
-      }
-
-      // Trigger collection for all active securities
       await this.dataCollectionScheduler.collectForAllSecurities(
-        securityCodes,
         Period.ONE_MIN,
+        new Date(),
       );
-
-      this.logger.debug(
-        `1min K-line collection completed for ${securityCodes.length} securities`,
-      );
+      this.logger.debug('1min K-line collection completed');
     } catch (error) {
       this.logger.error(
         `Failed to collect 1min K-line data: ${error.message}`,
@@ -145,24 +147,14 @@ export class ScheduleController implements OnModuleInit {
       return;
     }
 
+    this.logger.debug('Starting 5min K-line collection...');
+
     try {
-      this.logger.debug('Starting 5min K-line collection...');
-
-      const securityCodes = await this.securityService.getActiveSecurities();
-
-      if (securityCodes.length === 0) {
-        this.logger.debug('No active securities found for 5min collection');
-        return;
-      }
-
       await this.dataCollectionScheduler.collectForAllSecurities(
-        securityCodes,
         Period.FIVE_MIN,
+        new Date(),
       );
-
-      this.logger.debug(
-        `5min K-line collection completed for ${securityCodes.length} securities`,
-      );
+      this.logger.debug('5min K-line collection completed');
     } catch (error) {
       this.logger.error(
         `Failed to collect 5min K-line data: ${error.message}`,
@@ -182,24 +174,14 @@ export class ScheduleController implements OnModuleInit {
       return;
     }
 
+    this.logger.debug('Starting 15min K-line collection...');
+
     try {
-      this.logger.debug('Starting 15min K-line collection...');
-
-      const securityCodes = await this.securityService.getActiveSecurities();
-
-      if (securityCodes.length === 0) {
-        this.logger.debug('No active securities found for 15min collection');
-        return;
-      }
-
       await this.dataCollectionScheduler.collectForAllSecurities(
-        securityCodes,
         Period.FIFTEEN_MIN,
+        new Date(),
       );
-
-      this.logger.debug(
-        `15min K-line collection completed for ${securityCodes.length} securities`,
-      );
+      this.logger.debug('15min K-line collection completed');
     } catch (error) {
       this.logger.error(
         `Failed to collect 15min K-line data: ${error.message}`,
@@ -219,24 +201,14 @@ export class ScheduleController implements OnModuleInit {
       return;
     }
 
+    this.logger.debug('Starting 30min K-line collection...');
+
     try {
-      this.logger.debug('Starting 30min K-line collection...');
-
-      const securityCodes = await this.securityService.getActiveSecurities();
-
-      if (securityCodes.length === 0) {
-        this.logger.debug('No active securities found for 30min collection');
-        return;
-      }
-
       await this.dataCollectionScheduler.collectForAllSecurities(
-        securityCodes,
         Period.THIRTY_MIN,
+        new Date(),
       );
-
-      this.logger.debug(
-        `30min K-line collection completed for ${securityCodes.length} securities`,
-      );
+      this.logger.debug('30min K-line collection completed');
     } catch (error) {
       this.logger.error(
         `Failed to collect 30min K-line data: ${error.message}`,
@@ -256,24 +228,14 @@ export class ScheduleController implements OnModuleInit {
       return;
     }
 
+    this.logger.debug('Starting 60min K-line collection...');
+
     try {
-      this.logger.debug('Starting 60min K-line collection...');
-
-      const securityCodes = await this.securityService.getActiveSecurities();
-
-      if (securityCodes.length === 0) {
-        this.logger.debug('No active securities found for 60min collection');
-        return;
-      }
-
       await this.dataCollectionScheduler.collectForAllSecurities(
-        securityCodes,
         Period.SIXTY_MIN,
+        new Date(),
       );
-
-      this.logger.debug(
-        `60min K-line collection completed for ${securityCodes.length} securities`,
-      );
+      this.logger.debug('60min K-line collection completed');
     } catch (error) {
       this.logger.error(
         `Failed to collect 60min K-line data: ${error.message}`,
@@ -293,24 +255,14 @@ export class ScheduleController implements OnModuleInit {
       return;
     }
 
+    this.logger.log('Starting daily K-line collection...');
+
     try {
-      this.logger.log('Starting daily K-line collection...');
-
-      const securityCodes = await this.securityService.getActiveSecurities();
-
-      if (securityCodes.length === 0) {
-        this.logger.debug('No active securities found for daily collection');
-        return;
-      }
-
       await this.dataCollectionScheduler.collectForAllSecurities(
-        securityCodes,
         Period.DAY,
+        new Date(),
       );
-
-      this.logger.log(
-        `Daily K-line collection completed for ${securityCodes.length} securities`,
-      );
+      this.logger.log('Daily K-line collection completed');
     } catch (error) {
       this.logger.error(
         `Failed to collect daily K-line data: ${error.message}`,
