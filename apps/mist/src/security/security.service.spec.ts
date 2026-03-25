@@ -31,6 +31,7 @@ describe('SecurityService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     save: jest.fn(),
+    create: jest.fn((entity) => entity),
   };
 
   beforeEach(async () => {
@@ -101,6 +102,67 @@ describe('SecurityService', () => {
         where: { code: '000001.SH' },
       });
       expect(mockCollectorService.collectKLine).toHaveBeenCalled();
+    });
+
+    it('should create SecuritySourceConfig when source is provided', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue(null);
+      mockSecurityRepository.save.mockResolvedValue({
+        id: 1,
+        code: '000001.SH',
+        name: '平安银行',
+        type: SecurityType.STOCK,
+        exchange: 'SH',
+        status: SecurityStatus.ACTIVE,
+        sourceConfigs: [],
+        ks: [],
+        createTime: new Date(),
+        updateTime: new Date(),
+      } as Security);
+      mockSourceConfigRepository.save.mockResolvedValue({
+        id: 1,
+        source: 'ef',
+        formatCode: '{}',
+      });
+      mockCollectorService.collectKLine.mockResolvedValue(undefined);
+
+      await service.initStock(initStockDto);
+
+      expect(mockSourceConfigRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'ef',
+          formatCode: '{}',
+        }),
+      );
+    });
+
+    it('should map AKTOOLS source type to EAST_MONEY DataSource enum', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue(null);
+      mockSecurityRepository.save.mockResolvedValue({
+        id: 1,
+        code: '000001.SH',
+        name: '平安银行',
+        type: SecurityType.STOCK,
+        exchange: 'SH',
+        status: SecurityStatus.ACTIVE,
+        sourceConfigs: [],
+        ks: [],
+        createTime: new Date(),
+        updateTime: new Date(),
+      } as Security);
+      mockSourceConfigRepository.save.mockResolvedValue({
+        id: 1,
+        source: 'ef',
+        formatCode: '{}',
+      });
+      mockCollectorService.collectKLine.mockResolvedValue(undefined);
+
+      await service.initStock(initStockDto);
+
+      expect(mockSourceConfigRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'ef',
+        }),
+      );
     });
 
     it('should throw conflict exception if stock already exists', async () => {

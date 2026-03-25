@@ -11,9 +11,10 @@ import {
   SecurityType,
   SecurityStatus,
   Period,
+  DataSource,
 } from '@app/shared-data';
 import { CollectorService } from '../collector/collector.service';
-import { InitStockDto, StockType } from './dto/init-stock.dto';
+import { InitStockDto, StockType, SourceType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 
 @Injectable()
@@ -55,6 +56,19 @@ export class SecurityService {
     });
 
     const savedStock = await this.securityRepository.save(stock);
+
+    // Create SecuritySourceConfig if source is provided
+    if (initStockDto.source) {
+      const dataSource = this.mapSourceStringToDataSource(
+        initStockDto.source.type,
+      );
+      const sourceConfig = this.sourceConfigRepository.create({
+        security: savedStock,
+        source: dataSource,
+        formatCode: initStockDto.source.config || '{}',
+      });
+      await this.sourceConfigRepository.save(sourceConfig);
+    }
 
     // Call CollectorService to collect historical data for first period
     if (initStockDto.periods && initStockDto.periods.length > 0) {
@@ -103,6 +117,14 @@ export class SecurityService {
       1440: Period.DAY,
     };
     return mapping[minutes] || Period.FIVE_MIN; // Default to 5min
+  }
+
+  private mapSourceStringToDataSource(sourceType: SourceType): DataSource {
+    const mapping: Record<SourceType, DataSource> = {
+      [SourceType.AKTOOLS]: DataSource.EAST_MONEY,
+      [SourceType.OTHER]: DataSource.EAST_MONEY, // Default to EAST_MONEY for OTHER
+    };
+    return mapping[sourceType] || DataSource.EAST_MONEY;
   }
 
   async addSource(addSourceDto: AddSourceDto): Promise<Security> {
