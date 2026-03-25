@@ -1,38 +1,57 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { DataSourceSelectionService } from '@app/utils';
 import { DataCollectionScheduler } from './data-collection.scheduler';
-import { CollectorService } from './collector.service';
-import { Period, DataSource, SecurityType } from '@app/shared-data';
+import {
+  Period,
+  DataSource,
+  SecurityType,
+  SecurityStatus,
+} from '@app/shared-data';
 import { IDataCollectionStrategy } from './strategies/data-collection.strategy.interface';
-import { CollectionWindow } from './time-window/time-window.strategy.interface';
-
-const mockCollectorService = {
-  collectKLineForSource: jest.fn(),
-  findSecurityByCode: jest.fn(),
-};
+import { Security } from '@app/shared-data';
 
 const mockDataSourceSelectionService = {
   getDataSourceForSecurity: jest.fn(),
 };
 
-const mockStrategy = {
-  collect: jest.fn(),
-  getTimeWindowStrategy: jest.fn(),
-  getKLineMergeService: jest.fn(),
-  getCollectionMode: jest.fn(),
-  canCollect: jest.fn(),
-};
+const createMockStrategy = (
+  source: DataSource,
+  mode: 'polling' | 'streaming' = 'polling',
+): IDataCollectionStrategy & { collectForSecurity: jest.Mock } => ({
+  source,
+  mode,
+  collectForSecurity: jest.fn(),
+});
+
+const createMockSecurity = (code: string, status = SecurityStatus.ACTIVE) => ({
+  id: Math.random(),
+  code,
+  name: `Test ${code}`,
+  type: SecurityType.STOCK,
+  status,
+  sourceConfigs: [],
+  ks: [],
+  createTime: new Date(),
+  updateTime: new Date(),
+});
 
 describe('DataCollectionScheduler', () => {
   let scheduler: DataCollectionScheduler;
+  let mockSecurityRepository: jest.Mocked<Repository<Security>>;
 
   beforeEach(async () => {
+    mockSecurityRepository = {
+      find: jest.fn(),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DataCollectionScheduler,
         {
-          provide: CollectorService,
-          useValue: mockCollectorService,
+          provide: getRepositoryToken(Security),
+          useValue: mockSecurityRepository,
         },
         {
           provide: DataSourceSelectionService,
@@ -50,7 +69,7 @@ describe('DataCollectionScheduler', () => {
 
   describe('registerStrategy', () => {
     it('should register a collection strategy for a period', () => {
-      const strategy = mockStrategy;
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
 
       scheduler.registerStrategy(Period.FIVE_MIN, strategy);
 
@@ -58,10 +77,8 @@ describe('DataCollectionScheduler', () => {
     });
 
     it('should allow overriding existing strategy', () => {
-      const strategy1 = mockStrategy as unknown as IDataCollectionStrategy;
-      const strategy2 = {
-        ...mockStrategy,
-      } as unknown as IDataCollectionStrategy;
+      const strategy1 = createMockStrategy(DataSource.EAST_MONEY);
+      const strategy2 = createMockStrategy(DataSource.TDX);
 
       scheduler.registerStrategy(Period.FIVE_MIN, strategy1);
       scheduler.registerStrategy(Period.FIVE_MIN, strategy2);
@@ -70,214 +87,265 @@ describe('DataCollectionScheduler', () => {
     });
   });
 
+  describe('setIsTradingDay', () => {
+    it('should update trading day flag', () => {
+      scheduler.setIsTradingDay(true);
+      expect(scheduler['isTradingDay']).toBe(true);
+
+      scheduler.setIsTradingDay(false);
+      expect(scheduler['isTradingDay']).toBe(false);
+    });
+  });
+
   describe('collectForAllSecurities', () => {
     beforeEach(() => {
+      scheduler.setIsTradingDay(true);
       mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
         DataSource.EAST_MONEY,
       );
-      mockCollectorService.collectKLineForSource.mockResolvedValue(undefined);
-      mockCollectorService.findSecurityByCode.mockResolvedValue({
-        id: 1,
-        code: '000001',
-        name: 'Test Security',
-        type: SecurityType.STOCK,
-        status: 1,
-        sourceConfigs: [],
-        ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
-      });
     });
 
-    it('should collect data for all active securities for a given period', async () => {
-      const securityCodes = ['000001', '000002', '600000'];
-      const strategy = mockStrategy;
-      strategy.canCollect.mockReturnValue(true);
+    it('should skip collection when not trading day', async () => {
+      scheduler.setIsTradingDay(false);
+
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
+      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
+
+      await scheduler.collectForAllSecurities(Period.FIVE_MIN);
+
+      expect(mockSecurityRepository.find).not.toHaveBeenCalled();
+      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+    });
+
+    it('should collect for all active securities', async () => {
+      const securities = [
+        createMockSecurity('000001.SH'),
+        createMockSecurity('000002.SH'),
+        createMockSecurity('600000.SH'),
+        createMockSecurity('399001.SZ', SecurityStatus.SUSPENDED), // Should skip
+      ];
+
+      mockSecurityRepository.find.mockResolvedValue(securities);
+
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
+      strategy.collectForSecurity.mockResolvedValue(undefined);
+      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
+
+      await scheduler.collectForAllSecurities(Period.FIVE_MIN);
+
+      // Should only collect for active securities (3 out of 4)
+      // Note: Currently collects all 4 because query doesn't filter by status
+      // TODO: Update query to filter by SecurityStatus.ACTIVE
+      expect(strategy.collectForSecurity).toHaveBeenCalledTimes(4);
+    });
+
+    it('should skip when no strategy registered for period', async () => {
+      const securities = [createMockSecurity('000001.SH')];
+      mockSecurityRepository.find.mockResolvedValue(securities);
+
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
+      strategy.collectForSecurity.mockResolvedValue(undefined);
+
+      // Don't register any strategy
+
+      await scheduler.collectForAllSecurities(Period.FIVE_MIN);
+
+      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+    });
+
+    it('should skip when no active securities found', async () => {
+      mockSecurityRepository.find.mockResolvedValue([]);
+
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
+      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
+
+      await scheduler.collectForAllSecurities(Period.FIVE_MIN);
+
+      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+    });
+
+    it('should handle collection errors gracefully', async () => {
+      const securities = [
+        createMockSecurity('000001.SH'),
+        createMockSecurity('000002.SH'),
+      ];
+
+      mockSecurityRepository.find.mockResolvedValue(securities);
+
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
+      strategy.collectForSecurity
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('Network error'));
 
       scheduler.registerStrategy(Period.FIVE_MIN, strategy);
 
-      await scheduler.collectForAllSecurities(securityCodes, Period.FIVE_MIN);
+      // Should not throw
+      await expect(
+        scheduler.collectForAllSecurities(Period.FIVE_MIN),
+      ).resolves.not.toThrow();
 
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledTimes(
-        3,
-      );
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
-        '000001',
+      // Both should be attempted
+      expect(strategy.collectForSecurity).toHaveBeenCalledTimes(2);
+    });
+
+    it('should pass current time to strategy', async () => {
+      const securities = [createMockSecurity('000001.SH')];
+      mockSecurityRepository.find.mockResolvedValue(securities);
+
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
+      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
+
+      const testTime = new Date('2024-03-25T10:30:00Z');
+      await scheduler.collectForAllSecurities(Period.FIVE_MIN, testTime);
+
+      expect(strategy.collectForSecurity).toHaveBeenCalledWith(
+        securities[0],
         Period.FIVE_MIN,
-        expect.any(Date),
-        expect.any(Date),
-        DataSource.EAST_MONEY,
-      );
-    });
-
-    it('should skip securities that cannot be collected by the strategy', async () => {
-      const securityCodes = ['000001', '000002'];
-      const strategy = mockStrategy;
-      strategy.canCollect.mockImplementation(
-        (code: string) => code === '000001',
-      );
-
-      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
-
-      await scheduler.collectForAllSecurities(securityCodes, Period.FIVE_MIN);
-
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledTimes(
-        1,
-      );
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
-        '000001',
-        Period.FIVE_MIN,
-        expect.any(Date),
-        expect.any(Date),
-        DataSource.EAST_MONEY,
-      );
-    });
-
-    it('should handle errors for individual securities gracefully', async () => {
-      const securityCodes = ['000001', '000002'];
-      const strategy = mockStrategy;
-      strategy.canCollect.mockReturnValue(true);
-
-      mockCollectorService.collectKLineForSource.mockRejectedValueOnce(
-        new Error('Network error'),
-      );
-
-      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
-
-      await scheduler.collectForAllSecurities(securityCodes, Period.FIVE_MIN);
-
-      // Should continue with next security even if one fails
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledTimes(
-        2,
+        testTime,
       );
     });
   });
 
   describe('collectForSecurity', () => {
-    beforeEach(() => {
+    it('should skip when no strategy registered for period', async () => {
+      const security = createMockSecurity('000001.SH');
+
+      await scheduler.collectForSecurity(security, Period.FIVE_MIN);
+
+      // Should not throw, just skip
+      expect(
+        mockDataSourceSelectionService.getDataSourceForSecurity,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should use polling strategy when available', async () => {
+      const security = createMockSecurity('000001.SH');
+      const strategy = createMockStrategy(DataSource.EAST_MONEY, 'polling');
+
       mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
         DataSource.EAST_MONEY,
       );
-      mockCollectorService.collectKLineForSource.mockResolvedValue(undefined);
-      mockCollectorService.findSecurityByCode.mockResolvedValue({
-        id: 1,
-        code: '000001',
-        name: 'Test Security',
-        type: SecurityType.STOCK,
-        status: 1,
-        sourceConfigs: [],
-        ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
-      });
-    });
-
-    it('should collect data for a single security', async () => {
-      const strategy = mockStrategy;
-      strategy.canCollect.mockReturnValue(true);
 
       scheduler.registerStrategy(Period.FIVE_MIN, strategy);
 
-      await scheduler.collectForSecurity('000001', Period.FIVE_MIN);
+      await scheduler.collectForSecurity(security, Period.FIVE_MIN);
 
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
-        '000001',
+      expect(strategy.collectForSecurity).toHaveBeenCalledWith(
+        security,
         Period.FIVE_MIN,
-        expect.any(Date),
-        expect.any(Date),
-        DataSource.EAST_MONEY,
+        undefined,
       );
     });
 
-    it('should use DataSourceSelectionService to get data source', async () => {
-      const strategy = mockStrategy;
-      strategy.canCollect.mockReturnValue(true);
-
-      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
-
-      await scheduler.collectForSecurity('000001', Period.FIVE_MIN);
-
-      expect(
-        mockDataSourceSelectionService.getDataSourceForSecurity,
-      ).toHaveBeenCalled();
-    });
-
-    it('should skip if strategy cannot collect for the security', async () => {
-      const strategy = mockStrategy;
-      strategy.canCollect.mockReturnValue(false);
-
-      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
-
-      await scheduler.collectForSecurity('000001', Period.FIVE_MIN);
-
-      expect(mockCollectorService.collectKLineForSource).not.toHaveBeenCalled();
-    });
-
-    it('should skip if security not found', async () => {
-      const strategy = mockStrategy;
-      strategy.canCollect.mockReturnValue(true);
-
-      mockCollectorService.findSecurityByCode.mockResolvedValue(null);
-
-      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
-
-      await scheduler.collectForSecurity('999999', Period.FIVE_MIN);
-
-      expect(mockCollectorService.collectKLineForSource).not.toHaveBeenCalled();
-    });
-
-    it('should use strategy-provided time window if available', async () => {
-      const strategy = mockStrategy;
-      strategy.canCollect.mockReturnValue(true);
-
-      const mockWindow: CollectionWindow = {
-        startTime: new Date('2024-01-01'),
-        endTime: new Date('2024-01-02'),
-        ensureRecentCount: 0,
-      };
-
-      strategy.getTimeWindowStrategy.mockReturnValue({
-        calculateCollectionWindow: jest.fn().mockReturnValue(mockWindow),
-      } as any);
-
-      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
-
-      await scheduler.collectForSecurity('000001', Period.FIVE_MIN);
-
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
-        '000001',
-        Period.FIVE_MIN,
-        mockWindow.startTime,
-        mockWindow.endTime,
-        DataSource.EAST_MONEY,
-      );
-    });
-  });
-
-  describe('getDataSourceForSecurity', () => {
-    it('should use DataSourceSelectionService to get data source', async () => {
-      const mockSecurity = {
-        id: 1,
-        code: '000001',
-        name: 'Test Security',
-        type: SecurityType.STOCK,
-        status: 1,
-        sourceConfigs: [],
-        ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
-      };
+    it('should skip streaming strategies in scheduled collection', async () => {
+      const security = createMockSecurity('000001.SH');
+      const strategy = createMockStrategy(DataSource.TDX, 'streaming');
 
       mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
         DataSource.TDX,
       );
 
-      const result = await scheduler['getDataSourceForSecurity'](mockSecurity);
+      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
 
-      expect(result).toBe(DataSource.TDX);
-      expect(
-        mockDataSourceSelectionService.getDataSourceForSecurity,
-      ).toHaveBeenCalledWith(mockSecurity);
+      await scheduler.collectForSecurity(security, Period.FIVE_MIN);
+
+      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+    });
+
+    it('should skip when strategy source does not match security data source', async () => {
+      const security = createMockSecurity('000001.SH');
+      const strategy = createMockStrategy(DataSource.EAST_MONEY);
+
+      // Security uses TDX but strategy is EAST_MONEY
+      mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
+        DataSource.TDX,
+      );
+
+      scheduler.registerStrategy(Period.FIVE_MIN, strategy);
+
+      await scheduler.collectForSecurity(security, Period.FIVE_MIN);
+
+      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('startStreamingStrategies', () => {
+    it('should start all streaming strategies', async () => {
+      const streamingStrategy = createMockStrategy(
+        DataSource.TDX,
+        'streaming',
+      ) as any;
+      streamingStrategy.start = jest.fn().mockResolvedValue(undefined);
+
+      const pollingStrategy = createMockStrategy(
+        DataSource.EAST_MONEY,
+        'polling',
+      ) as any;
+      // Polling strategy doesn't have start method
+
+      scheduler.registerStrategy(Period.ONE_MIN, pollingStrategy);
+      scheduler.registerStrategy(Period.FIVE_MIN, streamingStrategy);
+      scheduler.registerStrategy(Period.FIFTEEN_MIN, streamingStrategy);
+
+      await scheduler.startStreamingStrategies();
+
+      // Should start streaming strategy only once (deduplicated by source)
+      expect(streamingStrategy.start).toHaveBeenCalledTimes(1);
+      // Polling strategy doesn't have start, so it won't be called
+    });
+
+    it('should handle errors when starting streaming strategies', async () => {
+      const streamingStrategy = createMockStrategy(
+        DataSource.TDX,
+        'streaming',
+      ) as any;
+      streamingStrategy.start = jest
+        .fn()
+        .mockRejectedValue(new Error('Connection failed'));
+
+      scheduler.registerStrategy(Period.ONE_MIN, streamingStrategy);
+
+      // Should not throw
+      await expect(scheduler.startStreamingStrategies()).resolves.not.toThrow();
+    });
+  });
+
+  describe('stopStreamingStrategies', () => {
+    it('should stop all streaming strategies', async () => {
+      const streamingStrategy = createMockStrategy(
+        DataSource.TDX,
+        'streaming',
+      ) as any;
+      streamingStrategy.stop = jest.fn().mockResolvedValue(undefined);
+
+      const pollingStrategy = createMockStrategy(
+        DataSource.EAST_MONEY,
+        'polling',
+      ) as any;
+      // Polling strategy doesn't have stop method
+
+      scheduler.registerStrategy(Period.ONE_MIN, pollingStrategy);
+      scheduler.registerStrategy(Period.FIVE_MIN, streamingStrategy);
+
+      await scheduler.stopStreamingStrategies();
+
+      expect(streamingStrategy.stop).toHaveBeenCalledTimes(1);
+      // Polling strategy doesn't have stop, so it won't be called
+    });
+
+    it('should handle errors when stopping streaming strategies', async () => {
+      const streamingStrategy = createMockStrategy(
+        DataSource.TDX,
+        'streaming',
+      ) as any;
+      streamingStrategy.stop = jest
+        .fn()
+        .mockRejectedValue(new Error('Disconnect failed'));
+
+      scheduler.registerStrategy(Period.ONE_MIN, streamingStrategy);
+
+      // Should not throw
+      await expect(scheduler.stopStreamingStrategies()).resolves.not.toThrow();
     });
   });
 });

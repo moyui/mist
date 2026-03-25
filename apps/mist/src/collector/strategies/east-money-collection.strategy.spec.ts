@@ -1,120 +1,189 @@
-import { Period } from '@app/shared-data';
+import { Logger } from '@nestjs/common';
+import { Period, DataSource, SecurityType } from '@app/shared-data';
 import { EastMoneyCollectionStrategy } from './east-money-collection.strategy';
-import { EastMoneyTimeWindowStrategy } from '../time-window/east-money-time-window.strategy';
-import { EastMoneyKLineMergeService } from '../kline-merge/east-money-kline-merge.service';
-import { CollectionMode } from './data-collection.strategy.interface';
 
 describe('EastMoneyCollectionStrategy', () => {
   let strategy: EastMoneyCollectionStrategy;
+  let mockCollectorService: any;
+  let mockTimeWindowStrategy: any;
+  let mockKLineMergeService: any;
 
   beforeEach(() => {
-    strategy = new EastMoneyCollectionStrategy();
+    mockCollectorService = {
+      collectKLineForSource: jest.fn().mockResolvedValue(undefined),
+    };
+
+    mockTimeWindowStrategy = {
+      calculateCollectionWindow: jest.fn().mockReturnValue({
+        startTime: new Date('2026-03-25T09:30:00Z'),
+        endTime: new Date('2026-03-25T09:35:00Z'),
+        ensureRecentCount: 2,
+      }),
+      isValidCollectionWindow: jest.fn().mockReturnValue(true),
+    };
+
+    mockKLineMergeService = {
+      mergeKLineData: jest.fn().mockReturnValue([]),
+    };
+
+    strategy = new EastMoneyCollectionStrategy(
+      mockCollectorService,
+      mockTimeWindowStrategy,
+      mockKLineMergeService,
+      new Logger('EastMoneyStrategy'),
+    );
   });
 
-  describe('getCollectionMode', () => {
-    it('should return SCHEDULED collection mode', () => {
-      expect(strategy.getCollectionMode()).toBe(CollectionMode.SCHEDULED);
-    });
-  });
-
-  describe('getTimeWindowStrategy', () => {
-    it('should return EastMoneyTimeWindowStrategy instance', () => {
-      const timeWindowStrategy = strategy.getTimeWindowStrategy();
-      expect(timeWindowStrategy).toBeInstanceOf(EastMoneyTimeWindowStrategy);
-    });
-  });
-
-  describe('getKLineMergeService', () => {
-    it('should return EastMoneyKLineMergeService instance', () => {
-      const mergeService = strategy.getKLineMergeService();
-      expect(mergeService).toBeInstanceOf(EastMoneyKLineMergeService);
-    });
-  });
-
-  describe('canCollect', () => {
-    it('should return true for valid SH security codes', () => {
-      expect(strategy.canCollect('000001.SH')).toBe(true);
-      expect(strategy.canCollect('600000.SH')).toBe(true);
+  describe('strategy properties', () => {
+    it('should have EAST_MONEY as source', () => {
+      expect(strategy.source).toBe(DataSource.EAST_MONEY);
     });
 
-    it('should return true for valid SZ security codes', () => {
-      expect(strategy.canCollect('000001.SZ')).toBe(true);
-      expect(strategy.canCollect('300001.SZ')).toBe(true);
-    });
-
-    it('should return false for invalid security codes', () => {
-      expect(strategy.canCollect('INVALID')).toBe(false);
-      expect(strategy.canCollect('000001')).toBe(false);
-    });
-
-    it('should return false for empty string', () => {
-      expect(strategy.canCollect('')).toBe(false);
+    it('should have polling as mode', () => {
+      expect(strategy.mode).toBe('polling');
     });
   });
 
-  describe('collect', () => {
-    it('should collect data for 5min period', async () => {
-      const window = strategy
-        .getTimeWindowStrategy()
-        .calculateCollectionWindow(
-          Period.FIVE_MIN,
-          new Date('2026-03-25T09:35:00Z'),
-        );
+  describe('collectForSecurity', () => {
+    const createMockSecurity = (code: string) => ({
+      id: 1,
+      code,
+      name: `Test ${code}`,
+      type: SecurityType.STOCK,
+      status: 1,
+      sourceConfigs: [],
+      ks: [],
+      createTime: new Date(),
+      updateTime: new Date(),
+    });
 
-      const result = await strategy.collect(
-        '000001.SH',
+    it('should calculate collection window and collect data', async () => {
+      const security = createMockSecurity('000001.SH');
+      const testTime = new Date('2026-03-25T09:35:00Z');
+
+      mockTimeWindowStrategy.calculateCollectionWindow.mockReturnValue({
+        startTime: new Date('2026-03-25T09:30:00Z'),
+        endTime: new Date('2026-03-25T09:35:00Z'),
+        ensureRecentCount: 2,
+      });
+
+      await strategy.collectForSecurity(security, Period.FIVE_MIN, testTime);
+
+      expect(
+        mockTimeWindowStrategy.calculateCollectionWindow,
+      ).toHaveBeenCalledWith(Period.FIVE_MIN, testTime);
+
+      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
+        security.code,
         Period.FIVE_MIN,
-        window,
+        expect.any(Date),
+        expect.any(Date),
+        DataSource.EAST_MONEY,
+        expect.any(Function),
+      );
+    });
+
+    it('should skip collection when window is not valid', async () => {
+      const security = createMockSecurity('000001.SH');
+
+      mockTimeWindowStrategy.isValidCollectionWindow.mockReturnValue(false);
+
+      await strategy.collectForSecurity(security, Period.FIVE_MIN);
+
+      expect(mockCollectorService.collectKLineForSource).not.toHaveBeenCalled();
+    });
+
+    it('should apply K-line merge to collected data', async () => {
+      const security = createMockSecurity('000001.SH');
+      const rawData = [
+        {
+          timestamp: new Date('2026-03-25T09:30:00Z'),
+          open: 10.0,
+          high: 10.5,
+          low: 9.8,
+          close: 10.2,
+          volume: 1000,
+          amount: 10000,
+        },
+        {
+          timestamp: new Date('2026-03-25T09:31:00Z'),
+          open: 10.2,
+          high: 10.6,
+          low: 10.0,
+          close: 10.4,
+          volume: 1200,
+          amount: 12000,
+        },
+      ];
+
+      let postProcessCallback: any;
+      mockCollectorService.collectKLineForSource.mockImplementation(
+        async (
+          _code: string,
+          _period: Period,
+          _start: Date,
+          _end: Date,
+          _source: DataSource,
+          callback: any,
+        ) => {
+          postProcessCallback = callback;
+        },
       );
 
-      expect(result.success).toBe(true);
-      expect(result.count).toBeGreaterThanOrEqual(0);
-      expect(result.source).toBe('ef');
-      expect(result.mode).toBe(CollectionMode.SCHEDULED);
-    });
+      mockKLineMergeService.mergeKLineData.mockReturnValue([
+        {
+          timestamp: new Date('2026-03-25T09:30:00Z'),
+          open: 10.0,
+          high: 10.6,
+          low: 9.8,
+          close: 10.4,
+          volume: 2200,
+          amount: 22000,
+        },
+      ]);
 
-    it('should collect data for daily period', async () => {
-      const window = strategy
-        .getTimeWindowStrategy()
-        .calculateCollectionWindow(
-          Period.DAY,
-          new Date('2026-03-25T15:00:00Z'),
-        );
+      await strategy.collectForSecurity(security, Period.FIVE_MIN);
 
-      const result = await strategy.collect('000001.SH', Period.DAY, window);
+      // Call the post-process callback
+      if (postProcessCallback) {
+        await postProcessCallback(rawData);
+      }
 
-      expect(result.success).toBe(true);
-      expect(result.source).toBe('ef');
-    });
-
-    it('should handle collection for invalid security code', async () => {
-      const window = strategy
-        .getTimeWindowStrategy()
-        .calculateCollectionWindow(Period.FIVE_MIN);
-
-      const result = await strategy.collect('INVALID', Period.FIVE_MIN, window);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it('should return empty result for valid security with no data', async () => {
-      const window = strategy
-        .getTimeWindowStrategy()
-        .calculateCollectionWindow(
-          Period.FIVE_MIN,
-          new Date('2026-03-25T09:35:00Z'),
-        );
-
-      const result = await strategy.collect(
-        '999999.SH',
+      expect(mockKLineMergeService.mergeKLineData).toHaveBeenCalledWith(
+        rawData,
         Period.FIVE_MIN,
-        window,
+        Period.ONE_MIN,
+      );
+    });
+
+    it('should handle collection errors', async () => {
+      const security = createMockSecurity('000001.SH');
+
+      mockCollectorService.collectKLineForSource.mockRejectedValue(
+        new Error('Network error'),
       );
 
-      // Should succeed but with no data (security doesn't exist)
-      expect(result.success).toBe(true);
-      expect(result.count).toBe(0);
+      await expect(
+        strategy.collectForSecurity(security, Period.FIVE_MIN),
+      ).rejects.toThrow('Network error');
+    });
+
+    it('should use current time when time not provided', async () => {
+      const security = createMockSecurity('000001.SH');
+      const beforeCall = new Date();
+
+      await strategy.collectForSecurity(security, Period.FIVE_MIN);
+
+      const afterCall = new Date();
+
+      expect(
+        mockTimeWindowStrategy.calculateCollectionWindow,
+      ).toHaveBeenCalledWith(Period.FIVE_MIN, expect.any(Date));
+
+      const callTime =
+        mockTimeWindowStrategy.calculateCollectionWindow.mock.calls[0][1];
+      expect(callTime.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
+      expect(callTime.getTime()).toBeLessThanOrEqual(afterCall.getTime());
     });
   });
 });
