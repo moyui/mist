@@ -191,6 +191,24 @@ export class SecurityService {
     });
   }
 
+  /**
+   * Get all active securities for scheduled collection.
+   *
+   * Returns array of security codes that have ACTIVE status.
+   * Used by the scheduler to determine which securities to collect data for.
+   *
+   * @returns Array of active security codes
+   */
+  async getActiveSecurities(): Promise<string[]> {
+    const securities = await this.securityRepository.find({
+      where: { status: SecurityStatus.ACTIVE },
+      select: ['code'],
+      order: { code: 'ASC' },
+    });
+
+    return securities.map((s) => s.code);
+  }
+
   async deactivateStock(code: string): Promise<void> {
     const formattedCode = this.formatCode(code);
 

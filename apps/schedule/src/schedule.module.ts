@@ -10,6 +10,8 @@ import { TaskModule } from './task/task.module';
 import { scheduleEnvSchema } from '@app/config';
 import { UtilsModule } from '@app/utils';
 import { DataCollectionScheduleController } from './schedulers/schedule.controller';
+import { CollectorModule } from '../../mist/src/collector/collector.module';
+import { SecurityModule } from '../../mist/src/security/security.module';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { DataCollectionScheduleController } from './schedulers/schedule.controll
     }),
     NestScheduleModule.forRoot(),
     UtilsModule,
+    CollectorModule,
+    SecurityModule,
     RunModule,
     TaskModule,
   ],
