@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { K, Security } from '@app/shared-data';
+import { K, Security, SecuritySourceConfig } from '@app/shared-data';
 import { CollectorService } from './collector.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { UtilsModule } from '@app/utils';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([K, Security]), UtilsModule],
+  imports: [
+    TypeOrmModule.forFeature([K, Security, SecuritySourceConfig]),
+    UtilsModule,
+  ],
   providers: [CollectorService, EastMoneySource, TdxSource],
   exports: [CollectorService],
 })

@@ -5,7 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { K, Security, DataSource, Period } from '@app/shared-data';
+import {
+  K,
+  Security,
+  DataSource,
+  Period,
+  SecuritySourceConfig,
+} from '@app/shared-data';
 import {
   ISourceFetcher,
   KLineFetchParams,
@@ -13,6 +19,7 @@ import {
 } from './interfaces/source-fetcher.interface';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
+import { DataSourceSelectionService } from '@app/utils';
 
 @Injectable()
 export class CollectorService {
@@ -23,8 +30,11 @@ export class CollectorService {
     private readonly kRepository: Repository<K>,
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
+    @InjectRepository(SecuritySourceConfig)
+    private readonly sourceConfigRepository: Repository<SecuritySourceConfig>,
     private readonly eastMoneySource: EastMoneySource,
     private readonly tdxSource: TdxSource,
+    private readonly dataSourceSelectionService: DataSourceSelectionService,
   ) {
     this.registerDataSources();
   }
@@ -32,6 +42,14 @@ export class CollectorService {
   private registerDataSources(): void {
     this.sources.set(DataSource.EAST_MONEY, this.eastMoneySource);
     this.sources.set(DataSource.TDX, this.tdxSource);
+  }
+
+  /**
+   * Get data source for a security (方案B: Security-level configuration)
+   * Uses shared DataSourceSelectionService to avoid DRY violation
+   */
+  private async getSourceForSecurity(security: Security): Promise<DataSource> {
+    return this.dataSourceSelectionService.getDataSourceForSecurity(security);
   }
 
   async collectKLine(
@@ -52,8 +70,8 @@ export class CollectorService {
         );
       }
 
-      // Default to East Money data source
-      const dataSource = DataSource.EAST_MONEY;
+      // Use configured data source instead of hardcoded EAST_MONEY
+      const dataSource = await this.getSourceForSecurity(security);
       const sourceFetcher = this.sources.get(dataSource);
       if (!sourceFetcher) {
         throw new BadRequestException(

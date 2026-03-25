@@ -2,10 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CollectorService } from './collector.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
-import { Period } from '@app/shared-data';
+import { Period, DataSource, SecuritySourceConfig } from '@app/shared-data';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { K, Security } from '@app/shared-data';
+import { DataSourceSelectionService } from '@app/utils';
 
 const mockKRepository = {
   create: jest.fn(),
@@ -32,6 +33,15 @@ const mockTdxSource = {
   getPeriodFormat: jest.fn(),
 };
 
+const mockSourceConfigRepository = {
+  find: jest.fn(),
+  save: jest.fn(),
+};
+
+const mockDataSourceSelectionService = {
+  getDataSourceForSecurity: jest.fn(),
+};
+
 describe('CollectorService', () => {
   let service: CollectorService;
 
@@ -48,12 +58,20 @@ describe('CollectorService', () => {
           useValue: mockSecurityRepository,
         },
         {
+          provide: getRepositoryToken(SecuritySourceConfig),
+          useValue: mockSourceConfigRepository,
+        },
+        {
           provide: EastMoneySource,
           useValue: mockEastMoneySource,
         },
         {
           provide: TdxSource,
           useValue: mockTdxSource,
+        },
+        {
+          provide: DataSourceSelectionService,
+          useValue: mockDataSourceSelectionService,
         },
       ],
     }).compile();
@@ -104,6 +122,9 @@ describe('CollectorService', () => {
 
     beforeEach(() => {
       mockSecurityRepository.findOne.mockResolvedValue(mockStock);
+      mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
+        DataSource.EAST_MONEY,
+      );
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
       mockEastMoneySource.fetchKLine.mockResolvedValue(mockKLineData);
       mockKRepository.create.mockImplementation((data) => data);
@@ -195,6 +216,9 @@ describe('CollectorService', () => {
 
     beforeEach(() => {
       mockSecurityRepository.findOne.mockResolvedValue(mockSecurity);
+      mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
+        DataSource.EAST_MONEY,
+      );
     });
 
     it('should return status when data exists', async () => {
@@ -322,6 +346,93 @@ describe('CollectorService', () => {
         Period.ONE_MIN,
       );
       expect(result).toBe(0);
+    });
+  });
+
+  describe('CollectorService - Data Source Selection', () => {
+    it('should use configured data source when SecuritySourceConfig exists', async () => {
+      // Create security with TDX config (higher priority)
+      const security = await mockSecurityRepository.findOne({
+        where: { code: 'TEST001' },
+      });
+      security.id = 1;
+
+      mockSourceConfigRepository.find.mockResolvedValue([
+        {
+          security,
+          source: DataSource.TDX,
+          priority: 10,
+          enabled: true,
+          formatCode: 'test001',
+        },
+      ]);
+
+      // Mock dataSourceSelectionService to return TDX
+      mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
+        DataSource.TDX,
+      );
+      mockTdxSource.isSupportedPeriod.mockReturnValue(true);
+      mockTdxSource.fetchKLine.mockResolvedValue([
+        {
+          timestamp: new Date('2024-01-01T09:30:00.000Z'),
+          open: 10.5,
+          high: 11.0,
+          low: 10.3,
+          close: 10.8,
+          volume: 1000000,
+          amount: 10500000,
+        },
+      ]);
+      mockKRepository.create.mockImplementation((data) => data);
+      mockKRepository.save.mockResolvedValue(null);
+
+      await service.collectKLine(
+        'TEST001',
+        Period.FIVE_MIN,
+        new Date(),
+        new Date(),
+      );
+
+      expect(
+        mockDataSourceSelectionService.getDataSourceForSecurity,
+      ).toHaveBeenCalledWith(security);
+    });
+
+    it('should use DataSourceSelectionService instead of hardcoded EAST_MONEY', async () => {
+      const security = await mockSecurityRepository.findOne({
+        where: { code: 'TEST002' },
+      });
+      security.id = 2;
+
+      mockSourceConfigRepository.find.mockResolvedValue([]);
+      mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
+        DataSource.EAST_MONEY,
+      );
+      mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
+      mockEastMoneySource.fetchKLine.mockResolvedValue([
+        {
+          timestamp: new Date('2024-01-01T09:30:00.000Z'),
+          open: 10.5,
+          high: 11.0,
+          low: 10.3,
+          close: 10.8,
+          volume: 1000000,
+          amount: 10500000,
+        },
+      ]);
+      mockKRepository.create.mockImplementation((data) => data);
+      mockKRepository.save.mockResolvedValue(null);
+
+      await service.collectKLine(
+        'TEST002',
+        Period.FIVE_MIN,
+        new Date(),
+        new Date(),
+      );
+
+      expect(
+        mockDataSourceSelectionService.getDataSourceForSecurity,
+      ).toHaveBeenCalled();
     });
   });
 });
