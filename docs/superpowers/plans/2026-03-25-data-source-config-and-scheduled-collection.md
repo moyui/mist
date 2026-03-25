@@ -676,7 +676,7 @@ git commit -m "feat: create SecuritySourceConfig on stock initialization"
 
 ---
 
-## Task 3: Implement Time Window Strategy Interface
+## Task 4: Implement Time Window Strategy Interface
 
 **Files:**
 - Create: `apps/mist/src/collector/time-window/time-window.strategy.interface.ts`
@@ -962,7 +962,7 @@ git commit -m "feat: implement East Money time window strategy"
 
 ---
 
-## Task 4: Implement K-Line Merge Service
+## Task 5: Implement K-Line Merge Service
 
 **Files:**
 - Create: `apps/mist/src/collector/kline-merge/kline-merge.service.ts`
@@ -1374,7 +1374,7 @@ git commit -m "feat: implement East Money K-line merge service"
 
 ---
 
-## Task 5: Implement Data Collection Strategy Interface
+## Task 6: Implement Data Collection Strategy Interface
 
 **Files:**
 - Create: `apps/mist/src/collector/strategies/data-collection.strategy.interface.ts`
@@ -1772,7 +1772,7 @@ git commit -m "feat: implement data collection strategies (polling + streaming s
 
 ---
 
-## Task 6: Update CollectorService to Support collectKLineForSource
+## Task 7: Update CollectorService to Support collectKLineForSource
 
 **Files:**
 - Modify: `apps/mist/src/collector/collector.service.ts`
@@ -2008,7 +2008,7 @@ git commit -m "feat: add collectKLineForSource with post-processing support"
 
 ---
 
-## Task 7: Implement Data Collection Scheduler
+## Task 8: Implement Data Collection Scheduler
 
 **Files:**
 - Create: `apps/schedule/src/schedulers/data-collection.scheduler.ts`
@@ -2348,7 +2348,7 @@ git commit -m "feat: implement data collection scheduler"
 
 ---
 
-## Task 8: Implement Schedule Controller with Cron Jobs
+## Task 9: Implement Schedule Controller with Cron Jobs
 
 **Files:**
 - Create: `apps/schedule/src/schedulers/schedule.controller.ts`
@@ -2554,7 +2554,7 @@ git commit -m "feat: implement schedule controller with cron jobs"
 
 ---
 
-## Task 9: Update DataCollectionScheduler to Use Shared Service
+## Task 10: Update DataCollectionScheduler to Use Shared Service
 
 **Files:**
 - Modify: `apps/schedule/src/schedulers/data-collection.scheduler.ts`
@@ -2615,7 +2615,7 @@ git commit -m "refactor: use shared DataSourceSelectionService in scheduler"
 
 ---
 
-## Task 10: Integration Testing and Documentation
+## Task 11: Integration Testing and Documentation
 
 **Files:**
 - Create: `apps/schedule/test/integration/scheduled-collection.e2e-spec.ts`
@@ -2726,7 +2726,7 @@ git commit -m "test: add integration tests and update documentation"
 
 ---
 
-## Task 11: Generate and Run Database Migration
+## Task 12: Generate and Run Database Migration
 
 **Files:**
 - Generate: `mist/migration/<timestamp>-AddSecuritySourceConfig.ts`
@@ -2796,7 +2796,7 @@ git commit -m "feat: add migration for SecuritySourceConfig table"
 
 ---
 
-## Task 12: Final Review and Cleanup
+## Task 13: Final Review and Cleanup
 
 **Files:**
 - Various
