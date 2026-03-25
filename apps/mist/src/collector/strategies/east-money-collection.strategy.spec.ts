@@ -54,12 +54,18 @@ describe('EastMoneyCollectionStrategy', () => {
 
   describe('collect', () => {
     it('should collect data for 5min period', async () => {
-      const window = strategy.getTimeWindowStrategy().calculateCollectionWindow(
-        Period.FIVE_MIN,
-        new Date('2026-03-25T09:35:00Z'),
-      );
+      const window = strategy
+        .getTimeWindowStrategy()
+        .calculateCollectionWindow(
+          Period.FIVE_MIN,
+          new Date('2026-03-25T09:35:00Z'),
+        );
 
-      const result = await strategy.collect('000001.SH', Period.FIVE_MIN, window);
+      const result = await strategy.collect(
+        '000001.SH',
+        Period.FIVE_MIN,
+        window,
+      );
 
       expect(result.success).toBe(true);
       expect(result.count).toBeGreaterThanOrEqual(0);
@@ -68,10 +74,12 @@ describe('EastMoneyCollectionStrategy', () => {
     });
 
     it('should collect data for daily period', async () => {
-      const window = strategy.getTimeWindowStrategy().calculateCollectionWindow(
-        Period.DAY,
-        new Date('2026-03-25T15:00:00Z'),
-      );
+      const window = strategy
+        .getTimeWindowStrategy()
+        .calculateCollectionWindow(
+          Period.DAY,
+          new Date('2026-03-25T15:00:00Z'),
+        );
 
       const result = await strategy.collect('000001.SH', Period.DAY, window);
 
@@ -80,9 +88,9 @@ describe('EastMoneyCollectionStrategy', () => {
     });
 
     it('should handle collection for invalid security code', async () => {
-      const window = strategy.getTimeWindowStrategy().calculateCollectionWindow(
-        Period.FIVE_MIN,
-      );
+      const window = strategy
+        .getTimeWindowStrategy()
+        .calculateCollectionWindow(Period.FIVE_MIN);
 
       const result = await strategy.collect('INVALID', Period.FIVE_MIN, window);
 
@@ -91,12 +99,18 @@ describe('EastMoneyCollectionStrategy', () => {
     });
 
     it('should return empty result for valid security with no data', async () => {
-      const window = strategy.getTimeWindowStrategy().calculateCollectionWindow(
-        Period.FIVE_MIN,
-        new Date('2026-03-25T09:35:00Z'),
-      );
+      const window = strategy
+        .getTimeWindowStrategy()
+        .calculateCollectionWindow(
+          Period.FIVE_MIN,
+          new Date('2026-03-25T09:35:00Z'),
+        );
 
-      const result = await strategy.collect('999999.SH', Period.FIVE_MIN, window);
+      const result = await strategy.collect(
+        '999999.SH',
+        Period.FIVE_MIN,
+        window,
+      );
 
       // Should succeed but with no data (security doesn't exist)
       expect(result.success).toBe(true);

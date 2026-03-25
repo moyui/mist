@@ -51,10 +51,7 @@ export class EastMoneyTimeWindowStrategy implements ITimeWindowStrategy {
    * East Money does not have strict collection time restrictions,
    * so all windows are considered valid.
    */
-  isValidCollectionWindow(
-    _window?: CollectionWindow,
-    _currentTime?: Date,
-  ): boolean {
+  isValidCollectionWindow(): boolean {
     // East Money allows collection at any time
     return true;
   }

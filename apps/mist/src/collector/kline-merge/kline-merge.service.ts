@@ -45,7 +45,7 @@ export interface RawKLineData {
  * Merged K-line data structure.
  * Same as raw data but explicitly typed for merged output.
  */
-export interface MergedKLineData extends RawKLineData {}
+export type MergedKLineData = RawKLineData;
 
 /**
  * K-line merge service interface for merging raw K-line data.

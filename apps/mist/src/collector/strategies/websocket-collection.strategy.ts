@@ -9,10 +9,7 @@ import {
   ITimeWindowStrategy,
   CollectionWindow,
 } from '../time-window/time-window.strategy.interface';
-import {
-  IKLineMergeService,
-  RawKLineData,
-} from '../kline-merge/kline-merge.service';
+import { IKLineMergeService } from '../kline-merge/kline-merge.service';
 
 /**
  * WebSocket-based real-time data collection strategy (stub implementation).
@@ -73,7 +70,7 @@ export class WebSocketCollectionStrategy implements IDataCollectionStrategy {
    */
   canCollect(securityCode: string): boolean {
     // Stub: accept all non-empty security codes
-    return securityCode && securityCode.trim().length > 0;
+    return Boolean(securityCode && securityCode.trim().length > 0);
   }
 
   /**

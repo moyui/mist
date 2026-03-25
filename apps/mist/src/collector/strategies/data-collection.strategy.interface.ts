@@ -3,7 +3,7 @@ import {
   ITimeWindowStrategy,
   CollectionWindow,
 } from '../time-window/time-window.strategy.interface';
-import { IKLineMergeService, RawKLineData, MergedKLineData } from '../kline-merge/kline-merge.service';
+import { IKLineMergeService } from '../kline-merge/kline-merge.service';
 
 /**
  * Collection mode for data collection strategies.

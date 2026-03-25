@@ -10,10 +10,7 @@ import {
   CollectionWindow,
 } from '../time-window/time-window.strategy.interface';
 import { EastMoneyTimeWindowStrategy } from '../time-window/east-money-time-window.strategy';
-import {
-  IKLineMergeService,
-  RawKLineData,
-} from '../kline-merge/kline-merge.service';
+import { IKLineMergeService } from '../kline-merge/kline-merge.service';
 import { EastMoneyKLineMergeService } from '../kline-merge/east-money-kline-merge.service';
 
 /**

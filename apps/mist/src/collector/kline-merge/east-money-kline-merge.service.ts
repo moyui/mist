@@ -62,7 +62,10 @@ export class EastMoneyKLineMergeService implements IKLineMergeService {
    * @param minutes - Number of minutes per candle (5, 15, 30, 60)
    * @returns Merged K-line data
    */
-  buildXMinData(oneMinData: RawKLineData[], minutes: number): MergedKLineData[] {
+  buildXMinData(
+    oneMinData: RawKLineData[],
+    minutes: number,
+  ): MergedKLineData[] {
     if (oneMinData.length === 0) {
       return [];
     }
@@ -77,7 +80,10 @@ export class EastMoneyKLineMergeService implements IKLineMergeService {
   /**
    * Group raw data by period multiplier.
    */
-  private groupByPeriod(data: RawKLineData[], multiplier: number): RawKLineData[][] {
+  private groupByPeriod(
+    data: RawKLineData[],
+    multiplier: number,
+  ): RawKLineData[][] {
     const groups: RawKLineData[][] = [];
     const currentGroup: RawKLineData[] = [];
 
@@ -103,7 +109,10 @@ export class EastMoneyKLineMergeService implements IKLineMergeService {
    * Group raw data by minute intervals.
    * Aligns timestamps to period boundaries (e.g., 09:30, 09:35, 09:40 for 5min).
    */
-  private groupByMinutes(data: RawKLineData[], minutes: number): RawKLineData[][] {
+  private groupByMinutes(
+    data: RawKLineData[],
+    minutes: number,
+  ): RawKLineData[][] {
     const groupsMap = new Map<number, RawKLineData[]>();
 
     for (const item of data) {
@@ -121,7 +130,7 @@ export class EastMoneyKLineMergeService implements IKLineMergeService {
     // Convert map to array of groups, sorted by timestamp
     return Array.from(groupsMap.entries())
       .sort((a, b) => a[0] - b[0])
-      .map(([_, group]) => group);
+      .map(([, group]) => group);
   }
 
   /**
@@ -133,7 +142,9 @@ export class EastMoneyKLineMergeService implements IKLineMergeService {
     }
 
     // Sort by timestamp to ensure correct order
-    const sorted = group.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    const sorted = group.sort(
+      (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+    );
 
     const open = sorted[0].open;
     const close = sorted[sorted.length - 1].close;
@@ -159,7 +170,10 @@ export class EastMoneyKLineMergeService implements IKLineMergeService {
   /**
    * Get period multiplier (how many source periods fit into target period).
    */
-  private getPeriodMultiplier(targetPeriod: Period, sourcePeriod: Period): number {
+  private getPeriodMultiplier(
+    targetPeriod: Period,
+    sourcePeriod: Period,
+  ): number {
     const periodMinutes: Record<Period, number> = {
       [Period.ONE_MIN]: 1,
       [Period.FIVE_MIN]: 5,
