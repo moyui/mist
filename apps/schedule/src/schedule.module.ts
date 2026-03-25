@@ -9,6 +9,7 @@ import { ScheduleService } from './schedule.service';
 import { TaskModule } from './task/task.module';
 import { scheduleEnvSchema } from '@app/config';
 import { UtilsModule } from '@app/utils';
+import { DataCollectionScheduleController } from './schedulers/schedule.controller';
 
 @Module({
   imports: [
@@ -46,7 +47,7 @@ import { UtilsModule } from '@app/utils';
     RunModule,
     TaskModule,
   ],
-  controllers: [ScheduleController],
+  controllers: [ScheduleController, DataCollectionScheduleController],
   providers: [ScheduleService],
 })
 export class ScheduleModule {}
