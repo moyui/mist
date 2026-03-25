@@ -44,12 +44,12 @@ export interface ITimeWindowStrategy {
    * Validate if a collection window is valid for the current time.
    * Some strategies may restrict collection to specific hours (e.g., market hours).
    *
-   * @param window - The collection window to validate
+   * @param window - The collection window to validate (optional for strategies without restrictions)
    * @param currentTime - The current timestamp (defaults to now)
    * @returns true if the window is valid for collection, false otherwise
    */
   isValidCollectionWindow(
-    window: CollectionWindow,
+    window?: CollectionWindow,
     currentTime?: Date,
   ): boolean;
 
