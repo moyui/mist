@@ -52,6 +52,120 @@ export class CollectorService {
     return this.dataSourceSelectionService.getDataSourceForSecurity(security);
   }
 
+  /**
+   * Collect K-line data for a specific data source (for scheduler use).
+   *
+   * This method allows explicit data source selection and supports post-processing
+   * callbacks for additional data transformation after collection.
+   *
+   * @param stockCode - Security code
+   * @param period - Time period
+   * @param startDate - Start date
+   * @param endDate - End date
+   * @param dataSource - Specific data source to use
+   * @param postProcess - Optional callback for post-processing collected data
+   */
+  async collectKLineForSource(
+    stockCode: string,
+    period: Period,
+    startDate: Date,
+    endDate: Date,
+    dataSource: DataSource,
+    postProcess?: (data: KLineData[], source: DataSource) => Promise<void>,
+  ): Promise<void> {
+    try {
+      // Validate security exists
+      const security = await this.findSecurityByCode(stockCode);
+      if (!security) {
+        throw new NotFoundException(
+          `Security with code ${stockCode} not found`,
+        );
+      }
+
+      // Get the source fetcher for the specified data source
+      const sourceFetcher = this.sources.get(dataSource);
+      if (!sourceFetcher) {
+        throw new BadRequestException(
+          `Data source ${dataSource} is not available`,
+        );
+      }
+
+      // Check if period is supported
+      if (!sourceFetcher.isSupportedPeriod(period)) {
+        throw new BadRequestException(
+          `Period ${period} is not supported by data source ${dataSource}`,
+        );
+      }
+
+      // Fetch data from the source
+      const fetchParams: KLineFetchParams = {
+        code: stockCode,
+        period,
+        startDate,
+        endDate,
+      };
+
+      const kLineData = await sourceFetcher.fetchKLine(fetchParams);
+
+      if (kLineData.length === 0) {
+        console.warn(
+          `No data returned for security ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
+        );
+        return;
+      }
+
+      // Save data to database
+      await this.saveKLineData(security, kLineData, dataSource, period);
+
+      // Call post-process callback if provided
+      if (postProcess) {
+        await postProcess(kLineData, dataSource);
+      }
+
+      console.log(
+        `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period} from ${dataSource}`,
+      );
+    } catch (error) {
+      console.error(
+        `Failed to collect K-line data for ${stockCode} from ${dataSource}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Save raw K-line data to database (for WebSocket streaming use).
+   *
+   * This method is optimized for real-time data streaming where data arrives
+   * incrementally and needs to be saved immediately.
+   *
+   * @param security - Security entity
+   * @param kLineData - Array of raw K-line data
+   * @param dataSource - Data source
+   * @param period - Time period
+   */
+  async saveRawKLineData(
+    security: Security,
+    kLineData: KLineData[],
+    dataSource: DataSource,
+    period: Period,
+  ): Promise<void> {
+    await this.saveKLineData(security, kLineData, dataSource, period);
+  }
+
+  /**
+   * Find security by code.
+   *
+   * @param code - Security code
+   * @returns Security entity or null if not found
+   */
+  async findSecurityByCode(code: string): Promise<Security | null> {
+    return this.securityRepository.findOne({
+      where: { code },
+    });
+  }
+
   async collectKLine(
     stockCode: string,
     period: Period,

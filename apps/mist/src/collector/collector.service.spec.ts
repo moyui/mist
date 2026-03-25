@@ -2,7 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CollectorService } from './collector.service';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
-import { Period, DataSource, SecuritySourceConfig } from '@app/shared-data';
+import {
+  Period,
+  DataSource,
+  SecuritySourceConfig,
+  SecurityType,
+} from '@app/shared-data';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { K, Security } from '@app/shared-data';
@@ -349,14 +354,169 @@ describe('CollectorService', () => {
     });
   });
 
+  describe('collectKLineForSource', () => {
+    const mockStock = {
+      id: 1,
+      code: '000001',
+      name: '平安银行',
+      type: 'stock',
+      periods: [1, 5, 15, 30, 60, 1440],
+      source: {
+        type: 'east_money',
+        config: {},
+      },
+      isActive: true,
+    };
+
+    const mockKLineData = [
+      {
+        timestamp: new Date('2024-01-01T09:30:00.000Z'),
+        open: 10.5,
+        high: 11.0,
+        low: 10.3,
+        close: 10.8,
+        volume: 1000000,
+        amount: 10500000,
+        period: Period.ONE_MIN,
+      },
+    ];
+
+    beforeEach(() => {
+      mockSecurityRepository.findOne.mockResolvedValue(mockStock);
+      mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
+      mockEastMoneySource.fetchKLine.mockResolvedValue(mockKLineData);
+      mockKRepository.create.mockImplementation((data) => data);
+      mockKRepository.save.mockResolvedValue(null);
+    });
+
+    it('should collect K-line data for a specific data source with postProcess callback', async () => {
+      const postProcessCallback = jest.fn();
+
+      await service.collectKLineForSource(
+        '000001',
+        Period.ONE_MIN,
+        new Date('2024-01-01'),
+        new Date('2024-01-02'),
+        DataSource.EAST_MONEY,
+        postProcessCallback,
+      );
+
+      expect(mockEastMoneySource.fetchKLine).toHaveBeenCalledWith({
+        code: '000001',
+        period: Period.ONE_MIN,
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-02'),
+      });
+      expect(mockKRepository.save).toHaveBeenCalled();
+      expect(postProcessCallback).toHaveBeenCalledWith(
+        mockKLineData,
+        DataSource.EAST_MONEY,
+      );
+    });
+
+    it('should work without postProcess callback', async () => {
+      await expect(
+        service.collectKLineForSource(
+          '000001',
+          Period.ONE_MIN,
+          new Date('2024-01-01'),
+          new Date('2024-01-02'),
+          DataSource.EAST_MONEY,
+        ),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  describe('findSecurityByCode', () => {
+    it('should return security when found', async () => {
+      const mockSecurity = {
+        id: 1,
+        code: '000001',
+        name: '平安银行',
+        type: 'stock',
+        periods: [1, 5, 15, 30, 60, 1440],
+        source: {
+          type: 'east_money',
+          config: {},
+        },
+        isActive: true,
+      };
+
+      mockSecurityRepository.findOne.mockResolvedValue(mockSecurity);
+
+      const result = await service.findSecurityByCode('000001');
+      expect(result).toEqual(mockSecurity);
+      expect(mockSecurityRepository.findOne).toHaveBeenCalledWith({
+        where: { code: '000001' },
+      });
+    });
+
+    it('should return null when security not found', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.findSecurityByCode('999999');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('saveRawKLineData', () => {
+    it('should save raw K-line data to database', async () => {
+      const mockSecurity = {
+        id: 1,
+        code: '000001',
+        name: '平安银行',
+        type: SecurityType.STOCK,
+        status: 1,
+        sourceConfigs: [],
+        ks: [],
+        createTime: new Date(),
+        updateTime: new Date(),
+      };
+
+      const mockRawData = [
+        {
+          timestamp: new Date('2024-01-01T09:30:00.000Z'),
+          open: 10.5,
+          high: 11.0,
+          low: 10.3,
+          close: 10.8,
+          volume: 1000000,
+          amount: 10500000,
+          period: Period.ONE_MIN,
+        },
+      ];
+
+      mockKRepository.create.mockImplementation((data) => data);
+      mockKRepository.save.mockResolvedValue(null);
+
+      await service.saveRawKLineData(
+        mockSecurity,
+        mockRawData,
+        DataSource.EAST_MONEY,
+        Period.ONE_MIN,
+      );
+
+      expect(mockKRepository.create).toHaveBeenCalledTimes(1);
+      expect(mockKRepository.save).toHaveBeenCalled();
+    });
+  });
+
   describe('CollectorService - Data Source Selection', () => {
     it('should use configured data source when SecuritySourceConfig exists', async () => {
       // Create security with TDX config (higher priority)
-      const security = await mockSecurityRepository.findOne({
-        where: { code: 'TEST001' },
-      });
-      security.id = 1;
+      const security = {
+        id: 1,
+        code: 'TEST001',
+        name: 'Test Security',
+        type: SecurityType.STOCK,
+        status: 1,
+        sourceConfigs: [],
+        ks: [],
+        createTime: new Date(),
+        updateTime: new Date(),
+      };
 
+      mockSecurityRepository.findOne.mockResolvedValue(security);
       mockSourceConfigRepository.find.mockResolvedValue([
         {
           security,
@@ -381,6 +541,7 @@ describe('CollectorService', () => {
           close: 10.8,
           volume: 1000000,
           amount: 10500000,
+          period: Period.FIVE_MIN,
         },
       ]);
       mockKRepository.create.mockImplementation((data) => data);
@@ -399,11 +560,19 @@ describe('CollectorService', () => {
     });
 
     it('should use DataSourceSelectionService instead of hardcoded EAST_MONEY', async () => {
-      const security = await mockSecurityRepository.findOne({
-        where: { code: 'TEST002' },
-      });
-      security.id = 2;
+      const security = {
+        id: 2,
+        code: 'TEST002',
+        name: 'Test Security 2',
+        type: SecurityType.STOCK,
+        status: 1,
+        sourceConfigs: [],
+        ks: [],
+        createTime: new Date(),
+        updateTime: new Date(),
+      };
 
+      mockSecurityRepository.findOne.mockResolvedValue(security);
       mockSourceConfigRepository.find.mockResolvedValue([]);
       mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
         DataSource.EAST_MONEY,
@@ -418,6 +587,7 @@ describe('CollectorService', () => {
           close: 10.8,
           volume: 1000000,
           amount: 10500000,
+          period: Period.FIVE_MIN,
         },
       ]);
       mockKRepository.create.mockImplementation((data) => data);
