@@ -39,19 +39,15 @@ describe('SecurityController', () => {
 
   describe('initStock', () => {
     const initStockDto: InitStockDto = {
-      code: '000001',
-      name: '平安银行',
+      code: '600000',
+      name: '浦发银行',
       type: SecurityType.STOCK,
-      source: {
-        type: SourceType.AKTOOLS,
-        config: '',
-      },
     };
 
     const mockStock: Security = {
       id: 1,
-      code: '000001',
-      name: '平安银行',
+      code: '600000',
+      name: '浦发银行',
       type: SecurityType.STOCK,
       // exchange: 'SH',
       status: 'ACTIVE' as any,
@@ -83,17 +79,17 @@ describe('SecurityController', () => {
 
   describe('addSource', () => {
     const addSourceDto: AddSourceDto = {
-      code: '000001',
+      code: '600001',
       source: {
         type: SourceType.AKTOOLS,
-        config: '',
+        config: '{}',
       },
     };
 
     const mockStock: Security = {
       id: 1,
-      code: '000001',
-      name: '平安银行',
+      code: '600001',
+      name: '测试股票',
       type: SecurityType.STOCK,
       // exchange: 'SH',
       status: 'ACTIVE' as any,
@@ -120,6 +116,26 @@ describe('SecurityController', () => {
       await expect(controller.addSource(addSourceDto)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('should add source configuration to existing stock', async () => {
+      // First create stock
+      const initStockDto: InitStockDto = {
+        code: '600001',
+        name: '测试股票',
+        type: SecurityType.STOCK,
+      };
+
+      mockSecurityService.initStock.mockResolvedValue(mockStock);
+      await controller.initStock(initStockDto);
+
+      // Then add source
+      mockSecurityService.addSource.mockResolvedValue(mockStock);
+      const result = await controller.addSource(addSourceDto);
+
+      expect(result).toHaveProperty('code', '600001');
+      expect(mockSecurityService.initStock).toHaveBeenCalledWith(initStockDto);
+      expect(mockSecurityService.addSource).toHaveBeenCalledWith(addSourceDto);
     });
   });
 

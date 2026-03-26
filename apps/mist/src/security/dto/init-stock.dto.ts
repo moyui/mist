@@ -41,19 +41,6 @@ export class InitStockDto {
   @ApiProperty({ description: 'Security type', enum: SecurityType })
   @IsEnum(SecurityType)
   type!: SecurityType;
-
-  @ApiProperty({ description: 'Supported periods (minutes)', required: false })
-  @IsArray()
-  @IsNumber({}, { each: true })
-  periods?: number[];
-
-  @ApiProperty({
-    description: 'Source configuration',
-    type: () => SourceConfig,
-  })
-  @ValidateNested()
-  @Type(() => SourceConfig)
-  source!: SourceConfig;
 }
 
 export class AddSourceDto {

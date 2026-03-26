@@ -9,10 +9,8 @@ import {
   Security,
   SecuritySourceConfig,
   SecurityStatus,
-  Period,
   DataSource,
 } from '@app/shared-data';
-import { CollectorService } from '../collector/collector.service';
 import { InitStockDto, SourceType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 
@@ -23,7 +21,6 @@ export class SecurityService {
     private readonly securityRepository: Repository<Security>,
     @InjectRepository(SecuritySourceConfig)
     private readonly sourceConfigRepository: Repository<SecuritySourceConfig>,
-    private readonly collectorService: CollectorService,
   ) {}
 
   formatCode(code: string): string {
@@ -43,42 +40,18 @@ export class SecurityService {
       );
     }
 
-    // Use SecurityType directly from DTO
-    const securityType = initStockDto.type;
-
     // Create security
     const stock = this.securityRepository.create({
       code: formattedCode,
       name: initStockDto.name || '',
-      type: securityType,
+      type: initStockDto.type,
       status: SecurityStatus.ACTIVE,
     });
 
     const savedStock = await this.securityRepository.save(stock);
 
-    // Create SecuritySourceConfig if source is provided
-    if (initStockDto.source) {
-      const dataSource = this.mapSourceStringToDataSource(
-        initStockDto.source.type,
-      );
-      const sourceConfig = this.sourceConfigRepository.create({
-        security: savedStock,
-        source: dataSource,
-        formatCode: initStockDto.source.config || '{}',
-      });
-      await this.sourceConfigRepository.save(sourceConfig);
-    }
-
-    // Call CollectorService to collect historical data for first period
-    if (initStockDto.periods && initStockDto.periods.length > 0) {
-      const period = this.mapMinutesToPeriod(initStockDto.periods[0]);
-      await this.collectorService.collectKLine(
-        formattedCode,
-        period,
-        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-        new Date(),
-      );
-    }
+    // TODO: Source configuration and data collection will be handled separately
+    // via addSource() method in subsequent tasks
 
     return savedStock;
   }
@@ -100,18 +73,6 @@ export class SecurityService {
   //   return 'SH'; // Default
   // }
 
-  private mapMinutesToPeriod(minutes: number): Period {
-    const mapping: Record<number, Period> = {
-      1: Period.ONE_MIN,
-      5: Period.FIVE_MIN,
-      15: Period.FIFTEEN_MIN,
-      30: Period.THIRTY_MIN,
-      60: Period.SIXTY_MIN,
-      1440: Period.DAY,
-    };
-    return mapping[minutes] || Period.FIVE_MIN; // Default to 5min
-  }
-
   private mapSourceStringToDataSource(sourceType: SourceType): DataSource {
     const mapping: Record<SourceType, DataSource> = {
       [SourceType.AKTOOLS]: DataSource.EAST_MONEY,
@@ -131,9 +92,16 @@ export class SecurityService {
       throw new NotFoundException(`Stock with code ${formattedCode} not found`);
     }
 
-    // Note: Source configuration is now handled via SecuritySourceConfig entity
-    // This method can be extended to create source config entries
-    // For now, it returns the stock without modification
+    // Create source config
+    const dataSource = this.mapSourceStringToDataSource(
+      addSourceDto.source.type,
+    );
+    const sourceConfig = this.sourceConfigRepository.create({
+      security: stock,
+      source: dataSource,
+      formatCode: addSourceDto.source.config || '{}',
+    });
+    await this.sourceConfigRepository.save(sourceConfig);
 
     return stock;
   }

@@ -7,9 +7,8 @@ import {
   SecurityStatus,
   SecurityType,
 } from '@app/shared-data';
-import { InitStockDto, SourceType } from './dto/init-stock.dto';
-import { AddSourceDto } from './dto/add-source.dto';
-import { CollectorService } from '../collector/collector.service';
+import { InitStockDto } from './dto/init-stock.dto';
+import { AddSourceDto, SourceType } from './dto/add-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('SecurityService', () => {
@@ -21,10 +20,6 @@ describe('SecurityService', () => {
     find: jest.fn(),
     update: jest.fn(),
     create: jest.fn((entity) => entity),
-  };
-
-  const mockCollectorService = {
-    collectKLine: jest.fn(),
   };
 
   const mockSourceConfigRepository = {
@@ -46,10 +41,6 @@ describe('SecurityService', () => {
           provide: getRepositoryToken(SecuritySourceConfig),
           useValue: mockSourceConfigRepository,
         },
-        {
-          provide: CollectorService,
-          useValue: mockCollectorService,
-        },
       ],
     }).compile();
 
@@ -68,115 +59,45 @@ describe('SecurityService', () => {
   });
 
   describe('initStock', () => {
-    const initStockDto: InitStockDto = {
-      code: '000001.SH',
-      name: '平安银行',
-      type: SecurityType.STOCK,
-      periods: [1, 5, 15],
-      source: {
-        type: SourceType.AKTOOLS,
-        config: '{}',
-      },
-    };
+    it('should create a stock without source config or data collection', async () => {
+      const initStockDto: InitStockDto = {
+        code: '600000',
+        name: '浦发银行',
+        type: SecurityType.STOCK,
+      };
 
-    it('should successfully create a new stock and collect historical data', async () => {
       mockSecurityRepository.findOne.mockResolvedValue(null);
+      mockSecurityRepository.create.mockReturnValue({
+        id: 1,
+        code: '600000',
+        name: '浦发银行',
+        type: SecurityType.STOCK,
+        status: SecurityStatus.ACTIVE,
+      } as Security);
       mockSecurityRepository.save.mockResolvedValue({
         id: 1,
-        code: '000001.SH',
-        name: '平安银行',
+        code: '600000',
+        name: '浦发银行',
         type: SecurityType.STOCK,
-        exchange: 'SH',
         status: SecurityStatus.ACTIVE,
-        sourceConfigs: [],
-        ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
       } as Security);
-      mockCollectorService.collectKLine.mockResolvedValue(undefined);
 
       const result = await service.initStock(initStockDto);
 
-      expect(result.code).toBe('000001.SH');
-      expect(mockSecurityRepository.findOne).toHaveBeenCalledWith({
-        where: { code: '000001.SH' },
-      });
-      expect(mockCollectorService.collectKLine).toHaveBeenCalled();
+      expect(result).toBeDefined();
+      expect(result.code).toBe('600000');
+      expect(result.type).toBe(SecurityType.STOCK);
     });
 
-    it('should create SecuritySourceConfig when source is provided', async () => {
-      mockSecurityRepository.findOne.mockResolvedValue(null);
-      mockSecurityRepository.save.mockResolvedValue({
-        id: 1,
-        code: '000001.SH',
-        name: '平安银行',
+    it('should throw ConflictException if stock already exists', async () => {
+      const initStockDto: InitStockDto = {
+        code: '600000',
         type: SecurityType.STOCK,
-        exchange: 'SH',
-        status: SecurityStatus.ACTIVE,
-        sourceConfigs: [],
-        ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
-      } as Security);
-      mockSourceConfigRepository.save.mockResolvedValue({
-        id: 1,
-        source: 'ef',
-        formatCode: '{}',
-      });
-      mockCollectorService.collectKLine.mockResolvedValue(undefined);
+      };
 
-      await service.initStock(initStockDto);
-
-      expect(mockSourceConfigRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          source: 'ef',
-          formatCode: '{}',
-        }),
-      );
-    });
-
-    it('should map AKTOOLS source type to EAST_MONEY DataSource enum', async () => {
-      mockSecurityRepository.findOne.mockResolvedValue(null);
-      mockSecurityRepository.save.mockResolvedValue({
-        id: 1,
-        code: '000001.SH',
-        name: '平安银行',
-        type: SecurityType.STOCK,
-        exchange: 'SH',
-        status: SecurityStatus.ACTIVE,
-        sourceConfigs: [],
-        ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
-      } as Security);
-      mockSourceConfigRepository.save.mockResolvedValue({
-        id: 1,
-        source: 'ef',
-        formatCode: '{}',
-      });
-      mockCollectorService.collectKLine.mockResolvedValue(undefined);
-
-      await service.initStock(initStockDto);
-
-      expect(mockSourceConfigRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          source: 'ef',
-        }),
-      );
-    });
-
-    it('should throw conflict exception if stock already exists', async () => {
       mockSecurityRepository.findOne.mockResolvedValue({
         id: 1,
-        code: '000001.SH',
-        name: '平安银行',
-        type: SecurityType.STOCK,
-        exchange: 'SH',
-        status: SecurityStatus.ACTIVE,
-        sourceConfigs: [],
-        ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
+        code: '600000',
       } as Security);
 
       await expect(service.initStock(initStockDto)).rejects.toThrow(
@@ -186,38 +107,53 @@ describe('SecurityService', () => {
   });
 
   describe('addSource', () => {
-    const addSourceDto: AddSourceDto = {
-      code: '000001.SH',
-      source: {
-        type: SourceType.AKTOOLS,
-        config: '{"base": "updated"}',
-      },
-    };
+    it('should create source config for existing stock', async () => {
+      const addSourceDto: AddSourceDto = {
+        code: '600000',
+        source: {
+          type: SourceType.AKTOOLS,
+          config: '{}',
+        },
+      };
 
-    const existingSecurity = {
-      id: 1,
-      code: '000001.SH',
-      name: '平安银行',
-      type: SecurityType.STOCK,
-      exchange: 'SH',
-      status: SecurityStatus.ACTIVE,
-      sourceConfigs: [],
-      ks: [],
-      createTime: new Date(),
-      updateTime: new Date(),
-    } as Security;
+      const mockStock = {
+        id: 1,
+        code: '600000',
+        name: '浦发银行',
+        type: SecurityType.STOCK,
+        status: SecurityStatus.ACTIVE,
+      } as Security;
 
-    it('should successfully add source to existing stock (placeholder implementation)', async () => {
-      mockSecurityRepository.findOne.mockResolvedValue(existingSecurity);
+      mockSecurityRepository.findOne.mockResolvedValue(mockStock);
+      mockSourceConfigRepository.create.mockReturnValue({
+        security: mockStock,
+        source: 'ef' as any,
+        formatCode: '{}',
+      } as SecuritySourceConfig);
+      mockSourceConfigRepository.save.mockResolvedValue(
+        {} as SecuritySourceConfig,
+      );
 
       const result = await service.addSource(addSourceDto);
 
-      expect(result.code).toBe('000001.SH');
-      // Note: Current implementation just returns stock without modifying source config
-      // This can be extended in the future to create SecuritySourceConfig entries
+      expect(result).toEqual(mockStock);
+      expect(mockSourceConfigRepository.create).toHaveBeenCalledWith({
+        security: mockStock,
+        source: 'ef' as any,
+        formatCode: '{}',
+      });
+      expect(mockSourceConfigRepository.save).toHaveBeenCalled();
     });
 
-    it('should throw not found exception if stock does not exist', async () => {
+    it('should throw NotFoundException if stock not found', async () => {
+      const addSourceDto: AddSourceDto = {
+        code: '999999',
+        source: {
+          type: SourceType.AKTOOLS,
+          config: '{}',
+        },
+      };
+
       mockSecurityRepository.findOne.mockResolvedValue(null);
 
       await expect(service.addSource(addSourceDto)).rejects.toThrow(
