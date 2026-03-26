@@ -7,7 +7,7 @@ import {
   SecurityStatus,
   SecurityType,
 } from '@app/shared-data';
-import { InitStockDto, SourceType, StockType } from './dto/init-stock.dto';
+import { InitStockDto, SourceType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 import { CollectorService } from '../collector/collector.service';
 import { NotFoundException, ConflictException } from '@nestjs/common';
@@ -71,7 +71,7 @@ describe('SecurityService', () => {
     const initStockDto: InitStockDto = {
       code: '000001.SH',
       name: '平安银行',
-      type: StockType.STOCK,
+      type: SecurityType.STOCK,
       periods: [1, 5, 15],
       source: {
         type: SourceType.AKTOOLS,
