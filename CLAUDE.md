@@ -364,23 +364,42 @@ curl -X POST http://localhost:8001/chan/bi \
   }'
 ```
 
-### Initialize Stock with Source Configuration
+### Initialize Stock and Configure Data Source
+
+The API now uses a two-step process for stock initialization:
+
+#### Step 1: Initialize Stock
 
 ```bash
-# Initialize a stock with East Money source
+# Initialize a new stock (without source configuration)
 curl -X POST http://localhost:8001/v1/security/init \
   -H "Content-Type: application/json" \
   -d '{
     "code": "000001.SH",
     "name": "平安银行",
-    "type": "stock",
-    "periods": [1, 5, 15, 30, 60],
+    "type": "stock"
+  }'
+```
+
+#### Step 2: Add Data Source
+
+```bash
+# Add data source configuration (can be called multiple times for different sources)
+curl -X POST http://localhost:8001/v1/security/add-source \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "000001.SH",
     "source": {
       "type": "aktools",
       "config": "{}"
     }
   }'
 ```
+
+**Benefits:**
+- Separates concerns: stock initialization vs. data source configuration
+- Allows adding multiple data sources to the same stock
+- Enables updating source configuration without re-initializing the stock
 
 ### Error Handling
 
@@ -482,11 +501,31 @@ If no source is specified, the application default is used.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/security/init` | POST | Initialize a new stock with source configuration |
+| `/v1/security/init` | POST | Initialize a new stock (simplified - no periods/source) |
 | `/v1/security/add-source` | POST | Add or update data source for existing stock |
 | `/v1/security/deactivate` | POST | Deactivate a stock |
 | `/v1/security/activate` | POST | Activate a deactivated stock |
 | `/v1/security/:code` | GET | Get stock information |
+
+**Stock Initialization DTO** (`InitStockDto`):
+```typescript
+{
+  code: string;       // Stock code (e.g., '000001.SH')
+  name: string;       // Stock name (e.g., '平安银行')
+  type: string;       // Security type ('stock', 'index', etc.)
+}
+```
+
+**Add Source DTO** (`AddSourceDto`):
+```typescript
+{
+  code: string;       // Stock code
+  source: {
+    type: string;     // Source type ('aktools', 'eastmoney', etc.)
+    config: string;   // JSON configuration string
+  };
+}
+```
 
 #### Data Collector API (v1)
 
