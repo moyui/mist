@@ -8,11 +8,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export enum StockType {
-  INDEX = 'index',
-  STOCK = 'stock',
-}
+import { SecurityType } from '@app/shared-data';
 
 export enum SourceType {
   AKTOOLS = 'aktools',
@@ -42,9 +38,9 @@ export class InitStockDto {
   @IsString()
   name?: string;
 
-  @ApiProperty({ description: 'Stock type', enum: StockType })
-  @IsEnum(StockType)
-  type!: StockType;
+  @ApiProperty({ description: 'Security type', enum: SecurityType })
+  @IsEnum(SecurityType)
+  type!: SecurityType;
 
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   @IsArray()

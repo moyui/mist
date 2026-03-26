@@ -8,13 +8,12 @@ import { Repository } from 'typeorm';
 import {
   Security,
   SecuritySourceConfig,
-  SecurityType,
   SecurityStatus,
   Period,
   DataSource,
 } from '@app/shared-data';
 import { CollectorService } from '../collector/collector.service';
-import { InitStockDto, StockType, SourceType } from './dto/init-stock.dto';
+import { InitStockDto, SourceType } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 
 @Injectable()
@@ -44,8 +43,8 @@ export class SecurityService {
       );
     }
 
-    // Convert DTO StockType to entity SecurityType
-    const securityType = this.convertStockType(initStockDto.type);
+    // Use SecurityType directly from DTO
+    const securityType = initStockDto.type;
 
     // Create security
     const stock = this.securityRepository.create({
@@ -84,13 +83,7 @@ export class SecurityService {
     return savedStock;
   }
 
-  private convertStockType(stockType: StockType): SecurityType {
-    // Convert DTO enum to entity enum
-    // Both use 'stock' and 'index' but entity uses uppercase
-    return stockType === StockType.INDEX
-      ? SecurityType.INDEX
-      : SecurityType.STOCK;
-  }
+  // Removed convertStockType - now using SecurityType directly
 
   // private extractExchange(code: string): string {
   //   if (code.endsWith('.SH') || code.startsWith('6')) {
