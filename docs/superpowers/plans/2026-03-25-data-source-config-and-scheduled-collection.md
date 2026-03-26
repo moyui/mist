@@ -477,7 +477,7 @@ describe('SecurityService - initStock with Source Config', () => {
     const initDto: InitStockDto = {
       code: '000001.SH',
       name: '平安银行',
-      type: StockType.STOCK,
+      type: SecurityType.STOCK,
       periods: [5],
       source: {
         type: 'aktools',
@@ -506,7 +506,7 @@ describe('SecurityService - initStock with Source Config', () => {
     const initDto: InitStockDto = {
       code: '000002.SH',
       name: 'Test Stock',
-      type: StockType.STOCK,
+      type: SecurityType.STOCK,
       periods: [5],
       source: {
         type: 'eastmoney',
@@ -566,8 +566,8 @@ export class InitStockDto {
   @ApiProperty({ description: 'Stock name', required: false })
   name?: string;
 
-  @ApiProperty({ description: 'Stock type', enum: StockType })
-  type!: StockType;
+  @ApiProperty({ description: 'Stock type', enum: SecurityType })
+  type!: SecurityType;
 
   @ApiProperty({ description: 'Supported periods (minutes)', required: false })
   periods?: number[];
@@ -594,8 +594,8 @@ async initStock(initStockDto: InitStockDto): Promise<Security> {
     );
   }
 
-  // Convert DTO StockType to entity SecurityType
-  const securityType = this.convertStockType(initStockDto.type);
+  // DTO SecurityType maps directly to entity SecurityType
+  const securityType = initStockDto.type;
 
   // Create security
   const stock = this.securityRepository.create({
@@ -2654,7 +2654,7 @@ describe('Scheduled Collection E2E', () => {
     const initDto: InitStockDto = {
       code: 'TEST001.SH',
       name: 'Test Security',
-      type: StockType.STOCK,
+      type: SecurityType.STOCK,
       periods: [5],
       source: {
         type: 'eastmoney',
