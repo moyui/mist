@@ -1,19 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SecurityController } from './security.controller';
 import { SecurityService } from './security.service';
-import { InitStockDto } from './dto/init-stock.dto';
+import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { Security, SecurityType, DataSource } from '@app/shared-data';
 
 const mockSecurityService = {
-  initStock: jest.fn(),
-  addSource: jest.fn(),
-  findByCode: jest.fn(),
+  initializeSecurity: jest.fn(),
+  addSecuritySource: jest.fn(),
+  findSecurityByCode: jest.fn(),
   findAll: jest.fn(),
-  deactivateStock: jest.fn(),
-  activateStock: jest.fn(),
-  getSourceFormat: jest.fn(),
+  deactivateSecurity: jest.fn(),
+  activateSecurity: jest.fn(),
+  getSecuritySources: jest.fn(),
 };
 
 describe('SecurityController', () => {
@@ -37,14 +37,14 @@ describe('SecurityController', () => {
     jest.clearAllMocks();
   });
 
-  describe('initStock', () => {
-    const initStockDto: InitStockDto = {
+  describe('initializeSecurity', () => {
+    const initSecurityDto: InitSecurityDto = {
       code: '600000',
       name: '浦发银行',
       type: SecurityType.STOCK,
     };
 
-    const mockStock: Security = {
+    const mockSecurity: Security = {
       id: 1,
       code: '600000',
       name: '浦发银行',
@@ -58,33 +58,35 @@ describe('SecurityController', () => {
     };
 
     it('should successfully initialize a new stock', async () => {
-      mockSecurityService.initStock.mockResolvedValue(mockStock);
+      mockSecurityService.initializeSecurity.mockResolvedValue(mockSecurity);
 
-      const result = await controller.initStock(initStockDto);
+      const result = await controller.initializeSecurity(initSecurityDto);
 
-      expect(result).toEqual(mockStock);
-      expect(mockSecurityService.initStock).toHaveBeenCalledWith(initStockDto);
+      expect(result).toEqual(mockSecurity);
+      expect(mockSecurityService.initializeSecurity).toHaveBeenCalledWith(
+        initSecurityDto,
+      );
     });
 
-    it('should throw ConflictException when stock already exists', async () => {
-      mockSecurityService.initStock.mockRejectedValue(
-        new ConflictException('Stock already exists'),
+    it('should throw ConflictException when security already exists', async () => {
+      mockSecurityService.initializeSecurity.mockRejectedValue(
+        new ConflictException('Security already exists'),
       );
 
-      await expect(controller.initStock(initStockDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        controller.initializeSecurity(initSecurityDto),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
-  describe('addSource', () => {
-    const addSourceDto: AddSecuritySourceDto = {
+  describe('addSecuritySource', () => {
+    const addSecuritySourceDto: AddSecuritySourceDto = {
       code: '600001',
       source: DataSource.EAST_MONEY,
       formatCode: '{}',
     };
 
-    const mockStock: Security = {
+    const mockSecurity: Security = {
       id: 1,
       code: '600001',
       name: '测试股票',
@@ -97,48 +99,54 @@ describe('SecurityController', () => {
       updateTime: new Date(),
     };
 
-    it('should successfully add source to existing stock', async () => {
-      mockSecurityService.addSource.mockResolvedValue(mockStock);
+    it('should successfully add source to existing security', async () => {
+      mockSecurityService.addSecuritySource.mockResolvedValue(mockSecurity);
 
-      const result = await controller.addSource(addSourceDto);
+      const result = await controller.addSecuritySource(addSecuritySourceDto);
 
-      expect(result).toEqual(mockStock);
-      expect(mockSecurityService.addSource).toHaveBeenCalledWith(addSourceDto);
-    });
-
-    it('should throw NotFoundException when stock not found', async () => {
-      mockSecurityService.addSource.mockRejectedValue(
-        new NotFoundException('Stock not found'),
-      );
-
-      await expect(controller.addSource(addSourceDto)).rejects.toThrow(
-        NotFoundException,
+      expect(result).toEqual(mockSecurity);
+      expect(mockSecurityService.addSecuritySource).toHaveBeenCalledWith(
+        addSecuritySourceDto,
       );
     });
 
-    it('should add source configuration to existing stock', async () => {
-      // First create stock
-      const initStockDto: InitStockDto = {
+    it('should throw NotFoundException when security not found', async () => {
+      mockSecurityService.addSecuritySource.mockRejectedValue(
+        new NotFoundException('Security not found'),
+      );
+
+      await expect(
+        controller.addSecuritySource(addSecuritySourceDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should add source configuration to existing security', async () => {
+      // First create security
+      const initSecurityDto: InitSecurityDto = {
         code: '600001',
         name: '测试股票',
         type: SecurityType.STOCK,
       };
 
-      mockSecurityService.initStock.mockResolvedValue(mockStock);
-      await controller.initStock(initStockDto);
+      mockSecurityService.initializeSecurity.mockResolvedValue(mockSecurity);
+      await controller.initializeSecurity(initSecurityDto);
 
       // Then add source
-      mockSecurityService.addSource.mockResolvedValue(mockStock);
-      const result = await controller.addSource(addSourceDto);
+      mockSecurityService.addSecuritySource.mockResolvedValue(mockSecurity);
+      const result = await controller.addSecuritySource(addSecuritySourceDto);
 
       expect(result).toHaveProperty('code', '600001');
-      expect(mockSecurityService.initStock).toHaveBeenCalledWith(initStockDto);
-      expect(mockSecurityService.addSource).toHaveBeenCalledWith(addSourceDto);
+      expect(mockSecurityService.initializeSecurity).toHaveBeenCalledWith(
+        initSecurityDto,
+      );
+      expect(mockSecurityService.addSecuritySource).toHaveBeenCalledWith(
+        addSecuritySourceDto,
+      );
     });
   });
 
-  describe('getStock', () => {
-    const mockStock: Security = {
+  describe('findSecurityByCode', () => {
+    const mockSecurity: Security = {
       id: 1,
       code: '000001',
       name: '平安银行',
@@ -150,28 +158,30 @@ describe('SecurityController', () => {
       updateTime: new Date(),
     };
 
-    it('should successfully get stock by code', async () => {
-      mockSecurityService.findByCode.mockResolvedValue(mockStock);
+    it('should successfully get security by code', async () => {
+      mockSecurityService.findSecurityByCode.mockResolvedValue(mockSecurity);
 
-      const result = await controller.getStock('000001.SH');
+      const result = await controller.findSecurityByCode('000001.SH');
 
-      expect(result).toEqual(mockStock);
-      expect(mockSecurityService.findByCode).toHaveBeenCalledWith('000001.SH');
+      expect(result).toEqual(mockSecurity);
+      expect(mockSecurityService.findSecurityByCode).toHaveBeenCalledWith(
+        '000001.SH',
+      );
     });
 
-    it('should throw NotFoundException when stock not found', async () => {
-      mockSecurityService.findByCode.mockRejectedValue(
-        new NotFoundException('Stock not found'),
+    it('should throw NotFoundException when security not found', async () => {
+      mockSecurityService.findSecurityByCode.mockRejectedValue(
+        new NotFoundException('Security not found'),
       );
 
-      await expect(controller.getStock('999999')).rejects.toThrow(
+      await expect(controller.findSecurityByCode('999999')).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  describe('getAllStocks', () => {
-    const mockStocks: Security[] = [
+  describe('getAllSecurities', () => {
+    const mockSecurities: Security[] = [
       {
         id: 1,
         code: '000001.SH',
@@ -196,81 +206,81 @@ describe('SecurityController', () => {
       },
     ];
 
-    it('should return all active stocks', async () => {
-      mockSecurityService.findAll.mockResolvedValue(mockStocks);
+    it('should return all active securities', async () => {
+      mockSecurityService.findAll.mockResolvedValue(mockSecurities);
 
-      const result = await controller.getAllStocks();
+      const result = await controller.getAllSecurities();
 
-      expect(result).toEqual(mockStocks);
+      expect(result).toEqual(mockSecurities);
       expect(mockSecurityService.findAll).toHaveBeenCalled();
     });
   });
 
-  describe('deactivateStock', () => {
-    it('should successfully deactivate a stock', async () => {
-      mockSecurityService.deactivateStock.mockResolvedValue(undefined);
+  describe('deactivateSecurity', () => {
+    it('should successfully deactivate a security', async () => {
+      mockSecurityService.deactivateSecurity.mockResolvedValue(undefined);
 
       await expect(
-        controller.deactivateStock('000001.SH'),
+        controller.deactivateSecurity('000001.SH'),
       ).resolves.not.toThrow();
-      expect(mockSecurityService.deactivateStock).toHaveBeenCalledWith(
+      expect(mockSecurityService.deactivateSecurity).toHaveBeenCalledWith(
         '000001.SH',
       );
     });
 
-    it('should throw NotFoundException when stock not found', async () => {
-      mockSecurityService.deactivateStock.mockRejectedValue(
-        new NotFoundException('Stock not found'),
+    it('should throw NotFoundException when security not found', async () => {
+      mockSecurityService.deactivateSecurity.mockRejectedValue(
+        new NotFoundException('Security not found'),
       );
 
-      await expect(controller.deactivateStock('999999')).rejects.toThrow(
+      await expect(controller.deactivateSecurity('999999')).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  describe('activateStock', () => {
-    it('should successfully activate a deactivated stock', async () => {
-      mockSecurityService.activateStock.mockResolvedValue(undefined);
+  describe('activateSecurity', () => {
+    it('should successfully activate a deactivated security', async () => {
+      mockSecurityService.activateSecurity.mockResolvedValue(undefined);
 
       await expect(
-        controller.activateStock('000001.SH'),
+        controller.activateSecurity('000001.SH'),
       ).resolves.not.toThrow();
-      expect(mockSecurityService.activateStock).toHaveBeenCalledWith(
+      expect(mockSecurityService.activateSecurity).toHaveBeenCalledWith(
         '000001.SH',
       );
     });
 
-    it('should throw NotFoundException when stock not found', async () => {
-      mockSecurityService.activateStock.mockRejectedValue(
-        new NotFoundException('Stock not found'),
+    it('should throw NotFoundException when security not found', async () => {
+      mockSecurityService.activateSecurity.mockRejectedValue(
+        new NotFoundException('Security not found'),
       );
 
-      await expect(controller.activateStock('999999')).rejects.toThrow(
+      await expect(controller.activateSecurity('999999')).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  describe('getSource', () => {
+  describe('getSecuritySources', () => {
     it('should successfully get source configuration', async () => {
       const mockSource = { type: DataSource.EAST_MONEY, config: '{}' };
-      mockSecurityService.getSourceFormat.mockResolvedValue(mockSource);
+      mockSecurityService.getSecuritySources.mockResolvedValue(mockSource);
 
-      const result = await controller.getSource('000001.SH');
+      const result = await controller.getSecuritySources('000001.SH');
 
       expect(result).toEqual(mockSource);
-      expect(mockSecurityService.getSourceFormat).toHaveBeenCalledWith(
+      expect(mockSecurityService.getSecuritySources).toHaveBeenCalledWith(
         '000001.SH',
       );
     });
 
-    it('should throw NotFoundException when stock not found', async () => {
-      mockSecurityService.getSourceFormat.mockRejectedValue(
-        new NotFoundException('Stock not found'),
+    it('should throw NotFoundException when security not found', async () => {
+      mockSecurityService.getSecuritySources.mockRejectedValue(
+        new NotFoundException('Security not found'),
       );
 
-      await expect(controller.getSource('999999')).rejects.toThrow(
+      await expect(controller.getSecuritySources('999999')).rejects.toThrow(
         NotFoundException,
       );
     });
