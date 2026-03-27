@@ -124,7 +124,7 @@ export class AddSourceDto {
 - [ ] **Step 2: Run TypeScript check**
 
 Run: `pnpm run tsc --noEmit -p apps/mist/tsconfig.json`
-Expected: Type errors in security.service.ts (will be fixed in Task 3)
+Expected: Type errors in security.service.ts (e.g., "Property 'type' does not exist on type 'DataSource'") - will be fixed in Task 3
 
 - [ ] **Step 3: Commit**
 
@@ -159,6 +159,8 @@ To:
 ```typescript
 import { InitStockDto } from './dto/init-stock.dto';
 ```
+
+Note: Line 15 `import { AddSourceDto } from './dto/add-source.dto';` should remain unchanged.
 
 - [ ] **Step 2: Delete `mapSourceStringToDataSource()` method**
 
@@ -345,7 +347,7 @@ expect(result).toEqual({
 To:
 ```typescript
 expect(result).toEqual({
-  type: DataSource.EAST_MONEY,
+  type: 'ef',  // DataSource.EAST_MONEY string value, since getSourceFormat returns the enum as string
   config: '{"base": "shanghai"}',
 });
 ```
@@ -392,6 +394,8 @@ Add import for DataSource:
 ```typescript
 import { DataSource } from '@app/shared-data';
 ```
+
+Note: Verify line 5 `import { AddSourceDto } from './dto/add-source.dto';` remains unchanged.
 
 - [ ] **Step 2: Update `addSource` test data (lines 81-87)**
 
