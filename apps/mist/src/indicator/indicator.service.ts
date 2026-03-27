@@ -277,14 +277,6 @@ export class IndicatorService implements OnModuleInit {
       ? this.dataSourceService.select(query.source)
       : this.dataSourceService.getDefault();
 
-    // TODO: In future iterations, use the resolved source to query from appropriate data source
-    // For now, source is logged for debugging purposes
-    if (query.source) {
-      console.debug(
-        `Finding K data for symbol ${query.symbol} from source: ${source}`,
-      );
-    }
-
     const foundBars = await this.kRepository.find({
       relations: ['security'],
       where: {
@@ -292,6 +284,7 @@ export class IndicatorService implements OnModuleInit {
           id: foundSecurity.id,
           code: foundSecurity.code,
         },
+        source,
         period: query.period,
         timestamp: Between(query.startDate, query.endDate),
       },
