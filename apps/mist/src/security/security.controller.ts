@@ -15,7 +15,7 @@ import { TransformInterceptor } from '../interceptors/transform.interceptor';
 import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { Security } from '@app/shared-data';
 import { SecurityService } from './security.service';
-import { InitStockDto } from './dto/init-stock.dto';
+import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 
 @ApiTags('security v1')
@@ -25,85 +25,92 @@ import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 export class SecurityController {
   constructor(private readonly securityService: SecurityService) {}
 
-  @Post('init')
+  @Post('initialize')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Initialize a new stock' })
+  @ApiOperation({ summary: 'Initialize a new security' })
   @ApiResponse({
     status: 201,
-    description: 'Stock successfully initialized',
+    description: 'Security successfully initialized',
     type: Security,
   })
-  @ApiResponse({ status: 409, description: 'Stock already exists' })
-  async initStock(@Body() initStockDto: InitStockDto): Promise<Security> {
-    return await this.securityService.initStock(initStockDto);
+  @ApiResponse({ status: 409, description: 'Security already exists' })
+  async initializeSecurity(
+    @Body() initSecurityDto: InitSecurityDto,
+  ): Promise<Security> {
+    return await this.securityService.initializeSecurity(initSecurityDto);
   }
 
-  @Post('add-source')
-  @ApiOperation({ summary: 'Add or update data source for an existing stock' })
+  @Post('sources')
+  @ApiOperation({
+    summary: 'Add or update data source for an existing security',
+  })
   @ApiResponse({
     status: 200,
     description: 'Source successfully updated',
     type: Security,
   })
-  @ApiResponse({ status: 404, description: 'Stock not found' })
-  async addSource(
-    @Body() addSourceDto: AddSecuritySourceDto,
+  @ApiResponse({ status: 404, description: 'Security not found' })
+  async addSecuritySource(
+    @Body() addSecuritySourceDto: AddSecuritySourceDto,
   ): Promise<Security> {
-    return await this.securityService.addSource(addSourceDto);
+    return await this.securityService.addSecuritySource(addSecuritySourceDto);
   }
 
   @Get(':code')
-  @ApiOperation({ summary: 'Get stock by code' })
+  @ApiOperation({ summary: 'Get security by code' })
   @ApiParam({
     name: 'code',
-    description: 'Stock code (e.g., 000001.SH, 399006.SZ)',
+    description: 'Security code (e.g., 000001.SH, 399006.SZ)',
   })
-  @ApiResponse({ status: 200, description: 'Stock found', type: Security })
-  @ApiResponse({ status: 404, description: 'Stock not found' })
-  async getStock(@Param('code') code: string): Promise<Security> {
-    return await this.securityService.findByCode(code);
+  @ApiResponse({ status: 200, description: 'Security found', type: Security })
+  @ApiResponse({ status: 404, description: 'Security not found' })
+  async findSecurityByCode(@Param('code') code: string): Promise<Security> {
+    return await this.securityService.findSecurityByCode(code);
   }
 
   @Get('all')
-  @ApiOperation({ summary: 'Get all active stocks' })
+  @ApiOperation({ summary: 'Get all active securities' })
   @ApiResponse({
     status: 200,
-    description: 'List of all active stocks',
+    description: 'List of all active securities',
     type: [Security],
   })
-  async getAllStocks(): Promise<Security[]> {
+  async getAllSecurities(): Promise<Security[]> {
     return await this.securityService.findAll();
   }
 
   @Put(':code/deactivate')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Deactivate a stock' })
-  @ApiParam({ name: 'code', description: 'Stock code to deactivate' })
-  @ApiResponse({ status: 200, description: 'Stock successfully deactivated' })
-  @ApiResponse({ status: 404, description: 'Stock not found' })
-  async deactivateStock(@Param('code') code: string): Promise<void> {
-    await this.securityService.deactivateStock(code);
+  @ApiOperation({ summary: 'Deactivate a security' })
+  @ApiParam({ name: 'code', description: 'Security code to deactivate' })
+  @ApiResponse({
+    status: 200,
+    description: 'Security successfully deactivated',
+  })
+  @ApiResponse({ status: 404, description: 'Security not found' })
+  async deactivateSecurity(@Param('code') code: string): Promise<void> {
+    await this.securityService.deactivateSecurity(code);
   }
 
   @Put(':code/activate')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Activate a deactivated stock' })
-  @ApiParam({ name: 'code', description: 'Stock code to activate' })
-  @ApiResponse({ status: 200, description: 'Stock successfully activated' })
-  @ApiResponse({ status: 404, description: 'Stock not found' })
-  async activateStock(@Param('code') code: string): Promise<void> {
-    await this.securityService.activateStock(code);
+  @ApiOperation({ summary: 'Activate a deactivated security' })
+  @ApiParam({ name: 'code', description: 'Security code to activate' })
+  @ApiResponse({ status: 200, description: 'Security successfully activated' })
+  @ApiResponse({ status: 404, description: 'Security not found' })
+  async activateSecurity(@Param('code') code: string): Promise<void> {
+    await this.securityService.activateSecurity(code);
   }
 
-  @Get(':code/source')
-  @ApiOperation({ summary: 'Get source configuration for a stock' })
-  @ApiParam({ name: 'code', description: 'Stock code' })
+  @Get(':code/sources')
+  @ApiOperation({ summary: 'Get source configuration for a security' })
+  @ApiParam({ name: 'code', description: 'Security code' })
   @ApiResponse({
     status: 200,
     description: 'Source configuration retrieved successfully',
   })
-  @ApiResponse({ status: 404, description: 'Stock not found' })
-  async getSource(@Param('code') code: string) {
-    return await this.securityService.getSourceFormat(code);
+  @ApiResponse({ status: 404, description: 'Security not found' })
+  async getSecuritySources(@Param('code') code: string) {
+    return await this.securityService.getSecuritySources(code);
   }
 }
