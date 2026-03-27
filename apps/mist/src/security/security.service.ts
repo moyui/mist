@@ -10,7 +10,7 @@ import {
   SecuritySourceConfig,
   SecurityStatus,
 } from '@app/shared-data';
-import { InitStockDto } from './dto/init-stock.dto';
+import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 
 @Injectable()
@@ -26,68 +26,76 @@ export class SecurityService {
     return code.trim().toUpperCase();
   }
 
-  async initStock(initStockDto: InitStockDto): Promise<Security> {
-    const formattedCode = this.formatCode(initStockDto.code);
+  async initializeSecurity(
+    initSecurityDto: InitSecurityDto,
+  ): Promise<Security> {
+    const formattedCode = this.formatCode(initSecurityDto.code);
 
-    const existingStock = await this.securityRepository.findOne({
+    const existingSecurity = await this.securityRepository.findOne({
       where: { code: formattedCode },
     });
 
-    if (existingStock) {
+    if (existingSecurity) {
       throw new ConflictException(
-        `Stock with code ${formattedCode} already exists`,
+        `Security with code ${formattedCode} already exists`,
       );
     }
 
     // Create security
-    const stock = this.securityRepository.create({
+    const security = this.securityRepository.create({
       code: formattedCode,
-      name: initStockDto.name || '',
-      type: initStockDto.type,
+      name: initSecurityDto.name || '',
+      type: initSecurityDto.type,
       status: SecurityStatus.ACTIVE,
     });
 
-    return await this.securityRepository.save(stock);
+    return await this.securityRepository.save(security);
   }
 
-  async addSource(addSourceDto: AddSecuritySourceDto): Promise<Security> {
-    const formattedCode = this.formatCode(addSourceDto.code);
+  async addSecuritySource(
+    addSecuritySourceDto: AddSecuritySourceDto,
+  ): Promise<Security> {
+    const formattedCode = this.formatCode(addSecuritySourceDto.code);
 
-    const stock = await this.securityRepository.findOne({
+    const security = await this.securityRepository.findOne({
       where: { code: formattedCode },
     });
 
-    if (!stock) {
-      throw new NotFoundException(`Stock with code ${formattedCode} not found`);
+    if (!security) {
+      throw new NotFoundException(
+        `Security with code ${formattedCode} not found`,
+      );
     }
 
     const sourceConfig = this.sourceConfigRepository.create({
-      security: stock,
-      source: addSourceDto.source,
-      formatCode: addSourceDto.formatCode || '',
-      priority: addSourceDto.priority ?? 0,
-      enabled: addSourceDto.enabled ?? true,
+      security: security,
+      source: addSecuritySourceDto.source,
+      formatCode: addSecuritySourceDto.formatCode || '',
+      priority: addSecuritySourceDto.priority ?? 0,
+      enabled: addSecuritySourceDto.enabled ?? true,
     });
     await this.sourceConfigRepository.save(sourceConfig);
 
-    return stock;
+    return security;
   }
 
-  async findByCode(code: string): Promise<Security> {
+  async findSecurityByCode(code: string): Promise<Security> {
     const formattedCode = this.formatCode(code);
 
-    const stock = await this.securityRepository.findOne({
+    const security = await this.securityRepository.findOne({
       where: { code: formattedCode },
     });
 
-    if (!stock) {
-      throw new NotFoundException(`Stock with code ${formattedCode} not found`);
+    if (!security) {
+      throw new NotFoundException(
+        `Security with code ${formattedCode} not found`,
+      );
     }
 
-    return stock;
+    return security;
   }
 
-  async getSourceFormat(code: string): Promise<
+  async getSecuritySources(code: string): Promise<
     Array<{
       id: number;
       securityId: number;
@@ -97,11 +105,11 @@ export class SecurityService {
       enabled: boolean;
     }>
   > {
-    const stock = await this.findByCode(code);
+    const security = await this.findSecurityByCode(code);
 
     // Get all source configs for this security, ordered by priority (highest first)
     const sourceConfigs = await this.sourceConfigRepository.find({
-      where: { security: { id: stock.id } },
+      where: { security: { id: security.id } },
       relations: ['security'],
       order: { priority: 'DESC' },
     });
@@ -141,29 +149,33 @@ export class SecurityService {
     return securities.map((s) => s.code);
   }
 
-  async deactivateStock(code: string): Promise<void> {
+  async deactivateSecurity(code: string): Promise<void> {
     const formattedCode = this.formatCode(code);
 
     const result = await this.securityRepository.update(
       { code: formattedCode },
-      { status: SecurityStatus.SUSPENDED }, // Suspended
+      { status: SecurityStatus.SUSPENDED },
     );
 
     if (result.affected === 0) {
-      throw new NotFoundException(`Stock with code ${formattedCode} not found`);
+      throw new NotFoundException(
+        `Security with code ${formattedCode} not found`,
+      );
     }
   }
 
-  async activateStock(code: string): Promise<void> {
+  async activateSecurity(code: string): Promise<void> {
     const formattedCode = this.formatCode(code);
 
     const result = await this.securityRepository.update(
       { code: formattedCode },
-      { status: SecurityStatus.ACTIVE }, // Active
+      { status: SecurityStatus.ACTIVE },
     );
 
     if (result.affected === 0) {
-      throw new NotFoundException(`Stock with code ${formattedCode} not found`);
+      throw new NotFoundException(
+        `Security with code ${formattedCode} not found`,
+      );
     }
   }
 }
