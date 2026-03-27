@@ -7,7 +7,7 @@ import {
   SecurityStatus,
   SecurityType,
 } from '@app/shared-data';
-import { InitStockDto } from './dto/init-stock.dto';
+import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { DataSource } from '@app/shared-data';
 import { NotFoundException, ConflictException } from '@nestjs/common';
@@ -59,9 +59,9 @@ describe('SecurityService', () => {
     });
   });
 
-  describe('initStock', () => {
+  describe('initializeSecurity', () => {
     it('should create a stock without source config or data collection', async () => {
-      const initStockDto: InitStockDto = {
+      const initSecurityDto: InitSecurityDto = {
         code: '600000',
         name: '浦发银行',
         type: SecurityType.STOCK,
@@ -83,7 +83,7 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
       } as Security);
 
-      const result = await service.initStock(initStockDto);
+      const result = await service.initializeSecurity(initSecurityDto);
 
       expect(result).toBeDefined();
       expect(result.code).toBe('600000');
@@ -91,7 +91,7 @@ describe('SecurityService', () => {
     });
 
     it('should throw ConflictException if stock already exists', async () => {
-      const initStockDto: InitStockDto = {
+      const initSecurityDto: InitSecurityDto = {
         code: '600000',
         type: SecurityType.STOCK,
       };
@@ -101,21 +101,21 @@ describe('SecurityService', () => {
         code: '600000',
       } as Security);
 
-      await expect(service.initStock(initStockDto)).rejects.toThrow(
+      await expect(service.initializeSecurity(initSecurityDto)).rejects.toThrow(
         ConflictException,
       );
     });
   });
 
-  describe('addSource', () => {
+  describe('addSecuritySource', () => {
     it('should create source config for existing stock', async () => {
-      const addSourceDto: AddSecuritySourceDto = {
+      const addSecuritySourceDto: AddSecuritySourceDto = {
         code: '600000',
         source: DataSource.EAST_MONEY,
         formatCode: '{}',
       };
 
-      const mockStock = {
+      const mockSecurity = {
         id: 1,
         code: '600000',
         name: '浦发银行',
@@ -123,9 +123,9 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
       } as Security;
 
-      mockSecurityRepository.findOne.mockResolvedValue(mockStock);
+      mockSecurityRepository.findOne.mockResolvedValue(mockSecurity);
       mockSourceConfigRepository.create.mockReturnValue({
-        security: mockStock,
+        security: mockSecurity,
         source: DataSource.EAST_MONEY,
         formatCode: '{}',
         priority: 0,
@@ -135,11 +135,11 @@ describe('SecurityService', () => {
         {} as SecuritySourceConfig,
       );
 
-      const result = await service.addSource(addSourceDto);
+      const result = await service.addSecuritySource(addSecuritySourceDto);
 
-      expect(result).toEqual(mockStock);
+      expect(result).toEqual(mockSecurity);
       expect(mockSourceConfigRepository.create).toHaveBeenCalledWith({
-        security: mockStock,
+        security: mockSecurity,
         source: DataSource.EAST_MONEY,
         formatCode: '{}',
         priority: 0,
@@ -149,20 +149,20 @@ describe('SecurityService', () => {
     });
 
     it('should throw NotFoundException if stock not found', async () => {
-      const addSourceDto: AddSecuritySourceDto = {
+      const addSecuritySourceDto: AddSecuritySourceDto = {
         code: '999999',
         source: DataSource.EAST_MONEY,
       };
 
       mockSecurityRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.addSource(addSourceDto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.addSecuritySource(addSecuritySourceDto),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('findByCode', () => {
+  describe('findSecurityByCode', () => {
     it('should return stock by code', async () => {
       const stock = {
         id: 1,
@@ -177,7 +177,7 @@ describe('SecurityService', () => {
 
       mockSecurityRepository.findOne.mockResolvedValue(stock);
 
-      const result = await service.findByCode('000001.SH');
+      const result = await service.findSecurityByCode('000001.SH');
 
       expect(result).toEqual(stock);
     });
@@ -185,7 +185,7 @@ describe('SecurityService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findByCode('000001.SH')).rejects.toThrow(
+      await expect(service.findSecurityByCode('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -206,14 +206,14 @@ describe('SecurityService', () => {
 
       mockSecurityRepository.findOne.mockResolvedValue(suspendedStock);
 
-      const result = await service.findByCode('000001.SH');
+      const result = await service.findSecurityByCode('000001.SH');
 
       expect(result).toEqual(suspendedStock);
     });
   });
 
-  describe('getSourceFormat', () => {
-    it('should return source format for existing stock', async () => {
+  describe('getSecuritySources', () => {
+    it('should return source configs for existing stock', async () => {
       const stock = {
         id: 1,
         code: '000001.SH',
@@ -230,34 +230,40 @@ describe('SecurityService', () => {
       const sourceConfigs = [
         {
           id: 1,
-          security: stock,
+          securityId: 1,
           source: DataSource.EAST_MONEY,
           formatCode: '{"base": "shanghai"}',
-          createTime: new Date(),
-          updateTime: new Date(),
+          priority: 0,
+          enabled: true,
         },
       ];
 
       mockSecurityRepository.findOne.mockResolvedValue(stock);
       mockSourceConfigRepository.find.mockResolvedValue(sourceConfigs);
 
-      const result = await service.getSourceFormat('000001.SH');
+      const result = await service.getSecuritySources('000001.SH');
 
-      expect(result).toEqual({
-        type: DataSource.EAST_MONEY,
-        config: '{"base": "shanghai"}',
-      });
+      expect(result).toEqual([
+        {
+          id: 1,
+          securityId: 1,
+          source: DataSource.EAST_MONEY,
+          formatCode: '{"base": "shanghai"}',
+          priority: 0,
+          enabled: true,
+        },
+      ]);
     });
 
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.getSourceFormat('000001.SH')).rejects.toThrow(
+      await expect(service.getSecuritySources('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should return none type if no source configs exist', async () => {
+    it('should return empty array if no source configs exist', async () => {
       const stock = {
         id: 1,
         code: '000001.SH',
@@ -274,12 +280,9 @@ describe('SecurityService', () => {
       mockSecurityRepository.findOne.mockResolvedValue(stock);
       mockSourceConfigRepository.find.mockResolvedValue([]);
 
-      const result = await service.getSourceFormat('000001.SH');
+      const result = await service.getSecuritySources('000001.SH');
 
-      expect(result).toEqual({
-        type: 'none',
-        config: undefined,
-      });
+      expect(result).toEqual([]);
     });
   });
 
@@ -318,11 +321,11 @@ describe('SecurityService', () => {
     });
   });
 
-  describe('deactivateStock', () => {
+  describe('deactivateSecurity', () => {
     it('should deactivate existing stock', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.deactivateStock('000001.SH');
+      await service.deactivateSecurity('000001.SH');
 
       expect(mockSecurityRepository.update).toHaveBeenCalledWith(
         { code: '000001.SH' },
@@ -333,17 +336,17 @@ describe('SecurityService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.deactivateStock('000001.SH')).rejects.toThrow(
+      await expect(service.deactivateSecurity('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
   });
 
-  describe('activateStock', () => {
+  describe('activateSecurity', () => {
     it('should activate existing stock', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
-      await service.activateStock('000001.SH');
+      await service.activateSecurity('000001.SH');
 
       expect(mockSecurityRepository.update).toHaveBeenCalledWith(
         { code: '000001.SH' },
@@ -354,7 +357,7 @@ describe('SecurityService', () => {
     it('should throw not found exception if stock does not exist', async () => {
       mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
 
-      await expect(service.activateStock('000001.SH')).rejects.toThrow(
+      await expect(service.activateSecurity('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
     });
