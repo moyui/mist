@@ -8,7 +8,8 @@ import {
   SecurityType,
 } from '@app/shared-data';
 import { InitStockDto } from './dto/init-stock.dto';
-import { AddSourceDto, SourceType } from './dto/add-source.dto';
+import { AddSourceDto } from './dto/add-source.dto';
+import { DataSource } from '@app/shared-data';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('SecurityService', () => {
@@ -110,10 +111,8 @@ describe('SecurityService', () => {
     it('should create source config for existing stock', async () => {
       const addSourceDto: AddSourceDto = {
         code: '600000',
-        source: {
-          type: SourceType.AKTOOLS,
-          config: '{}',
-        },
+        source: DataSource.EAST_MONEY,
+        formatCode: '{}',
       };
 
       const mockStock = {
@@ -127,8 +126,10 @@ describe('SecurityService', () => {
       mockSecurityRepository.findOne.mockResolvedValue(mockStock);
       mockSourceConfigRepository.create.mockReturnValue({
         security: mockStock,
-        source: 'ef' as any,
+        source: DataSource.EAST_MONEY,
         formatCode: '{}',
+        priority: 0,
+        enabled: true,
       } as SecuritySourceConfig);
       mockSourceConfigRepository.save.mockResolvedValue(
         {} as SecuritySourceConfig,
@@ -139,8 +140,10 @@ describe('SecurityService', () => {
       expect(result).toEqual(mockStock);
       expect(mockSourceConfigRepository.create).toHaveBeenCalledWith({
         security: mockStock,
-        source: 'ef' as any,
+        source: DataSource.EAST_MONEY,
         formatCode: '{}',
+        priority: 0,
+        enabled: true,
       });
       expect(mockSourceConfigRepository.save).toHaveBeenCalled();
     });
@@ -148,10 +151,7 @@ describe('SecurityService', () => {
     it('should throw NotFoundException if stock not found', async () => {
       const addSourceDto: AddSourceDto = {
         code: '999999',
-        source: {
-          type: SourceType.AKTOOLS,
-          config: '{}',
-        },
+        source: DataSource.EAST_MONEY,
       };
 
       mockSecurityRepository.findOne.mockResolvedValue(null);
@@ -231,7 +231,7 @@ describe('SecurityService', () => {
         {
           id: 1,
           security: stock,
-          source: 'aktools',
+          source: DataSource.EAST_MONEY,
           formatCode: '{"base": "shanghai"}',
           createTime: new Date(),
           updateTime: new Date(),
@@ -244,7 +244,7 @@ describe('SecurityService', () => {
       const result = await service.getSourceFormat('000001.SH');
 
       expect(result).toEqual({
-        type: 'aktools',
+        type: DataSource.EAST_MONEY,
         config: '{"base": "shanghai"}',
       });
     });
