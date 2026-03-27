@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SecurityController } from './security.controller';
 import { SecurityService } from './security.service';
-import { InitStockDto, SourceType } from './dto/init-stock.dto';
+import { InitStockDto } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
-import { Security, SecurityType } from '@app/shared-data';
+import { Security, SecurityType, DataSource } from '@app/shared-data';
 
 const mockSecurityService = {
   initStock: jest.fn(),
@@ -80,10 +80,8 @@ describe('SecurityController', () => {
   describe('addSource', () => {
     const addSourceDto: AddSourceDto = {
       code: '600001',
-      source: {
-        type: SourceType.AKTOOLS,
-        config: '{}',
-      },
+      source: DataSource.EAST_MONEY,
+      formatCode: '{}',
     };
 
     const mockStock: Security = {
@@ -256,7 +254,7 @@ describe('SecurityController', () => {
 
   describe('getSource', () => {
     it('should successfully get source configuration', async () => {
-      const mockSource = { type: 'aktools', config: {} };
+      const mockSource = { type: DataSource.EAST_MONEY, config: '{}' };
       mockSecurityService.getSourceFormat.mockResolvedValue(mockSource);
 
       const result = await controller.getSource('000001.SH');
