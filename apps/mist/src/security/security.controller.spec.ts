@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SecurityController } from './security.controller';
 import { SecurityService } from './security.service';
 import { InitStockDto } from './dto/init-stock.dto';
-import { AddSourceDto } from './dto/add-source.dto';
+import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { Security, SecurityType, DataSource } from '@app/shared-data';
 
@@ -78,7 +78,7 @@ describe('SecurityController', () => {
   });
 
   describe('addSource', () => {
-    const addSourceDto: AddSourceDto = {
+    const addSourceDto: AddSecuritySourceDto = {
       code: '600001',
       source: DataSource.EAST_MONEY,
       formatCode: '{}',

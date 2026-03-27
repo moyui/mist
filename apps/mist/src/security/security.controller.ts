@@ -16,7 +16,7 @@ import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { Security } from '@app/shared-data';
 import { SecurityService } from './security.service';
 import { InitStockDto } from './dto/init-stock.dto';
-import { AddSourceDto } from './dto/add-source.dto';
+import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 
 @ApiTags('security v1')
 @Controller('security/v1')
@@ -46,7 +46,9 @@ export class SecurityController {
     type: Security,
   })
   @ApiResponse({ status: 404, description: 'Stock not found' })
-  async addSource(@Body() addSourceDto: AddSourceDto): Promise<Security> {
+  async addSource(
+    @Body() addSourceDto: AddSecuritySourceDto,
+  ): Promise<Security> {
     return await this.securityService.addSource(addSourceDto);
   }
 

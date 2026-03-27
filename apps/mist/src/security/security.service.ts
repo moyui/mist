@@ -11,7 +11,7 @@ import {
   SecurityStatus,
 } from '@app/shared-data';
 import { InitStockDto } from './dto/init-stock.dto';
-import { AddSourceDto } from './dto/add-source.dto';
+import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 
 @Injectable()
 export class SecurityService {
@@ -50,7 +50,7 @@ export class SecurityService {
     return await this.securityRepository.save(stock);
   }
 
-  async addSource(addSourceDto: AddSourceDto): Promise<Security> {
+  async addSource(addSourceDto: AddSecuritySourceDto): Promise<Security> {
     const formattedCode = this.formatCode(addSourceDto.code);
 
     const stock = await this.securityRepository.findOne({
@@ -87,30 +87,34 @@ export class SecurityService {
     return stock;
   }
 
-  async getSourceFormat(
-    code: string,
-  ): Promise<{ type: string; config?: string }> {
+  async getSourceFormat(code: string): Promise<
+    Array<{
+      id: number;
+      securityId: number;
+      source: string;
+      formatCode: string;
+      priority: number;
+      enabled: boolean;
+    }>
+  > {
     const stock = await this.findByCode(code);
 
-    // Get source configs for this security
+    // Get all source configs for this security, ordered by priority (highest first)
     const sourceConfigs = await this.sourceConfigRepository.find({
       where: { security: { id: stock.id } },
       relations: ['security'],
+      order: { priority: 'DESC' },
     });
 
-    if (sourceConfigs.length === 0) {
-      return {
-        type: 'none',
-        config: undefined,
-      };
-    }
-
-    // Return the first (highest priority) source config
-    const config = sourceConfigs[0];
-    return {
-      type: config.source,
-      config: config.formatCode,
-    };
+    // Return all source configs with all fields
+    return sourceConfigs.map((config) => ({
+      id: config.id,
+      securityId: config.securityId,
+      source: config.source,
+      formatCode: config.formatCode,
+      priority: config.priority,
+      enabled: config.enabled,
+    }));
   }
 
   async findAll(): Promise<Security[]> {

@@ -8,7 +8,7 @@ import {
   SecurityType,
 } from '@app/shared-data';
 import { InitStockDto } from './dto/init-stock.dto';
-import { AddSourceDto } from './dto/add-source.dto';
+import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { DataSource } from '@app/shared-data';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 
@@ -109,7 +109,7 @@ describe('SecurityService', () => {
 
   describe('addSource', () => {
     it('should create source config for existing stock', async () => {
-      const addSourceDto: AddSourceDto = {
+      const addSourceDto: AddSecuritySourceDto = {
         code: '600000',
         source: DataSource.EAST_MONEY,
         formatCode: '{}',
@@ -149,7 +149,7 @@ describe('SecurityService', () => {
     });
 
     it('should throw NotFoundException if stock not found', async () => {
-      const addSourceDto: AddSourceDto = {
+      const addSourceDto: AddSecuritySourceDto = {
         code: '999999',
         source: DataSource.EAST_MONEY,
       };

@@ -9,8 +9,8 @@ import {
 } from 'class-validator';
 import { DataSource } from '@app/shared-data';
 
-export class AddSourceDto {
-  @ApiProperty({ description: 'Stock code (e.g., 000001.SH, 399006.SZ)' })
+export class AddSecuritySourceDto {
+  @ApiProperty({ description: 'Security code (e.g., 000001.SH, 399006.SZ)' })
   @IsNotEmpty()
   @IsString()
   code!: string;
