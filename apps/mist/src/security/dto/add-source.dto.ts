@@ -1,34 +1,42 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsEnum, IsArray } from 'class-validator';
-
-export enum SourceType {
-  AKTOOLS = 'aktools',
-  OTHER = 'other',
-}
-
-export class SourceConfig {
-  @ApiProperty({ description: 'Source type', enum: SourceType })
-  @IsEnum(SourceType)
-  type!: SourceType;
-
-  @ApiProperty({
-    description: 'Source-specific configuration',
-    required: false,
-  })
-  @IsString()
-  config!: string;
-}
+import {
+  IsNotEmpty,
+  IsString,
+  IsEnum,
+  IsNumber,
+  IsBoolean,
+  IsOptional,
+} from 'class-validator';
+import { DataSource } from '@app/shared-data';
 
 export class AddSourceDto {
-  @ApiProperty({ description: 'Stock code' })
+  @ApiProperty({ description: 'Stock code (e.g., 000001.SH, 399006.SZ)' })
   @IsNotEmpty()
   @IsString()
   code!: string;
 
-  @ApiProperty({ description: 'Source configuration', type: SourceConfig })
-  source!: SourceConfig;
+  @ApiProperty({ description: 'Data source', enum: DataSource })
+  @IsEnum(DataSource)
+  source!: DataSource;
 
-  @ApiProperty({ description: 'Supported periods (minutes)', required: false })
-  @IsArray()
-  periods?: number[];
+  @ApiProperty({
+    description: 'Data source specific code format',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  formatCode?: string;
+
+  @ApiProperty({
+    description: 'Priority (higher = preferred)',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  priority?: number;
+
+  @ApiProperty({ description: 'Whether source is enabled', required: false })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
 }
