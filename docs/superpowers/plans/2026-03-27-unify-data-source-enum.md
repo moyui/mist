@@ -347,7 +347,7 @@ expect(result).toEqual({
 To:
 ```typescript
 expect(result).toEqual({
-  type: 'ef',  // DataSource.EAST_MONEY string value, since getSourceFormat returns the enum as string
+  type: DataSource.EAST_MONEY,
   config: '{"base": "shanghai"}',
 });
 ```
