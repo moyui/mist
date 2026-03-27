@@ -9,9 +9,8 @@ import {
   Security,
   SecuritySourceConfig,
   SecurityStatus,
-  DataSource,
 } from '@app/shared-data';
-import { InitStockDto, SourceType } from './dto/init-stock.dto';
+import { InitStockDto } from './dto/init-stock.dto';
 import { AddSourceDto } from './dto/add-source.dto';
 
 @Injectable()
@@ -48,37 +47,7 @@ export class SecurityService {
       status: SecurityStatus.ACTIVE,
     });
 
-    const savedStock = await this.securityRepository.save(stock);
-
-    // TODO: Source configuration and data collection will be handled separately
-    // via addSource() method in subsequent tasks
-
-    return savedStock;
-  }
-
-  // Removed convertStockType - now using SecurityType directly
-
-  // private extractExchange(code: string): string {
-  //   if (code.endsWith('.SH') || code.startsWith('6')) {
-  //     return 'SH';
-  //   } else if (
-  //     code.endsWith('.SZ') ||
-  //     code.startsWith('0') ||
-  //     code.startsWith('3')
-  //   ) {
-  //     return 'SZ';
-  //   } else if (code.startsWith('5')) {
-  //     return 'CSI';
-  //   }
-  //   return 'SH'; // Default
-  // }
-
-  private mapSourceStringToDataSource(sourceType: SourceType): DataSource {
-    const mapping: Record<SourceType, DataSource> = {
-      [SourceType.AKTOOLS]: DataSource.EAST_MONEY,
-      [SourceType.OTHER]: DataSource.EAST_MONEY, // Default to EAST_MONEY for OTHER
-    };
-    return mapping[sourceType] || DataSource.EAST_MONEY;
+    return await this.securityRepository.save(stock);
   }
 
   async addSource(addSourceDto: AddSourceDto): Promise<Security> {
@@ -92,14 +61,12 @@ export class SecurityService {
       throw new NotFoundException(`Stock with code ${formattedCode} not found`);
     }
 
-    // Create source config
-    const dataSource = this.mapSourceStringToDataSource(
-      addSourceDto.source.type,
-    );
     const sourceConfig = this.sourceConfigRepository.create({
       security: stock,
-      source: dataSource,
-      formatCode: addSourceDto.source.config || '{}',
+      source: addSourceDto.source,
+      formatCode: addSourceDto.formatCode || '',
+      priority: addSourceDto.priority ?? 0,
+      enabled: addSourceDto.enabled ?? true,
     });
     await this.sourceConfigRepository.save(sourceConfig);
 
