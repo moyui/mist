@@ -1,26 +1,39 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { K, Security, SecuritySourceConfig } from '@app/shared-data';
+import { K, SecuritySourceConfig } from '@app/shared-data';
 import { CollectorService } from './collector.service';
-import { DataCollectionScheduler } from './data-collection.scheduler';
+import { CollectorController } from './collector.controller';
+import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.strategy';
+import { EastMoneyTimeWindowStrategy } from './time-window/east-money-time-window.strategy';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { UtilsModule } from '@app/utils';
+import { SecurityModule } from '../security/security.module';
+import {
+  COLLECTION_STRATEGIES,
+  CollectionStrategyRegistry,
+} from './strategies/collection-strategy.registry';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([K, Security, SecuritySourceConfig]),
+    TypeOrmModule.forFeature([K, SecuritySourceConfig]),
     UtilsModule,
+    SecurityModule,
   ],
   providers: [
     CollectorService,
-    DataCollectionScheduler,
+    EastMoneyCollectionStrategy,
+    EastMoneyTimeWindowStrategy,
     EastMoneySource,
     TdxSource,
+    {
+      provide: COLLECTION_STRATEGIES,
+      useFactory: (eastMoney: EastMoneyCollectionStrategy) => [eastMoney],
+      inject: [EastMoneyCollectionStrategy],
+    },
+    CollectionStrategyRegistry,
   ],
-  exports: [CollectorService, DataCollectionScheduler],
+  controllers: [CollectorController],
+  exports: [CollectorService, EastMoneyCollectionStrategy],
 })
-export class CollectorModule {
-  // The module can be extended to include specific fetcher implementations
-  // when they are created in future tasks
-}
+export class CollectorModule {}
