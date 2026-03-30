@@ -53,13 +53,6 @@ describe('PeriodMappingService', () => {
     expect(service.isSupported(Period.FIFTEEN_MIN, DataSource.TDX)).toBe(true);
     expect(service.isSupported(Period.QUARTER, DataSource.TDX)).toBe(false);
   });
-
-  it('should get all supported periods', () => {
-    const tdxPeriods = service.getSupportedPeriods(DataSource.TDX);
-    expect(tdxPeriods).toContain(Period.ONE_MIN);
-    expect(tdxPeriods).toContain(Period.DAY);
-    expect(tdxPeriods.length).toBe(8); // ONE_MIN, FIVE_MIN, FIFTEEN_MIN, THIRTY_MIN, SIXTY_MIN, DAY, WEEK, MONTH
-  });
 });
 
 describe('PeriodMappingService with unified Period enum', () => {

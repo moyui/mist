@@ -65,11 +65,4 @@ export class EastMoneySource implements ISourceFetcher {
   isSupportedPeriod(period: Period): boolean {
     return this.periodMappingService.isSupported(period, DataSource.EAST_MONEY);
   }
-
-  getPeriodFormat(period: Period): string {
-    return this.periodMappingService.toSourceFormat(
-      period,
-      DataSource.EAST_MONEY,
-    );
-  }
 }

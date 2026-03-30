@@ -106,35 +106,4 @@ describe('TdxSource', () => {
       expect(service.isSupportedPeriod(Period.YEAR)).toBe(false); // not in TDX mapping
     });
   });
-
-  describe('getPeriodFormat', () => {
-    it('should return correct period format for directly supported periods', () => {
-      expect(service.getPeriodFormat(Period.ONE_MIN)).toBe('1m');
-      expect(service.getPeriodFormat(Period.FIVE_MIN)).toBe('5m');
-      expect(service.getPeriodFormat(Period.FIFTEEN_MIN)).toBe('15m');
-      expect(service.getPeriodFormat(Period.THIRTY_MIN)).toBe('30m');
-      expect(service.getPeriodFormat(Period.SIXTY_MIN)).toBe('60m');
-      expect(service.getPeriodFormat(Period.DAY)).toBe('1d');
-      expect(service.getPeriodFormat(Period.WEEK)).toBe('1w');
-      expect(service.getPeriodFormat(Period.MONTH)).toBe('1M');
-    });
-
-    it('should throw error for unsupported period', () => {
-      expect(() => service.getPeriodFormat(Period.QUARTER)).toThrow(
-        'Data source tdx does not support period 129600',
-      );
-      expect(() => service.getPeriodFormat(Period.YEAR)).toThrow(
-        'Data source tdx does not support period 525600',
-      );
-    });
-  });
-
-  describe('periodToKLinePeriod', () => {
-    it('should correctly map Period enum to KPeriod enum', () => {
-      // This tests the private method through public interface
-      expect(service.getPeriodFormat(Period.ONE_MIN)).toBe('1m');
-      expect(service.getPeriodFormat(Period.FIVE_MIN)).toBe('5m');
-      expect(service.getPeriodFormat(Period.DAY)).toBe('1d');
-    });
-  });
 });

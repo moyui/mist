@@ -47,8 +47,4 @@ export class TdxSource implements ISourceFetcher {
   isSupportedPeriod(period: Period): boolean {
     return this.periodMappingService.isSupported(period, DataSource.TDX);
   }
-
-  getPeriodFormat(period: Period): string {
-    return this.periodMappingService.toSourceFormat(period, DataSource.TDX);
-  }
 }

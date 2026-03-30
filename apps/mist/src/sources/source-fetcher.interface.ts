@@ -3,7 +3,6 @@ import { Period } from '@app/shared-data';
 export interface ISourceFetcher {
   fetchKLine(params: KLineFetchParams): Promise<KLineData[]>;
   isSupportedPeriod(period: Period): boolean;
-  getPeriodFormat(period: Period): string;
 }
 
 export interface KLineFetchParams {

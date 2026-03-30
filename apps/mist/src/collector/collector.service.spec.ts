@@ -29,13 +29,11 @@ const mockSecurityRepository = {
 const mockEastMoneySource = {
   fetchKLine: jest.fn(),
   isSupportedPeriod: jest.fn(),
-  getPeriodFormat: jest.fn(),
 };
 
 const mockTdxSource = {
   fetchKLine: jest.fn(),
   isSupportedPeriod: jest.fn(),
-  getPeriodFormat: jest.fn(),
 };
 
 const mockSourceConfigRepository = {

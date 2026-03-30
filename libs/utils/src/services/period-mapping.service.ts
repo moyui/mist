@@ -57,12 +57,4 @@ export class PeriodMappingService {
     const mapping = this.periodMapping[source];
     return !!(mapping && mapping[period]);
   }
-
-  /**
-   * Get all supported periods for a source
-   */
-  getSupportedPeriods(source: DataSource): Period[] {
-    const mapping = this.periodMapping[source];
-    return mapping ? (Object.keys(mapping).map(Number) as Period[]) : [];
-  }
 }

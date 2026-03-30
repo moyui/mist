@@ -173,17 +173,4 @@ describe('EastMoneySource', () => {
       expect(service.isSupportedPeriod(Period.YEAR)).toBe(true);
     });
   });
-
-  describe('getPeriodFormat', () => {
-    it('should return correct period format', () => {
-      expect(service.getPeriodFormat(Period.ONE_MIN)).toBe('1');
-      expect(service.getPeriodFormat(Period.FIVE_MIN)).toBe('5');
-      expect(service.getPeriodFormat(Period.FIFTEEN_MIN)).toBe('15');
-      expect(service.getPeriodFormat(Period.THIRTY_MIN)).toBe('30');
-      expect(service.getPeriodFormat(Period.SIXTY_MIN)).toBe('60');
-      expect(service.getPeriodFormat(Period.DAY)).toBe('daily');
-      expect(service.getPeriodFormat(Period.WEEK)).toBe('1w');
-      expect(service.getPeriodFormat(Period.MONTH)).toBe('1M');
-    });
-  });
 });
