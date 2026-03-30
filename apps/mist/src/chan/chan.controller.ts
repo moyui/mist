@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { subDays } from 'date-fns';
 import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { CreateChannelDto } from './dto/create-channel.dto';
@@ -16,6 +17,7 @@ import { ChannelService } from './services/channel.service';
 import { KMergeService } from './services/k-merge.service';
 import { IndicatorService } from '../indicator/indicator.service';
 import { PeriodMappingService } from '@app/utils';
+import { TimezoneService } from '@app/timezone';
 import { KVo } from '../indicator/vo/k.vo';
 import { TransformInterceptor } from '../interceptors/transform.interceptor';
 import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
@@ -31,6 +33,7 @@ export class ChanController {
     private readonly channelService: ChannelService,
     private readonly indicatorService: IndicatorService,
     private readonly periodMappingService: PeriodMappingService,
+    private readonly timezoneService: TimezoneService,
   ) {}
 
   @Post('merge-k')
@@ -110,12 +113,11 @@ export class ChanController {
    */
   private async fetchKData(chanQueryDto: ChanQueryDto): Promise<KVo[]> {
     // Parse date strings to Date objects
+    const now = this.timezoneService.getCurrentBeijingTime();
     const startDate = chanQueryDto.startDate
       ? new Date(chanQueryDto.startDate)
-      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default: 30 days ago
-    const endDate = chanQueryDto.endDate
-      ? new Date(chanQueryDto.endDate)
-      : new Date();
+      : subDays(now, 30); // Default: 30 days ago
+    const endDate = chanQueryDto.endDate ? new Date(chanQueryDto.endDate) : now;
 
     // Fetch K-line data using IndicatorService
     const kEntities = await this.indicatorService.findKData({

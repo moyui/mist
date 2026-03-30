@@ -27,7 +27,12 @@ export class DataCollectionController {
   // 1min: fire at :01, :02, ..., :59 every weekday
   @Cron('1-59 * * * 1-5')
   async handleOneMinuteCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
     try {
       await this.strategy.collectForAllSecurities(Period.ONE_MIN);
     } catch (error) {
@@ -39,7 +44,12 @@ export class DataCollectionController {
   // 5min: fire at :01, :06, :11, ... after each 5min candle close
   @Cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * 1-5')
   async handleFiveMinuteCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
     try {
       await this.strategy.collectForAllSecurities(Period.FIVE_MIN);
     } catch (error) {
@@ -51,7 +61,12 @@ export class DataCollectionController {
   // 15min: fire at :01, :16, :31, :46 after each 15min candle close
   @Cron('1,16,31,46 * * * 1-5')
   async handleFifteenMinuteCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
     try {
       await this.strategy.collectForAllSecurities(Period.FIFTEEN_MIN);
     } catch (error) {
@@ -63,7 +78,12 @@ export class DataCollectionController {
   // 30min: fire at :01, :31 after each 30min candle close
   @Cron('1,31 * * * 1-5')
   async handleThirtyMinuteCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
     try {
       await this.strategy.collectForAllSecurities(Period.THIRTY_MIN);
     } catch (error) {
@@ -75,7 +95,12 @@ export class DataCollectionController {
   // 60min: fire at :31 after each 60min candle close (9:30→10:31, 10:30→11:31, 13:00→14:31, 14:00→15:31)
   @Cron('31 * * * 1-5')
   async handleSixtyMinuteCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
     try {
       await this.strategy.collectForAllSecurities(Period.SIXTY_MIN);
     } catch (error) {
@@ -87,7 +112,12 @@ export class DataCollectionController {
   // daily: 18:00 weekdays, post-market
   @Cron('0 18 * * 1-5')
   async handleDailyCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
     try {
       await this.strategy.collectForAllSecurities(Period.DAY);
     } catch (error) {
@@ -99,7 +129,12 @@ export class DataCollectionController {
   // weekly: Friday 18:00
   @Cron('0 18 * * 5')
   async handleWeeklyCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
     try {
       await this.strategy.collectForAllSecurities(Period.WEEK);
     } catch (error) {
@@ -111,9 +146,9 @@ export class DataCollectionController {
   // monthly: 18:00 on days 28-31 with last-trading-day-of-month check
   @Cron('0 18 28-31 * *')
   async handleMonthlyCollection(): Promise<void> {
-    if (!(await this.timezoneService.isTradingDay(new Date()))) return;
+    const now = this.timezoneService.getCurrentBeijingTime();
+    if (!(await this.timezoneService.isTradingDay(now))) return;
     // Only run on the last trading day of the month
-    const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     if (tomorrow.getMonth() === now.getMonth()) return; // not last day yet

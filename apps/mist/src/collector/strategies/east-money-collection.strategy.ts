@@ -8,6 +8,7 @@ import {
   CollectionMode,
 } from './data-collection.strategy.interface';
 import { KBoundaryCalculator } from '@app/utils';
+import { TimezoneService } from '@app/timezone';
 
 @Injectable()
 export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
@@ -23,6 +24,7 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
     private readonly collectorService: CollectorService,
+    private readonly timezoneService: TimezoneService,
   ) {}
 
   /**
@@ -65,7 +67,7 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
     period: Period,
     triggerTime?: Date,
   ): Promise<void> {
-    const time = triggerTime || new Date();
+    const time = triggerTime || this.timezoneService.getCurrentBeijingTime();
     const boundary = this.calculator.calculate(period, time);
 
     if (!boundary) {

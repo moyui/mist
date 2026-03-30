@@ -55,7 +55,7 @@ export class DataCollectionScheduler {
    */
   async collectForAllSecurities(period: Period, time?: Date): Promise<void> {
     // Check if today is a trading day using TimezoneService
-    const now = time || new Date();
+    const now = time || this.timezoneService.getCurrentBeijingTime();
     if (!(await this.timezoneService.isTradingDay(now))) {
       this.logger.debug(
         'Not a trading day, skipping collection for period ' + period,

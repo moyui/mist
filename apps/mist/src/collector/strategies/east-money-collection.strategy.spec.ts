@@ -10,6 +10,7 @@ describe('EastMoneyCollectionStrategy', () => {
   let strategy: EastMoneyCollectionStrategy;
   let mockCollectorService: any;
   let mockSecurityRepository: any;
+  let mockTimezoneService: any;
 
   beforeEach(() => {
     mockCollectorService = {
@@ -20,9 +21,14 @@ describe('EastMoneyCollectionStrategy', () => {
       find: jest.fn(),
     };
 
+    mockTimezoneService = {
+      getCurrentBeijingTime: jest.fn().mockReturnValue(new Date()),
+    };
+
     strategy = new EastMoneyCollectionStrategy(
       mockSecurityRepository as any,
       mockCollectorService,
+      mockTimezoneService,
     );
   });
 

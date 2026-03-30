@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { format, fromUnixTime, millisecondsToSeconds } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { ERROR_MESSAGES } from '@app/constants';
 import { UtilsService } from '@app/utils';
 
@@ -45,6 +46,18 @@ export class TimezoneService {
 
   convertTimestamp2Date(timestamp: number) {
     return fromUnixTime(millisecondsToSeconds(timestamp));
+  }
+
+  /**
+   * Get current Beijing time.
+   *
+   * Converts the current system time (UTC) to Beijing timezone (Asia/Shanghai).
+   * Use this method instead of `new Date()` when you need the current time in Beijing timezone.
+   *
+   * @returns Current date/time in Beijing timezone
+   */
+  getCurrentBeijingTime(): Date {
+    return toZonedTime(new Date(), 'Asia/Shanghai');
   }
 
   /**
