@@ -4,7 +4,6 @@ import { K, SecuritySourceConfig } from '@app/shared-data';
 import { CollectorService } from './collector.service';
 import { CollectorController } from './collector.controller';
 import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.strategy';
-import { EastMoneyTimeWindowStrategy } from './time-window/east-money-time-window.strategy';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { UtilsModule } from '@app/utils';
@@ -23,7 +22,6 @@ import {
   providers: [
     CollectorService,
     EastMoneyCollectionStrategy,
-    EastMoneyTimeWindowStrategy,
     EastMoneySource,
     TdxSource,
     {
