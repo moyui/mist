@@ -151,6 +151,70 @@ describe('KBoundaryCalculator', () => {
       expect(result!.endTime).toEqual(new Date('2026-03-30T11:30:00+08:00'));
     });
   });
+
+  describe('calculateDailyPlusCandle', () => {
+    it('should return today 00:00 - next day 00:00 for daily', () => {
+      const triggerTime = new Date('2026-03-30T18:00:00+08:00');
+      const result = calculator.calculateDailyPlusCandle(Period.DAY, triggerTime);
+      expect(result.startTime).toEqual(new Date('2026-03-30T00:00:00+08:00'));
+      expect(result.endTime).toEqual(new Date('2026-03-31T00:00:00+08:00'));
+    });
+
+    it('should return Monday - next Monday for weekly (triggered on Friday)', () => {
+      // 2026-03-27 is a Friday
+      const triggerTime = new Date('2026-03-27T18:00:00+08:00');
+      const result = calculator.calculateDailyPlusCandle(Period.WEEK, triggerTime);
+      // Monday of that week is 2026-03-23
+      expect(result.startTime.getDay()).toBe(1); // Monday
+      expect(result.endTime.getDay()).toBe(1); // Next Monday
+      expect(result.endTime.getTime() - result.startTime.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
+    });
+
+    it('should return March 1 - April 1 for monthly (triggered in March)', () => {
+      const triggerTime = new Date('2026-03-30T18:00:00+08:00');
+      const result = calculator.calculateDailyPlusCandle(Period.MONTH, triggerTime);
+      expect(result.startTime).toEqual(new Date('2026-03-01T00:00:00+08:00'));
+      expect(result.endTime).toEqual(new Date('2026-04-01T00:00:00+08:00'));
+    });
+
+    it('should return quarter start - next quarter start for quarterly', () => {
+      // February is in Q1 (Jan-Mar)
+      const triggerTime = new Date('2026-02-28T18:00:00+08:00');
+      const result = calculator.calculateDailyPlusCandle(Period.QUARTER, triggerTime);
+      expect(result.startTime).toEqual(new Date('2026-01-01T00:00:00+08:00'));
+      expect(result.endTime).toEqual(new Date('2026-04-01T00:00:00+08:00'));
+    });
+
+    it('should return Jan 1 - next Jan 1 for yearly', () => {
+      const triggerTime = new Date('2026-03-30T18:00:00+08:00');
+      const result = calculator.calculateDailyPlusCandle(Period.YEAR, triggerTime);
+      expect(result.startTime).toEqual(new Date('2026-01-01T00:00:00+08:00'));
+      expect(result.endTime).toEqual(new Date('2027-01-01T00:00:00+08:00'));
+    });
+  });
+
+  describe('calculate (dispatcher)', () => {
+    it('should delegate to calculateMinuteCandle for minute periods', () => {
+      const triggerTime = new Date('2026-03-30T09:36:00+08:00');
+      const result = calculator.calculate(Period.FIVE_MIN, triggerTime);
+      expect(result).not.toBeNull();
+      expect(result!.startTime).toEqual(new Date('2026-03-30T09:30:00+08:00'));
+      expect(result!.endTime).toEqual(new Date('2026-03-30T09:35:00+08:00'));
+    });
+
+    it('should delegate to calculateDailyPlusCandle for daily+ periods', () => {
+      const triggerTime = new Date('2026-03-30T18:00:00+08:00');
+      const result = calculator.calculate(Period.DAY, triggerTime);
+      expect(result).not.toBeNull();
+      expect(result!.startTime).toEqual(new Date('2026-03-30T00:00:00+08:00'));
+    });
+
+    it('should return null for minute period outside trading hours', () => {
+      const triggerTime = new Date('2026-03-30T23:00:00+08:00');
+      const result = calculator.calculate(Period.FIVE_MIN, triggerTime);
+      expect(result).toBeNull();
+    });
+  });
 });
 ```
 
@@ -311,7 +375,14 @@ export class KBoundaryCalculator {
 - [ ] **Run tests to verify they pass**
 
 Run: `npx jest --config jest.config.ts libs/utils/src/services/k-boundary-calculator.spec.ts --no-coverage`
-Expected: PASS (all 12 tests)
+Expected: PASS (all 20 tests)
+
+- [ ] **Update `libs/utils/src/index.ts` to export KBoundaryCalculator**
+
+Add the following line to the end of the file:
+```typescript
+export * from './services/k-boundary-calculator';
+```
 
 - [ ] **Commit**
 
@@ -320,24 +391,20 @@ git add libs/utils/src/services/k-boundary-calculator.ts libs/utils/src/services
 git commit -m "feat: add KBoundaryCalculator for K candle boundary calculation"
 ```
 
-Update `libs/utils/src/index.ts` to add: `export * from './services/k-boundary-calculator';`
-
 ---
 
 ## Task 2: Update IDataCollectionStrategy Interface
 
- [IN PROGRESS]
-
 **Files:**
 - Modify: `apps/mist/src/collector/strategies/data-collection.strategy.interface.ts`
 
-This is the **add only** task — no tests needed since the interface has no runtime behavior to test independently. It defines the contract.
+This task only changes the interface. Tests will be written in Task 3 when the implementation is updated.
 
- Tests will be written in Task 3 when the implementation is updated.
+**Note:** After this task, the codebase will have a type mismatch between the interface and the existing `EastMoneyCollectionStrategy` implementation. This is resolved in Task 3.
 
 ### Step 2.1: Update the interface
 
- [ ]
+- [ ] **Replace the entire file content with:**
 
 **Replace** the entire file content with:
 
@@ -449,13 +516,11 @@ import {
   SecurityStatus,
 } from '@app/shared-data';
 import { EastMoneyCollectionStrategy } from './east-money-collection.strategy';
-import { KBoundaryCalculator } from '@app/utils';
 
 describe('EastMoneyCollectionStrategy', () => {
   let strategy: EastMoneyCollectionStrategy;
   let mockCollectorService: any;
   let mockSecurityRepository: any;
-  let calculator: KBoundaryCalculator;
 
   beforeEach(() => {
     mockCollectorService = {
@@ -466,11 +531,9 @@ describe('EastMoneyCollectionStrategy', () => {
       find: jest.fn(),
     };
 
-    calculator = new KBoundaryCalculator();
     strategy = new EastMoneyCollectionStrategy(
       mockSecurityRepository as any,
       mockCollectorService,
-      calculator,
     );
   });
 
@@ -709,7 +772,7 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
    * Scheduled collection: collect the previous completed K candle.
    * Uses KBoundaryCalculator to determine the exact candle time boundaries.
    */
-  async collectScheduledCandle?(
+  async collectScheduledCandle(
     security: Security,
     period: Period,
     triggerTime?: Date,
@@ -747,7 +810,7 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
   /**
    * Batch scheduled collection for all active securities.
    */
-  async collectForAllSecurities?(period: Period, triggerTime?: Date): Promise<void> {
+  async collectForAllSecurities(period: Period, triggerTime?: Date): Promise<void> {
     const activeSecurities = await this.securityRepository.find({
       where: { status: SecurityStatus.ACTIVE },
     });
@@ -1095,6 +1158,22 @@ export class DataCollectionScheduleController {
       await this.strategy.collectForAllSecurities?.(Period.WEEK);
     } catch (error) {
       this.logger.error(`Weekly collection failed: ${error.message}`);
+    }
+  }
+
+  // monthly: 18:00 on days 28-31 with last-trading-day-of-month check
+  @Cron('0 18 28-31 * *')
+  async handleMonthlyCollection(): Promise<void> {
+    if (!this.isTradingDay()) return;
+    // Only run on the last trading day of the month
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (tomorrow.getMonth() === now.getMonth()) return; // not last day yet
+    try {
+      await this.strategy.collectForAllSecurities?.(Period.MONTH);
+    } catch (error) {
+      this.logger.error(`Monthly collection failed: ${error.message}`);
     }
   }
 }
