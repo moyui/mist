@@ -55,9 +55,12 @@ export class CollectorController {
       }
     }
 
-    // 3. Resolve strategy based on source (falls back to env default)
+    // 3. Resolve strategy and collect with user-provided dates
     const strategy = this.registry.resolve(dto.source);
-    await strategy.collectForSecurity(security, dto.period);
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+
+    await strategy.collectForSecurity(security, dto.period, startDate, endDate);
 
     return { code: dto.code, period: dto.period };
   }
