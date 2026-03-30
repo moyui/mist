@@ -152,7 +152,9 @@ Natural time boundaries, collected after market close.
 | quarterly | 18:00 last trading day of quarter | quarter start 00:00:00 | next quarter start 00:00:00 (exclusive) |
 | yearly | 18:00 last trading day of year | Jan 1 00:00:00 | next Jan 1 00:00:00 (exclusive) |
 
-All `endTime` values use **exclusive** semantics (start of next period). This aligns with how `CollectorService.collectKLineForSource` uses these boundaries in database queries (`<= endDate`).
+All `endTime` values use **exclusive** semantics (start of next period). The `KBoundaryCalculator` output is passed to `sourceFetcher.fetchKLine()`, which sends the range to the East Money API. The API returns candles within `[startTime, endTime)`.
+
+Note: `CollectorService.getCollectionStatus()` uses `bar.timestamp <= :endDate` (inclusive). Since this method is only for status checking and not for data filtering, the off-by-one is harmless. If stricter semantics are needed later, it can be updated to `< endDate`.
 
 ### 3. Cron Schedule Changes
 
