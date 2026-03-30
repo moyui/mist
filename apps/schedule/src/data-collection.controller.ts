@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
-import { EastMoneyCollectionStrategy } from '../../../mist/src/collector/strategies/east-money-collection.strategy';
+import { EastMoneyCollectionStrategy } from '../../mist/src/collector';
 
 /**
  * Data Collection Controller with Cron Jobs.

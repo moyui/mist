@@ -3,16 +3,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RunModule } from './run/run.module';
-import { ScheduleController } from './schedule.controller';
-import { ScheduleService } from './schedule.service';
-import { TaskModule } from './task/task.module';
 import { scheduleEnvSchema } from '@app/config';
 import { UtilsModule } from '@app/utils';
 import { TimezoneModule } from '@app/timezone';
-import { DataCollectionScheduleController } from './schedulers/schedule.controller';
+import { DataCollectionController } from './data-collection.controller';
 import { CollectorModule } from '../../mist/src/collector/collector.module';
-import { SecurityModule } from '../../mist/src/security/security.module';
 
 @Module({
   imports: [
@@ -49,11 +44,8 @@ import { SecurityModule } from '../../mist/src/security/security.module';
     UtilsModule,
     TimezoneModule,
     CollectorModule,
-    SecurityModule,
-    RunModule,
-    TaskModule,
   ],
-  controllers: [ScheduleController, DataCollectionScheduleController],
-  providers: [ScheduleService],
+  controllers: [DataCollectionController],
+  providers: [],
 })
 export class ScheduleModule {}
