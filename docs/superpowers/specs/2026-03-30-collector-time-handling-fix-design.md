@@ -48,7 +48,7 @@ interface IDataCollectionStrategy {
   readonly source: DataSource;
   readonly mode: CollectionMode;
 
-  // Manual collection: explicit time range
+  // Manual collection: explicit time range (startDate/endDate required)
   collectForSecurity(
     security: Security,
     period: Period,
@@ -72,7 +72,7 @@ interface IDataCollectionStrategy {
 }
 ```
 
-**Rationale**: `collectScheduledCandle` and `collectForAllSecurities` are optional because streaming strategies (e.g., TDX) may not support polling-based scheduled collection.
+**Rationale**: `collectScheduledCandle` and `collectForAllSecurities` are optional because streaming strategies (e.g., TDX) may not support polling-based scheduled collection. `ScheduleController` continues to directly inject `EastMoneyCollectionStrategy` (not through `CollectionStrategyRegistry`), since scheduled collection is source-specific and only polling strategies support it.
 
 ### 2. KBoundaryCalculator
 
@@ -86,13 +86,15 @@ interface KCandleBoundary {
   endTime: Date;
 }
 
-@Injectable()
+// Pure utility class — no DI needed, stateless
 export class KBoundaryCalculator {
   calculateMinuteCandle(period: Period, triggerTime: Date): KCandleBoundary | null;
   calculateDailyPlusCandle(period: Period, triggerTime: Date): KCandleBoundary;
   calculate(period: Period, triggerTime: Date): KCandleBoundary | null;
 }
 ```
+
+No `@Injectable()` — this is a stateless pure utility. Consumers instantiate directly (`new KBoundaryCalculator()`) or it can be provided via a factory if needed later.
 
 #### Minute-Level Calculation
 
@@ -103,7 +105,12 @@ K candle boundaries align to **session start times**, not natural time boundarie
 **Formula**:
 
 ```
-sessionStart = getSessionStart(triggerTime)   // 9:30 or 13:00
+getSessionStart(triggerTime):
+  if 9:30 <= triggerTime < 11:31 → sessionStart = 9:30
+  if 13:00 <= triggerTime < 15:01 → sessionStart = 13:00
+  otherwise → return null (outside trading sessions)
+
+sessionStart = getSessionStart(triggerTime)
 minutesSinceSessionStart = triggerMinutes - sessionStartMinutes
 candleEndOffset = floor(minutesSinceSessionStart / periodMinutes) × periodMinutes
 
@@ -122,6 +129,15 @@ startTime = endTime - periodMinutes
 | 60min | 10:31 | 9:30 | floor(61/60)×60=60 | 10:30 | 9:30 |
 | 60min | 14:01 | 13:00 | floor(61/60)×60=60 | 14:00 | 13:00 |
 
+**Edge case examples**:
+
+| Period | Trigger Time | Session | Result |
+|--------|-------------|---------|--------|
+| 30min | 11:31 | morning (9:30) | startTime=11:00, endTime=11:30 |
+| 30min | 12:31 | null (lunch break) | return null, skip |
+| 60min | 23:31 | null (overnight) | return null, skip |
+| 5min | 13:06 | afternoon (13:00) | startTime=13:00, endTime=13:05 |
+
 Returns `null` if triggerTime is outside trading sessions (early morning, lunch break, overnight).
 
 #### Daily+ Calculation
@@ -130,11 +146,13 @@ Natural time boundaries, collected after market close.
 
 | Period | Trigger Time | startTime | endTime |
 |--------|-------------|-----------|---------|
-| daily | 18:00 weekdays | today 00:00 | today 23:59 |
-| weekly | 18:00 Friday | this Monday 00:00 | this Friday 23:59 |
-| monthly | 18:00 last trading day of month | 1st of month 00:00 | last day of month 23:59 |
-| quarterly | 18:00 last trading day of quarter | quarter start 00:00 | quarter end 23:59 |
-| yearly | 18:00 last trading day of year | Jan 1 00:00 | Dec 31 23:59 |
+| daily | 18:00 weekdays | today 00:00:00 | next day 00:00:00 (exclusive) |
+| weekly | 18:00 Friday | this Monday 00:00:00 | next Monday 00:00:00 (exclusive) |
+| monthly | 18:00 last trading day of month | 1st of month 00:00:00 | 1st of next month 00:00:00 (exclusive) |
+| quarterly | 18:00 last trading day of quarter | quarter start 00:00:00 | next quarter start 00:00:00 (exclusive) |
+| yearly | 18:00 last trading day of year | Jan 1 00:00:00 | next Jan 1 00:00:00 (exclusive) |
+
+All `endTime` values use **exclusive** semantics (start of next period). This aligns with how `CollectorService.collectKLineForSource` uses these boundaries in database queries (`<= endDate`).
 
 ### 3. Cron Schedule Changes
 
@@ -146,7 +164,7 @@ Cron expressions must fire after K candle close, not at natural time boundaries.
 | 5min | `EVERY_5_MINUTES` | `1,6,11,16,21,26,31,36,41,46,51,56 * * * 1-5` | 1min after each 5min candle close |
 | 15min | `*/15 * * * *` | `1,16,31,46 * * * 1-5` | 1min after each 15min candle close |
 | 30min | `EVERY_30_MINUTES` | `1,31 * * * 1-5` | 1min after each 30min candle close |
-| 60min | `EVERY_HOUR` | `31 * * * 1-5` | 1min after each 60min candle close (10:31, 11:31, 14:31) |
+| 60min | `EVERY_HOUR` | `31 * * * 1-5` | 1min after each 60min candle close; fires every hour including non-market hours, but KBoundaryCalculator returns null outside sessions |
 | daily | `5 15 * * 1-5` | `0 18 * * 1-5` | 18:00 weekdays, post-market |
 | weekly | none | `0 18 * * 5` | Friday 18:00 |
 | monthly | none | `0 18 28-31 * *` + last-trading-day check | Last few days of month + trading day check |
@@ -196,7 +214,7 @@ Precisely one K candle per trigger.
 
 | File | Change |
 |------|--------|
-| `collector/dto/collect.dto.ts` | Add optional `startDate`/`endDate` fields |
+| `collector/dto/collect.dto.ts` | Add required `startDate`/`endDate` fields (manual collection must specify time range) |
 | `collector/collector.controller.ts` | Pass DTO's startDate/endDate to strategy |
 | `strategies/data-collection.strategy.interface.ts` | `collectForSecurity` signature change; add optional `collectScheduledCandle?`, `collectForAllSecurities?` |
 | `strategies/east-money-collection.strategy.ts` | Implement new interface, remove time-window dependency, inject KBoundaryCalculator |
@@ -210,6 +228,7 @@ Precisely one K candle per trigger.
 |------|--------|
 | `time-window/time-window.strategy.interface.ts` | Entire time-window concept replaced by KBoundaryCalculator |
 | `time-window/east-money-time-window.strategy.ts` | Replaced by KBoundaryCalculator |
+| `time-window/east-money-time-window.strategy.spec.ts` | Tests for deleted strategy |
 | `time-window/` directory | Cleared after migration |
 
 #### Unchanged Files
@@ -224,9 +243,11 @@ Precisely one K candle per trigger.
 ### 6. Edge Cases
 
 1. **triggerTime outside trading sessions**: KBoundaryCalculator returns `null`, `collectScheduledCandle` skips collection.
-2. **Manual collection without startDate/endDate**: DTO fields are `@IsOptional()`. Strategy can either use a sensible default or throw validation error — behavior TBD during implementation.
+2. **Manual collection**: `startDate`/`endDate` are required fields in `CollectDto`. Controller throws validation error if missing.
 3. **Holiday handling**: `isTradingDay()` covers basic weekend exclusion. Holiday calendar integration is a future TODO.
 4. **Non-trading-day cron triggers**: Cron `1-5` + `isTradingDay()` double-check prevents unnecessary work.
+5. **Cron fires during non-market hours** (e.g., 60min cron at 00:31): KBoundaryCalculator returns `null`, `collectScheduledCandle` skips. No wasted API calls.
+6. **Duplicate data**: If the same candle is collected twice (e.g., cron retries), `saveKData` will insert duplicate records. This is acceptable — `removeDuplicateData` exists as a manual cleanup tool.
 
 ### 7. Testing Strategy
 
