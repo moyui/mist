@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { scheduleEnvSchema } from '@app/config';
 import { DataCollectionController } from './data-collection.controller';
 import { CollectorModule } from '../../mist/src/collector/collector.module';
+import { TimezoneModule } from '@app/timezone';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { CollectorModule } from '../../mist/src/collector/collector.module';
     }),
     NestScheduleModule.forRoot(),
     CollectorModule,
+    TimezoneModule,
   ],
   controllers: [DataCollectionController],
   providers: [],

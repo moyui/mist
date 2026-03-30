@@ -31,7 +31,6 @@ export class CollectorService {
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
     @InjectRepository(SecuritySourceConfig)
-    private readonly sourceConfigRepository: Repository<SecuritySourceConfig>,
     private readonly eastMoneySource: EastMoneySource,
     private readonly tdxSource: TdxSource,
     private readonly dataSourceSelectionService: DataSourceSelectionService,

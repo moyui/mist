@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DataSourceSelectionService } from '@app/utils';
+import { TimezoneService } from '@app/timezone';
 import { DataCollectionScheduler } from './data-collection.scheduler';
 import {
   Period,
@@ -16,13 +17,18 @@ const mockDataSourceSelectionService = {
   getDataSourceForSecurity: jest.fn(),
 };
 
+const mockTimezoneService = {
+  isTradingDay: jest.fn(),
+};
+
 const createMockStrategy = (
   source: DataSource,
   mode: 'polling' | 'streaming' = 'polling',
-): IDataCollectionStrategy & { collectForSecurity: jest.Mock } => ({
+): IDataCollectionStrategy & { collectScheduledCandle: jest.Mock } => ({
   source,
   mode,
   collectForSecurity: jest.fn(),
+  collectScheduledCandle: jest.fn(),
 });
 
 const createMockSecurity = (code: string, status = SecurityStatus.ACTIVE) => ({
@@ -46,6 +52,12 @@ describe('DataCollectionScheduler', () => {
       find: jest.fn(),
     } as any;
 
+    // Default: trading day is true
+    mockTimezoneService.isTradingDay.mockResolvedValue(true);
+    mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
+      DataSource.EAST_MONEY,
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DataCollectionScheduler,
@@ -56,6 +68,10 @@ describe('DataCollectionScheduler', () => {
         {
           provide: DataSourceSelectionService,
           useValue: mockDataSourceSelectionService,
+        },
+        {
+          provide: TimezoneService,
+          useValue: mockTimezoneService,
         },
       ],
     }).compile();
@@ -87,26 +103,9 @@ describe('DataCollectionScheduler', () => {
     });
   });
 
-  describe('setIsTradingDay', () => {
-    it('should update trading day flag', () => {
-      scheduler.setIsTradingDay(true);
-      expect(scheduler['isTradingDay']).toBe(true);
-
-      scheduler.setIsTradingDay(false);
-      expect(scheduler['isTradingDay']).toBe(false);
-    });
-  });
-
   describe('collectForAllSecurities', () => {
-    beforeEach(() => {
-      scheduler.setIsTradingDay(true);
-      mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
-        DataSource.EAST_MONEY,
-      );
-    });
-
     it('should skip collection when not trading day', async () => {
-      scheduler.setIsTradingDay(false);
+      mockTimezoneService.isTradingDay.mockResolvedValue(false);
 
       const strategy = createMockStrategy(DataSource.EAST_MONEY);
       scheduler.registerStrategy(Period.FIVE_MIN, strategy);
@@ -114,7 +113,7 @@ describe('DataCollectionScheduler', () => {
       await scheduler.collectForAllSecurities(Period.FIVE_MIN);
 
       expect(mockSecurityRepository.find).not.toHaveBeenCalled();
-      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+      expect(strategy.collectScheduledCandle).not.toHaveBeenCalled();
     });
 
     it('should collect for all active securities', async () => {
@@ -128,7 +127,7 @@ describe('DataCollectionScheduler', () => {
       mockSecurityRepository.find.mockResolvedValue(securities);
 
       const strategy = createMockStrategy(DataSource.EAST_MONEY);
-      strategy.collectForSecurity.mockResolvedValue(undefined);
+      strategy.collectScheduledCandle.mockResolvedValue(undefined);
       scheduler.registerStrategy(Period.FIVE_MIN, strategy);
 
       await scheduler.collectForAllSecurities(Period.FIVE_MIN);
@@ -136,7 +135,7 @@ describe('DataCollectionScheduler', () => {
       // Should only collect for active securities (3 out of 4)
       // Note: Currently collects all 4 because query doesn't filter by status
       // TODO: Update query to filter by SecurityStatus.ACTIVE
-      expect(strategy.collectForSecurity).toHaveBeenCalledTimes(4);
+      expect(strategy.collectScheduledCandle).toHaveBeenCalledTimes(4);
     });
 
     it('should skip when no strategy registered for period', async () => {
@@ -144,13 +143,13 @@ describe('DataCollectionScheduler', () => {
       mockSecurityRepository.find.mockResolvedValue(securities);
 
       const strategy = createMockStrategy(DataSource.EAST_MONEY);
-      strategy.collectForSecurity.mockResolvedValue(undefined);
+      strategy.collectScheduledCandle.mockResolvedValue(undefined);
 
       // Don't register any strategy
 
       await scheduler.collectForAllSecurities(Period.FIVE_MIN);
 
-      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+      expect(strategy.collectScheduledCandle).not.toHaveBeenCalled();
     });
 
     it('should skip when no active securities found', async () => {
@@ -161,7 +160,7 @@ describe('DataCollectionScheduler', () => {
 
       await scheduler.collectForAllSecurities(Period.FIVE_MIN);
 
-      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+      expect(strategy.collectScheduledCandle).not.toHaveBeenCalled();
     });
 
     it('should handle collection errors gracefully', async () => {
@@ -173,7 +172,7 @@ describe('DataCollectionScheduler', () => {
       mockSecurityRepository.find.mockResolvedValue(securities);
 
       const strategy = createMockStrategy(DataSource.EAST_MONEY);
-      strategy.collectForSecurity
+      strategy.collectScheduledCandle
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(new Error('Network error'));
 
@@ -185,7 +184,7 @@ describe('DataCollectionScheduler', () => {
       ).resolves.not.toThrow();
 
       // Both should be attempted
-      expect(strategy.collectForSecurity).toHaveBeenCalledTimes(2);
+      expect(strategy.collectScheduledCandle).toHaveBeenCalledTimes(2);
     });
 
     it('should pass current time to strategy', async () => {
@@ -198,7 +197,7 @@ describe('DataCollectionScheduler', () => {
       const testTime = new Date('2024-03-25T10:30:00Z');
       await scheduler.collectForAllSecurities(Period.FIVE_MIN, testTime);
 
-      expect(strategy.collectForSecurity).toHaveBeenCalledWith(
+      expect(strategy.collectScheduledCandle).toHaveBeenCalledWith(
         securities[0],
         Period.FIVE_MIN,
         testTime,
@@ -230,7 +229,7 @@ describe('DataCollectionScheduler', () => {
 
       await scheduler.collectForSecurity(security, Period.FIVE_MIN);
 
-      expect(strategy.collectForSecurity).toHaveBeenCalledWith(
+      expect(strategy.collectScheduledCandle).toHaveBeenCalledWith(
         security,
         Period.FIVE_MIN,
         undefined,
@@ -249,7 +248,7 @@ describe('DataCollectionScheduler', () => {
 
       await scheduler.collectForSecurity(security, Period.FIVE_MIN);
 
-      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+      expect(strategy.collectScheduledCandle).not.toHaveBeenCalled();
     });
 
     it('should skip when strategy source does not match security data source', async () => {
@@ -265,7 +264,7 @@ describe('DataCollectionScheduler', () => {
 
       await scheduler.collectForSecurity(security, Period.FIVE_MIN);
 
-      expect(strategy.collectForSecurity).not.toHaveBeenCalled();
+      expect(strategy.collectScheduledCandle).not.toHaveBeenCalled();
     });
   });
 

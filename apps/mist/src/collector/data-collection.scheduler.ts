@@ -1,9 +1,10 @@
+import { DataSource, Period, Security, SecurityStatus } from '@app/shared-data';
+import { TimezoneService } from '@app/timezone';
+import { DataSourceSelectionService } from '@app/utils';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Security, SecurityStatus, Period, DataSource } from '@app/shared-data';
 import { IDataCollectionStrategy } from './strategies/data-collection.strategy.interface';
-import { DataSourceSelectionService } from '@app/utils';
 
 /**
  * Data Collection Scheduler.
@@ -16,18 +17,19 @@ import { DataSourceSelectionService } from '@app/utils';
  * - Batch collection for multiple securities
  * - Individual security collection
  * - Data source selection via DataSourceSelectionService
+ * - Trading day check via TimezoneService
  * - Error handling and logging
  */
 @Injectable()
 export class DataCollectionScheduler {
   private readonly logger = new Logger(DataCollectionScheduler.name);
   private strategies: Map<Period, IDataCollectionStrategy> = new Map();
-  private isTradingDay = false;
 
   constructor(
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
     private readonly dataSourceSelectionService: DataSourceSelectionService,
+    private readonly timezoneService: TimezoneService,
   ) {}
 
   /**
@@ -52,7 +54,9 @@ export class DataCollectionScheduler {
    * @param time - Current time (defaults to now)
    */
   async collectForAllSecurities(period: Period, time?: Date): Promise<void> {
-    if (!this.isTradingDay) {
+    // Check if today is a trading day using TimezoneService
+    const now = time || new Date();
+    if (!(await this.timezoneService.isTradingDay(now))) {
       this.logger.debug(
         'Not a trading day, skipping collection for period ' + period,
       );
@@ -161,16 +165,6 @@ export class DataCollectionScheduler {
         `Strategy for ${dataSource} does not support scheduled collection. Skipping ${security.code}.`,
       );
     }
-  }
-
-  /**
-   * Update trading day status.
-   *
-   * @param isTradingDay - Whether today is a trading day
-   */
-  setIsTradingDay(isTradingDay: boolean): void {
-    this.isTradingDay = isTradingDay;
-    this.logger.log(`Trading day updated: ${isTradingDay}`);
   }
 
   /**
