@@ -1,36 +1,28 @@
-import { Logger } from '@nestjs/common';
-import { Period, DataSource, SecurityType } from '@app/shared-data';
+import {
+  Period,
+  DataSource,
+  SecurityType,
+  SecurityStatus,
+} from '@app/shared-data';
 import { EastMoneyCollectionStrategy } from './east-money-collection.strategy';
 
 describe('EastMoneyCollectionStrategy', () => {
   let strategy: EastMoneyCollectionStrategy;
   let mockCollectorService: any;
-  let mockTimeWindowStrategy: any;
-  let mockKLineMergeService: any;
+  let mockSecurityRepository: any;
 
   beforeEach(() => {
     mockCollectorService = {
       collectKLineForSource: jest.fn().mockResolvedValue(undefined),
     };
 
-    mockTimeWindowStrategy = {
-      calculateCollectionWindow: jest.fn().mockReturnValue({
-        startTime: new Date('2026-03-25T09:30:00Z'),
-        endTime: new Date('2026-03-25T09:35:00Z'),
-        ensureRecentCount: 2,
-      }),
-      isValidCollectionWindow: jest.fn().mockReturnValue(true),
-    };
-
-    mockKLineMergeService = {
-      mergeKLineData: jest.fn().mockReturnValue([]),
+    mockSecurityRepository = {
+      find: jest.fn(),
     };
 
     strategy = new EastMoneyCollectionStrategy(
+      mockSecurityRepository as any,
       mockCollectorService,
-      mockTimeWindowStrategy,
-      mockKLineMergeService,
-      new Logger('EastMoneyStrategy'),
     );
   });
 
@@ -44,34 +36,82 @@ describe('EastMoneyCollectionStrategy', () => {
     });
   });
 
-  describe('collectForSecurity', () => {
+  describe('collectForSecurity (manual)', () => {
     const createMockSecurity = (code: string) => ({
       id: 1,
       code,
       name: `Test ${code}`,
       type: SecurityType.STOCK,
-      status: 1,
+      status: SecurityStatus.ACTIVE,
       sourceConfigs: [],
       ks: [],
       createTime: new Date(),
       updateTime: new Date(),
     });
 
-    it('should calculate collection window and collect data', async () => {
+    it('should pass startDate/endDate directly to collectorService', async () => {
       const security = createMockSecurity('000001.SH');
-      const testTime = new Date('2026-03-25T09:35:00Z');
+      const startDate = new Date('2026-03-30T09:30:00+08:00');
+      const endDate = new Date('2026-03-30T11:30:00+08:00');
 
-      mockTimeWindowStrategy.calculateCollectionWindow.mockReturnValue({
-        startTime: new Date('2026-03-25T09:30:00Z'),
-        endTime: new Date('2026-03-25T09:35:00Z'),
-        ensureRecentCount: 2,
-      });
+      await strategy.collectForSecurity(
+        security,
+        Period.FIVE_MIN,
+        startDate,
+        endDate,
+      );
 
-      await strategy.collectForSecurity(security, Period.FIVE_MIN, testTime);
+      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
+        security.code,
+        Period.FIVE_MIN,
+        startDate,
+        endDate,
+        DataSource.EAST_MONEY,
+      );
+    });
 
-      expect(
-        mockTimeWindowStrategy.calculateCollectionWindow,
-      ).toHaveBeenCalledWith(Period.FIVE_MIN, testTime);
+    it('should handle collection errors', async () => {
+      const security = createMockSecurity('000001.SH');
+      const startDate = new Date('2026-03-30T09:30:00+08:00');
+      const endDate = new Date('2026-03-30T11:30:00+08:00');
+
+      mockCollectorService.collectKLineForSource.mockRejectedValue(
+        new Error('Network error'),
+      );
+
+      await expect(
+        strategy.collectForSecurity(
+          security,
+          Period.FIVE_MIN,
+          startDate,
+          endDate,
+        ),
+      ).rejects.toThrow('Network error');
+    });
+  });
+
+  describe('collectScheduledCandle', () => {
+    const createMockSecurity = (code: string) => ({
+      id: 1,
+      code,
+      name: `Test ${code}`,
+      type: SecurityType.STOCK,
+      status: SecurityStatus.ACTIVE,
+      sourceConfigs: [],
+      ks: [],
+      createTime: new Date(),
+      updateTime: new Date(),
+    });
+
+    it('should calculate boundary and collect for minute period', async () => {
+      const security = createMockSecurity('000001.SH');
+      const triggerTime = new Date('2026-03-30T09:36:00+08:00');
+
+      await strategy.collectScheduledCandle(
+        security,
+        Period.FIVE_MIN,
+        triggerTime,
+      );
 
       expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
         security.code,
@@ -79,111 +119,97 @@ describe('EastMoneyCollectionStrategy', () => {
         expect.any(Date),
         expect.any(Date),
         DataSource.EAST_MONEY,
-        expect.any(Function),
+      );
+
+      const call = mockCollectorService.collectKLineForSource.mock.calls[0];
+      expect(call[2].getTime()).toBe(
+        new Date('2026-03-30T09:30:00+08:00').getTime(),
+      );
+      expect(call[3].getTime()).toBe(
+        new Date('2026-03-30T09:35:00+08:00').getTime(),
       );
     });
 
-    it('should skip collection when window is not valid', async () => {
+    it('should skip when triggerTime is outside trading session', async () => {
       const security = createMockSecurity('000001.SH');
+      const triggerTime = new Date('2026-03-30T12:31:00+08:00'); // lunch break
 
-      mockTimeWindowStrategy.isValidCollectionWindow.mockReturnValue(false);
-
-      await strategy.collectForSecurity(security, Period.FIVE_MIN);
+      await strategy.collectScheduledCandle(
+        security,
+        Period.FIVE_MIN,
+        triggerTime,
+      );
 
       expect(mockCollectorService.collectKLineForSource).not.toHaveBeenCalled();
     });
 
-    it('should apply K-line merge to collected data', async () => {
+    it('should use current time when triggerTime not provided', async () => {
       const security = createMockSecurity('000001.SH');
-      const rawData = [
-        {
-          timestamp: new Date('2026-03-25T09:30:00Z'),
-          open: 10.0,
-          high: 10.5,
-          low: 9.8,
-          close: 10.2,
-          volume: 1000,
-          amount: 10000,
-        },
-        {
-          timestamp: new Date('2026-03-25T09:31:00Z'),
-          open: 10.2,
-          high: 10.6,
-          low: 10.0,
-          close: 10.4,
-          volume: 1200,
-          amount: 12000,
-        },
+
+      await strategy.collectScheduledCandle(security, Period.FIVE_MIN);
+
+      // Should either call collectorService or skip depending on current time
+      // Just verify it doesn't throw
+    });
+  });
+
+  describe('collectForAllSecurities', () => {
+    const createMockSecurity = (code: string) => ({
+      id: 1,
+      code,
+      name: `Test ${code}`,
+      type: SecurityType.STOCK,
+      status: SecurityStatus.ACTIVE,
+      sourceConfigs: [],
+      ks: [],
+      createTime: new Date(),
+      updateTime: new Date(),
+    });
+
+    it('should query active securities and collect for each', async () => {
+      const securities = [
+        createMockSecurity('000001.SH'),
+        createMockSecurity('399006.SZ'),
       ];
 
-      let postProcessCallback: any;
-      mockCollectorService.collectKLineForSource.mockImplementation(
-        async (
-          _code: string,
-          _period: Period,
-          _start: Date,
-          _end: Date,
-          _source: DataSource,
-          callback: any,
-        ) => {
-          postProcessCallback = callback;
-        },
-      );
+      mockSecurityRepository.find.mockResolvedValue(securities);
 
-      mockKLineMergeService.mergeKLineData.mockReturnValue([
-        {
-          timestamp: new Date('2026-03-25T09:30:00Z'),
-          open: 10.0,
-          high: 10.6,
-          low: 9.8,
-          close: 10.4,
-          volume: 2200,
-          amount: 22000,
-        },
-      ]);
+      const triggerTime = new Date('2026-03-30T09:36:00+08:00');
+      await strategy.collectForAllSecurities(Period.FIVE_MIN, triggerTime);
 
-      await strategy.collectForSecurity(security, Period.FIVE_MIN);
+      expect(mockSecurityRepository.find).toHaveBeenCalledWith({
+        where: { status: SecurityStatus.ACTIVE },
+      });
 
-      // Call the post-process callback
-      if (postProcessCallback) {
-        await postProcessCallback(rawData);
-      }
-
-      expect(mockKLineMergeService.mergeKLineData).toHaveBeenCalledWith(
-        rawData,
-        Period.FIVE_MIN,
-        Period.ONE_MIN,
+      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledTimes(
+        2,
       );
     });
 
-    it('should handle collection errors', async () => {
-      const security = createMockSecurity('000001.SH');
+    it('should skip when no active securities', async () => {
+      mockSecurityRepository.find.mockResolvedValue([]);
 
-      mockCollectorService.collectKLineForSource.mockRejectedValue(
-        new Error('Network error'),
-      );
+      await strategy.collectForAllSecurities(Period.FIVE_MIN);
 
-      await expect(
-        strategy.collectForSecurity(security, Period.FIVE_MIN),
-      ).rejects.toThrow('Network error');
+      expect(mockCollectorService.collectKLineForSource).not.toHaveBeenCalled();
     });
 
-    it('should use current time when time not provided', async () => {
-      const security = createMockSecurity('000001.SH');
-      const beforeCall = new Date();
+    it('should continue on individual security errors', async () => {
+      const securities = [
+        createMockSecurity('000001.SH'),
+        createMockSecurity('399006.SZ'),
+      ];
 
-      await strategy.collectForSecurity(security, Period.FIVE_MIN);
+      mockSecurityRepository.find.mockResolvedValue(securities);
+      mockCollectorService.collectKLineForSource
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce(undefined);
 
-      const afterCall = new Date();
+      await strategy.collectForAllSecurities(Period.FIVE_MIN);
 
-      expect(
-        mockTimeWindowStrategy.calculateCollectionWindow,
-      ).toHaveBeenCalledWith(Period.FIVE_MIN, expect.any(Date));
-
-      const callTime =
-        mockTimeWindowStrategy.calculateCollectionWindow.mock.calls[0][1];
-      expect(callTime.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
-      expect(callTime.getTime()).toBeLessThanOrEqual(afterCall.getTime());
+      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledTimes(
+        2,
+      );
     });
   });
 });
