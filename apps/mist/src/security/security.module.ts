@@ -8,6 +8,6 @@ import { SecurityController } from './security.controller';
   imports: [TypeOrmModule.forFeature([Security, SecuritySourceConfig])],
   controllers: [SecurityController],
   providers: [SecurityService],
-  exports: [],
+  exports: [SecurityService],
 })
 export class SecurityModule {}

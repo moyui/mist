@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { K, SecuritySourceConfig } from '@app/shared-data';
+import { K, Security, SecuritySourceConfig } from '@app/shared-data';
 import { CollectorService } from './collector.service';
 import { CollectorController } from './collector.controller';
 import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.strategy';
@@ -8,6 +8,7 @@ import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { UtilsModule } from '@app/utils';
 import { SecurityModule } from '../security/security.module';
+import { TimezoneModule } from '@app/timezone';
 import {
   COLLECTION_STRATEGIES,
   CollectionStrategyRegistry,
@@ -15,9 +16,10 @@ import {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([K, SecuritySourceConfig]),
+    TypeOrmModule.forFeature([K, Security, SecuritySourceConfig]),
     UtilsModule,
     SecurityModule,
+    TimezoneModule,
   ],
   providers: [
     CollectorService,

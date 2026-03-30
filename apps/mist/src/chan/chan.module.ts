@@ -7,9 +7,10 @@ import { ChannelService } from './services/channel.service';
 import { KMergeService } from './services/k-merge.service';
 import { TrendService } from './services/trend.service';
 import { IndicatorModule } from '../indicator/indicator.module';
+import { TimezoneModule } from '@app/timezone';
 
 @Module({
-  imports: [UtilsModule, IndicatorModule],
+  imports: [UtilsModule, IndicatorModule, TimezoneModule],
   controllers: [ChanController],
   providers: [
     ChanService,
