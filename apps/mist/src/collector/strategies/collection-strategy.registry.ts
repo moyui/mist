@@ -14,7 +14,7 @@ export class CollectionStrategyRegistry {
     @Inject(COLLECTION_STRATEGIES)
     private readonly strategyList: IDataCollectionStrategy[],
   ) {
-    for (const strategy of strategyList) {
+    for (const strategy of this.strategyList) {
       this.strategies.set(strategy.source, strategy);
     }
   }

@@ -47,11 +47,12 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
         `Manual collection completed for ${security.code} ${period}`,
       );
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(
-        `Failed to collect ${security.code} ${period}: ${error.message}`,
-        error.stack,
+        `Failed to collect ${security.code} ${period}: ${err.message}`,
+        err.stack,
       );
-      throw error;
+      throw err;
     }
   }
 
@@ -86,11 +87,12 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
         `Scheduled collection completed for ${security.code} ${period} from ${boundary.startTime.toISOString()} to ${boundary.endTime.toISOString()}`,
       );
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(
-        `Failed scheduled collection for ${security.code} ${period}: ${error.message}`,
-        error.stack,
+        `Failed scheduled collection for ${security.code} ${period}: ${err.message}`,
+        err.stack,
       );
-      throw error;
+      throw err;
     }
   }
 

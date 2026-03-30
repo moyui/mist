@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Security, SecurityStatus, Period } from '@app/shared-data';
+import { Security, SecurityStatus, Period, DataSource } from '@app/shared-data';
 import { IDataCollectionStrategy } from './strategies/data-collection.strategy.interface';
 import { DataSourceSelectionService } from '@app/utils';
 
@@ -153,8 +153,14 @@ export class DataCollectionScheduler {
       return;
     }
 
-    // Execute collection via strategy
-    await strategy.collectForSecurity(security, period, time);
+    // Execute scheduled collection via strategy
+    if (strategy.collectScheduledCandle) {
+      await strategy.collectScheduledCandle(security, period, time);
+    } else {
+      this.logger.warn(
+        `Strategy for ${dataSource} does not support scheduled collection. Skipping ${security.code}.`,
+      );
+    }
   }
 
   /**
@@ -176,7 +182,9 @@ export class DataCollectionScheduler {
    * @param security - Security entity
    * @returns Data source to use for this security
    */
-  private async getDataSourceForSecurity(security: Security): Promise<string> {
+  private async getDataSourceForSecurity(
+    security: Security,
+  ): Promise<DataSource> {
     return this.dataSourceSelectionService.getDataSourceForSecurity(security);
   }
 
@@ -201,8 +209,10 @@ export class DataCollectionScheduler {
           await strategy.start();
           this.logger.log(`Started streaming strategy for ${strategy.source}`);
         } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
           this.logger.error(
-            `Failed to start streaming strategy for ${strategy.source}: ${error.message}`,
+            `Failed to start streaming strategy for ${strategy.source}: ${message}`,
           );
         }
       }
@@ -230,8 +240,10 @@ export class DataCollectionScheduler {
           await strategy.stop();
           this.logger.log(`Stopped streaming strategy for ${strategy.source}`);
         } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
           this.logger.error(
-            `Failed to stop streaming strategy for ${strategy.source}: ${error.message}`,
+            `Failed to stop streaming strategy for ${strategy.source}: ${message}`,
           );
         }
       }

@@ -29,7 +29,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.ONE_MIN);
     } catch (error) {
-      this.logger.error(`1min collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`1min collection failed: ${message}`);
     }
   }
 
@@ -40,7 +41,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.FIVE_MIN);
     } catch (error) {
-      this.logger.error(`5min collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`5min collection failed: ${message}`);
     }
   }
 
@@ -51,7 +53,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.FIFTEEN_MIN);
     } catch (error) {
-      this.logger.error(`15min collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`15min collection failed: ${message}`);
     }
   }
 
@@ -62,7 +65,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.THIRTY_MIN);
     } catch (error) {
-      this.logger.error(`30min collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`30min collection failed: ${message}`);
     }
   }
 
@@ -73,7 +77,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.SIXTY_MIN);
     } catch (error) {
-      this.logger.error(`60min collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`60min collection failed: ${message}`);
     }
   }
 
@@ -84,7 +89,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.DAY);
     } catch (error) {
-      this.logger.error(`Daily collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Daily collection failed: ${message}`);
     }
   }
 
@@ -95,7 +101,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.WEEK);
     } catch (error) {
-      this.logger.error(`Weekly collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Weekly collection failed: ${message}`);
     }
   }
 
@@ -111,7 +118,8 @@ export class DataCollectionController {
     try {
       await this.strategy.collectForAllSecurities(Period.MONTH);
     } catch (error) {
-      this.logger.error(`Monthly collection failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Monthly collection failed: ${message}`);
     }
   }
 }

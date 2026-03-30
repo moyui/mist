@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EastMoneySource } from './east-money.source';
 import { AxiosInstance } from 'axios';
-import { KLineFetchParams } from '../collector/interfaces/source-fetcher.interface';
+import { KLineFetchParams } from './source-fetcher.interface';
 import { Period } from '@app/shared-data';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 

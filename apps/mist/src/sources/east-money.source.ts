@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { ISourceFetcher, KLineFetchParams, KLineData } from '../collector';
+import {
+  ISourceFetcher,
+  KLineFetchParams,
+  KLineData,
+} from './source-fetcher.interface';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 import { DataSource, Period } from '@app/shared-data';

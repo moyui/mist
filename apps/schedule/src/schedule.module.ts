@@ -4,8 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { scheduleEnvSchema } from '@app/config';
-import { UtilsModule } from '@app/utils';
-import { TimezoneModule } from '@app/timezone';
 import { DataCollectionController } from './data-collection.controller';
 import { CollectorModule } from '../../mist/src/collector/collector.module';
 
@@ -41,8 +39,6 @@ import { CollectorModule } from '../../mist/src/collector/collector.module';
       inject: [ConfigService],
     }),
     NestScheduleModule.forRoot(),
-    UtilsModule,
-    TimezoneModule,
     CollectorModule,
   ],
   controllers: [DataCollectionController],

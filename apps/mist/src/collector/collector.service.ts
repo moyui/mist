@@ -16,7 +16,7 @@ import {
   ISourceFetcher,
   KLineFetchParams,
   KLineData,
-} from './interfaces/source-fetcher.interface';
+} from '../sources/source-fetcher.interface';
 import { EastMoneySource } from '../sources/east-money.source';
 import { TdxSource } from '../sources/tdx.source';
 import { DataSourceSelectionService } from '@app/utils';
