@@ -1,6 +1,5 @@
 import {
   DataSource,
-  K,
   Period,
   Security,
   SecuritySourceConfig,
@@ -26,8 +25,6 @@ export class CollectorService {
   private sources: Map<DataSource, ISourceFetcher> = new Map();
 
   constructor(
-    @InjectRepository(K)
-    private readonly kRepository: Repository<K>,
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
     private readonly eastMoneySource: EastMoneySource,
@@ -121,7 +118,7 @@ export class CollectorService {
       }
 
       // Save data to database
-      await this.saveKData(security, kLineData, dataSource, period);
+      await sourceFetcher.saveK(kLineData, security, period);
 
       // Call post-process callback if provided
       if (postProcess) {
@@ -157,7 +154,13 @@ export class CollectorService {
     dataSource: DataSource,
     period: Period,
   ): Promise<void> {
-    await this.saveKData(security, kLineData, dataSource, period);
+    const sourceFetcher = this.sources.get(dataSource);
+    if (!sourceFetcher) {
+      throw new BadRequestException(
+        `Data source ${dataSource} is not available`,
+      );
+    }
+    await sourceFetcher.saveK(kLineData, security, period);
   }
 
   /**
@@ -227,7 +230,7 @@ export class CollectorService {
       }
 
       // Save data to database
-      await this.saveKData(security, kLineData, dataSource, period);
+      await sourceFetcher.saveK(kLineData, security, period);
 
       console.log(
         `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period}`,
@@ -236,108 +239,5 @@ export class CollectorService {
       console.error(`Failed to collect K-line data for ${stockCode}:`, error);
       throw error;
     }
-  }
-
-  private async saveKData(
-    security: Security,
-    kLineData: KData[],
-    dataSource: DataSource,
-    period: Period,
-  ): Promise<void> {
-    const kEntities = kLineData.map((data) => {
-      const bar = this.kRepository.create({
-        security,
-        source: dataSource,
-        period,
-        timestamp: data.timestamp,
-        open: data.open,
-        high: data.high,
-        low: data.low,
-        close: data.close,
-        volume: BigInt(Math.round(data.volume)),
-        amount: data.amount || 0,
-      });
-
-      return bar;
-    });
-
-    await this.kRepository.save(kEntities);
-  }
-
-  async getCollectionStatus(
-    stockCode: string,
-    period: Period,
-    startDate: Date,
-    endDate: Date,
-  ): Promise<{
-    hasData: boolean;
-    recordCount: number;
-    lastRecord?: Date;
-    firstRecord?: Date;
-  }> {
-    const barPeriod = period;
-
-    const result = await this.kRepository
-      .createQueryBuilder('bar')
-      .leftJoin('bar.security', 'security')
-      .select('COUNT(*)', 'count')
-      .addSelect('MAX(bar.timestamp)', 'lastRecord')
-      .addSelect('MIN(bar.timestamp)', 'firstRecord')
-      .where('security.code = :stockCode', { stockCode })
-      .andWhere('bar.period = :period', { period: barPeriod })
-      .andWhere('bar.timestamp >= :startDate', { startDate })
-      .andWhere('bar.timestamp <= :endDate', { endDate })
-      .getRawOne();
-
-    return {
-      hasData: result.count > 0,
-      recordCount: parseInt(result.count),
-      lastRecord: result.lastRecord ? new Date(result.lastRecord) : undefined,
-      firstRecord: result.firstRecord
-        ? new Date(result.firstRecord)
-        : undefined,
-    };
-  }
-
-  async removeDuplicateData(
-    stockCode: string,
-    period: Period,
-  ): Promise<number> {
-    const barPeriod = period;
-
-    // Find duplicates by grouping by timestamp
-    const duplicateQuery = this.kRepository
-      .createQueryBuilder('bar')
-      .leftJoin('bar.security', 'security')
-      .select('bar.timestamp', 'timestamp')
-      .addSelect('COUNT(*)', 'count')
-      .where('security.code = :stockCode', { stockCode })
-      .andWhere('bar.period = :period', { period: barPeriod })
-      .groupBy('bar.timestamp')
-      .having('COUNT(*) > 1')
-      .getRawMany();
-
-    const duplicates = await duplicateQuery;
-
-    if (duplicates.length === 0) {
-      return 0;
-    }
-
-    const timestamps = duplicates.map((d) => d.timestamp);
-
-    // Keep only the latest record for each timestamp (based on created_at)
-    const deleteResult = await this.kRepository
-      .createQueryBuilder()
-      .delete()
-      .from(K)
-      .where('bar.security.code = :stockCode', { stockCode })
-      .andWhere('bar.period = :period', { period: barPeriod })
-      .andWhere('bar.timestamp IN (:...timestamps)', { timestamps })
-      .andWhere(
-        'bar.id NOT IN (SELECT id FROM (SELECT id FROM market_data_bars b1 WHERE b1.security.code = :stockCode AND b1.period = :period AND b1.timestamp IN (:...timestamps) ORDER BY b1.created_at DESC LIMIT 1) AS latest)',
-      )
-      .execute();
-
-    return deleteResult.affected || 0;
   }
 }

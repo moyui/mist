@@ -7,20 +7,11 @@ import {
   DataSource,
   SecuritySourceConfig,
   SecurityType,
+  Security,
 } from '@app/shared-data';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { K, Security } from '@app/shared-data';
 import { DataSourceSelectionService } from '@app/utils';
-
-const mockKRepository = {
-  create: jest.fn(),
-  save: jest.fn(),
-  find: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
-  createQueryBuilder: jest.fn(),
-};
 
 const mockSecurityRepository = {
   findOne: jest.fn(),
@@ -28,11 +19,13 @@ const mockSecurityRepository = {
 
 const mockEastMoneySource = {
   fetchK: jest.fn(),
+  saveK: jest.fn(),
   isSupportedPeriod: jest.fn(),
 };
 
 const mockTdxSource = {
   fetchK: jest.fn(),
+  saveK: jest.fn(),
   isSupportedPeriod: jest.fn(),
 };
 
@@ -52,10 +45,6 @@ describe('CollectorService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CollectorService,
-        {
-          provide: getRepositoryToken(K),
-          useValue: mockKRepository,
-        },
         {
           provide: getRepositoryToken(Security),
           useValue: mockSecurityRepository,
@@ -137,8 +126,7 @@ describe('CollectorService', () => {
       );
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
       mockEastMoneySource.fetchK.mockResolvedValue(mockKData);
-      mockKRepository.create.mockImplementation((data) => data);
-      mockKRepository.save.mockResolvedValue(null);
+      mockEastMoneySource.saveK.mockResolvedValue(undefined);
     });
 
     it('should successfully collect and save K-line data', async () => {
@@ -154,8 +142,11 @@ describe('CollectorService', () => {
         relations: ['sourceConfigs'],
       });
       expect(mockEastMoneySource.fetchK).toHaveBeenCalled();
-      expect(mockKRepository.create).toHaveBeenCalledTimes(2);
-      expect(mockKRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockEastMoneySource.saveK).toHaveBeenCalledWith(
+        mockKData,
+        mockStock,
+        Period.ONE_MIN,
+      );
     });
 
     it('should throw NotFoundException when stock not found', async () => {
@@ -211,155 +202,6 @@ describe('CollectorService', () => {
     });
   });
 
-  describe('getCollectionStatus', () => {
-    const mockSecurity = {
-      id: 1,
-      code: '000001',
-      name: '平安银行',
-      type: 'stock',
-      periods: [1, 5, 15, 30, 60, 1440],
-      source: {
-        type: 'east_money',
-        config: {},
-      },
-      isActive: true,
-    };
-
-    beforeEach(() => {
-      mockSecurityRepository.findOne.mockResolvedValue(mockSecurity);
-      mockDataSourceSelectionService.getDataSourceForSecurity.mockResolvedValue(
-        DataSource.EAST_MONEY,
-      );
-    });
-
-    it('should return status when data exists', async () => {
-      mockKRepository.createQueryBuilder.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        leftJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({
-          count: '5',
-          lastRecord: '2024-01-01T10:00:00.000Z',
-          firstRecord: '2024-01-01T09:30:00.000Z',
-        }),
-      });
-
-      const result = await service.getCollectionStatus(
-        '000001',
-        Period.ONE_MIN,
-        new Date('2024-01-01'),
-        new Date('2024-01-02'),
-      );
-
-      expect(result).toEqual({
-        hasData: true,
-        recordCount: 5,
-        lastRecord: new Date('2024-01-01T10:00:00.000Z'),
-        firstRecord: new Date('2024-01-01T09:30:00.000Z'),
-      });
-    });
-
-    it('should return status when no data exists', async () => {
-      mockKRepository.createQueryBuilder.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        leftJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({
-          count: '0',
-          lastRecord: null,
-          firstRecord: null,
-        }),
-      });
-
-      const result = await service.getCollectionStatus(
-        '000001',
-        Period.ONE_MIN,
-        new Date('2024-01-01'),
-        new Date('2024-01-02'),
-      );
-
-      expect(result).toEqual({
-        hasData: false,
-        recordCount: 0,
-        lastRecord: undefined,
-        firstRecord: undefined,
-      });
-    });
-  });
-
-  describe('removeDuplicateData', () => {
-    it('should remove duplicate data and return count', async () => {
-      const mockQueryBuilder = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        leftJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        having: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([
-            { timestamp: '2024-01-01T09:30:00.000Z' },
-            { timestamp: '2024-01-01T09:31:00.000Z' },
-          ]),
-      };
-
-      const mockDeleteQueryBuilder = {
-        delete: jest.fn().mockReturnThis(),
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({ affected: 2 }),
-      };
-
-      mockKRepository.createQueryBuilder
-        .mockReturnValueOnce(mockQueryBuilder as any)
-        .mockReturnValueOnce(mockDeleteQueryBuilder as any);
-
-      const result = await service.removeDuplicateData(
-        '000001',
-        Period.ONE_MIN,
-      );
-      expect(result).toBe(2);
-    });
-
-    it('should return 0 when no duplicates found', async () => {
-      const mockQueryBuilder2 = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        leftJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        having: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([]),
-      };
-
-      const mockDeleteQueryBuilder2 = {
-        delete: jest.fn().mockReturnThis(),
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({ affected: 0 }),
-      };
-
-      mockKRepository.createQueryBuilder
-        .mockReturnValueOnce(mockQueryBuilder2 as any)
-        .mockReturnValueOnce(mockDeleteQueryBuilder2 as any);
-
-      const result = await service.removeDuplicateData(
-        '000001',
-        Period.ONE_MIN,
-      );
-      expect(result).toBe(0);
-    });
-  });
-
   describe('collectKForSource', () => {
     const mockStock = {
       id: 1,
@@ -398,8 +240,7 @@ describe('CollectorService', () => {
       mockSecurityRepository.findOne.mockResolvedValue(mockStock);
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
       mockEastMoneySource.fetchK.mockResolvedValue(mockKData);
-      mockKRepository.create.mockImplementation((data) => data);
-      mockKRepository.save.mockResolvedValue(null);
+      mockEastMoneySource.saveK.mockResolvedValue(undefined);
     });
 
     it('should collect K-line data for a specific data source with postProcess callback', async () => {
@@ -421,7 +262,11 @@ describe('CollectorService', () => {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-01-02'),
       });
-      expect(mockKRepository.save).toHaveBeenCalled();
+      expect(mockEastMoneySource.saveK).toHaveBeenCalledWith(
+        mockKData,
+        mockStock,
+        Period.ONE_MIN,
+      );
       expect(postProcessCallback).toHaveBeenCalledWith(
         mockKData,
         DataSource.EAST_MONEY,
@@ -475,7 +320,7 @@ describe('CollectorService', () => {
   });
 
   describe('saveRawKData', () => {
-    it('should save raw K-line data to database', async () => {
+    it('should delegate to source saveK', async () => {
       const mockSecurity = {
         id: 1,
         code: '000001',
@@ -501,8 +346,7 @@ describe('CollectorService', () => {
         },
       ];
 
-      mockKRepository.create.mockImplementation((data) => data);
-      mockKRepository.save.mockResolvedValue(null);
+      mockEastMoneySource.saveK.mockResolvedValue(undefined);
 
       await service.saveRawKData(
         mockSecurity,
@@ -511,8 +355,11 @@ describe('CollectorService', () => {
         Period.ONE_MIN,
       );
 
-      expect(mockKRepository.create).toHaveBeenCalledTimes(1);
-      expect(mockKRepository.save).toHaveBeenCalled();
+      expect(mockEastMoneySource.saveK).toHaveBeenCalledWith(
+        mockRawData,
+        mockSecurity,
+        Period.ONE_MIN,
+      );
     });
   });
 
@@ -565,8 +412,7 @@ describe('CollectorService', () => {
           period: Period.FIVE_MIN,
         },
       ]);
-      mockKRepository.create.mockImplementation((data) => data);
-      mockKRepository.save.mockResolvedValue(null);
+      mockTdxSource.saveK.mockResolvedValue(undefined);
 
       await service.collectK(
         'TEST001',
@@ -617,8 +463,7 @@ describe('CollectorService', () => {
           period: Period.FIVE_MIN,
         },
       ]);
-      mockKRepository.create.mockImplementation((data) => data);
-      mockKRepository.save.mockResolvedValue(null);
+      mockEastMoneySource.saveK.mockResolvedValue(undefined);
 
       await service.collectK(
         'TEST002',
