@@ -71,3 +71,7 @@ scripts
 #atkools
 aktools*
 aktools_*.log
+
+# Claude Code & Qoder
+.claude/
+.qoder/
