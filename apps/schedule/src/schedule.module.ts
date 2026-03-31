@@ -7,11 +7,19 @@ import { scheduleEnvSchema } from '@app/config';
 import { DataCollectionController } from './data-collection.controller';
 import { CollectorModule } from '../../mist/src/collector/collector.module';
 import { TimezoneModule } from '@app/timezone';
+import * as path from 'path';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [
+        path.resolve(
+          process.cwd(),
+          `.env.${process.env.NODE_ENV || 'development'}`,
+        ),
+        path.resolve(process.cwd(), '.env'),
+      ],
       validationSchema: scheduleEnvSchema,
       validationOptions: {
         allowUnknown: true,

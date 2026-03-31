@@ -15,7 +15,13 @@ import { ToolsModule } from './tools/tools.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: path.join(__dirname, '.env'),
+      envFilePath: [
+        path.resolve(
+          process.cwd(),
+          `.env.${process.env.NODE_ENV || 'development'}`,
+        ),
+        path.resolve(process.cwd(), '.env'),
+      ],
       load: CONFIG_REGISTER,
       validationSchema: sayaEnvSchema,
       validationOptions: {

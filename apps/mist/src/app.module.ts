@@ -23,7 +23,13 @@ import { mistEnvSchema } from '@app/config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: path.join(__dirname, '.env'),
+      envFilePath: [
+        path.resolve(
+          process.cwd(),
+          `.env.${process.env.NODE_ENV || 'development'}`,
+        ),
+        path.resolve(process.cwd(), '.env'),
+      ],
       validationSchema: mistEnvSchema,
       validationOptions: {
         allowUnknown: true,
