@@ -6,7 +6,7 @@ import {
 } from './source-fetcher.interface';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
-import { DataSource, Period } from '@app/shared-data';
+import { DataSource, Period, Security } from '@app/shared-data';
 
 @Injectable()
 export class TdxSource implements ISourceFetcher {
@@ -42,6 +42,17 @@ export class TdxSource implements ISourceFetcher {
     );
 
     return [];
+  }
+
+  async saveK(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _data: KData[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _security: Security,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _period: Period,
+  ): Promise<void> {
+    // TDX data fetching not yet implemented — nothing to save
   }
 
   isSupportedPeriod(period: Period): boolean {

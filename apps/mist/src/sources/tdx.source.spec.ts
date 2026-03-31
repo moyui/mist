@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TdxSource } from './tdx.source';
 import { AxiosInstance } from 'axios';
 import { KFetchParams } from './source-fetcher.interface';
-import { Period } from '@app/shared-data';
+import { Period, Security } from '@app/shared-data';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 
 describe('TdxSource', () => {
@@ -105,6 +105,14 @@ describe('TdxSource', () => {
     it('should return false for unsupported periods', () => {
       expect(service.isSupportedPeriod(Period.QUARTER)).toBe(false); // not in TDX mapping
       expect(service.isSupportedPeriod(Period.YEAR)).toBe(false); // not in TDX mapping
+    });
+  });
+
+  describe('saveK', () => {
+    it('should be a no-op for empty data', async () => {
+      await expect(
+        service.saveK([], {} as Security, Period.ONE_MIN),
+      ).resolves.toBeUndefined();
     });
   });
 });
