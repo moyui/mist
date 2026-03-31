@@ -1,18 +1,19 @@
 import { Period } from '@app/shared-data';
 
 export interface ISourceFetcher {
-  fetchKLine(params: KLineFetchParams): Promise<KLineData[]>;
+  fetchK(params: KFetchParams): Promise<KData[]>;
   isSupportedPeriod(period: Period): boolean;
 }
 
-export interface KLineFetchParams {
+export interface KFetchParams {
   code: string;
+  formatCode: string;
   period: number;
   startDate: Date;
   endDate: Date;
 }
 
-export interface KLineData {
+export interface KData {
   timestamp: Date;
   open: number;
   high: number;

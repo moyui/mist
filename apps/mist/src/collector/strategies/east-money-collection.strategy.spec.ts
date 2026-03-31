@@ -14,7 +14,7 @@ describe('EastMoneyCollectionStrategy', () => {
 
   beforeEach(() => {
     mockCollectorService = {
-      collectKLineForSource: jest.fn().mockResolvedValue(undefined),
+      collectKForSource: jest.fn().mockResolvedValue(undefined),
     };
 
     mockSecurityRepository = {
@@ -67,7 +67,7 @@ describe('EastMoneyCollectionStrategy', () => {
         endDate,
       );
 
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
+      expect(mockCollectorService.collectKForSource).toHaveBeenCalledWith(
         security.code,
         Period.FIVE_MIN,
         startDate,
@@ -81,7 +81,7 @@ describe('EastMoneyCollectionStrategy', () => {
       const startDate = new Date('2026-03-30T09:30:00+08:00');
       const endDate = new Date('2026-03-30T11:30:00+08:00');
 
-      mockCollectorService.collectKLineForSource.mockRejectedValue(
+      mockCollectorService.collectKForSource.mockRejectedValue(
         new Error('Network error'),
       );
 
@@ -119,7 +119,7 @@ describe('EastMoneyCollectionStrategy', () => {
         triggerTime,
       );
 
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledWith(
+      expect(mockCollectorService.collectKForSource).toHaveBeenCalledWith(
         security.code,
         Period.FIVE_MIN,
         expect.any(Date),
@@ -127,7 +127,7 @@ describe('EastMoneyCollectionStrategy', () => {
         DataSource.EAST_MONEY,
       );
 
-      const call = mockCollectorService.collectKLineForSource.mock.calls[0];
+      const call = mockCollectorService.collectKForSource.mock.calls[0];
       expect(call[2].getTime()).toBe(
         new Date('2026-03-30T09:30:00+08:00').getTime(),
       );
@@ -146,7 +146,7 @@ describe('EastMoneyCollectionStrategy', () => {
         triggerTime,
       );
 
-      expect(mockCollectorService.collectKLineForSource).not.toHaveBeenCalled();
+      expect(mockCollectorService.collectKForSource).not.toHaveBeenCalled();
     });
 
     it('should use current time when triggerTime not provided', async () => {
@@ -187,9 +187,7 @@ describe('EastMoneyCollectionStrategy', () => {
         where: { status: SecurityStatus.ACTIVE },
       });
 
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledTimes(
-        2,
-      );
+      expect(mockCollectorService.collectKForSource).toHaveBeenCalledTimes(2);
     });
 
     it('should skip when no active securities', async () => {
@@ -197,7 +195,7 @@ describe('EastMoneyCollectionStrategy', () => {
 
       await strategy.collectForAllSecurities(Period.FIVE_MIN);
 
-      expect(mockCollectorService.collectKLineForSource).not.toHaveBeenCalled();
+      expect(mockCollectorService.collectKForSource).not.toHaveBeenCalled();
     });
 
     it('should continue on individual security errors', async () => {
@@ -207,15 +205,14 @@ describe('EastMoneyCollectionStrategy', () => {
       ];
 
       mockSecurityRepository.find.mockResolvedValue(securities);
-      mockCollectorService.collectKLineForSource
+      mockCollectorService.collectKForSource
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce(undefined);
 
-      await strategy.collectForAllSecurities(Period.FIVE_MIN);
+      const triggerTime = new Date('2026-03-30T09:36:00+08:00');
+      await strategy.collectForAllSecurities(Period.FIVE_MIN, triggerTime);
 
-      expect(mockCollectorService.collectKLineForSource).toHaveBeenCalledTimes(
-        2,
-      );
+      expect(mockCollectorService.collectKForSource).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -11,6 +11,7 @@ import { IndicatorService } from '../indicator/indicator.service';
 import { PeriodMappingService, UtilsService } from '@app/utils';
 import { Period } from '@app/shared-data';
 import { DataSource } from '@app/shared-data';
+import { TimezoneService } from '@app/timezone';
 
 describe('ChanController', () => {
   let controller: ChanController;
@@ -58,6 +59,12 @@ describe('ChanController', () => {
           provide: UtilsService,
           useValue: {
             // Mock UtilsService methods if needed
+          },
+        },
+        {
+          provide: TimezoneService,
+          useValue: {
+            getCurrentBeijingTime: jest.fn().mockReturnValue(new Date()),
           },
         },
       ],

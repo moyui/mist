@@ -38,7 +38,7 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
     endDate: Date,
   ): Promise<void> {
     try {
-      await this.collectorService.collectKLineForSource(
+      await this.collectorService.collectKForSource(
         security.code,
         period,
         startDate,
@@ -78,7 +78,7 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
     }
 
     try {
-      await this.collectorService.collectKLineForSource(
+      await this.collectorService.collectKForSource(
         security.code,
         period,
         boundary.startTime,

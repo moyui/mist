@@ -14,8 +14,6 @@ export class PeriodMappingService {
       [Period.THIRTY_MIN]: '30',
       [Period.SIXTY_MIN]: '60',
       [Period.DAY]: 'daily',
-      [Period.WEEK]: '1w',
-      [Period.MONTH]: '1M',
     },
     [DataSource.TDX]: {
       [Period.ONE_MIN]: '1m',

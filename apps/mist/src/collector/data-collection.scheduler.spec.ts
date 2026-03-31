@@ -19,6 +19,7 @@ const mockDataSourceSelectionService = {
 
 const mockTimezoneService = {
   isTradingDay: jest.fn(),
+  getCurrentBeijingTime: jest.fn().mockReturnValue(new Date()),
 };
 
 const createMockStrategy = (

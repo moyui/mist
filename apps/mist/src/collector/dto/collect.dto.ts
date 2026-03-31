@@ -3,7 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Period, DataSource } from '@app/shared-data';
 
 export class CollectDto {
-  @ApiProperty({ description: '证券代码', example: '000001.SH' })
+  @ApiProperty({ description: '证券代码', example: '000001' })
   @IsNotEmpty({ message: '证券代码不能为空' })
   code!: string;
 

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   ISourceFetcher,
-  KLineFetchParams,
-  KLineData,
+  KFetchParams,
+  KData,
 } from './source-fetcher.interface';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
@@ -22,7 +22,7 @@ export class TdxSource implements ISourceFetcher {
     });
   }
 
-  async fetchKLine(params: KLineFetchParams): Promise<KLineData[]> {
+  async fetchK(params: KFetchParams): Promise<KData[]> {
     const { code, period, startDate, endDate } = params;
 
     // Map the period to TDX format

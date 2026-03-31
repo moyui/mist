@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TdxSource } from './tdx.source';
 import { AxiosInstance } from 'axios';
-import { KLineFetchParams } from './source-fetcher.interface';
+import { KFetchParams } from './source-fetcher.interface';
 import { Period } from '@app/shared-data';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 
@@ -61,9 +61,10 @@ describe('TdxSource', () => {
     service = module.get<TdxSource>(TdxSource);
   });
 
-  describe('fetchKLine', () => {
-    const mockParams: KLineFetchParams = {
+  describe('fetchK', () => {
+    const mockParams: KFetchParams = {
       code: '000001',
+      formatCode: '000001',
       period: 1,
       startDate: new Date('2024-01-01T00:00:00.000Z'),
       endDate: new Date('2024-01-01T23:59:59.000Z'),
@@ -72,7 +73,7 @@ describe('TdxSource', () => {
     it('should return empty array for now (API not implemented)', async () => {
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      const result = await service.fetchKLine(mockParams);
+      const result = await service.fetchK(mockParams);
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         'TDX API call not yet implemented for code: 000001, period: 1m',
@@ -84,7 +85,7 @@ describe('TdxSource', () => {
 
     it('should handle API errors when implemented', async () => {
       // This test will be updated when the actual API is implemented
-      const result = await service.fetchKLine(mockParams);
+      const result = await service.fetchK(mockParams);
       expect(result).toEqual([]);
     });
   });

@@ -27,12 +27,12 @@ const mockSecurityRepository = {
 };
 
 const mockEastMoneySource = {
-  fetchKLine: jest.fn(),
+  fetchK: jest.fn(),
   isSupportedPeriod: jest.fn(),
 };
 
 const mockTdxSource = {
-  fetchKLine: jest.fn(),
+  fetchK: jest.fn(),
   isSupportedPeriod: jest.fn(),
 };
 
@@ -86,7 +86,7 @@ describe('CollectorService', () => {
     jest.clearAllMocks();
   });
 
-  describe('collectKLine', () => {
+  describe('collectK', () => {
     const mockStock = {
       id: 1,
       code: '000001',
@@ -98,9 +98,16 @@ describe('CollectorService', () => {
         config: {},
       },
       isActive: true,
+      sourceConfigs: [
+        {
+          source: DataSource.EAST_MONEY,
+          formatCode: 'sh000001',
+          enabled: true,
+        },
+      ],
     };
 
-    const mockKLineData = [
+    const mockKData = [
       {
         timestamp: new Date('2024-01-01T09:30:00.000Z'),
         open: 10.5,
@@ -129,13 +136,13 @@ describe('CollectorService', () => {
         DataSource.EAST_MONEY,
       );
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
-      mockEastMoneySource.fetchKLine.mockResolvedValue(mockKLineData);
+      mockEastMoneySource.fetchK.mockResolvedValue(mockKData);
       mockKRepository.create.mockImplementation((data) => data);
       mockKRepository.save.mockResolvedValue(null);
     });
 
     it('should successfully collect and save K-line data', async () => {
-      await service.collectKLine(
+      await service.collectK(
         '000001',
         Period.ONE_MIN,
         new Date('2024-01-01'),
@@ -144,8 +151,9 @@ describe('CollectorService', () => {
 
       expect(mockSecurityRepository.findOne).toHaveBeenCalledWith({
         where: { code: '000001' },
+        relations: ['sourceConfigs'],
       });
-      expect(mockEastMoneySource.fetchKLine).toHaveBeenCalled();
+      expect(mockEastMoneySource.fetchK).toHaveBeenCalled();
       expect(mockKRepository.create).toHaveBeenCalledTimes(2);
       expect(mockKRepository.save).toHaveBeenCalledTimes(1);
     });
@@ -154,7 +162,7 @@ describe('CollectorService', () => {
       mockSecurityRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.collectKLine(
+        service.collectK(
           '999999',
           Period.ONE_MIN,
           new Date('2024-01-01'),
@@ -167,7 +175,7 @@ describe('CollectorService', () => {
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(false);
 
       await expect(
-        service.collectKLine(
+        service.collectK(
           '000001',
           Period.ONE_MIN,
           new Date('2024-01-01'),
@@ -180,7 +188,7 @@ describe('CollectorService', () => {
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(false);
 
       await expect(
-        service.collectKLine(
+        service.collectK(
           '000001',
           Period.ONE_MIN,
           new Date('2024-01-01'),
@@ -190,10 +198,10 @@ describe('CollectorService', () => {
     });
 
     it('should handle empty data gracefully', async () => {
-      mockEastMoneySource.fetchKLine.mockResolvedValue([]);
+      mockEastMoneySource.fetchK.mockResolvedValue([]);
 
       await expect(
-        service.collectKLine(
+        service.collectK(
           '000001',
           Period.ONE_MIN,
           new Date('2024-01-01'),
@@ -352,7 +360,7 @@ describe('CollectorService', () => {
     });
   });
 
-  describe('collectKLineForSource', () => {
+  describe('collectKForSource', () => {
     const mockStock = {
       id: 1,
       code: '000001',
@@ -364,9 +372,16 @@ describe('CollectorService', () => {
         config: {},
       },
       isActive: true,
+      sourceConfigs: [
+        {
+          source: DataSource.EAST_MONEY,
+          formatCode: 'sh000001',
+          enabled: true,
+        },
+      ],
     };
 
-    const mockKLineData = [
+    const mockKData = [
       {
         timestamp: new Date('2024-01-01T09:30:00.000Z'),
         open: 10.5,
@@ -382,7 +397,7 @@ describe('CollectorService', () => {
     beforeEach(() => {
       mockSecurityRepository.findOne.mockResolvedValue(mockStock);
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
-      mockEastMoneySource.fetchKLine.mockResolvedValue(mockKLineData);
+      mockEastMoneySource.fetchK.mockResolvedValue(mockKData);
       mockKRepository.create.mockImplementation((data) => data);
       mockKRepository.save.mockResolvedValue(null);
     });
@@ -390,7 +405,7 @@ describe('CollectorService', () => {
     it('should collect K-line data for a specific data source with postProcess callback', async () => {
       const postProcessCallback = jest.fn();
 
-      await service.collectKLineForSource(
+      await service.collectKForSource(
         '000001',
         Period.ONE_MIN,
         new Date('2024-01-01'),
@@ -399,22 +414,23 @@ describe('CollectorService', () => {
         postProcessCallback,
       );
 
-      expect(mockEastMoneySource.fetchKLine).toHaveBeenCalledWith({
+      expect(mockEastMoneySource.fetchK).toHaveBeenCalledWith({
         code: '000001',
+        formatCode: 'sh000001',
         period: Period.ONE_MIN,
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-01-02'),
       });
       expect(mockKRepository.save).toHaveBeenCalled();
       expect(postProcessCallback).toHaveBeenCalledWith(
-        mockKLineData,
+        mockKData,
         DataSource.EAST_MONEY,
       );
     });
 
     it('should work without postProcess callback', async () => {
       await expect(
-        service.collectKLineForSource(
+        service.collectKForSource(
           '000001',
           Period.ONE_MIN,
           new Date('2024-01-01'),
@@ -446,6 +462,7 @@ describe('CollectorService', () => {
       expect(result).toEqual(mockSecurity);
       expect(mockSecurityRepository.findOne).toHaveBeenCalledWith({
         where: { code: '000001' },
+        relations: ['sourceConfigs'],
       });
     });
 
@@ -457,7 +474,7 @@ describe('CollectorService', () => {
     });
   });
 
-  describe('saveRawKLineData', () => {
+  describe('saveRawKData', () => {
     it('should save raw K-line data to database', async () => {
       const mockSecurity = {
         id: 1,
@@ -487,7 +504,7 @@ describe('CollectorService', () => {
       mockKRepository.create.mockImplementation((data) => data);
       mockKRepository.save.mockResolvedValue(null);
 
-      await service.saveRawKLineData(
+      await service.saveRawKData(
         mockSecurity,
         mockRawData,
         DataSource.EAST_MONEY,
@@ -508,7 +525,13 @@ describe('CollectorService', () => {
         name: 'Test Security',
         type: SecurityType.STOCK,
         status: 1,
-        sourceConfigs: [],
+        sourceConfigs: [
+          {
+            source: DataSource.TDX,
+            formatCode: 'test001',
+            enabled: true,
+          },
+        ],
         ks: [],
         createTime: new Date(),
         updateTime: new Date(),
@@ -530,7 +553,7 @@ describe('CollectorService', () => {
         DataSource.TDX,
       );
       mockTdxSource.isSupportedPeriod.mockReturnValue(true);
-      mockTdxSource.fetchKLine.mockResolvedValue([
+      mockTdxSource.fetchK.mockResolvedValue([
         {
           timestamp: new Date('2024-01-01T09:30:00.000Z'),
           open: 10.5,
@@ -545,7 +568,7 @@ describe('CollectorService', () => {
       mockKRepository.create.mockImplementation((data) => data);
       mockKRepository.save.mockResolvedValue(null);
 
-      await service.collectKLine(
+      await service.collectK(
         'TEST001',
         Period.FIVE_MIN,
         new Date(),
@@ -564,7 +587,13 @@ describe('CollectorService', () => {
         name: 'Test Security 2',
         type: SecurityType.STOCK,
         status: 1,
-        sourceConfigs: [],
+        sourceConfigs: [
+          {
+            source: DataSource.EAST_MONEY,
+            formatCode: 'shTEST002',
+            enabled: true,
+          },
+        ],
         ks: [],
         createTime: new Date(),
         updateTime: new Date(),
@@ -576,7 +605,7 @@ describe('CollectorService', () => {
         DataSource.EAST_MONEY,
       );
       mockEastMoneySource.isSupportedPeriod.mockReturnValue(true);
-      mockEastMoneySource.fetchKLine.mockResolvedValue([
+      mockEastMoneySource.fetchK.mockResolvedValue([
         {
           timestamp: new Date('2024-01-01T09:30:00.000Z'),
           open: 10.5,
@@ -591,7 +620,7 @@ describe('CollectorService', () => {
       mockKRepository.create.mockImplementation((data) => data);
       mockKRepository.save.mockResolvedValue(null);
 
-      await service.collectKLine(
+      await service.collectK(
         'TEST002',
         Period.FIVE_MIN,
         new Date(),
