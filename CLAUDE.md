@@ -24,11 +24,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm install
 
 # Development - run specific app in watch mode
-pnpm run start:dev:mist     # Main stock analysis (port 8001)
-pnpm run start:dev:saya     # AI Agent system (port 8002)
-pnpm run start:dev:schedule # Scheduled tasks (port 8003)
-pnpm run start:dev:chan     # Chan Theory test entry (port 8008)
+pnpm run start:dev:mist       # Main stock analysis (port 8001)
+pnpm run start:dev:saya       # AI Agent system (port 8002)
+pnpm run start:dev:schedule   # Scheduled tasks (port 8003)
+pnpm run start:dev:chan       # Chan Theory test entry (port 8008)
 pnpm run start:dev:mcp-server # MCP server (port 8009)
+
+# Debug mode
+pnpm run start:debug:chan       # Debug Chan Theory
+pnpm run start:debug:mcp-server # Debug MCP Server
 
 # Build all projects
 pnpm run build
@@ -42,6 +46,10 @@ pnpm run test               # Unit tests
 pnpm run test:e2e           # E2E tests
 pnpm run test:cov           # Coverage
 pnpm run test:watch         # Watch mode
+pnpm run test:full          # Run tests + sync to frontend
+pnpm run test:gen-types     # Generate TypeScript definitions from JSON results
+pnpm run test:deep          # Run deep integration tests
+pnpm run test:deep:watch    # Watch deep tests
 ```
 
 ---
@@ -58,7 +66,7 @@ All applications use a standardized `PORT` environment variable with Joi validat
 | **saya** | AI Agent system | 8002 | Multi-agent analysis using LangChain/LangGraph |
 | **schedule** | Scheduled task runner | 8003 | Periodic data collection and analysis |
 | **chan** | Chan Theory test/debug entry | 8008 | K-line merge, Bi (stroke) calculation, Channel detection |
-| **mcp-server** | MCP server for AI integration | 8009 | Model Context Protocol server |
+| **mcp-server** | MCP server for AI integration | 8009 | Model Context Protocol server with 17+ tools |
 
 ### Libraries (`libs/`)
 
@@ -69,7 +77,7 @@ All applications use a standardized `PORT` environment variable with Joi validat
 | **utils** | Shared utilities | DataSourceService, PeriodMappingService, validation helpers |
 | **timezone** | Time zone handling | Uses date-fns-tz |
 | **shared-data** | Data models and entities | Stock index entities, TypeORM models |
-| **constants** | Constants | Time periods, trend directions, error codes |
+| **constants** | Constants | Error codes, trend directions, time periods |
 
 ### Core Services (in `apps/mist/src/`)
 
@@ -101,15 +109,36 @@ See `Roadmap.md` for the detailed agent workflow diagram.
 
 ---
 
+## MCP Server (mcp-server)
+
+Model Context Protocol server providing AI agents with structured access to stock analysis tools.
+
+### Available Tools (17+)
+
+- **Chan Theory Tools (4)**: merge_k, create_bi, get_fenxing, analyze_chan_theory
+- **Technical Indicator Tools (6)**: MACD, RSI, KDJ, ADX, ATR, analyze_indicators
+- **Data Query Tools (5)**: get_index_info, get_kline_data, get_daily_kline, list_indices, get_latest_data
+- **Scheduled Task Tools (5)**: trigger_data_collection, trigger_batch_collection, list_scheduled_jobs
+
+### Technology Stack
+
+- @rekog/mcp-nest for MCP framework
+- @modelcontextprotocol/sdk
+- NestJS with TypeORM
+- Comprehensive error handling with standardized responses
+
+---
+
 ## Path Mappings
 
 ```typescript
-@app/prompts     → libs/prompts/src
-@app/config      → libs/config/src
-@app/utils       → libs/utils/src
-@app/timezone    → libs/timezone/src
-@app/shared-data → libs/shared-data/src
-@app/constants   → libs/constants/src
+@app/prompts        → libs/prompts/src
+@app/config         → libs/config/src
+@app/utils          → libs/utils/src
+@app/timezone       → libs/timezone/src
+@app/shared-data    → libs/shared-data/src
+@app/constants      → libs/constants/src
+@app/data-collector → apps/mist/src/data-collector
 ```
 
 ---
@@ -257,6 +286,10 @@ pnpm run test:full         # Run tests + generate types
 
 # Generate TypeScript definitions only
 pnpm run test:gen-types    # Generate .ts files from JSON results
+
+# Run deep integration tests
+pnpm run test:deep         # Run deep tests
+pnpm run test:deep:watch   # Watch deep tests
 ```
 
 ### Test Data Structure
@@ -283,6 +316,7 @@ pnpm run test:gen-types    # Generate .ts files from JSON results
 - Unit tests: `**/*.spec.ts` (alongside source files)
 - E2E tests: `apps/*/test/*.e2e-spec.ts`
 - Chan Theory tests: `apps/mist/src/chan/test/`
+- Deep integration tests: `test-integration/deep-test/`
 
 **Running tests**:
 ```bash
@@ -297,6 +331,10 @@ pnpm run test:watch
 
 # Coverage
 pnpm run test:cov
+
+# Deep tests
+pnpm run test:deep
+pnpm run test:deep:watch
 ```
 
 ### Database Migrations
@@ -396,7 +434,7 @@ curl -X POST http://localhost:8001/v1/security/add-source \
   }'
 ```
 
-**Benefits:**
+**Benefits**:
 - Separates concerns: stock initialization vs. data source configuration
 - Allows adding multiple data sources to the same stock
 - Enables updating source configuration without re-initializing the stock
@@ -433,10 +471,13 @@ curl -X POST http://localhost:8001/indicator/k \
 | **@nestjs/schedule** | Cron jobs for scheduled tasks |
 | **@langchain/langgraph** | AI agent orchestration |
 | **@langchain/deepseek** | DeepSeek LLM integration |
+| **@modelcontextprotocol/sdk** | MCP protocol implementation |
+| **@rekog/mcp-nest** | MCP framework for NestJS |
 | **talib** | Technical analysis library |
 | **typeorm** | MySQL ORM |
 | **date-fns-tz** | Timezone handling |
 | **axios** | HTTP client for AKTools |
+| **zod** | Schema validation |
 
 ---
 
@@ -574,6 +615,10 @@ All HTTP endpoints return responses in a unified format:
 - `1xxx`: Client errors (parameter validation, format errors)
 - `2xxx`: Business errors (data not found, insufficient data)
 - `5xxx`: Server errors (database, external services)
+
+### MCP Server (Port 8009)
+
+MCP Server providing AI agents with structured access to stock analysis tools via Model Context Protocol.
 
 ### Chan Test Entry (Port 8008)
 
