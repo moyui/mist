@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EastMoneySource } from './east-money.source';
 import { AxiosInstance } from 'axios';
-import { KFetchParams } from './source-fetcher.interface';
-import { Period } from '@app/shared-data';
+import { KFetchParams, KData, EfExtension } from './source-fetcher.interface';
+import { Period, Security } from '@app/shared-data';
 import { UtilsService, PeriodMappingService } from '@app/utils';
+import { DataSource as TypeOrmDataSource } from 'typeorm';
 
 describe('EastMoneySource', () => {
   let service: EastMoneySource;
@@ -43,6 +44,17 @@ describe('EastMoneySource', () => {
             }),
           },
         },
+        {
+          provide: TypeOrmDataSource,
+          useValue: {
+            transaction: jest.fn((cb) =>
+              cb({
+                create: jest.fn((_, data) => data),
+                save: jest.fn((_, entities) => Promise.resolve(entities)),
+              }),
+            ),
+          },
+        },
       ],
     }).compile();
 
@@ -68,6 +80,10 @@ describe('EastMoneySource', () => {
         收盘: 101.0,
         成交量: 1000000,
         成交额: 100500000,
+        涨跌幅: 1.2,
+        涨跌额: 0.13,
+        振幅: 2.5,
+        换手率: 0.5,
       },
       {
         时间: '2024-01-01T00:01:00.000Z',
@@ -77,6 +93,10 @@ describe('EastMoneySource', () => {
         收盘: 101.5,
         成交量: 1200000,
         成交额: 0,
+        涨跌幅: 1.2,
+        涨跌额: 0.13,
+        振幅: 2.5,
+        换手率: 0.5,
       },
     ];
 
@@ -109,6 +129,12 @@ describe('EastMoneySource', () => {
         volume: 1000000,
         amount: 100500000,
         period: Period.ONE_MIN,
+        extensions: {
+          amplitude: 2.5,
+          changePct: 1.2,
+          changeAmt: 0.13,
+          turnoverRate: 0.5,
+        },
       });
     });
 
@@ -122,6 +148,10 @@ describe('EastMoneySource', () => {
           收盘: 101.0,
           成交量: 1000000,
           成交额: 0,
+          涨跌幅: 1.2,
+          涨跌额: 0.13,
+          振幅: 2.5,
+          换手率: 0.5,
         },
       ];
 
@@ -235,6 +265,52 @@ describe('EastMoneySource', () => {
       expect(service.isSupportedPeriod(Period.MONTH)).toBe(true);
       expect(service.isSupportedPeriod(Period.QUARTER)).toBe(true);
       expect(service.isSupportedPeriod(Period.YEAR)).toBe(true);
+    });
+  });
+
+  describe('saveK', () => {
+    it('should save base K and extension entities in a transaction', async () => {
+      const mockData: KData[] = [
+        {
+          timestamp: new Date('2024-01-01T09:30:00.000Z'),
+          open: 10.5,
+          high: 11.0,
+          low: 10.3,
+          close: 10.8,
+          volume: 1000000,
+          period: Period.ONE_MIN,
+          extensions: {
+            amplitude: 2.5,
+            changePct: 1.2,
+            changeAmt: 0.13,
+            turnoverRate: 0.5,
+          } as EfExtension,
+        },
+      ];
+
+      const mockSecurity = { id: 1, code: '000001' } as Security;
+
+      await service.saveK(mockData, mockSecurity, Period.ONE_MIN);
+    });
+
+    it('should be a no-op for empty data', async () => {
+      await service.saveK([], {} as Security, Period.ONE_MIN);
+    });
+
+    it('should skip extension creation for daily data (no extensions)', async () => {
+      const mockData: KData[] = [
+        {
+          timestamp: new Date('2024-01-01'),
+          open: 3000,
+          high: 3050,
+          low: 2980,
+          close: 3020,
+          volume: 5000000,
+          period: Period.DAY,
+        },
+      ];
+
+      await service.saveK(mockData, {} as Security, Period.DAY);
     });
   });
 });

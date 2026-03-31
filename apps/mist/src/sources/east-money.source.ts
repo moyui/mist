@@ -3,10 +3,18 @@ import {
   ISourceFetcher,
   KFetchParams,
   KData,
+  EfExtension,
 } from './source-fetcher.interface';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
-import { DataSource, Period } from '@app/shared-data';
+import {
+  DataSource,
+  Period,
+  K,
+  KExtensionEf,
+  Security,
+} from '@app/shared-data';
+import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { format } from 'date-fns';
 
 /**
@@ -47,6 +55,7 @@ export class EastMoneySource implements ISourceFetcher {
   constructor(
     private readonly utilsService: UtilsService,
     private readonly periodMappingService: PeriodMappingService,
+    private readonly typeOrmDataSource: TypeOrmDataSource,
   ) {
     this.axios = this.utilsService.createAxiosInstance({
       baseURL: 'http://127.0.0.1:8080',
@@ -109,6 +118,12 @@ export class EastMoneySource implements ISourceFetcher {
         volume: Number(item['成交量']),
         amount: item['成交额'] ? Number(item['成交额']) : undefined,
         period,
+        extensions: {
+          amplitude: item['振幅'] ?? undefined,
+          changePct: item['涨跌幅'] ?? undefined,
+          changeAmt: item['涨跌额'] ?? undefined,
+          turnoverRate: item['换手率'] ?? undefined,
+        } as EfExtension,
       }),
     );
   }
@@ -154,6 +169,54 @@ export class EastMoneySource implements ISourceFetcher {
         period,
       }),
     );
+  }
+
+  async saveK(
+    data: KData[],
+    security: Security,
+    period: Period,
+  ): Promise<void> {
+    if (data.length === 0) return;
+
+    await this.typeOrmDataSource.transaction(async (manager) => {
+      const kEntities = data.map((d) =>
+        manager.create(K, {
+          security,
+          source: DataSource.EAST_MONEY,
+          period,
+          timestamp: d.timestamp,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+          volume: BigInt(Math.round(d.volume)),
+          amount: d.amount || 0,
+        }),
+      );
+      const savedKs = await manager.save(K, kEntities);
+
+      // Only save extensions for items that have them (minute-level data)
+      const itemsWithExt = savedKs
+        .map((k, i) => ({
+          k,
+          ext: data[i].extensions as EfExtension | undefined,
+        }))
+        .filter(({ ext }) => ext != null);
+
+      if (itemsWithExt.length > 0) {
+        const extensions = itemsWithExt.map(({ k, ext }) =>
+          manager.create(KExtensionEf, {
+            k,
+            fullCode: ext!.fullCode ?? '',
+            amplitude: ext!.amplitude ?? 0,
+            changePct: ext!.changePct ?? 0,
+            changeAmt: ext!.changeAmt ?? 0,
+            turnoverRate: ext!.turnoverRate ?? 0,
+          }),
+        );
+        await manager.save(KExtensionEf, extensions);
+      }
+    });
   }
 
   isSupportedPeriod(period: Period): boolean {

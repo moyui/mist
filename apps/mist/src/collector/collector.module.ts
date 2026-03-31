@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { K, Security, SecuritySourceConfig } from '@app/shared-data';
+import {
+  K,
+  KExtensionEf,
+  Security,
+  SecuritySourceConfig,
+} from '@app/shared-data';
 import { CollectorService } from './collector.service';
 import { CollectorController } from './collector.controller';
 import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.strategy';
@@ -16,7 +21,7 @@ import {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([K, Security, SecuritySourceConfig]),
+    TypeOrmModule.forFeature([K, KExtensionEf, Security, SecuritySourceConfig]),
     UtilsModule,
     SecurityModule,
     TimezoneModule,
