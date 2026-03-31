@@ -23,16 +23,18 @@ All configuration moves to a single root `mist/.env` file. Each app's ConfigModu
 mist/
 ├── .env                          # Actual values (gitignored)
 ├── .env.example                  # Complete template (committed)
-├── .env.development              # Dev defaults (committed)
-├── .env.production               # Prod defaults (committed)
+├── .env.development              # Dev defaults (committed, NO secrets)
+├── .env.production               # Prod defaults (committed, NO secrets)
 ├── docker-compose.yml            # References root .env
 ├── apps/
 │   ├── mist/src/     (no .env)
 │   ├── saya/src/     (no .env)
 │   ├── chan/src/     (no .env)
-│   ├── mcp-server/   (no .env)
+│   ├── mcp-server/   (delete .env + src/.env)
 │   └── schedule/src/ (no .env)
 ```
+
+> **Warning**: `.env.development` and `.env.production` are committed to git. They must ONLY contain non-secret defaults (hostnames, URLs). All secrets (passwords, API keys) go exclusively in `.env` (gitignored).
 
 ## Variable Naming
 
@@ -64,16 +66,18 @@ redis_server_host=localhost
 redis_server_port=6379
 redis_server_db=0
 
-# ===== App Ports =====
-# Each app reads PORT; override per-service in docker-compose
-PORT=8001
-
 # ===== Data Source =====
 # ef=EastMoney, tdx=TongDaXin, mqmt=MaQiMaTe
 DEFAULT_DATA_SOURCE=ef
 
 # ===== AKTools =====
 AKTOOLS_BASE_URL=http://localhost:8080
+
+# ===== App Ports =====
+# Ports are NOT set in shared .env. Each app uses its hardcoded default
+# in main.ts (process.env.PORT ?? <default>). Docker overrides per-service
+# via docker-compose.yml environment section.
+# To override locally, set PORT env var when starting: PORT=8002 pnpm run start:dev:saya
 
 # ===== LLM (saya only) =====
 REASONING_API_KEY=
@@ -96,6 +100,16 @@ REPO_OWNER=moyui
 VERSION=latest
 ```
 
+### Port Handling Strategy
+
+Ports are NOT stored in the shared `.env` because a single `PORT` value would conflict across apps. Instead:
+
+- **Local dev**: Each app's `main.ts` uses `process.env.PORT ?? <hardcoded_default>` — defaults are 8001, 8002, 8003, 8008, 8009
+- **Docker**: `docker-compose.yml` sets `PORT` per service via the `environment` section
+- **Manual override**: `PORT=8010 pnpm run start:dev:mist`
+
+This matches existing behavior — no changes to `main.ts` files.
+
 ## Environment Default Files
 
 ### .env.development (committed)
@@ -114,7 +128,18 @@ mysql_server_host=host.docker.internal
 AKTOOLS_BASE_URL=http://aktools:8080
 ```
 
-The `.env` file (gitignored) takes highest priority and overrides these defaults.
+The `.env` file (gitignored) has highest priority. In `@nestjs/config`, when `envFilePath` is an array, **later files override earlier files** — so `.env` must be listed LAST:
+
+```typescript
+envFilePath: [
+  // Base defaults (lowest priority)
+  path.resolve(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
+  // User overrides (highest priority)
+  path.resolve(process.cwd(), '.env'),
+]
+```
+
+This means: `.env.development` provides base values, then `.env` overrides them with actual secrets.
 
 ## ConfigModule Loading
 
@@ -124,15 +149,34 @@ Each app's `ConfigModule.forRoot()` changes to load from root directory:
 ConfigModule.forRoot({
   isGlobal: true,
   envFilePath: [
-    path.resolve(process.cwd(), '.env'),
     path.resolve(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
+    path.resolve(process.cwd(), '.env'),
   ],
   validationSchema: xxxEnvSchema,
   validationOptions: { allowUnknown: true, abortEarly: false },
 })
 ```
 
-Files with `allowUnknown: true` so each app only validates its own required variables while still loading the full file.
+`allowUnknown: true` ensures each app only validates its own required variables while loading the full file.
+
+> **Note**: `process.cwd()` resolves to the monorepo root because all `pnpm run start:dev:*` commands are run from `mist/`. In Docker, `WORKDIR /app` in the Dockerfile also points to the monorepo root. This has been verified against the existing Dockerfile and start scripts.
+
+### Special Case: saya
+
+`saya` uses `load: CONFIG_REGISTER` for agent configuration. This must be preserved:
+
+```typescript
+ConfigModule.forRoot({
+  isGlobal: true,
+  envFilePath: [
+    path.resolve(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
+    path.resolve(process.cwd(), '.env'),
+  ],
+  load: CONFIG_REGISTER,
+  validationSchema: sayaEnvSchema,
+  validationOptions: { allowUnknown: true, abortEarly: false },
+})
+```
 
 ### Affected Module Files
 
@@ -177,7 +221,7 @@ Remove `.env` from assets since env files are no longer in app source directorie
 
 ## validation.schema.ts
 
-Minimal change: add `AKTOOLS_BASE_URL` to `commonEnvSchema`:
+### Add AKTOOLS_BASE_URL to common schema
 
 ```typescript
 export const commonEnvSchema = Joi.object({
@@ -193,6 +237,58 @@ export const commonEnvSchema = Joi.object({
 });
 ```
 
+### Add missing saya LLM variables to sayaEnvSchema
+
+The current `sayaEnvSchema` is missing `REASONING_MODEL`, `FAST_BASE_URL`, `FAST_MODEL`, `VL_API_KEY`, `VL_BASE_URL`, `VL_MODEL` — these are defined in the `.env` template but not validated. Add them as optional (they are prepared for future use, not all currently consumed by code):
+
+```typescript
+export const sayaEnvSchema = Joi.object({
+  // Reasoning LLM
+  REASONING_API_KEY: Joi.string().required(),
+  REASONING_BASE_URL: Joi.string().uri().required(),
+  REASONING_MODEL: Joi.string().optional(),
+  // Fast LLM
+  FAST_API_KEY: Joi.string().required(),
+  FAST_BASE_URL: Joi.string().uri().optional(),
+  FAST_MODEL: Joi.string().optional(),
+  // Vision LLM
+  VL_API_KEY: Joi.string().optional(),
+  VL_BASE_URL: Joi.string().uri().optional(),
+  VL_MODEL: Joi.string().optional(),
+  // Other
+  DEBUG: Joi.boolean().default(false),
+  APP_ENV: Joi.string()
+    .valid('development', 'production', 'test')
+    .default('development'),
+  TAVILY_API_KEY: Joi.string().required(),
+}).concat(commonEnvSchema);
+```
+
+Note: `sayaEnvSchema` uses `.concat()` while others use `.append()`. Both work; standardizing to `.append()` is optional cleanup.
+
+## Migration Steps
+
+1. Merge all app `.env` values into a single root `mist/.env`
+2. Create `.env.development` and `.env.production` with environment defaults
+3. Rewrite `mist/.env.example` with the unified template
+4. Update all 5 app module files to load from root
+5. Update `validation.schema.ts` (common + saya)
+6. Update `nest-cli.json` (remove assets)
+7. Simplify `docker-compose.yml`
+8. Delete individual app `.env` files
+9. Clean `dist/` directory (`rm -rf dist/`) to remove stale copied `.env` files
+10. Verify each app starts correctly
+
+### Verification
+
+After migration, run each app and confirm it starts on the correct port:
+```bash
+pnpm run start:dev:mist     # Should listen on 8001
+pnpm run start:dev:saya     # Should listen on 8002
+pnpm run start:dev:chan     # Should listen on 8008
+pnpm run start:dev:mcp-server  # Should listen on 8009
+```
+
 ## Files Changed Summary
 
 | # | File | Action |
@@ -203,13 +299,14 @@ export const commonEnvSchema = Joi.object({
 | 4 | `mist/.env` | Create from merged app .env values |
 | 5 | `mist/docker-compose.yml` | Simplify environment section |
 | 6 | `mist/nest-cli.json` | Remove `**/*.env` from assets |
-| 7 | `mist/libs/config/src/validation.schema.ts` | Add AKTOOLS_BASE_URL to common schema |
+| 7 | `mist/libs/config/src/validation.schema.ts` | Add AKTOOLS_BASE_URL + saya LLM vars |
 | 8 | `mist/apps/mist/src/app.module.ts` | Update envFilePath |
-| 9 | `mist/apps/saya/src/saya.module.ts` | Update envFilePath |
+| 9 | `mist/apps/saya/src/saya.module.ts` | Update envFilePath, keep load: CONFIG_REGISTER |
 | 10 | `mist/apps/chan/src/chan-app.module.ts` | Update envFilePath |
 | 11 | `mist/apps/schedule/src/schedule.module.ts` | Update envFilePath |
 | 12 | `mist/apps/mcp-server/src/mcp-server.module.ts` | Update envFilePath |
 | 13 | `mist/apps/mist/src/.env` | Delete |
 | 14 | `mist/apps/saya/src/.env` | Delete |
 | 15 | `mist/apps/chan/src/.env` | Delete |
-| 16 | `mist/apps/mcp-server/.env` | Delete |
+| 16 | `mist/apps/mcp-server/src/.env` | Delete |
+| 17 | `mist/apps/mcp-server/.env` | Delete (duplicate with uppercase vars) |
