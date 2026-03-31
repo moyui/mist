@@ -26,11 +26,6 @@ services:
       - "8008:8008"  # Chan test entry
     environment:
       - mysql_server_host=host.docker.internal
-      - mysql_server_port=3306
-      - mysql_server_username=${MYSQL_USER}
-      - mysql_server_password=${MYSQL_PASSWORD}
-      - mysql_server_database=mist
-      - NODE_ENV=${NODE_ENV:-production}
       - AKTOOLS_BASE_URL=http://aktools:8080
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -53,11 +48,6 @@ services:
     environment:
       - PORT=8009
       - mysql_server_host=host.docker.internal
-      - mysql_server_port=3306
-      - mysql_server_username=${MYSQL_USER}
-      - mysql_server_password=${MYSQL_PASSWORD}
-      - mysql_server_database=mist
-      - NODE_ENV=${NODE_ENV:-production}
       - AKTOOLS_BASE_URL=http://aktools:8080
     extra_hosts:
       - "host.docker.internal:host-gateway"
