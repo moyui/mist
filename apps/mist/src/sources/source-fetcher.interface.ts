@@ -1,7 +1,39 @@
-import { Period } from '@app/shared-data';
+import { Period, Security } from '@app/shared-data';
+
+export interface EfExtension {
+  fullCode?: string;
+  amplitude?: number;
+  changePct?: number;
+  changeAmt?: number;
+  turnoverRate?: number;
+  volumeCount?: number;
+  innerVolume?: number;
+  outerVolume?: number;
+  prevClose?: number;
+  prevOpen?: number;
+}
+
+export interface TdxExtension {
+  fullCode?: string;
+  forwardFactor?: number;
+  backwardFactor?: number;
+  volumeRatio?: number;
+  turnoverRate?: number;
+  turnoverAmount?: number;
+  totalMarketValue?: number;
+  floatMarketValue?: number;
+  earningsPerShare?: number;
+  priceEarningsRatio?: number;
+  priceToBookRatio?: number;
+}
+
+export interface MqmtExtension {
+  fullCode?: string;
+}
 
 export interface ISourceFetcher {
   fetchK(params: KFetchParams): Promise<KData[]>;
+  saveK(data: KData[], security: Security, period: Period): Promise<void>;
   isSupportedPeriod(period: Period): boolean;
 }
 
@@ -22,4 +54,5 @@ export interface KData {
   volume: number;
   amount?: number;
   period: number;
+  extensions?: EfExtension | TdxExtension | MqmtExtension;
 }
