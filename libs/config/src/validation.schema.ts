@@ -16,6 +16,9 @@ export const commonEnvSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
+
+  // AKTools
+  AKTOOLS_BASE_URL: Joi.string().uri().default('http://localhost:8080'),
 });
 
 /**
@@ -33,10 +36,19 @@ export const appEnvSchema = Joi.object({
  * Saya app-specific environment variable validation
  */
 export const sayaEnvSchema = Joi.object({
-  // LLM Configuration
+  // Reasoning LLM
   REASONING_API_KEY: Joi.string().required(),
   REASONING_BASE_URL: Joi.string().uri().required(),
+  REASONING_MODEL: Joi.string().optional(),
+  // Fast LLM
   FAST_API_KEY: Joi.string().required(),
+  FAST_BASE_URL: Joi.string().uri().optional(),
+  FAST_MODEL: Joi.string().optional(),
+  // Vision LLM
+  VL_API_KEY: Joi.string().optional(),
+  VL_BASE_URL: Joi.string().uri().optional(),
+  VL_MODEL: Joi.string().optional(),
+  // Other
   DEBUG: Joi.boolean().default(false),
   APP_ENV: Joi.string()
     .valid('development', 'production', 'test')
