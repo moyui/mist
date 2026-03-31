@@ -108,24 +108,46 @@ export class EastMoneySource implements ISourceFetcher {
       );
     }
 
-    return response.data.map(
-      (item): KData => ({
-        timestamp: new Date(item['时间']),
-        open: Number(item['开盘']),
-        high: Number(item['最高']),
-        low: Number(item['最低']),
-        close: Number(item['收盘']),
-        volume: Number(item['成交量']),
-        amount: item['成交额'] ? Number(item['成交额']) : undefined,
+    return response.data.map((item): KData => {
+      const timestamp = new Date(item['时间']);
+      const open = Number(item['开盘']);
+      const high = Number(item['最高']);
+      const low = Number(item['最低']);
+      const close = Number(item['收盘']);
+      const volume = Number(item['成交量']);
+      const amount = item['成交额'] ? Number(item['成交额']) : undefined;
+
+      // Only create extensions when at least one field is present
+      const extAmplitude = item['振幅'] ?? undefined;
+      const extChangePct = item['涨跌幅'] ?? undefined;
+      const extChangeAmt = item['涨跌额'] ?? undefined;
+      const extTurnoverRate = item['换手率'] ?? undefined;
+
+      const extensions =
+        extAmplitude != null ||
+        extChangePct != null ||
+        extChangeAmt != null ||
+        extTurnoverRate != null
+          ? {
+              amplitude: extAmplitude,
+              changePct: extChangePct,
+              changeAmt: extChangeAmt,
+              turnoverRate: extTurnoverRate,
+            }
+          : undefined;
+
+      return {
+        timestamp,
+        open,
+        high,
+        low,
+        close,
+        volume,
+        amount,
         period,
-        extensions: {
-          amplitude: item['振幅'] ?? undefined,
-          changePct: item['涨跌幅'] ?? undefined,
-          changeAmt: item['涨跌额'] ?? undefined,
-          turnoverRate: item['换手率'] ?? undefined,
-        } as EfExtension,
-      }),
-    );
+        extensions,
+      };
+    });
   }
 
   /**

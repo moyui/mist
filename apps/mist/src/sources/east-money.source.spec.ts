@@ -2,7 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EastMoneySource } from './east-money.source';
 import { AxiosInstance } from 'axios';
 import { KFetchParams, KData, EfExtension } from './source-fetcher.interface';
-import { Period, Security } from '@app/shared-data';
+import {
+  Period,
+  Security,
+  DataSource,
+  K,
+  KExtensionEf,
+} from '@app/shared-data';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 import { DataSource as TypeOrmDataSource } from 'typeorm';
 
@@ -269,6 +275,27 @@ describe('EastMoneySource', () => {
   });
 
   describe('saveK', () => {
+    let mockTransaction: jest.Mock;
+    let mockManagerCreate: jest.Mock;
+    let mockManagerSave: jest.Mock;
+    let ds: { transaction: jest.Mock };
+
+    beforeEach(() => {
+      mockManagerCreate = jest.fn((_, data) => data);
+      mockManagerSave = jest
+        .fn()
+        .mockImplementation((_, entities) => Promise.resolve(entities));
+      mockTransaction = jest.fn((cb) =>
+        cb({ create: mockManagerCreate, save: mockManagerSave }),
+      );
+
+      // Re-configure the TypeOrmDataSource mock for saveK tests
+      ds = service['typeOrmDataSource'] as unknown as {
+        transaction: jest.Mock;
+      };
+      ds.transaction = mockTransaction;
+    });
+
     it('should save base K and extension entities in a transaction', async () => {
       const mockData: KData[] = [
         {
@@ -291,10 +318,36 @@ describe('EastMoneySource', () => {
       const mockSecurity = { id: 1, code: '000001' } as Security;
 
       await service.saveK(mockData, mockSecurity, Period.ONE_MIN);
+
+      expect(mockTransaction).toHaveBeenCalledTimes(1);
+      // base K created
+      expect(mockManagerCreate).toHaveBeenCalledWith(
+        K,
+        expect.objectContaining({
+          security: mockSecurity,
+          source: DataSource.EAST_MONEY,
+          open: 10.5,
+          close: 10.8,
+        }),
+      );
+      // base K saved, then extensions created
+      expect(mockManagerSave).toHaveBeenCalledTimes(2);
+      // extensions created for item with extensions
+      expect(mockManagerCreate).toHaveBeenCalledWith(
+        KExtensionEf,
+        expect.objectContaining({
+          amplitude: 2.5,
+          changePct: 1.2,
+        }),
+      );
     });
 
     it('should be a no-op for empty data', async () => {
       await service.saveK([], {} as Security, Period.ONE_MIN);
+
+      expect(mockTransaction).not.toHaveBeenCalled();
+      expect(mockManagerCreate).not.toHaveBeenCalled();
+      expect(mockManagerSave).not.toHaveBeenCalled();
     });
 
     it('should skip extension creation for daily data (no extensions)', async () => {
@@ -311,6 +364,15 @@ describe('EastMoneySource', () => {
       ];
 
       await service.saveK(mockData, {} as Security, Period.DAY);
+
+      expect(mockTransaction).toHaveBeenCalledTimes(1);
+      // base K created and saved, but only once (no extensions)
+      expect(mockManagerCreate).toHaveBeenCalledTimes(1);
+      expect(mockManagerCreate).toHaveBeenCalledWith(
+        K,
+        expect.objectContaining({ open: 3000 }),
+      );
+      expect(mockManagerSave).toHaveBeenCalledTimes(1);
     });
   });
 });
