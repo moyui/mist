@@ -66,6 +66,41 @@ describe('TimezoneService', () => {
     });
   });
 
+  describe('parseDateString', () => {
+    it('should parse full datetime as Beijing time', () => {
+      // "2024-04-01 09:30:00" in Beijing (UTC+8) = 2024-04-01T01:30:00.000Z
+      const result = service.parseDateString('2024-04-01 09:30:00');
+      expect(result).toBeInstanceOf(Date);
+      expect(result.toISOString()).toBe('2024-04-01T01:30:00.000Z');
+    });
+
+    it('should parse date-only and default time to 00:00:00', () => {
+      // "2024-04-01" in Beijing (UTC+8) = 2024-03-31T16:00:00.000Z
+      const result = service.parseDateString('2024-04-01');
+      expect(result).toBeInstanceOf(Date);
+      expect(result.toISOString()).toBe('2024-03-31T16:00:00.000Z');
+    });
+
+    it('should throw on invalid format', () => {
+      expect(() => service.parseDateString('not-a-date')).toThrow();
+    });
+
+    it('should throw on semantically invalid date', () => {
+      expect(() => service.parseDateString('2024-13-45 25:61:99')).toThrow();
+    });
+
+    it('should throw on empty string', () => {
+      expect(() => service.parseDateString('')).toThrow();
+    });
+
+    it('should parse midnight correctly', () => {
+      const result = service.parseDateString('2024-01-01 00:00:00');
+      expect(result).toBeInstanceOf(Date);
+      // Beijing midnight = UTC 16:00 previous day
+      expect(result.toISOString()).toBe('2023-12-31T16:00:00.000Z');
+    });
+  });
+
   describe('isTradingDay', () => {
     describe('with SZSE API', () => {
       it('should return true for trading day from API', async () => {

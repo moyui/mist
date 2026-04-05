@@ -4,6 +4,7 @@ import { format, fromUnixTime, millisecondsToSeconds } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { ERROR_MESSAGES } from '@app/constants';
 import { UtilsService } from '@app/utils';
+import { BEIJING_DATE_REGEX } from './date-format.const';
 
 /**
  * SZSE API response type.
@@ -46,6 +47,37 @@ export class TimezoneService {
 
   convertTimestamp2Date(timestamp: number) {
     return fromUnixTime(millisecondsToSeconds(timestamp));
+  }
+
+  /**
+   * Parse date string to Date object.
+   * Accepts "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DD".
+   * Interpreted as Beijing time (Asia/Shanghai, UTC+8).
+   *
+   * Implementation: appends "+08:00" and uses Date constructor,
+   * which is timezone-agnostic (works regardless of server timezone).
+   */
+  parseDateString(dateStr: string): Date {
+    if (!BEIJING_DATE_REGEX.test(dateStr)) {
+      throw new HttpException(
+        `Invalid date format: "${dateStr}". Expected YYYY-MM-DD or YYYY-MM-DD HH:MM:SS`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Append " 00:00:00" if date-only, then convert to ISO with +08:00 offset
+    const normalized = dateStr.includes(' ') ? dateStr : `${dateStr} 00:00:00`;
+    const isoString = normalized.replace(' ', 'T') + '+08:00';
+    const result = new Date(isoString);
+
+    if (isNaN(result.getTime())) {
+      throw new HttpException(
+        `Invalid date: "${dateStr}". Date values are out of range.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return result;
   }
 
   /**
