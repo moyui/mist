@@ -11,6 +11,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CollectDto } from './dto/collect.dto';
 import { CollectionStrategyRegistry } from './strategies/collection-strategy.registry';
 import { SecurityService } from '../security/security.service';
+import { TimezoneService } from '@app/timezone';
 
 @ApiTags('collector v1')
 @Controller('v1/collector')
@@ -20,6 +21,7 @@ export class CollectorController {
   constructor(
     private readonly securityService: SecurityService,
     private readonly registry: CollectionStrategyRegistry,
+    private readonly timezoneService: TimezoneService,
   ) {}
 
   @Post('collect')
@@ -57,8 +59,8 @@ export class CollectorController {
 
     // 3. Resolve strategy and collect with user-provided dates
     const strategy = this.registry.resolve(dto.source);
-    const startDate = new Date(dto.startDate);
-    const endDate = new Date(dto.endDate);
+    const startDate = this.timezoneService.parseDateString(dto.startDate);
+    const endDate = this.timezoneService.parseDateString(dto.endDate);
 
     const count = await strategy.collectForSecurity(
       security,

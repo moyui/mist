@@ -52,12 +52,8 @@ export class IndicatorController {
     type: [MACDVo],
   })
   async macd(@Body() queryDto: IndicatorQueryDto): Promise<MACDVo[]> {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const data = await this.indicatorService.findKData({
       code: queryDto.code,
@@ -98,12 +94,8 @@ export class IndicatorController {
     type: [KDJVo],
   })
   async kdj(@Body() queryDto: IndicatorQueryDto): Promise<KDJVo[]> {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const data = await this.indicatorService.findKData({
       code: queryDto.code,
@@ -154,12 +146,8 @@ export class IndicatorController {
     type: [RSIVo],
   })
   async rsi(@Body() queryDto: IndicatorQueryDto): Promise<RSIVo[]> {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const data = await this.indicatorService.findKData({
       code: queryDto.code,
@@ -195,12 +183,8 @@ export class IndicatorController {
     type: [KVo],
   })
   async k(@Body() queryDto: IndicatorQueryDto): Promise<KVo[]> {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const data = await this.indicatorService.findKData({
       code: queryDto.code,

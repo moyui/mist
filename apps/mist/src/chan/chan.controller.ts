@@ -37,12 +37,8 @@ export class ChanController {
     type: [MergeKDto],
   })
   async postMergeK(@Body() queryDto: IndicatorQueryDto) {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const kData = (
       await this.indicatorService.findKData({
@@ -80,12 +76,8 @@ export class ChanController {
     type: [CreateBiDto],
   })
   async postIndexBi(@Body() queryDto: IndicatorQueryDto) {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const kData = (
       await this.indicatorService.findKData({
@@ -123,12 +115,8 @@ export class ChanController {
     description: 'Returns array of fenxing data',
   })
   async postFenxing(@Body() queryDto: IndicatorQueryDto) {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const kData = (
       await this.indicatorService.findKData({
@@ -167,12 +155,8 @@ export class ChanController {
     type: [CreateChannelDto],
   })
   async postChannel(@Body() queryDto: IndicatorQueryDto) {
-    const startDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.startDate,
-    );
-    const endDate = this.timezoneService.convertTimestamp2Date(
-      queryDto.endDate,
-    );
+    const startDate = this.timezoneService.parseDateString(queryDto.startDate);
+    const endDate = this.timezoneService.parseDateString(queryDto.endDate);
 
     const kData = (
       await this.indicatorService.findKData({
