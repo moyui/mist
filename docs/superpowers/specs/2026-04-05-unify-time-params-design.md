@@ -62,8 +62,9 @@ Add a new method alongside existing `convertTimestamp2Date()`:
 parseDateString(dateStr: string): Date {
   // 1. Validate format against BEIJING_DATE_REGEX
   // 2. Append " 00:00:00" if date-only
-  // 3. Parse using date-fns-tz parse() with 'Asia/Shanghai' timezone
-  //    (NOT new Date() — server container timezone may not be Asia/Shanghai)
+  // 3. Construct ISO string with explicit +08:00 offset and use new Date()
+  //    (This is timezone-agnostic: "+08:00" is explicit, works regardless
+  //     of server/container timezone)
   // 4. Validate semantic correctness (real date, e.g. reject 2024-13-45)
   //    using isNaN(parsedDate.getTime())
   // 5. Return Date object (UTC internally)
@@ -71,7 +72,7 @@ parseDateString(dateStr: string): Date {
 }
 ```
 
-**Key constraint**: Must use `date-fns-tz` `parse()` with explicit `'Asia/Shanghai'` timezone, not `new Date()`. Container timezone may differ in Docker deployments.
+**Key constraint**: The `+08:00` offset approach is explicitly approved over `date-fns-tz` `parse()` — it's simpler, equally correct for a fixed UTC+8 timezone, and avoids unnecessary library complexity. The explicit offset makes the code timezone-agnostic regardless of server/container timezone.
 
 `convertTimestamp2Date()` is kept unchanged. Internal code that constructs timestamps programmatically is unaffected.
 
@@ -114,16 +115,9 @@ Change `startDate`/`endDate` from `Date` to `string` with `@Matches(BEIJING_DATE
 
 - Rename `startTime`/`endTime` → `startDate`/`endDate` in `getKlineData()`
 - Update parameter descriptions to specify `YYYY-MM-DD [HH:MM:SS]` format
-- **TypeORM query compatibility**: MySQL `DATETIME` column accepts `YYYY-MM-DD HH:MM:SS` strings directly. For correctness, convert via `parseDateString()` before passing to QueryBuilder.
+- **TypeORM query compatibility**: MySQL `DATETIME` column accepts `YYYY-MM-DD HH:MM:SS` strings directly. Format validation is handled by `ValidationHelper.validateDateRange()`. No `parseDateString()` call needed in MCP service — raw string passes through to MySQL correctly.
 
-#### e) MCP Server — segment service
-
-**File**: `apps/mcp-server/src/services/segment-mcp.service.ts`
-
-- Rename `startTime`/`endTime` → `startDate`/`endDate` in Zod schemas
-- Update descriptions
-
-#### f) ValidationHelper
+#### e) ValidationHelper
 
 **File**: `apps/mcp-server/src/utils/validation.helpers.ts`
 
@@ -158,23 +152,9 @@ Affected controllers:
 - `apps/mist/src/chan/chan.controller.ts`
 - `apps/mist/src/collector/collector.controller.ts`
 
-### 6. Shared validation decorator (recommended)
+### 6. Shared validation approach
 
-Extract a reusable decorator since the pattern is used in 3+ DTOs:
-
-```typescript
-// libs/timezone/src/decorators/is-beijing-date-string.decorator.ts
-import { Matches } from 'class-validator';
-import { BEIJING_DATE_REGEX } from '../date-format.const';
-
-export function IsBeijingDateString() {
-  return Matches(BEIJING_DATE_REGEX, {
-    message: '日期格式必须是 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS',
-  });
-}
-```
-
-Exported from `@app/timezone` alongside TimezoneService.
+DTOs use `@Matches(BEIJING_DATE_REGEX, { message: '...' })` directly from `@app/timezone`. The regex constant is the single source of truth. A shared decorator `@IsBeijingDateString()` is deferred — the `@Matches` pattern is clear enough and avoids an extra abstraction layer for 3 DTOs.
 
 ## Affected Files
 
@@ -182,16 +162,14 @@ Exported from `@app/timezone` alongside TimezoneService.
 |------|--------|
 | `libs/timezone/src/date-format.const.ts` | **New** — shared regex constant |
 | `libs/timezone/src/timezone.service.ts` | Add `parseDateString()` |
-| `libs/timezone/src/decorators/is-beijing-date-string.decorator.ts` | **New** — shared decorator |
-| `libs/timezone/src/index.ts` | Export new constant + decorator |
+| `libs/timezone/src/index.ts` | Export new constant |
 | `apps/mist/src/indicator/dto/query/indicator-query.dto.ts` | Type `number` → `string`, validation |
 | `apps/mist/src/collector/dto/collect.dto.ts` | Validation update |
 | `apps/mist/src/chan/dto/update-bi.dto.ts` | Type `Date` → `string`, validation |
 | `apps/mist/src/indicator/indicator.controller.ts` | Conversion method |
 | `apps/mist/src/chan/chan.controller.ts` | Conversion method |
 | `apps/mist/src/collector/collector.controller.ts` | Conversion method |
-| `apps/mcp-server/src/services/data-mcp.service.ts` | Param naming + format + parseDateString |
-| `apps/mcp-server/src/services/segment-mcp.service.ts` | Param naming in Zod schemas |
+| `apps/mcp-server/src/services/data-mcp.service.ts` | Param naming + format |
 | `apps/mcp-server/src/utils/validation.helpers.ts` | Format validation |
 | `apps/saya/src/tools/tools.service.ts` | Tool descriptions update |
 
@@ -202,4 +180,5 @@ Exported from `@app/timezone` alongside TimezoneService.
 - `period` parameter (separate concept, not affected)
 - Frontend (mist-fe) updates (separate project, follow-up)
 - `chan-mcp.service.ts` KLineSchema `time` field (K-line data field, not query parameter)
+- `segment-mcp.service.ts` BiSchema/SegmentSchema `startTime`/`endTime` fields (output data model, not query parameters)
 - `convertTimestamp2Date()` (kept for internal programmatic use)
