@@ -1,3 +1,5 @@
+import { BEIJING_DATE_REGEX } from '@app/timezone';
+
 // Error codes moved to @app/constants
 
 /**
@@ -19,11 +21,27 @@ export class ValidationHelper {
       return null; // Optional parameters, skip validation
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    if (!BEIJING_DATE_REGEX.test(startDate)) {
+      return `Invalid startDate format: "${startDate}". Expected YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.`;
+    }
+
+    if (!BEIJING_DATE_REGEX.test(endDate)) {
+      return `Invalid endDate format: "${endDate}". Expected YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.`;
+    }
+
+    const start = new Date(
+      startDate.includes(' ')
+        ? startDate.replace(' ', 'T') + '+08:00'
+        : startDate + 'T00:00:00+08:00',
+    );
+    const end = new Date(
+      endDate.includes(' ')
+        ? endDate.replace(' ', 'T') + '+08:00'
+        : endDate + 'T00:00:00+08:00',
+    );
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return `Invalid date format. Start: "${startDate}", End: "${endDate}". Expected ISO format or YYYY-MM-DD.`;
+      return `Invalid date values. Start: "${startDate}", End: "${endDate}".`;
     }
 
     if (start >= end) {
