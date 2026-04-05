@@ -9,7 +9,7 @@ export class IndicatorQueryDto {
   @IsNotEmpty({
     message: '指数代码不能为空',
   })
-  symbol!: string;
+  code!: string;
 
   @IsOptional()
   @IsEnum(DataSource, {

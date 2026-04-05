@@ -611,7 +611,7 @@ CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
 **AKTools 启动失败**
 ```bash
 # 重新安装 AKTools
-python3 -m pip install aktools --user --force-reinstall
+python3 -m pip install aktools --force-reinstall
 
 # 手动测试
 python3 -m aktools

@@ -178,4 +178,17 @@ export class SecurityService {
       );
     }
   }
+
+  async deleteSecuritySource(id: number, securityId: number): Promise<void> {
+    const result = await this.sourceConfigRepository.delete({
+      id,
+      securityId,
+    });
+
+    if (result.affected === 0) {
+      throw new NotFoundException(
+        `Source config with id ${id} and securityId ${securityId} not found`,
+      );
+    }
+  }
 }

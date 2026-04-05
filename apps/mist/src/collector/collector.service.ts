@@ -74,7 +74,7 @@ export class CollectorService {
     endDate: Date,
     dataSource: DataSource,
     postProcess?: (data: KData[], source: DataSource) => Promise<void>,
-  ): Promise<void> {
+  ): Promise<number> {
     try {
       // Validate security exists
       const security = await this.findSecurityByCode(stockCode);
@@ -114,7 +114,7 @@ export class CollectorService {
         console.warn(
           `No data returned for security ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
         );
-        return;
+        return 0;
       }
 
       // Save data to database
@@ -128,6 +128,7 @@ export class CollectorService {
       console.log(
         `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period} from ${dataSource}`,
       );
+      return kLineData.length;
     } catch (error) {
       console.error(
         `Failed to collect K-line data for ${stockCode} from ${dataSource}:`,

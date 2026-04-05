@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Put,
@@ -8,19 +9,17 @@ import {
   HttpCode,
   HttpStatus,
   UseFilters,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { TransformInterceptor } from '../interceptors/transform.interceptor';
 import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { Security } from '@app/shared-data';
 import { SecurityService } from './security.service';
 import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
+import { DeleteSecuritySourceDto } from './dto/delete-security-source.dto';
 
 @ApiTags('security v1')
 @Controller('security/v1')
-@UseInterceptors(TransformInterceptor)
 @UseFilters(AllExceptionsFilter)
 export class SecurityController {
   constructor(private readonly securityService: SecurityService) {}
@@ -100,6 +99,17 @@ export class SecurityController {
   @ApiResponse({ status: 404, description: 'Security not found' })
   async activateSecurity(@Param('code') code: string): Promise<void> {
     await this.securityService.activateSecurity(code);
+  }
+
+  @Delete('sources')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a security source configuration' })
+  @ApiResponse({ status: 200, description: 'Source configuration deleted' })
+  @ApiResponse({ status: 404, description: 'Source configuration not found' })
+  async deleteSecuritySource(
+    @Body() dto: DeleteSecuritySourceDto,
+  ): Promise<void> {
+    await this.securityService.deleteSecuritySource(dto.id, dto.securityId);
   }
 
   @Get(':code/sources')

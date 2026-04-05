@@ -59,13 +59,13 @@ export class WebSocketCollectionStrategy implements IDataCollectionStrategy {
     security: Security,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     period: Period,
-  ): Promise<void> {
+  ): Promise<number> {
     // TODO: Subscribe to WebSocket data
     this.logger.warn(
       `WebSocket subscription for ${this.source} is not yet implemented. Security ${security.code} will not receive streaming data.`,
     );
     // Return early instead of throwing to avoid crashing the scheduler
-    return;
+    return 0;
   }
 
   // TODO: Add WebSocket message handler

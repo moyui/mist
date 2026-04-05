@@ -39,7 +39,7 @@ export interface IDataCollectionStrategy {
     period: Period,
     startDate: Date,
     endDate: Date,
-  ): Promise<void>;
+  ): Promise<number>;
 
   /**
    * Scheduled collection: collect the previous completed K candle.

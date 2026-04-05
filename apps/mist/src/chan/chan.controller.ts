@@ -1,30 +1,19 @@
-import {
-  Body,
-  Controller,
-  Post,
-  UseInterceptors,
-  UseFilters,
-} from '@nestjs/common';
+import { Body, Controller, Post, UseFilters } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { subDays } from 'date-fns';
 import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { MergeKDto } from './dto/merge-k.dto';
-import { ChanQueryDto } from './dto/query/chan-query.dto';
+import { IndicatorQueryDto } from '../indicator/dto/query/indicator-query.dto';
 import { ChannelService } from './services/channel.service';
 import { KMergeService } from './services/k-merge.service';
-import { IndicatorService } from '../indicator/indicator.service';
-import { PeriodMappingService } from '@app/utils';
 import { TimezoneService } from '@app/timezone';
-import { KVo } from '../indicator/vo/k.vo';
-import { TransformInterceptor } from '../interceptors/transform.interceptor';
+import { IndicatorService } from '../indicator/indicator.service';
 import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 
 @ApiTags('chan')
 @Controller('chan')
-@UseInterceptors(TransformInterceptor)
 @UseFilters(AllExceptionsFilter)
 export class ChanController {
   constructor(
@@ -32,7 +21,6 @@ export class ChanController {
     private readonly kMergeService: KMergeService,
     private readonly channelService: ChannelService,
     private readonly indicatorService: IndicatorService,
-    private readonly periodMappingService: PeriodMappingService,
     private readonly timezoneService: TimezoneService,
   ) {}
 
@@ -48,8 +36,34 @@ export class ChanController {
     description: 'Returns merged K-line data',
     type: [MergeKDto],
   })
-  async postMergeK(@Body() chanQueryDto: ChanQueryDto) {
-    const kData = await this.fetchKData(chanQueryDto);
+  async postMergeK(@Body() queryDto: IndicatorQueryDto) {
+    const startDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.startDate,
+    );
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
+
+    const kData = (
+      await this.indicatorService.findKData({
+        code: queryDto.code,
+        period: queryDto.period,
+        startDate,
+        endDate,
+        source: queryDto.source,
+      })
+    ).map((k) => ({
+      id: k.id,
+      symbol: k.security.code,
+      time: k.timestamp,
+      timestamp: k.timestamp.getTime(),
+      open: k.open,
+      highest: k.high,
+      lowest: k.low,
+      close: k.close,
+      amount: k.amount,
+    }));
+
     return this.kMergeService.merge(kData);
   }
 
@@ -65,9 +79,35 @@ export class ChanController {
     description: 'Returns array of Bi data',
     type: [CreateBiDto],
   })
-  async postIndexBi(@Body() chanQueryDto: ChanQueryDto) {
-    const kData = await this.fetchKData(chanQueryDto);
+  async postIndexBi(@Body() queryDto: IndicatorQueryDto) {
+    const startDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.startDate,
+    );
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
+
+    const kData = (
+      await this.indicatorService.findKData({
+        code: queryDto.code,
+        period: queryDto.period,
+        startDate,
+        endDate,
+        source: queryDto.source,
+      })
+    ).map((k) => ({
+      id: k.id,
+      symbol: k.security.code,
+      time: k.timestamp,
+      timestamp: k.timestamp.getTime(),
+      open: k.open,
+      highest: k.high,
+      lowest: k.low,
+      close: k.close,
+      amount: k.amount,
+    }));
     const createBiDto: CreateBiDto = { k: kData };
+
     return this.chanService.createBi(createBiDto);
   }
 
@@ -82,9 +122,35 @@ export class ChanController {
     status: 200,
     description: 'Returns array of fenxing data',
   })
-  async postFenxing(@Body() chanQueryDto: ChanQueryDto) {
-    const kData = await this.fetchKData(chanQueryDto);
+  async postFenxing(@Body() queryDto: IndicatorQueryDto) {
+    const startDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.startDate,
+    );
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
+
+    const kData = (
+      await this.indicatorService.findKData({
+        code: queryDto.code,
+        period: queryDto.period,
+        startDate,
+        endDate,
+        source: queryDto.source,
+      })
+    ).map((k) => ({
+      id: k.id,
+      symbol: k.security.code,
+      time: k.timestamp,
+      timestamp: k.timestamp.getTime(),
+      open: k.open,
+      highest: k.high,
+      lowest: k.low,
+      close: k.close,
+      amount: k.amount,
+    }));
     const createBiDto: CreateBiDto = { k: kData };
+
     return this.chanService.getFenxings(createBiDto);
   }
 
@@ -100,36 +166,23 @@ export class ChanController {
     description: 'Returns array of channel data',
     type: [CreateChannelDto],
   })
-  async postChannel(@Body() chanQueryDto: ChanQueryDto) {
-    const kData = await this.fetchKData(chanQueryDto);
-    const createBiDto: CreateBiDto = { k: kData };
-    const biData = await this.chanService.createBi(createBiDto);
-    const createChannelDto: CreateChannelDto = { bi: biData };
-    return this.channelService.createChannel(createChannelDto);
-  }
+  async postChannel(@Body() queryDto: IndicatorQueryDto) {
+    const startDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.startDate,
+    );
+    const endDate = this.timezoneService.convertTimestamp2Date(
+      queryDto.endDate,
+    );
 
-  /**
-   * Helper method to fetch K-line data using ChanQueryDto parameters
-   */
-  private async fetchKData(chanQueryDto: ChanQueryDto): Promise<KVo[]> {
-    // Parse date strings to Date objects
-    const now = this.timezoneService.getCurrentBeijingTime();
-    const startDate = chanQueryDto.startDate
-      ? new Date(chanQueryDto.startDate)
-      : subDays(now, 30); // Default: 30 days ago
-    const endDate = chanQueryDto.endDate ? new Date(chanQueryDto.endDate) : now;
-
-    // Fetch K-line data using IndicatorService
-    const kEntities = await this.indicatorService.findKData({
-      symbol: chanQueryDto.symbol,
-      period: chanQueryDto.period,
-      startDate,
-      endDate,
-      source: chanQueryDto.source,
-    });
-
-    // Convert K entities to KVo format
-    return kEntities.map((k) => ({
+    const kData = (
+      await this.indicatorService.findKData({
+        code: queryDto.code,
+        period: queryDto.period,
+        startDate,
+        endDate,
+        source: queryDto.source,
+      })
+    ).map((k) => ({
       id: k.id,
       symbol: k.security.code,
       time: k.timestamp,
@@ -140,5 +193,9 @@ export class ChanController {
       close: k.close,
       amount: k.amount,
     }));
+    const createBiDto: CreateBiDto = { k: kData };
+    const biData = await this.chanService.createBi(createBiDto);
+    const createChannelDto: CreateChannelDto = { bi: biData };
+    return this.channelService.createChannel(createChannelDto);
   }
 }

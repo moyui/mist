@@ -27,7 +27,7 @@ export class CollectorController {
   @ApiOperation({ summary: '手动触发K线数据采集' })
   async collect(
     @Body() dto: CollectDto,
-  ): Promise<{ code: string; period: number }> {
+  ): Promise<{ code: string; period: number; count: number }> {
     // 1. Resolve security (throws NotFoundException if not found)
     const security = await this.securityService.findSecurityByCode(dto.code);
 
@@ -60,8 +60,13 @@ export class CollectorController {
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
 
-    await strategy.collectForSecurity(security, dto.period, startDate, endDate);
+    const count = await strategy.collectForSecurity(
+      security,
+      dto.period,
+      startDate,
+      endDate,
+    );
 
-    return { code: dto.code, period: dto.period };
+    return { code: dto.code, period: dto.period, count };
   }
 }

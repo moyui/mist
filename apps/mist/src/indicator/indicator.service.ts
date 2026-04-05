@@ -41,7 +41,7 @@ interface RunDualMADto {
 }
 
 interface FindKDataQuery {
-  symbol: string;
+  code: string;
   period: Period;
   startDate: Date;
   endDate: Date;
@@ -263,7 +263,7 @@ export class IndicatorService implements OnModuleInit {
    */
   async findKData(query: FindKDataQuery): Promise<K[]> {
     const foundSecurity = await this.securityRepository.findOneBy({
-      code: query.symbol,
+      code: query.code,
     });
     if (!foundSecurity) {
       throw new HttpException(
@@ -277,7 +277,7 @@ export class IndicatorService implements OnModuleInit {
       ? this.dataSourceService.select(query.source)
       : this.dataSourceService.getDefault();
 
-    const foundBars = await this.kRepository.find({
+    const foundKs = await this.kRepository.find({
       relations: ['security'],
       where: {
         security: {
@@ -292,6 +292,6 @@ export class IndicatorService implements OnModuleInit {
         timestamp: 'ASC',
       },
     });
-    return foundBars;
+    return foundKs;
   }
 }

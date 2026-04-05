@@ -36,9 +36,9 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
     period: Period,
     startDate: Date,
     endDate: Date,
-  ): Promise<void> {
+  ): Promise<number> {
     try {
-      await this.collectorService.collectKForSource(
+      const count = await this.collectorService.collectKForSource(
         security.code,
         period,
         startDate,
@@ -46,8 +46,9 @@ export class EastMoneyCollectionStrategy implements IDataCollectionStrategy {
         this.source,
       );
       this.logger.log(
-        `Manual collection completed for ${security.code} ${period}`,
+        `Manual collection completed for ${security.code} ${period}: ${count} records`,
       );
+      return count;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(
