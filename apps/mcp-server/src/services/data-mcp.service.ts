@@ -108,7 +108,7 @@ PURPOSE: Retrieve historical intraday price data.
 WHEN TO USE: Getting data for analysis.
 
 REQUIRES: symbol, period (1min/5min/15min/30min/60min).
-Optional: limit (default 100), startTime, endTime, source (ef/tdx/mqmt).
+Optional: limit (default 100), startDate, endDate, source (ef/tdx/mqmt).
 
 NOTE: Use list_indices first.
 
@@ -118,8 +118,8 @@ RETURNS: K-line array with time, OHLC, volume.`,
     symbol: string,
     period: '1min' | '5min' | '15min' | '30min' | '60min' | 'daily',
     limit: number = 100,
-    startTime?: string,
-    endTime?: string,
+    startDate?: string,
+    endDate?: string,
     source?: 'ef' | 'tdx' | 'mqmt',
   ) {
     return this.executeTool('get_kline_data', async () => {
@@ -140,8 +140,8 @@ RETURNS: K-line array with time, OHLC, volume.`,
 
       // Validate date range
       const dateRangeError = ValidationHelper.validateDateRange(
-        startTime,
-        endTime,
+        startDate,
+        endDate,
       );
       if (dateRangeError) {
         throw new McpError(
@@ -174,11 +174,11 @@ RETURNS: K-line array with time, OHLC, volume.`,
         .orderBy('bar.timestamp', 'DESC')
         .limit(limit);
 
-      if (startTime) {
-        queryBuilder.andWhere('bar.timestamp >= :startTime', { startTime });
+      if (startDate) {
+        queryBuilder.andWhere('bar.timestamp >= :startDate', { startDate });
       }
-      if (endTime) {
-        queryBuilder.andWhere('bar.timestamp <= :endTime', { endTime });
+      if (endDate) {
+        queryBuilder.andWhere('bar.timestamp <= :endDate', { endDate });
       }
 
       const data = await queryBuilder.getMany();
@@ -205,7 +205,7 @@ Contains OHLC, volume, and amount.
 WHEN TO USE: Daily/swing trading analysis, long-term trends.
 
 REQUIRES: symbol (e.g., '000001').
-Optional: limit (default 100), startDate, endDate, source (ef/tdx/mqmt).
+Optional: limit (default 100), startDate (YYYY-MM-DD HH:MM:SS), endDate (YYYY-MM-DD HH:MM:SS), source (ef/tdx/mqmt).
 
 NOTE: Use list_indices first. Use get_kline_data for intraday.
 
