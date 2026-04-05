@@ -55,7 +55,7 @@ export class ToolsService {
       {
         name: 'get_k_tool',
         description:
-          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的k线数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(13位数字类型)、endDate(13位数字类型) 的对象。',
+          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的k线数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(YYYY-MM-DD HH:MM:SS字符串类型)、endDate(YYYY-MM-DD HH:MM:SS字符串类型) 的对象。',
       },
     );
   }
@@ -72,7 +72,7 @@ export class ToolsService {
       {
         name: 'get_kdj_tool',
         description:
-          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的kdj数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(13位数字类型)、endDate(13位数字类型) 的对象。',
+          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的kdj数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(YYYY-MM-DD HH:MM:SS字符串类型)、endDate(YYYY-MM-DD HH:MM:SS字符串类型) 的对象。',
       },
     );
   }
@@ -89,7 +89,7 @@ export class ToolsService {
       {
         name: 'get_macd_tool',
         description:
-          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的macd数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(13位数字类型)、endDate(13位数字类型) 的对象。',
+          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的macd数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(YYYY-MM-DD HH:MM:SS字符串类型)、endDate(YYYY-MM-DD HH:MM:SS字符串类型) 的对象。',
       },
     );
   }
@@ -106,7 +106,7 @@ export class ToolsService {
       {
         name: 'get_rsi_tool',
         description:
-          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的rsi数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(13位数字类型)、endDate(13位数字类型) 的对象。',
+          '根据提供的 symbol、code、startDate、endDate 从本地系统获取股票的rsi数据。输入必须是包含 symbol (字符串类型)、code (字符串类型)、startDate(YYYY-MM-DD HH:MM:SS字符串类型)、endDate(YYYY-MM-DD HH:MM:SS字符串类型) 的对象。',
       },
     );
   }
