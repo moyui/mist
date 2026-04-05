@@ -1,6 +1,7 @@
-import { IsNotEmpty, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsEnum, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Period, DataSource } from '@app/shared-data';
+import { BEIJING_DATE_REGEX } from '@app/timezone';
 
 export class CollectDto {
   @ApiProperty({ description: '证券代码', example: '000001' })
@@ -21,18 +22,22 @@ export class CollectDto {
 
   @ApiProperty({
     description: '开始时间',
-    example: '2026-03-30T09:30:00+08:00',
+    example: '2026-03-30 09:30:00',
   })
   @IsNotEmpty({ message: '开始时间不能为空' })
-  @IsDateString({ strict: true })
+  @Matches(BEIJING_DATE_REGEX, {
+    message: '开始时间格式必须是 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS',
+  })
   startDate!: string;
 
   @ApiProperty({
     description: '结束时间',
-    example: '2026-03-30T11:30:00+08:00',
+    example: '2026-03-30 11:30:00',
   })
   @IsNotEmpty({ message: '结束时间不能为空' })
-  @IsDateString({ strict: true })
+  @Matches(BEIJING_DATE_REGEX, {
+    message: '结束时间格式必须是 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS',
+  })
   endDate!: string;
 
   @ApiPropertyOptional({
