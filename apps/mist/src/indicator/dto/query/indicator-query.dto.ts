@@ -1,5 +1,6 @@
 import { DataSource, Period } from '@app/shared-data';
-import { IsEnum, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, Matches } from 'class-validator';
+import { BEIJING_DATE_REGEX } from '@app/timezone';
 
 /**
  * Unified query DTO for all indicator endpoints
@@ -23,24 +24,18 @@ export class IndicatorQueryDto {
   period!: Period;
 
   @IsNotEmpty({
-    message: '开始日期不能为空，格式为13位时间戳',
+    message: '开始日期不能为空',
   })
-  @IsNumber(
-    {},
-    {
-      message: '开始日期必须是13位时间戳数字',
-    },
-  )
-  startDate!: number;
+  @Matches(BEIJING_DATE_REGEX, {
+    message: '开始日期格式必须是 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS',
+  })
+  startDate!: string;
 
   @IsNotEmpty({
-    message: '结束日期不能为空，格式为13位时间戳',
+    message: '结束日期不能为空',
   })
-  @IsNumber(
-    {},
-    {
-      message: '结束日期必须是13位时间戳数字',
-    },
-  )
-  endDate!: number;
+  @Matches(BEIJING_DATE_REGEX, {
+    message: '结束日期格式必须是 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS',
+  })
+  endDate!: string;
 }

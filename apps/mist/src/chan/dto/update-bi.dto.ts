@@ -1,4 +1,5 @@
-import { IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, Matches } from 'class-validator';
+import { BEIJING_DATE_REGEX } from '@app/timezone';
 
 export class UpdateBiDto {
   @IsNotEmpty({
@@ -14,12 +15,18 @@ export class UpdateBiDto {
   @IsNotEmpty({
     message: '开始时间不能为空',
   })
-  startDate!: Date;
+  @Matches(BEIJING_DATE_REGEX, {
+    message: '开始时间格式必须是 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS',
+  })
+  startDate!: string;
 
   @IsNotEmpty({
     message: '结束时间不能为空',
   })
-  endDate!: Date;
+  @Matches(BEIJING_DATE_REGEX, {
+    message: '结束时间格式必须是 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS',
+  })
+  endDate!: string;
 
   period!: number;
 }
