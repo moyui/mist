@@ -66,8 +66,8 @@ export class KCandleAggregator {
     if (existing && existing.timestamp.getTime() === candleTime.getTime()) {
       // Same period: update existing candle
       candle = existing;
-      candle.high = Math.max(candle.high, snapshot.high);
-      candle.low = Math.min(candle.low, snapshot.low);
+      candle.high = Math.max(candle.high, snapshot.now);
+      candle.low = Math.min(candle.low, snapshot.now);
       candle.close = snapshot.now;
       candle.volume += snapshot.volume;
       candle.amount += snapshot.amount;
@@ -76,8 +76,8 @@ export class KCandleAggregator {
       candle = {
         timestamp: candleTime,
         open: snapshot.open,
-        high: snapshot.high,
-        low: snapshot.low,
+        high: snapshot.now,
+        low: snapshot.now,
         close: snapshot.now,
         volume: snapshot.volume,
         amount: snapshot.amount,

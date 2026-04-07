@@ -22,7 +22,7 @@ import { TdxSource } from '../sources/tdx/tdx-source.service';
 
 @Injectable()
 export class CollectorService {
-  private sources: Map<DataSource, ISourceFetcher> = new Map();
+  private sources: Map<DataSource, ISourceFetcher<any>> = new Map();
 
   constructor(
     @InjectRepository(Security)

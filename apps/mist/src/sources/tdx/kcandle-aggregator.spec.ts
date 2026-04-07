@@ -17,7 +17,9 @@ describe('KCandleAggregator', () => {
     lastClose: 1745,
     volume,
     amount: volume * price,
-    timestamp: new Date(`2024-01-02T${time}:00Z`),
+    timestamp: new Date(
+      `2024-01-02T${time}${time.includes(':') && time.split(':').length === 3 ? '' : ':00'}Z`,
+    ),
   });
 
   beforeEach(() => {
