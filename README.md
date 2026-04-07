@@ -263,6 +263,11 @@ pnpm run start:prod
 - 灵活的数据采集配置
 - 自动数据源切换和故障转移
 
+**WebSocket 实时行情**：
+- 通过 `ws` 库作为客户端连接 mist-datasource WebSocket 服务
+- 支持实时行情快照推送和 K 线数据流聚合
+- 自动重连和心跳保活机制
+
 **API 文档**：http://localhost:8001/api-docs
 
 ### AI 智能体系统 (saya)
@@ -542,6 +547,7 @@ docker build -f Dockerfile.aktools -t mist-aktools:latest .
 | AI/LLM | LangChain/LangGraph, DeepSeek |
 | 技术分析 | node-talib (164+ 函数) |
 | 数据库 | MySQL with TypeORM |
+| WebSocket 客户端 | ws (连接 mist-datasource 实时行情) |
 | MCP Server | @modelcontextprotocol/sdk, @rekog/mcp-nest |
 | 调度器 | @nestjs/schedule |
 | 时区 | date-fns-tz |
