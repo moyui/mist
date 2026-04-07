@@ -71,6 +71,12 @@ export const mistEnvSchema = commonEnvSchema.append({
     .valid('ef', 'tdx', 'mqmt', 'EAST_MONEY', 'TDX', 'MINI_QMT')
     .default('ef')
     .description('Default data source for queries (enum value or key)'),
+
+  // TDX data source configuration
+  TDX_BASE_URL: Joi.string()
+    .uri()
+    .optional()
+    .description('TDX data source base URL (mist-datasource service)'),
 });
 
 /**
@@ -78,6 +84,12 @@ export const mistEnvSchema = commonEnvSchema.append({
  */
 export const chanEnvSchema = commonEnvSchema.append({
   PORT: Joi.number().port().default(8008),
+
+  // TDX data source configuration
+  TDX_BASE_URL: Joi.string()
+    .uri()
+    .optional()
+    .description('TDX data source base URL (mist-datasource service)'),
 });
 
 /**
