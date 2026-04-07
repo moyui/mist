@@ -3,8 +3,8 @@ import {
   ISourceFetcher,
   KFetchParams,
   KData,
-  EfExtension,
 } from '../source-fetcher.interface';
+import { EfExtension, EfMinuteVo, EfDailyVo } from './types';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 import {
@@ -16,36 +16,6 @@ import {
 } from '@app/shared-data';
 import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { format } from 'date-fns';
-
-/**
- * 东方财富 - 分钟级K线接口返回结构 (index_zh_a_hist_min_em)
- */
-interface SecurityPeriodVo {
-  时间: string;
-  开盘: number;
-  收盘: number;
-  最高: number;
-  最低: number;
-  涨跌幅?: number;
-  涨跌额?: number;
-  成交量: number;
-  成交额: number;
-  振幅?: number;
-  换手率?: number;
-}
-
-/**
- * 东方财富 - 日线K线接口返回结构 (stock_zh_index_daily_em)
- */
-interface SecurityDailyVo {
-  date: string;
-  open: number;
-  close: number;
-  high: number;
-  low: number;
-  volume: number;
-  amount: number;
-}
 
 @Injectable()
 export class EastMoneySource implements ISourceFetcher {
@@ -87,7 +57,7 @@ export class EastMoneySource implements ISourceFetcher {
       DataSource.EAST_MONEY,
     );
 
-    const response = await this.axios.get<SecurityPeriodVo[]>(
+    const response = await this.axios.get<EfMinuteVo[]>(
       '/api/public/index_zh_a_hist_min_em',
       {
         params: {
@@ -159,7 +129,7 @@ export class EastMoneySource implements ISourceFetcher {
     endDate: Date,
     period: Period,
   ): Promise<KData[]> {
-    const response = await this.axios.get<SecurityDailyVo[]>(
+    const response = await this.axios.get<EfDailyVo[]>(
       '/api/public/stock_zh_index_daily_em',
       {
         params: {
