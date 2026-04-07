@@ -34,7 +34,11 @@ TdxSource implements ITdxSourceFetcher                  (HTTP implementation)
 
 ### CollectorService Compatibility
 
-`CollectorService` stores `Map<DataSource, ISourceFetcher<any>>` and chains `fetchK` → `saveK` without inspecting intermediate data. Since `fetchK` output is passed directly to `saveK` input (both use the same generic `TRaw`), the CollectorService remains type-agnostic and works with any source regardless of its intermediate type.
+```typescript
+type SourceData = KData | TdxResponse;  // 新增数据源时在此扩展
+```
+
+`CollectorService` stores `Map<DataSource, ISourceFetcher<SourceData>>` and chains `fetchK` → `saveK` without inspecting intermediate data. Since `fetchK` output is passed directly to `saveK` input (both use the same generic `TRaw`), the CollectorService remains type-safe without using `any`.
 
 ## Type Definitions
 
@@ -240,23 +244,26 @@ apps/mist/src/sources/
 
 ### Module Registration
 
-```typescript
-const ITDX_SOURCE_FETCHER = Symbol('ITdxSourceFetcher');
+`CollectorService` directly injects source classes by name (same as existing pattern with `EastMoneySource`):
 
-TdxModule
-  imports: [TypeOrmModule.forFeature([K, KExtensionTdx, Security, SecuritySourceConfig])]
-  providers: [
-    { provide: ITDX_SOURCE_FETCHER, useClass: TdxSource },
-    TdxWebSocketService,
-    KCandleAggregator,
-  ]
-  exports: [
-    { provide: ITDX_SOURCE_FETCHER, useClass: TdxSource },
-    TdxWebSocketService,
-  ]
+```typescript
+// collector.module.ts — add TdxSource to providers
+providers: [CollectorService, EastMoneySource, TdxSource]
+
+// collector.service.ts — direct class injection
+constructor(
+  private readonly eastMoneySource: EastMoneySource,
+  private readonly tdxSource: TdxSource,
+)
 ```
 
-`KExtensionTdx` added to `TypeOrmModule.forFeature()` for the TDX module. Other modules inject `ITDX_SOURCE_FETCHER` token for K-line capabilities, `TdxWebSocketService` for real-time capabilities.
+`CollectorModule` adds `KExtensionTdx` to its `TypeOrmModule.forFeature()` array alongside existing entities:
+
+```typescript
+TypeOrmModule.forFeature([K, KExtensionEf, KExtensionTdx, Security, SecuritySourceConfig])
+```
+
+This is needed because `TdxSource.saveK()` writes to `KExtensionTdx` entity and requires the TypeORM repository to be available.
 
 ## Migration Plan
 
@@ -277,7 +284,7 @@ Directory restructuring is done in a single PR with these steps:
 
 ## Key Decisions
 
-1. **Generic interface**: `ISourceFetcher<TRaw>` allows each source to use its own intermediate data type. East Money keeps `KData`, TDX uses `TdxResponse`. Conversion happens only at `saveK` time. `CollectorService` uses `ISourceFetcher<any>` in its map and remains type-agnostic since it chains `fetchK` → `saveK` without inspecting data.
+1. **Generic interface**: `ISourceFetcher<TRaw>` allows each source to use its own intermediate data type. East Money keeps `KData`, TDX uses `TdxResponse`. Conversion happens only at `saveK` time. `CollectorService` uses union type `SourceData = KData | TdxResponse` in its map, type-safe without `any`.
 
 2. **WebSocketCollectionStrategy delegation**: `TdxWebSocketService` replaces the stub `WebSocketCollectionStrategy`. The strategy delegates `start()`/`stop()` to `TdxWebSocketService`, maintaining `CollectionStrategyRegistry` compatibility.
 
