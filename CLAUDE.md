@@ -157,3 +157,4 @@ All HTTP endpoints wrap responses in:
 - Deep integration tests: `test-integration/deep-test/`
 - Config validation uses Joi schemas from `@app/config`
 - Husky + lint-staged pre-commit hooks run ESLint + Prettier on `*.ts` files
+- Source type naming: `{Source}{Purpose}` — prefix by data source (`Ef`/`Tdx`/`Mqmt`), suffix by usage: `Extension` (DB fields), `Response` (HTTP API response), `Snapshot` (WebSocket data). Examples: `EfExtension`, `EfMinuteResponse`, `TdxExtension`, `TdxResponse`, `TdxSnapshot`
