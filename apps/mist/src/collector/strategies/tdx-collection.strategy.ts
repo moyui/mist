@@ -1,0 +1,112 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Security, Period, DataSource } from '@app/shared-data';
+import { CollectorService } from '../collector.service';
+import {
+  IDataCollectionStrategy,
+  CollectionMode,
+} from './data-collection.strategy.interface';
+import { KBoundaryCalculator } from '@app/utils';
+import { TimezoneService } from '@app/timezone';
+
+@Injectable()
+export class TdxCollectionStrategy implements IDataCollectionStrategy {
+  readonly source = DataSource.TDX;
+  readonly mode: CollectionMode = 'polling';
+  private readonly logger = new Logger(TdxCollectionStrategy.name);
+  private readonly calculator = new KBoundaryCalculator();
+
+  constructor(
+    @InjectRepository(Security)
+    private readonly securityRepository: Repository<Security>,
+    private readonly collectorService: CollectorService,
+    private readonly timezoneService: TimezoneService,
+  ) {}
+
+  /**
+   * Manual collection: collect data for a user-specified time range.
+   * Passes startDate/endDate directly to CollectorService.
+   */
+  async collectForSecurity(
+    security: Security,
+    period: Period,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<number> {
+    try {
+      const count = await this.collectorService.collectKForSource(
+        security.code,
+        period,
+        startDate,
+        endDate,
+        this.source,
+      );
+      this.logger.log(
+        `Manual collection completed for ${security.code} ${period}: ${count} records`,
+      );
+      return count;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(
+        `Failed to collect ${security.code} ${period}: ${err.message}`,
+        err.stack,
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Scheduled collection: collect the previous completed K candle.
+   * Uses KBoundaryCalculator to determine the exact candle time boundaries.
+   */
+  async collectScheduledCandle(
+    security: Security,
+    period: Period,
+    triggerTime?: Date,
+  ): Promise<void> {
+    const time = triggerTime || this.timezoneService.getCurrentBeijingTime();
+    const boundary = this.calculator.calculate(period, time);
+
+    if (!boundary) {
+      this.logger.debug(
+        `Skipping scheduled collection for ${security.code} ${period} at ${time.toISOString()} (outside trading session)`,
+      );
+      return;
+    }
+
+    try {
+      await this.collectorService.collectKForSource(
+        security.code,
+        period,
+        boundary.startTime,
+        boundary.endTime,
+        this.source,
+      );
+      this.logger.log(
+        `Scheduled collection completed for ${security.code} ${period} from ${boundary.startTime.toISOString()} to ${boundary.endTime.toISOString()}`,
+      );
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(
+        `Scheduled collection failed for ${security.code} ${period}: ${err.message}`,
+        err.stack,
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Start scheduled collection for all active securities.
+   */
+  async start(): Promise<void> {
+    this.logger.log('Starting TDX collection strategy');
+  }
+
+  /**
+   * Stop scheduled collection.
+   */
+  async stop(): Promise<void> {
+    this.logger.log('Stopping TDX collection strategy');
+  }
+}

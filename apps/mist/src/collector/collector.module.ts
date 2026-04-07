@@ -10,6 +10,7 @@ import {
 import { CollectorService } from './collector.service';
 import { CollectorController } from './collector.controller';
 import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.strategy';
+import { TdxCollectionStrategy } from './strategies/tdx-collection.strategy';
 import { EastMoneySource } from '../sources/east-money/east-money-source.service';
 import { TdxSource } from '../sources/tdx/tdx-source.service';
 import { TdxWebSocketService } from '../sources/tdx/tdx-websocket.service';
@@ -38,18 +39,26 @@ import {
   providers: [
     CollectorService,
     EastMoneyCollectionStrategy,
+    TdxCollectionStrategy,
     EastMoneySource,
     TdxSource,
     KCandleAggregator,
     TdxWebSocketService,
     {
       provide: COLLECTION_STRATEGIES,
-      useFactory: (eastMoney: EastMoneyCollectionStrategy) => [eastMoney],
-      inject: [EastMoneyCollectionStrategy],
+      useFactory: (
+        eastMoney: EastMoneyCollectionStrategy,
+        tdx: TdxCollectionStrategy,
+      ) => [eastMoney, tdx],
+      inject: [EastMoneyCollectionStrategy, TdxCollectionStrategy],
     },
     CollectionStrategyRegistry,
   ],
   controllers: [CollectorController],
-  exports: [CollectorService, EastMoneyCollectionStrategy],
+  exports: [
+    CollectorService,
+    EastMoneyCollectionStrategy,
+    TdxCollectionStrategy,
+  ],
 })
 export class CollectorModule {}
