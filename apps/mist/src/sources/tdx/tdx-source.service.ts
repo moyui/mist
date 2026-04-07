@@ -3,7 +3,7 @@ import {
   ISourceFetcher,
   KFetchParams,
   KData,
-} from './source-fetcher.interface';
+} from '../source-fetcher.interface';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 import { DataSource, Period, Security } from '@app/shared-data';

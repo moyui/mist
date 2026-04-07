@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TdxSource } from './tdx.source';
+import { TdxSource } from './tdx-source.service';
 import { AxiosInstance } from 'axios';
-import { KFetchParams } from './source-fetcher.interface';
+import { KFetchParams } from '../source-fetcher.interface';
 import { Period, Security } from '@app/shared-data';
 import { UtilsService, PeriodMappingService } from '@app/utils';
 

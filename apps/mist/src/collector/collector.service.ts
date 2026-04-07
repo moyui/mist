@@ -12,13 +12,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { EastMoneySource } from '../sources/east-money.source';
+import { EastMoneySource } from '../sources/east-money/east-money-source.service';
 import {
   ISourceFetcher,
   KData,
   KFetchParams,
 } from '../sources/source-fetcher.interface';
-import { TdxSource } from '../sources/tdx.source';
+import { TdxSource } from '../sources/tdx/tdx-source.service';
 
 @Injectable()
 export class CollectorService {

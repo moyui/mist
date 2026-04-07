@@ -31,9 +31,9 @@ export interface MqmtExtension {
   fullCode?: string;
 }
 
-export interface ISourceFetcher {
-  fetchK(params: KFetchParams): Promise<KData[]>;
-  saveK(data: KData[], security: Security, period: Period): Promise<void>;
+export interface ISourceFetcher<TRaw = KData> {
+  fetchK(params: KFetchParams): Promise<TRaw[]>;
+  saveK(data: TRaw[], security: Security, period: Period): Promise<void>;
   isSupportedPeriod(period: Period): boolean;
 }
 

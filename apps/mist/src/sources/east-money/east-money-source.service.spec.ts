@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EastMoneySource } from './east-money.source';
+import { EastMoneySource } from './east-money-source.service';
 import { AxiosInstance } from 'axios';
-import { KFetchParams, KData, EfExtension } from './source-fetcher.interface';
+import { KFetchParams, KData, EfExtension } from '../source-fetcher.interface';
 import {
   Period,
   Security,
