@@ -61,6 +61,7 @@ export class WebSocketCollectionStrategy implements IDataCollectionStrategy {
             close: candle.close,
             volume: candle.volume,
             amount: candle.amount || 0,
+            period,
           };
 
           await this.collectorService.saveRawKData(
