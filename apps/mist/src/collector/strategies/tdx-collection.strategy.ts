@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Security, Period, DataSource } from '@app/shared-data';
+import { Security, SecurityStatus, Period, DataSource } from '@app/shared-data';
 import { CollectorService } from '../collector.service';
 import {
   IDataCollectionStrategy,
@@ -16,6 +16,9 @@ export class TdxCollectionStrategy implements IDataCollectionStrategy {
   readonly mode: CollectionMode = 'polling';
   private readonly logger = new Logger(TdxCollectionStrategy.name);
   private readonly calculator = new KBoundaryCalculator();
+
+  // Note: Both this class and CollectorService inject Security repository.
+  // This is acceptable because TypeORM provides singleton repos within forFeature scope.
 
   constructor(
     @InjectRepository(Security)
@@ -89,10 +92,54 @@ export class TdxCollectionStrategy implements IDataCollectionStrategy {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(
-        `Scheduled collection failed for ${security.code} ${period}: ${err.message}`,
+        `Failed scheduled collection for ${security.code} ${period}: ${err.message}`,
         err.stack,
       );
       throw err;
+    }
+  }
+
+  /**
+   * Batch scheduled collection for all active securities.
+   */
+  async collectForAllSecurities(
+    period: Period,
+    triggerTime?: Date,
+  ): Promise<void> {
+    const activeSecurities = await this.securityRepository.find({
+      where: { status: SecurityStatus.ACTIVE },
+    });
+
+    if (activeSecurities.length === 0) {
+      this.logger.debug('No active securities found for collection');
+      return;
+    }
+
+    this.logger.log(
+      `Scheduled collection for ${period}: ${activeSecurities.length} securities`,
+    );
+
+    const results = await Promise.allSettled(
+      activeSecurities.map((security) =>
+        this.collectScheduledCandle(security, period, triggerTime),
+      ),
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+
+    this.logger.log(
+      `Scheduled collection completed for ${period}: ${succeeded} succeeded, ${failed} failed`,
+    );
+
+    if (failed > 0) {
+      results
+        .filter((r) => r.status === 'rejected')
+        .forEach((r) => {
+          this.logger.error(
+            `Collection failed: ${(r as PromiseRejectedResult).reason?.message || 'Unknown error'}`,
+          );
+        });
     }
   }
 

@@ -58,6 +58,8 @@ export class KCandleAggregator {
         period,
         ...existing,
       } as CompletedCandle);
+      // Remove old candle to prevent memory leak
+      this.candles.delete(key);
     }
 
     // Create or update candle
