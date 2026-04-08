@@ -20,24 +20,32 @@ type CandleCompleteCallback = (
 @Injectable()
 export class TdxWebSocketService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TdxWebSocketService.name);
+  private readonly baseUrl: string;
+  private readonly clientId: string;
   private readonly wsUrl: string;
   private ws: WebSocket | null = null;
   private readonly subscriptions = new Set<string>();
   private snapshotCallbacks: SnapshotCallback[] = [];
   private candleCallbacks: CandleCompleteCallback[] = [];
   private reconnectTimeout: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
   private readonly reconnectDelay = 5000;
+  private readonly heartbeatIntervalMs = 30000;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly aggregator: KCandleAggregator,
   ) {
-    const baseUrl =
+    this.baseUrl =
       this.configService.get<string>('TDX_BASE_URL') || 'http://127.0.0.1:9001';
-    // Convert HTTP URL to WS URL
-    this.wsUrl = baseUrl
+    this.clientId =
+      this.configService.get<string>('TDX_WS_CLIENT_ID') || 'mist-backend-tdx';
+
+    // Convert HTTP URL to WS URL and build WebSocket path
+    const wsBaseUrl = this.baseUrl
       .replace('http://', 'ws://')
       .replace('https://', 'wss://');
+    this.wsUrl = `${wsBaseUrl}/ws/quote/${this.clientId}`;
 
     // Initialize aggregator callback to bridge candles to candleCallbacks
     this.aggregator.on('candle', (candle: CompletedCandle) => {
@@ -78,6 +86,17 @@ export class TdxWebSocketService implements OnModuleInit, OnModuleDestroy {
     return 'disconnected';
   }
 
+  /**
+   * Get WebSocket connection info for debugging
+   */
+  getConnectionInfo(): { url: string; clientId: string; status: string } {
+    return {
+      url: this.wsUrl,
+      clientId: this.clientId,
+      status: this.getConnectionStatus(),
+    };
+  }
+
   private connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       return;
@@ -86,7 +105,7 @@ export class TdxWebSocketService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Connecting to TDX WebSocket: ${this.wsUrl}`);
 
     try {
-      this.ws = new WebSocket(`${this.wsUrl}/ws/quote/mist-backend`);
+      this.ws = new WebSocket(this.wsUrl);
 
       this.ws.on('open', () => {
         this.logger.log('TDX WebSocket connected');
@@ -115,6 +134,7 @@ export class TdxWebSocketService implements OnModuleInit, OnModuleDestroy {
 
   private disconnect(): void {
     this.clearReconnectTimeout();
+    this.clearHeartbeat();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -202,14 +222,24 @@ export class TdxWebSocketService implements OnModuleInit, OnModuleDestroy {
   }
 
   private startHeartbeat(): void {
+    // Clear existing interval if any
+    this.clearHeartbeat();
+
     // Send ping every 30 seconds
-    const interval = setInterval(() => {
+    this.heartbeatInterval = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ type: 'ping' }));
       } else {
-        clearInterval(interval);
+        this.clearHeartbeat();
       }
-    }, 30000);
+    }, this.heartbeatIntervalMs);
+  }
+
+  private clearHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 
   private scheduleReconnect(): void {

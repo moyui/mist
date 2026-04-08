@@ -77,6 +77,16 @@ export const mistEnvSchema = commonEnvSchema.append({
     .uri()
     .optional()
     .description('TDX data source base URL (mist-datasource service)'),
+
+  // WebSocket client identification for multi-connection support
+  // Each data source has its own WebSocket endpoint and client ID
+  TDX_WS_CLIENT_ID: Joi.string()
+    .default('mist-backend-tdx')
+    .description('WebSocket client ID for TDX data source connection'),
+
+  QMT_WS_CLIENT_ID: Joi.string()
+    .default('mist-backend-qmt')
+    .description('WebSocket client ID for miniQMT data source connection'),
 });
 
 /**
