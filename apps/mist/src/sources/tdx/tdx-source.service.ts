@@ -1,7 +1,7 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios, { AxiosInstance } from 'axios';
-import { PeriodMappingService } from '@app/utils';
+import { AxiosInstance } from 'axios';
+import { UtilsService, PeriodMappingService } from '@app/utils';
 import {
   DataSource,
   Period,
@@ -22,12 +22,16 @@ export class TdxSource implements ITdxSourceFetcher {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly utilsService: UtilsService,
     private readonly periodMappingService: PeriodMappingService,
     private readonly typeOrmDataSource: TypeOrmDataSource,
   ) {
     this.baseUrl =
       this.configService.get<string>('TDX_BASE_URL') || 'http://127.0.0.1:9001';
-    this.axios = this.createAxiosInstance();
+    this.axios = this.utilsService.createAxiosInstance({
+      baseURL: this.baseUrl,
+      timeout: 30000,
+    });
   }
 
   async fetchK(params: {
@@ -295,18 +299,5 @@ export class TdxSource implements ITdxSourceFetcher {
       amount: Number(data.Amount),
       timestamp: new Date(),
     };
-  }
-
-  /**
-   * Create axios instance
-   */
-  private createAxiosInstance(): AxiosInstance {
-    return axios.create({
-      baseURL: this.baseUrl,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
   }
 }

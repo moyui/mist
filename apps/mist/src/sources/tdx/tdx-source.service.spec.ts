@@ -1,13 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TdxSource } from './tdx-source.service';
 import { ConfigService } from '@nestjs/config';
+import { AxiosInstance } from 'axios';
 import { DataSource } from 'typeorm';
 import {
   Period,
   Security,
   DataSource as AppDataSource,
 } from '@app/shared-data';
-import { PeriodMappingService } from '@app/utils';
+import { UtilsService, PeriodMappingService } from '@app/utils';
 
 describe('TdxSource', () => {
   let service: TdxSource;
@@ -16,6 +17,10 @@ describe('TdxSource', () => {
 
   beforeEach(async () => {
     mockAxiosGet = jest.fn();
+
+    const mockAxiosInstance = {
+      get: mockAxiosGet,
+    } as unknown as jest.Mocked<AxiosInstance>;
 
     mockTypeOrmDataSource = {
       transaction: jest.fn(),
@@ -32,6 +37,12 @@ describe('TdxSource', () => {
               return undefined;
             }),
           },
+        },
+        {
+          provide: UtilsService,
+          useFactory: () => ({
+            createAxiosInstance: jest.fn(() => mockAxiosInstance),
+          }),
         },
         {
           provide: PeriodMappingService,
