@@ -194,26 +194,6 @@ jobs:
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
             org.opencontainers.image.revision=${{ github.sha }}
 
-      - name: Build and push AKTools Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.aktools
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/aktools:latest
-            ghcr.io/${{ github.repository }}/aktools:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository }}/aktools:${{ steps.version.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          labels: |
-            org.opencontainers.image.title=Mist AKTools
-            org.opencontainers.image.description=AKTools 数据源服务
-            org.opencontainers.image.version=${{ steps.version.outputs.version }}
-            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
-            org.opencontainers.image.revision=${{ github.sha }}
-
       - name: Release Summary
         run: |
           echo "### 🎉 Mist ${{ steps.version.outputs.version }} 发布成功！" >> $GITHUB_STEP_SUMMARY
@@ -224,15 +204,12 @@ jobs:
           echo "|------|------|----------|" >> $GITHUB_STEP_SUMMARY
           echo "| **主应用** | latest | \`ghcr.io/moyui/mist:latest\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **主应用** | ${{ steps.version.outputs.version }} | \`ghcr.io/moyui/mist:${{ steps.version.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **AKTools** | latest | \`ghcr.io/moyui/mist/aktools:latest\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **AKTools** | ${{ steps.version.outputs.version }} | \`ghcr.io/moyui/mist/aktools:${{ steps.version.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### 🚀 使用方法" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "# 1. 拉取镜像" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ghcr.io/moyui/mist:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/moyui/mist/aktools:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# 2. 使用 docker-compose 启动" >> $GITHUB_STEP_SUMMARY
           echo "VERSION=${{ steps.version.outputs.version }} docker-compose up -d" >> $GITHUB_STEP_SUMMARY

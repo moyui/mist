@@ -18,22 +18,9 @@
 
 ### 数据采集与存储
 
-感谢 [AKTools](https://aktools.akfamily.xyz/#fastapi) 目前尝试使用aktools来本地启动金融api，后续会自己替换
-采集：axios请求本地http接口
-收集：mysql存储格式化数据
-
-附：python使用说明
-
-- 安装虚拟环境
-  python3 -m venv python-env
-- 激活虚拟环境
-  source python-env/bin/activate
-- 退出虚拟环境
-  deactivate
-- 安装AKTools
-  python3 -m pip install aktools
-- 启动
-  python3 -m aktools
+通过 [mist-datasource](https://github.com/moyui/mist-datasource) 桥接 TDX/QMT SDK 提供 HTTP/WebSocket 数据服务。
+采集：axios 请求 mist-datasource HTTP 接口
+收集：mysql 存储格式化数据
 
 数据库建立语句 CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
 
@@ -149,8 +136,6 @@ v        v       v       v         v
 通过微信告警？
 
 ### 踩坑
-
-aktools不会自动提示端口被占用，从而导致请求失败
 
 使用 date-fns date-fns-tz插件，需要在对应的位置配置当地服务器时区
 

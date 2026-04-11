@@ -14,9 +14,8 @@
 ## 前置要求
 
 1. MySQL 服务运行中
-2. Python 3.8+ 已安装
-3. AKTools 已安装（`python3 -m pip install aktools`）
-4. Node.js 18+ 和 pnpm
+2. mist-datasource 服务运行中（TDX 数据源）
+3. Node.js 18+ 和 pnpm
 
 ## 使用方法
 
@@ -68,19 +67,9 @@ const TEST_CONFIG = {
 
 ## 故障排除
 
-### AKTools 启动失败
-
-确保 Python 虚拟环境已激活并安装了 AKTools：
-
-```bash
-python3 -m venv python-env
-source python-env/bin/activate  # Windows: python-env\Scripts\activate
-python3 -m pip install aktools
-```
-
 ### 端口被占用
 
-如果 8001、8009 或 8080 端口被占用，测试会自动检测并提示。请先停止占用这些端口的进程。
+如果 8001 或 8009 端口被占用，测试会自动检测并提示。请先停止占用这些端口的进程。
 
 ### MySQL 连接失败
 

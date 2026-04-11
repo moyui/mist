@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Mist** is a stock market analysis system for A-shares (沪深两市). NestJS monorepo with 5 apps and 6 shared libs using pnpm workspaces. Uses MySQL + TypeORM, AKTools for data, and LangGraph for AI agents.
+**Mist** is a stock market analysis system for A-shares (沪深两市). NestJS monorepo with 5 apps and 6 shared libs using pnpm workspaces. Uses MySQL + TypeORM, TDX for data, and LangGraph for AI agents.
 
 ## Commands
 
@@ -116,8 +116,8 @@ Apps reuse modules from `apps/mist/src/` via direct imports:
 
 Three sources with enum values in `DataSource` (ef/tdx/mqmt). Configured via `DEFAULT_DATA_SOURCE` env var.
 
-- **ef** (East Money) - default for mist app
-- **tdx** (TongDaXin) - default for chan app
+- **ef** (East Money) - alternative source
+- **tdx** (TongDaXin) - default for mist app
 - **mqmt** (MaQiMaTe) - alternative source
 
 All data query endpoints accept optional `source` parameter. `DataSourceService.select()` resolves the effective source.

@@ -84,11 +84,11 @@ docker-compose ps
 ┌──────────────────────────────────────────────────────┐
 │              Docker Network: mist-network             │
 │                                                      │
-│  ┌────────────┐      ┌────────────┐                 │
-│  │   mist     │─────▶│  aktools   │                 │
-│  │  (8001)    │      │   (8080)   │                 │
-│  │  主应用    │      │   数据源   │                 │
-│  └────────────┘      └────────────┘                 │
+│  ┌────────────┐                                     │
+│  │   mist     │                                     │
+│  │  (8001)    │                                     │
+│  │  主应用    │                                     │
+│  └────────────┘                                     │
 │       │                                              │
 │  ┌────────────┐      ┌────────────┐                 │
 │  │ mcp-server │      │   chan     │                 │
@@ -125,7 +125,6 @@ NODE_ENV=production              # 运行环境
 | **mist** | 8001 | 主应用 API |
 | **mist** | 8008 | Chan Theory 测试入口 |
 | **mcp-server** | 8009 | MCP Server |
-| **aktools** | 8080 | AKTools 数据源服务 |
 
 #### 版本管理
 
@@ -148,7 +147,6 @@ VERSION=v1.1.0 docker-compose up -d
 docker-compose ps
 
 # 检查服务健康状态
-curl http://localhost:8080/docs      # AKTools
 curl http://localhost:8001/app/hello # 主应用
 ```
 
@@ -173,7 +171,6 @@ docker-compose logs -f --tail=100
 
 - **Node.js** 20+
 - **MySQL** 8.0+
-- **Python** 3.12+（用于 AKTools 和 mist-datasource）
 - **pnpm** 包管理器
 
 #### 安装依赖
@@ -200,24 +197,6 @@ cp apps/saya/src/.env.example apps/saya/src/.env
 ```sql
 CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
 ```
-
-#### 启动 AKTools 数据源
-
-AKTools 是用于获取股票数据的 Python FastAPI 服务。
-
-```bash
-# 创建 Python 虚拟环境
-python3 -m venv python-env
-source python-env/bin/activate  # Windows: python-env\Scripts\activate
-
-# 安装 AKTools
-pip install aktools
-
-# 启动服务（默认端口 8080）
-python -m aktools
-```
-
-**注意**：AKTools 不会在端口被占用时发出警告，请确保端口 8080 可用。
 
 #### 运行应用
 
@@ -523,7 +502,6 @@ docker-compose up mcp-server
 - **镜像仓库**：`ghcr.io/moyui/mist`
 - **构建内容**：
   - 主应用镜像：`ghcr.io/moyui/mist`（Node.js 24 + NestJS）
-  - AKTools 镜像：`ghcr.io/moyui/mist/aktools`（Python 3.13）
 
 ### 本地构建镜像
 
@@ -532,9 +510,6 @@ cd mist
 
 # 构建主应用镜像
 docker build -t mist:latest .
-
-# 构建 AKTools 镜像
-docker build -f Dockerfile.aktools -t mist-aktools:latest .
 ```
 
 ---
@@ -553,31 +528,12 @@ docker build -f Dockerfile.aktools -t mist-aktools:latest .
 | 时区 | date-fns-tz |
 | 数据验证 | zod, class-validator |
 | 前端 | Next.js 16, React 19, ECharts 6 |
-| 数据源桥接 | FastAPI, Python 3.12+ |
 
 ---
 
 ## 🐛 故障排查
 
 ### Docker 部署问题
-
-**AKTools 无法启动**
-```bash
-# 查看日志
-docker-compose logs aktools
-
-# 手动测试 AKTools
-docker run --rm ghcr.io/moyui/mist/aktools:latest
-```
-
-**主应用无法连接 AKTools**
-```bash
-# 检查网络
-docker network inspect mist_mist-network
-
-# 测试容器间连接
-docker exec mist-backend curl -f http://aktools:8080/docs
-```
 
 **MySQL 连接失败**
 ```bash
@@ -596,7 +552,6 @@ docker exec mist-backend nc -zv host.docker.internal 3306
 lsof -i :8001
 lsof -i :8008
 lsof -i :8009
-lsof -i :8080
 
 # 停止进程
 kill -9 <PID>
@@ -614,15 +569,6 @@ SHOW DATABASES LIKE 'mist';
 CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
 ```
 
-**AKTools 启动失败**
-```bash
-# 重新安装 AKTools
-python3 -m pip install aktools --force-reinstall
-
-# 手动测试
-python3 -m aktools
-```
-
 ### 常用命令
 
 ```bash
@@ -631,12 +577,10 @@ docker-compose images
 
 # 只重启单个服务
 docker-compose restart mist
-docker-compose restart aktools
 docker-compose restart mcp-server
 
 # 进入容器调试
 docker exec -it mist-backend sh
-docker exec -it mist-aktools sh
 docker exec -it mist-mcp-server sh
 
 # 查看日志

@@ -1,8 +1,9 @@
 #!/bin/sh
 set -e
 
-# Set environment variables
-export PATH="/app/python-venv/bin:$PATH"
+echo "🚀 Starting Mist Backend..."
+echo "📦 Connecting to MySQL at ${mysql_server_host}:${mysql_server_port}"
+echo "🎯 Node.js environment: ${NODE_ENV:-development}"
 
-# Execute startup script
-exec ./docker-start.sh "$@"
+# Start application (foreground)
+exec "$@"

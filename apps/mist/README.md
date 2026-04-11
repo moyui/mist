@@ -14,7 +14,6 @@ Main stock market analysis application for the Mist system. Provides technical i
 - Node.js (v18+)
 - MySQL database
 - Redis (optional, for caching)
-- AKTools local server for stock data (see [AKTools Setup](#aktools-setup))
 
 ## Installation
 
@@ -54,26 +53,6 @@ CREATE DATABASE mist DEFAULT CHARACTER SET utf8mb4;
 ```
 
 Tables will be auto-created on first run (development mode only).
-
-## AKTools Setup
-
-AKTools is required for fetching stock market data.
-
-```bash
-# Create Python virtual environment
-python3 -m venv python-env
-
-# Activate the environment
-source python-env/bin/activate  # On Windows: python-env\Scripts\activate
-
-# Install AKTools
-python3 -m pip install aktools
-
-# Start AKTools server
-python3 -m aktools
-```
-
-AKTools will start on `http://localhost:8080` by default.
 
 ## Running the Application
 
@@ -137,13 +116,6 @@ pnpm run migration:generate -- -n MigrationName
 # Run migration
 pnpm run migration:run
 ```
-
-### AKTools Connection Issues
-
-If AKTools fails silently:
-1. Check if port 8080 is available: `lsof -i :8080`
-2. Verify AKTools is running: `curl http://localhost:8080/health`
-3. Check AKTools logs for errors
 
 ## License
 
