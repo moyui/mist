@@ -12,7 +12,7 @@ Skills will call the mist backend's existing REST API (port 8001) to provide sto
 
 ## Scope
 
-### In Scope (12 MCP tools with REST endpoints)
+### In Scope (11 MCP tools with REST endpoints)
 
 | MCP Tool | REST Endpoint | Skill |
 |----------|---------------|-------|
@@ -27,13 +27,17 @@ Skills will call the mist backend's existing REST API (port 8001) to provide sto
 | get_kline_data | `POST /indicator/k` | data-query |
 | get_daily_kline | `POST /indicator/k` (period=daily) | data-query |
 | list_indices | `GET /security/v1/all` | data-query |
-| get_latest_data | DB-only, no REST | data-query |
 
-### Out of Scope (9 tools — internal/PoC, no REST endpoints)
+### Out of Scope (10 tools)
 
+- `get_latest_data` — queries DB directly via TypeORM, no REST endpoint
 - `get_segments`, `get_combined_analysis`, `get_kline_with_indicators` — no REST endpoint
 - `collect_data` — collector endpoint exists but excluded per user decision
 - `schedule_collection`, `list_schedules`, `enable_schedule`, `disable_schedule`, `get_schedule_status` — schedule controller has only cron jobs, no HTTP endpoints
+
+### Known Codebase Issues
+
+**`GET /security/v1/all` route ordering bug:** In `security.controller.ts`, `@Get(':code')` is declared before `@Get('all')`. NestJS evaluates routes in declaration order, so `GET /security/v1/all` will match `:code` with `code="all"`. This must be fixed in the mist app (move `@Get('all')` above `@Get(':code')`) before `list_indices.py` can work correctly.
 
 ## Architecture
 
@@ -52,8 +56,8 @@ Chosen over 1-monolithic-skill and 12-individual-scripts approaches. Rationale:
 mist-skills/
 ├── skills/
 │   ├── chan-theory/
-│   │   ├── SKILL.md
-│   │   └── scripts/
+│   │   ├── SKILL.md              # Required: metadata + instructions
+│   │   └── scripts/              # Optional: executable code
 │   │       ├── merge_k.py
 │   │       ├── create_bi.py
 │   │       ├── get_fenxing.py
@@ -75,8 +79,13 @@ mist-skills/
 │   ├── __init__.py
 │   ├── config.py
 │   └── mist_client.py
+├── tests/
+│   ├── test_mist_client.py
+│   └── fixtures/
 └── README.md
 ```
+
+Each skill directory may also include optional `references/` (additional markdown docs) and `assets/` (templates, resources) per the official Skills spec. These can be added later if needed (e.g., a Chan Theory terminology glossary in `chan-theory/references/`).
 
 ### Shared Module
 
@@ -115,6 +124,10 @@ mist-skills/
 
 #### technical-indicators
 
+**Note on KDJ defaults:** The codebase Swagger docs say period=9 but the actual runtime default is `period=14, kSmoothing=3, dSmoothing=3`. Scripts should use the runtime defaults.
+
+**Response fields:** Each indicator endpoint returns an array with the indicator values plus `symbol`, `time`, and `close` for context. See specific endpoint for details (macd returns macd/signal/histogram, kdj returns k/d/j, rsi returns rsi).
+
 **Purpose:** Technical indicator calculations — MACD, KDJ, RSI.
 
 **SKILL.md guidance:**
@@ -151,7 +164,13 @@ mist-skills/
 | `get_kline_data.py` | `POST /indicator/k` | Query intraday K-line data |
 | `get_daily_kline.py` | `POST /indicator/k` (period=daily) | Query daily K-line data |
 
-**Note:** `get_kline_data` and `get_daily_kline` map to the same REST endpoint, differentiated by the `period` parameter.
+**Script behavior:**
+- `get_kline_data.py` accepts intraday periods only (1min, 5min, 15min, 30min, 60min)
+- `get_daily_kline.py` hardcodes `period=daily`
+
+Both call `POST /indicator/k`, differentiated by the `period` parameter.
+
+**Response fields for K-line data:** `id`, `symbol`, `time`, `amount`, `open`, `close`, `highest`, `lowest`. Note: `volume` is NOT included in the REST endpoint response (unlike the MCP tool which includes it).
 
 ## Technical Decisions
 
@@ -160,9 +179,24 @@ mist-skills/
 3. **Error handling:** Shared `mist_client.py` parses mist's unified response format and raises descriptive exceptions
 4. **Configuration:** Environment variables with sensible defaults, no hardcoded URLs
 
+## Error Handling
+
+Scripts follow a three-layer error model:
+
+1. **Network errors** — connection refused, DNS failure, timeout. `mist_client.py` catches `requests.ConnectionError` and `requests.Timeout`, raises a `MistConnectionError` with a human-readable message.
+2. **Business errors** — mist returns `{success: false, code: 2xxx, message: "..."}`. `mist_client.py` raises `MistApiError` with the business error code and message. Error codes follow `@app/constants`: 1xxx (client/parameter), 2xxx (business logic), 5xxx (server).
+3. **Script output** — On success, scripts print JSON to stdout for the agent. On error, scripts exit with non-zero code and print the error message. The agent handles both paths.
+
+## Testing Strategy
+
+- **Unit tests** for `shared/mist_client.py` using `unittest.mock` to mock HTTP responses. Test fixtures match the mist unified response format `{success, code, message, data}`.
+- **Script-level tests** with fixture data — each script gets a test that validates parameter handling and output formatting.
+- **Integration tests** require a running mist backend and are optional/manual (not in CI).
+
 ## Constraints
 
-- Official Skills spec: `name` max 64 chars (lowercase + hyphens), must match directory name
+- Official Skills spec: `name` max 64 chars (lowercase letters, numbers, and hyphens), must match directory name
+- Skill names cannot contain the words "anthropic" or "claude"
 - SKILL.md description max 1024 chars in frontmatter
 - SKILL.md body recommended under 500 lines
 - Scripts must be self-contained (import from `shared/` via relative or sys.path)

@@ -55,6 +55,17 @@ export class SecurityController {
     return await this.securityService.addSecuritySource(addSecuritySourceDto);
   }
 
+  @Get('all')
+  @ApiOperation({ summary: 'Get all active securities' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all active securities',
+    type: [Security],
+  })
+  async getAllSecurities(): Promise<Security[]> {
+    return await this.securityService.findAll();
+  }
+
   @Get(':code')
   @ApiOperation({ summary: 'Get security by code' })
   @ApiParam({
@@ -65,17 +76,6 @@ export class SecurityController {
   @ApiResponse({ status: 404, description: 'Security not found' })
   async findSecurityByCode(@Param('code') code: string): Promise<Security> {
     return await this.securityService.findSecurityByCode(code);
-  }
-
-  @Get('all')
-  @ApiOperation({ summary: 'Get all active securities' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of all active securities',
-    type: [Security],
-  })
-  async getAllSecurities(): Promise<Security[]> {
-    return await this.securityService.findAll();
   }
 
   @Put(':code/deactivate')
