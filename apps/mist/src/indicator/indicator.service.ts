@@ -285,7 +285,7 @@ export class IndicatorService implements OnModuleInit {
           code: foundSecurity.code,
         },
         source,
-        period: query.period,
+        period: String(query.period) as unknown as Period,
         timestamp: Between(query.startDate, query.endDate),
       },
       order: {

@@ -56,15 +56,15 @@ export class TdxSource implements ITdxSourceFetcher {
 
     try {
       const response = await this.axios.get<{
-        success: boolean;
         data: {
           [field: string]: {
-            [stockCode: string]: (string | number)[];
+            [stockCode: string]: { [timestamp: string]: string | number };
           };
         };
       }>('/api/tdx/market-data', {
         params: {
           stocks: formatCode,
+          fields: 'Open,High,Low,Close,Volume,Amount,ForwardFactor',
           period: periodFormat,
           start_time: format(startDate, 'yyyyMMdd'),
           end_time: format(endDate, 'yyyyMMdd'),
@@ -72,7 +72,7 @@ export class TdxSource implements ITdxSourceFetcher {
         },
       });
 
-      if (!response.data?.success || !response.data?.data) {
+      if (!response.data?.data) {
         throw new HttpException(
           'Invalid response from TDX API',
           HttpStatus.BAD_GATEWAY,
@@ -95,7 +95,6 @@ export class TdxSource implements ITdxSourceFetcher {
   async fetchSnapshot(stockCode: string): Promise<TdxSnapshot> {
     try {
       const response = await this.axios.get<{
-        success: boolean;
         data: {
           stock_code: string;
           snapshot: any;
@@ -104,7 +103,7 @@ export class TdxSource implements ITdxSourceFetcher {
         params: { stock_code: stockCode },
       });
 
-      if (!response.data?.success || !response.data?.data) {
+      if (!response.data?.data) {
         throw new HttpException(
           'Invalid response from TDX snapshot API',
           HttpStatus.BAD_GATEWAY,
@@ -133,7 +132,6 @@ export class TdxSource implements ITdxSourceFetcher {
   > {
     try {
       const response = await this.axios.get<{
-        success: boolean;
         data: {
           date: string[];
           forward_factor: number[];
@@ -147,7 +145,7 @@ export class TdxSource implements ITdxSourceFetcher {
         },
       });
 
-      if (!response.data?.success || !response.data?.data) {
+      if (!response.data?.data) {
         return [];
       }
 
@@ -237,46 +235,34 @@ export class TdxSource implements ITdxSourceFetcher {
 
   /**
    * Parse mist-datasource market-data response into TdxResponse[]
-   * Input format: {Date: {SH600519: [...]}, Time: {SH600519: [...]}, ...}
+   * Actual format: {Open: {SH600519: {"2026-03-16T00:00:00": 4092.25, ...}}, ...}
+   * Dates are keys in each field's stock data object.
    */
   private parseMarketDataResponse(
-    data: { [field: string]: { [stockCode: string]: (string | number)[] } },
+    data: {
+      [field: string]: {
+        [stockCode: string]: { [timestamp: string]: string | number };
+      };
+    },
     stockCode: string,
   ): TdxResponse[] {
-    const dates = data.Date?.[stockCode] || [];
-    const times = data.Time?.[stockCode] || [];
-    const opens = data.Open?.[stockCode] || [];
-    const highs = data.High?.[stockCode] || [];
-    const lows = data.Low?.[stockCode] || [];
-    const closes = data.Close?.[stockCode] || [];
-    const volumes = data.Volume?.[stockCode] || [];
-    const amounts = data.Amount?.[stockCode] || [];
-    const forwardFactors = data.ForwardFactor?.[stockCode] || [];
+    const closes = data.Close?.[stockCode] || {};
+    const dateKeys = Object.keys(closes);
+    if (dateKeys.length === 0) return [];
 
-    const length = dates.length;
     const result: TdxResponse[] = [];
-
-    for (let i = 0; i < length; i++) {
-      const dateStr = dates[i] as string;
-      const timeStr = times[i] as string;
-
-      // Parse timestamp: date (yyyyMMdd) + time (HHmmss)
-      const timestamp = new Date(
-        `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}T` +
-          `${timeStr.slice(0, 2)}:${timeStr.slice(2, 4)}:${timeStr.slice(4, 6)}Z`,
-      );
-
+    for (const dateKey of dateKeys) {
       result.push({
-        timestamp,
-        open: Number(opens[i]),
-        high: Number(highs[i]),
-        low: Number(lows[i]),
-        close: Number(closes[i]),
-        volume: Number(volumes[i]),
-        amount: Number(amounts[i]),
+        timestamp: new Date(dateKey + '+08:00'),
+        open: Number(data.Open?.[stockCode]?.[dateKey] ?? 0),
+        high: Number(data.High?.[stockCode]?.[dateKey] ?? 0),
+        low: Number(data.Low?.[stockCode]?.[dateKey] ?? 0),
+        close: Number(closes[dateKey]),
+        volume: Number(data.Volume?.[stockCode]?.[dateKey] ?? 0),
+        amount: Number(data.Amount?.[stockCode]?.[dateKey] ?? 0),
         forwardFactor:
-          forwardFactors[i] !== undefined
-            ? Number(forwardFactors[i])
+          data.ForwardFactor?.[stockCode]?.[dateKey] !== undefined
+            ? Number(data.ForwardFactor[stockCode][dateKey])
             : undefined,
       });
     }
