@@ -18,12 +18,13 @@ Eliminate all `new Date()` constructor calls and `Date.now()` usage in productio
 
 | Original Pattern | Replacement | Notes |
 |------------------|-------------|-------|
-| `new Date(string)` | `parseISO(string)` from date-fns | Consistent parsing behavior |
+| `new Date(string)` | `parseISO(string)` from date-fns | Consistent parsing behavior. For strings constructed without `T` separator (e.g. `dateKey + '+08:00'` in `tdx-source.service.ts:256`), the string must include `T` before the offset: `dateKey + 'T00:00:00+08:00'` for `parseISO()` compatibility. |
 | `new Date(y, m, d, h, min, s, ms)` | `set()`, `startOfDay()`, `startOfMonth()`, `startOfWeek()`, `startOfQuarter()`, `startOfYear()`, `addDays()`, `addMonths()`, `addQuarters()`, `addYears()` | Semantic date-fns helpers |
 | `new Date()` (no args) | `TimezoneService.getCurrentBeijingTime()` | Requires constructor injection |
-| `new Date().toISOString()` | `formatISO(new Date())` | **Behavioral change** (see below) |
+| `new Date().toISOString()` | `formatISO(new Date())` | **Behavioral change** (see below). Note: `formatISO(new Date())` uses server-local timezone. For guaranteed Beijing time output, use `formatISO(timezoneService.getCurrentBeijingTime())`. Framework-level components (interceptor, filter) that don't inject `TimezoneService` use `formatISO(new Date())` — this is acceptable because the dev/prod server runs in Beijing timezone. If the server is deployed in a non-Beijing timezone, these must be changed to inject `TimezoneService`. |
+| `new Date(dateObj)` / `new Date(dateObj.getTime())` (clone) | **Keep `new Date(dateObj)` for pure cloning** | date-fns `set()` also clones, but explicit clone is clearer. Used in `k-boundary-calculator.ts` lines 52, 56, 94, 98 — these clones are eliminated when the surrounding logic is rewritten to use `set()`, `startOfDay()`, etc. which return new Date objects |
 | `date.setDate()` / `date.setMinutes()` etc. | `set(date, { ... })` from date-fns | Immutable operations |
-| `Date.now()` for IDs or numeric comparison | **Keep as-is** | No date semantics |
+| `Date.now()` for IDs or numeric comparison | **Keep as-is** (7 total; 1 in `template.service.ts` migrated to `formatISO`, leaving 6 kept) | No date semantics |
 
 ## Behavioral Change
 
@@ -87,6 +88,9 @@ Each file migration is verified by:
 1. Running existing unit tests for that file (no new tests needed — this is a refactoring, behavior is preserved)
 2. TypeScript type-check (`npx tsc --noEmit`) after each logical group of changes
 3. Full test suite (`pnpm run test`) at the end
+4. For files without existing test coverage (`transform.interceptor.ts`, `all-exceptions.filter.ts`, `schedule-mcp.service.ts`): manual smoke test by starting the app and checking that API responses contain valid `formatISO()` timestamps in the `timestamp` field
+
+> **Note:** All file paths in this document are relative to the `mist/` project root (`/Users/xiyugao/code/mist/mist`).
 
 ## Success Criteria
 
