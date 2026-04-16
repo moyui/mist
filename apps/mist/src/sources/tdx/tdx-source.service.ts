@@ -10,7 +10,7 @@ import {
   Security,
 } from '@app/shared-data';
 import { DataSource as TypeOrmDataSource } from 'typeorm';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ITdxSourceFetcher } from './tdx-source.interface';
 import { TdxResponse, TdxSnapshot, TdxExtension } from './types';
 
@@ -151,7 +151,7 @@ export class TdxSource implements ITdxSourceFetcher {
 
       const { date, forward_factor, backward_factor } = response.data.data;
       return date.map((d, i) => ({
-        timestamp: new Date(d),
+        timestamp: parseISO(d),
         forwardFactor: forward_factor[i],
         backwardFactor: backward_factor[i],
       }));
@@ -253,7 +253,7 @@ export class TdxSource implements ITdxSourceFetcher {
     const result: TdxResponse[] = [];
     for (const dateKey of dateKeys) {
       result.push({
-        timestamp: new Date(dateKey + '+08:00'),
+        timestamp: parseISO(dateKey + '+08:00'),
         open: Number(data.Open?.[stockCode]?.[dateKey] ?? 0),
         high: Number(data.High?.[stockCode]?.[dateKey] ?? 0),
         low: Number(data.Low?.[stockCode]?.[dateKey] ?? 0),
