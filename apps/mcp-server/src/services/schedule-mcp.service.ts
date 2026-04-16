@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
+import { formatISO } from 'date-fns';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { BaseMcpToolService } from '../base/base-mcp-tool.service';
 import { McpErrorCode, McpError } from '@app/constants';
@@ -70,7 +71,7 @@ RETURNS: Job confirmation with symbol, period, timestamp, and job ID.`,
         data: {
           symbol,
           period,
-          triggeredAt: new Date().toISOString(),
+          triggeredAt: formatISO(new Date()),
           status: 'queued',
           // In production: actual job ID from the scheduler
           jobId: `job_${Date.now()}`,
@@ -193,7 +194,7 @@ RETURNS: Batch job confirmation with task count and sample tasks.`,
         message: `Batch data collection triggered for ${tasks.length} tasks`,
         data: {
           taskCount: tasks.length,
-          triggeredAt: new Date().toISOString(),
+          triggeredAt: formatISO(new Date()),
           status: 'queued',
           tasks: tasks.slice(0, 10), // Return first 10 tasks as sample
           // In production: actual batch job ID

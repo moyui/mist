@@ -1,3 +1,4 @@
+import { parseISO } from 'date-fns';
 import { BEIJING_DATE_REGEX } from '@app/timezone';
 
 // Error codes moved to @app/constants
@@ -29,12 +30,12 @@ export class ValidationHelper {
       return `Invalid endDate format: "${endDate}". Expected YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.`;
     }
 
-    const start = new Date(
+    const start = parseISO(
       startDate.includes(' ')
         ? startDate.replace(' ', 'T') + '+08:00'
         : startDate + 'T00:00:00+08:00',
     );
-    const end = new Date(
+    const end = parseISO(
       endDate.includes(' ')
         ? endDate.replace(' ', 'T') + '+08:00'
         : endDate + 'T00:00:00+08:00',

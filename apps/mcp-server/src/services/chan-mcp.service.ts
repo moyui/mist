@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool } from '@rekog/mcp-nest';
 import { z } from 'zod';
+import { parseISO } from 'date-fns';
 import { ChanService } from '../../../mist/src/chan/chan.service';
 import { ChannelService } from '../../../mist/src/chan/services/channel.service';
 import { McpErrorCode, McpError } from '@app/constants';
@@ -107,7 +108,7 @@ RETURNS: Bi array with times, prices, direction (UP/DOWN), status, and patterns.
       // Convert input data to KVo format
       const kVoData = k.map((kline) => ({
         ...kline,
-        time: new Date(kline.time),
+        time: parseISO(kline.time),
       }));
 
       const createBiDto = { k: kVoData };
@@ -148,7 +149,7 @@ RETURNS: Fenxing array with type (TOP/BOTTOM), time, prices, and index.`,
       // Convert input data to KVo format
       const kVoData = k.map((kline) => ({
         ...kline,
-        time: new Date(kline.time),
+        time: parseISO(kline.time),
       }));
 
       const createBiDto = { k: kVoData };
@@ -191,7 +192,7 @@ RETURNS: Object with bis, fenxings, channels arrays, and summary.`,
       // Convert input data to KVo format
       const kVoData = k.map((kline) => ({
         ...kline,
-        time: new Date(kline.time),
+        time: parseISO(kline.time),
       }));
 
       const createBiDto = { k: kVoData };
