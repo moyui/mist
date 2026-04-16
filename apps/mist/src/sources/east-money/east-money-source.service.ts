@@ -15,7 +15,7 @@ import {
   Security,
 } from '@app/shared-data';
 import { DataSource as TypeOrmDataSource } from 'typeorm';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 @Injectable()
 export class EastMoneySource implements ISourceFetcher {
@@ -79,7 +79,7 @@ export class EastMoneySource implements ISourceFetcher {
     }
 
     return response.data.map((item): KData => {
-      const timestamp = new Date(item['时间']);
+      const timestamp = parseISO(item['时间']);
       const open = Number(item['开盘']);
       const high = Number(item['最高']);
       const low = Number(item['最低']);
@@ -151,7 +151,7 @@ export class EastMoneySource implements ISourceFetcher {
 
     return response.data.map(
       (item): KData => ({
-        timestamp: new Date(item.date),
+        timestamp: parseISO(item.date + 'T00:00:00Z'),
         open: Number(item.open),
         high: Number(item.high),
         low: Number(item.low),
