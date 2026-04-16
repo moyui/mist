@@ -1,3 +1,15 @@
+import {
+  set,
+  startOfDay,
+  addDays,
+  startOfWeek,
+  startOfMonth,
+  addMonths,
+  startOfQuarter,
+  addQuarters,
+  startOfYear,
+  addYears,
+} from 'date-fns';
 import { Period } from '@app/shared-data';
 
 export interface KCandleBoundary {
@@ -49,12 +61,14 @@ export class KBoundaryCalculator {
     const candleEndOffset =
       Math.floor(minutesSinceSessionStart / periodMinutes) * periodMinutes;
 
-    const endTime = new Date(sessionStart.getTime());
-    endTime.setMinutes(endTime.getMinutes() + candleEndOffset);
-    endTime.setSeconds(0, 0);
-
-    const startTime = new Date(endTime.getTime());
-    startTime.setMinutes(startTime.getMinutes() - periodMinutes);
+    const endTime = set(sessionStart, {
+      minutes: sessionStart.getMinutes() + candleEndOffset,
+      seconds: 0,
+      milliseconds: 0,
+    });
+    const startTime = set(endTime, {
+      minutes: endTime.getMinutes() - periodMinutes,
+    });
 
     return { startTime, endTime };
   }
@@ -63,57 +77,32 @@ export class KBoundaryCalculator {
    * Calculate daily+ K candle boundaries using natural time boundaries.
    */
   calculateDailyPlusCandle(period: Period, triggerTime: Date): KCandleBoundary {
-    const year = triggerTime.getFullYear();
-    const month = triggerTime.getMonth();
-
     switch (period) {
       case Period.DAY: {
-        const startTime = new Date(
-          year,
-          month,
-          triggerTime.getDate(),
-          0,
-          0,
-          0,
-          0,
-        );
-        const endTime = new Date(
-          year,
-          month,
-          triggerTime.getDate() + 1,
-          0,
-          0,
-          0,
-          0,
-        );
+        const startTime = startOfDay(triggerTime);
+        const endTime = startOfDay(addDays(triggerTime, 1));
         return { startTime, endTime };
       }
       case Period.WEEK: {
-        const dayOfWeek = triggerTime.getDay();
-        const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        const monday = new Date(triggerTime);
-        monday.setDate(monday.getDate() - daysSinceMonday);
-        monday.setHours(0, 0, 0, 0);
-
-        const nextMonday = new Date(monday);
-        nextMonday.setDate(nextMonday.getDate() + 7);
-
-        return { startTime: monday, endTime: nextMonday };
+        const startTime = startOfWeek(triggerTime, { weekStartsOn: 1 });
+        const endTime = startOfWeek(addDays(triggerTime, 7), {
+          weekStartsOn: 1,
+        });
+        return { startTime, endTime };
       }
       case Period.MONTH: {
-        const startTime = new Date(year, month, 1, 0, 0, 0, 0);
-        const endTime = new Date(year, month + 1, 1, 0, 0, 0, 0);
+        const startTime = startOfMonth(triggerTime);
+        const endTime = startOfMonth(addMonths(triggerTime, 1));
         return { startTime, endTime };
       }
       case Period.QUARTER: {
-        const quarterStartMonth = Math.floor(month / 3) * 3;
-        const startTime = new Date(year, quarterStartMonth, 1, 0, 0, 0, 0);
-        const endTime = new Date(year, quarterStartMonth + 3, 1, 0, 0, 0, 0);
+        const startTime = startOfQuarter(triggerTime);
+        const endTime = startOfQuarter(addQuarters(triggerTime, 1));
         return { startTime, endTime };
       }
       case Period.YEAR: {
-        const startTime = new Date(year, 0, 1, 0, 0, 0, 0);
-        const endTime = new Date(year + 1, 0, 1, 0, 0, 0, 0);
+        const startTime = startOfYear(triggerTime);
+        const endTime = startOfYear(addYears(triggerTime, 1));
         return { startTime, endTime };
       }
       default:
@@ -134,30 +123,24 @@ export class KBoundaryCalculator {
     const morningStart = 9 * 60 + 30; // 570
     const morningEnd = 11 * 60 + 31; // 691
     if (totalMinutes >= morningStart && totalMinutes <= morningEnd) {
-      return new Date(
-        triggerTime.getFullYear(),
-        triggerTime.getMonth(),
-        triggerTime.getDate(),
-        9,
-        30,
-        0,
-        0,
-      );
+      return set(triggerTime, {
+        hours: 9,
+        minutes: 30,
+        seconds: 0,
+        milliseconds: 0,
+      });
     }
 
     // Afternoon session: 13:00 - 15:00 (+ 1min grace for post-session trigger)
     const afternoonStart = 13 * 60; // 780
     const afternoonEnd = 15 * 60 + 1; // 901
     if (totalMinutes >= afternoonStart && totalMinutes <= afternoonEnd) {
-      return new Date(
-        triggerTime.getFullYear(),
-        triggerTime.getMonth(),
-        triggerTime.getDate(),
-        13,
-        0,
-        0,
-        0,
-      );
+      return set(triggerTime, {
+        hours: 13,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0,
+      });
     }
 
     return null;
