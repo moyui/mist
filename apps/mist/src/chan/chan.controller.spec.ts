@@ -5,7 +5,7 @@ import { BiService } from './services/bi.service';
 import { KMergeService } from './services/k-merge.service';
 import { ChannelService } from './services/channel.service';
 import { KLineFixtures } from '@test-data/fixtures/patterns/k-line-fixtures';
-import { ChanQueryDto } from './dto/query/chan-query.dto';
+import { IndicatorQueryDto } from '../indicator/dto/query/indicator-query.dto';
 import { TrendService } from './services/trend.service';
 import { IndicatorService } from '../indicator/indicator.service';
 import { PeriodMappingService, UtilsService } from '@app/utils';
@@ -65,6 +65,7 @@ describe('ChanController', () => {
           provide: TimezoneService,
           useValue: {
             getCurrentBeijingTime: jest.fn().mockReturnValue(new Date()),
+            parseDateString: jest.fn((dateStr: string) => new Date(dateStr)),
           },
         },
       ],
@@ -81,12 +82,14 @@ describe('ChanController', () => {
   });
 
   describe('POST /chan/merge-k', () => {
-    let chanQueryDto: ChanQueryDto;
+    let chanQueryDto: IndicatorQueryDto;
 
     beforeEach(() => {
-      chanQueryDto = new ChanQueryDto();
-      chanQueryDto.symbol = '000001';
+      chanQueryDto = new IndicatorQueryDto();
+      chanQueryDto.code = '000001';
       chanQueryDto.period = Period.ONE_MIN;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-01-31';
     });
 
     it('should return merged K-lines for valid input', async () => {
@@ -104,7 +107,7 @@ describe('ChanController', () => {
 
       expect(mergeSpy).toHaveBeenCalled();
       expect(indicatorService.findKData).toHaveBeenCalledWith({
-        symbol: '000001',
+        code: '000001',
         period: Period.ONE_MIN,
         startDate: expect.any(Date),
         endDate: expect.any(Date),
@@ -190,12 +193,14 @@ describe('ChanController', () => {
   });
 
   describe('POST /chan/bi', () => {
-    let chanQueryDto: ChanQueryDto;
+    let chanQueryDto: IndicatorQueryDto;
 
     beforeEach(() => {
-      chanQueryDto = new ChanQueryDto();
-      chanQueryDto.symbol = '000001';
+      chanQueryDto = new IndicatorQueryDto();
+      chanQueryDto.code = '000001';
       chanQueryDto.period = Period.ONE_MIN;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-01-31';
     });
 
     it('should return Bi (strokes) for valid K-line data', async () => {
@@ -313,12 +318,14 @@ describe('ChanController', () => {
   });
 
   describe('POST /chan/fenxing', () => {
-    let chanQueryDto: ChanQueryDto;
+    let chanQueryDto: IndicatorQueryDto;
 
     beforeEach(() => {
-      chanQueryDto = new ChanQueryDto();
-      chanQueryDto.symbol = '000001';
+      chanQueryDto = new IndicatorQueryDto();
+      chanQueryDto.code = '000001';
       chanQueryDto.period = Period.ONE_MIN;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-01-31';
     });
 
     it('should return fenxings (fractals) for valid K-line data', async () => {
@@ -346,12 +353,14 @@ describe('ChanController', () => {
   });
 
   describe('POST /chan/channel', () => {
-    let chanQueryDto: ChanQueryDto;
+    let chanQueryDto: IndicatorQueryDto;
 
     beforeEach(() => {
-      chanQueryDto = new ChanQueryDto();
-      chanQueryDto.symbol = '000001';
+      chanQueryDto = new IndicatorQueryDto();
+      chanQueryDto.code = '000001';
       chanQueryDto.period = Period.ONE_MIN;
+      chanQueryDto.startDate = '2024-01-01';
+      chanQueryDto.endDate = '2024-01-31';
     });
 
     it('should return channels for valid K-line data', async () => {
