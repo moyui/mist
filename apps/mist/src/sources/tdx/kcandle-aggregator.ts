@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { set } from 'date-fns';
 import { Period } from '@app/shared-data';
 import { TdxSnapshot } from './types';
 
@@ -101,41 +102,47 @@ export class KCandleAggregator {
    * Boundary tick (exact on boundary) belongs to NEW candle
    */
   private getCandleTime(timestamp: Date, period: Period): Date {
-    const dt = new Date(timestamp);
-
     switch (period) {
       case Period.ONE_MIN:
-        // Floor to minute
-        dt.setSeconds(0, 0);
-        return dt;
+        return set(timestamp, { seconds: 0, milliseconds: 0 });
 
-      case Period.FIVE_MIN:
-        // Align to :00, :05, :10, ...
-        const minutes5 = Math.floor(dt.getMinutes() / 5) * 5;
-        dt.setMinutes(minutes5, 0, 0);
-        return dt;
+      case Period.FIVE_MIN: {
+        const minutes5 = Math.floor(timestamp.getMinutes() / 5) * 5;
+        return set(timestamp, {
+          minutes: minutes5,
+          seconds: 0,
+          milliseconds: 0,
+        });
+      }
 
-      case Period.FIFTEEN_MIN:
-        // Align to :00, :15, :30, :45
-        const minutes15 = Math.floor(dt.getMinutes() / 15) * 15;
-        dt.setMinutes(minutes15, 0, 0);
-        return dt;
+      case Period.FIFTEEN_MIN: {
+        const minutes15 = Math.floor(timestamp.getMinutes() / 15) * 15;
+        return set(timestamp, {
+          minutes: minutes15,
+          seconds: 0,
+          milliseconds: 0,
+        });
+      }
 
-      case Period.THIRTY_MIN:
-        // Align to :00, :30
-        const minutes30 = Math.floor(dt.getMinutes() / 30) * 30;
-        dt.setMinutes(minutes30, 0, 0);
-        return dt;
+      case Period.THIRTY_MIN: {
+        const minutes30 = Math.floor(timestamp.getMinutes() / 30) * 30;
+        return set(timestamp, {
+          minutes: minutes30,
+          seconds: 0,
+          milliseconds: 0,
+        });
+      }
 
       case Period.SIXTY_MIN:
-        // Align to hour
-        dt.setMinutes(0, 0, 0);
-        return dt;
+        return set(timestamp, { minutes: 0, seconds: 0, milliseconds: 0 });
 
       default:
-        // Daily and longer - not produced from snapshots
-        dt.setHours(0, 0, 0, 0);
-        return dt;
+        return set(timestamp, {
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+          milliseconds: 0,
+        });
     }
   }
 
