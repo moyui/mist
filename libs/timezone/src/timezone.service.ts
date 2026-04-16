@@ -1,6 +1,11 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { format, fromUnixTime, millisecondsToSeconds } from 'date-fns';
+import {
+  format,
+  fromUnixTime,
+  millisecondsToSeconds,
+  parseISO,
+} from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { ERROR_MESSAGES } from '@app/constants';
 import { UtilsService } from '@app/utils';
@@ -68,7 +73,7 @@ export class TimezoneService {
     // Append " 00:00:00" if date-only, then convert to ISO with +08:00 offset
     const normalized = dateStr.includes(' ') ? dateStr : `${dateStr} 00:00:00`;
     const isoString = normalized.replace(' ', 'T') + '+08:00';
-    const result = new Date(isoString);
+    const result = parseISO(isoString);
 
     if (isNaN(result.getTime())) {
       throw new HttpException(

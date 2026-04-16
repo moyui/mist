@@ -57,15 +57,6 @@ export class UtilsService {
   }
 
   /**
-   * 获取当前时间
-   * @returns Date
-   */
-  getNowDate() {
-    const now = new Date();
-    return now;
-  }
-
-  /**
    * 日期前增加0
    * @param number number
    * @returns string
