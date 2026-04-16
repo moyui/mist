@@ -10,6 +10,7 @@ import { Response } from 'express';
 import { Request } from 'express';
 import { QueryFailedError } from 'typeorm';
 import { ERROR_MESSAGES } from '@app/constants';
+import { formatISO } from 'date-fns';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -29,7 +30,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       message,
       errors,
-      timestamp: new Date().toISOString(),
+      timestamp: formatISO(new Date()),
       requestId: this.generateRequestId(),
       path: request.url,
     };

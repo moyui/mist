@@ -3,6 +3,7 @@ import { SystemMessage } from '@langchain/core/messages';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { Injectable } from '@nestjs/common';
 import { ApplyTemplateDto } from './dto/apply.dto';
+import { formatISO } from 'date-fns';
 
 @Injectable()
 export class TemplateService {
@@ -19,7 +20,7 @@ export class TemplateService {
     const systemPrompt = await new PromptTemplate({
       inputVariables: ['CURRENT_TIME'],
       template: this.getPromptTemplate(applyTemplateDto.name),
-    }).format({ CURRENT_TIME: Date.now() });
+    }).format({ CURRENT_TIME: formatISO(new Date()) });
 
     return [
       new SystemMessage(systemPrompt),

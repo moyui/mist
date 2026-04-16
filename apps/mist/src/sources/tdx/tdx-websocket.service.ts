@@ -9,6 +9,7 @@ import { WebSocket } from 'ws';
 import { KCandleAggregator, CompletedCandle } from './kcandle-aggregator';
 import { Period, Security } from '@app/shared-data';
 import { TdxResponse, TdxSnapshot } from './types';
+import { TimezoneService } from '@app/timezone';
 
 type SnapshotCallback = (snapshot: TdxSnapshot) => void | Promise<void>;
 type CandleCompleteCallback = (
@@ -35,6 +36,7 @@ export class TdxWebSocketService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly aggregator: KCandleAggregator,
+    private readonly timezoneService: TimezoneService,
   ) {
     this.baseUrl =
       this.configService.get<string>('TDX_BASE_URL') || 'http://127.0.0.1:9001';
@@ -173,7 +175,7 @@ export class TdxWebSocketService implements OnModuleInit, OnModuleDestroy {
       lastClose: Number(s.LastClose || s.lastClose),
       volume: Number(s.Volume || s.volume),
       amount: Number(s.Amount || s.amount),
-      timestamp: new Date(),
+      timestamp: this.timezoneService.getCurrentBeijingTime(),
     };
   }
 

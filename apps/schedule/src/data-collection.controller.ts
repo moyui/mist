@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
 import { EastMoneyCollectionStrategy } from '../../mist/src/collector';
 import { TimezoneService } from '@app/timezone';
+import { addDays, getMonth } from 'date-fns';
 
 /**
  * Data Collection Controller with Cron Jobs.
@@ -149,9 +150,8 @@ export class DataCollectionController {
     const now = this.timezoneService.getCurrentBeijingTime();
     if (!(await this.timezoneService.isTradingDay(now))) return;
     // Only run on the last trading day of the month
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    if (tomorrow.getMonth() === now.getMonth()) return; // not last day yet
+    const tomorrow = addDays(now, 1);
+    if (getMonth(tomorrow) === getMonth(now)) return; // not last day yet
     try {
       await this.strategy.collectForAllSecurities(Period.MONTH);
     } catch (error) {

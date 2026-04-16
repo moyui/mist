@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { parseISO } from 'date-fns';
 import { ERROR_MESSAGES } from '@app/constants';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { ChannelLevel, ChannelType } from '../enums/channel.enum';
@@ -442,7 +443,7 @@ export class ChannelService {
       if (date instanceof Date) {
         return date.getTime();
       }
-      return new Date(date).getTime();
+      return parseISO(date).getTime();
     };
 
     const start1 = getTime(channel1.bis[0].startTime);

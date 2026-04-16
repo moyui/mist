@@ -7,6 +7,7 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiResponse } from '../interfaces/response.interface';
+import { formatISO } from 'date-fns';
 
 @Injectable()
 export class TransformInterceptor<T>
@@ -24,7 +25,7 @@ export class TransformInterceptor<T>
         statusCode: 200,
         message: 'SUCCESS',
         data,
-        timestamp: new Date().toISOString(),
+        timestamp: formatISO(new Date()),
         requestId,
         path: this.getPath(context),
       })),
