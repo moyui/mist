@@ -1,12 +1,39 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { DataSource as TypeOrmDataSource } from 'typeorm';
 
 import { RealtimeSubscriptionControl } from '../realtime-subscription-control';
 import {
   realtimeSubscriptionHilEntities,
+  requireMatchingRawFixtureSymbol,
   runControlSequence,
 } from './realtime-subscription-hil';
 
 describe('realtime subscription HIL operation sequence', () => {
+  it('rejects a raw fixture captured for a different symbol', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'mist-hil-fixture-'));
+    const fixturePath = join(directory, 'raw.json');
+    try {
+      writeFileSync(
+        fixturePath,
+        JSON.stringify({ symbol: '600519.SH', nativePayload: {} }),
+      );
+
+      expect(() =>
+        requireMatchingRawFixtureSymbol(fixturePath, '600030.SH'),
+      ).toThrow(
+        'HIL raw fixture symbol 600519.SH does not match requested symbol 600030.SH',
+      );
+      expect(requireMatchingRawFixtureSymbol(fixturePath, '600519.SH')).toBe(
+        '600519.SH',
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('registers a closed TypeORM metadata graph for the allowlist entities', async () => {
     const dataSource = new TypeOrmDataSource({
       type: 'mysql',

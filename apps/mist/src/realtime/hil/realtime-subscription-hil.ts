@@ -39,6 +39,7 @@ interface HilOperationEvidence {
 interface HilEvidence {
   source: HilSource;
   symbol: string;
+  rawFixtureSymbol: string;
   rawFixtureSha256: string;
   formalFixtureSha256: string;
   operations: HilOperationEvidence[];
@@ -62,6 +63,10 @@ export async function runRealtimeSubscriptionHil(
   symbol: string,
   rawFixturePath: string,
 ): Promise<HilEvidence> {
+  const rawFixtureSymbol = requireMatchingRawFixtureSymbol(
+    rawFixturePath,
+    symbol,
+  );
   const context = await NestFactory.createApplicationContext(
     createHilModule(source),
     { logger: ['error', 'warn'] },
@@ -96,11 +101,40 @@ export async function runRealtimeSubscriptionHil(
   return {
     source,
     symbol,
+    rawFixtureSymbol,
     rawFixtureSha256: sha256(rawFixturePath),
     formalFixtureSha256: sha256(formalFixturePath),
     operations,
     cleanupAttempted,
   };
+}
+
+export function requireMatchingRawFixtureSymbol(
+  rawFixturePath: string,
+  expectedSymbol: string,
+): string {
+  let value: unknown;
+  try {
+    value = JSON.parse(readFileSync(rawFixturePath, 'utf8')) as unknown;
+  } catch {
+    throw new Error('HIL raw fixture must be valid JSON');
+  }
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('symbol' in value) ||
+    typeof value.symbol !== 'string'
+  ) {
+    throw new Error('HIL raw fixture must contain a top-level symbol');
+  }
+  const fixtureSymbol = value.symbol.trim().toUpperCase();
+  const requestedSymbol = expectedSymbol.trim().toUpperCase();
+  if (!fixtureSymbol || fixtureSymbol !== requestedSymbol) {
+    throw new Error(
+      `HIL raw fixture symbol ${fixtureSymbol || '<empty>'} does not match requested symbol ${requestedSymbol}`,
+    );
+  }
+  return fixtureSymbol;
 }
 
 function createHilModule(source: HilSource): DynamicModule {
