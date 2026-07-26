@@ -113,13 +113,14 @@ TDX and QMT datasource implementations SHALL use the same four backend-facing op
 #### Scenario: TDX control succeeds
 
 - **WHEN** TDX `sync_subscriptions`, `subscribe` or `unsubscribe` succeeds
-- **THEN** `success` MUST be null after the official/native subscription list proves the operation postcondition
+- **THEN** `success` MUST be null after the current terminal bridge's fresh native subscription list proves the operation postcondition
 - **AND** datasource MUST not synthesize QMT-style IDs
 
 #### Scenario: TDX subscriptions are listed
 
 - **WHEN** TDX `get_subscriptions` succeeds
-- **THEN** `success` MUST contain the normalized official provider-symbol list
+- **THEN** datasource MUST first request a new terminal-native list probe through a private read barrier
+- **AND** `success` MUST contain the normalized provider-symbol list reported for that probe by the current owner/epoch/revision
 - **AND** datasource MUST not wrap it in a QMT-style registry
 
 #### Scenario: Capability parity is checked
@@ -140,8 +141,8 @@ coordinator or as a backend-facing revision.
 #### Scenario: Direct unsubscribe changes the reconcile target
 
 - **WHEN** datasource accepts `unsubscribe` for a TDX symbol
-- **THEN** the symbol MUST be removed from transport desired before
-  `unsubscribe_hq` and official-list verification
+- **THEN** the symbol MUST be removed from transport desired before the bridge
+  executes native `unsubscribe_hq` and fresh-list verification
 - **AND** provider or verification failure MUST NOT restore the previous target
 - **AND** bridge reconcile MUST NOT subscribe the symbol from the superseded
   desired state
@@ -150,7 +151,7 @@ coordinator or as a backend-facing revision.
 
 - **WHEN** datasource accepts `sync_subscriptions`
 - **THEN** the exact normalized requested set MUST become transport desired
-  before the first HTTP clear step
+  before the first bridge-native clear step
 - **AND** bridge work exposed during the orchestration MUST be absent or derived
   only from that target
 
@@ -163,21 +164,21 @@ evidence proves continued membership, not a provider lifecycle model.
 Non-cancellation failures SHALL continue to carry exactly
 `failure{symbol,reason}`.
 
-#### Scenario: TDX official list proves continued subscription
+#### Scenario: TDX terminal-native list proves continued subscription
 
-- **WHEN** a valid TDX post-unsubscribe official list still contains the symbol
+- **WHEN** a fresh current-owner TDX post-unsubscribe native list still contains the symbol
 - **THEN** datasource MUST return reason `TDX_UNSUBSCRIBE_NOT_CONVERGED`
 - **AND** `subscriptionState` MUST be `subscribed`
 
 #### Scenario: TDX postcondition cannot be read
 
-- **WHEN** TDX official list fails, times out or cannot be normalized after the cancellation attempt
+- **WHEN** the TDX native list probe fails, times out, is fenced or cannot be normalized after the cancellation attempt
 - **THEN** datasource MUST return reason `TDX_UNSUBSCRIBE_VERIFY_FAILED`
 - **AND** `subscriptionState` MUST be `unknown`
 
 #### Scenario: TDX cancellation is proven complete
 
-- **WHEN** a valid official list no longer contains the symbol
+- **WHEN** a fresh current-owner native list no longer contains the symbol
 - **THEN** datasource MUST return `success:null` regardless of the immediate `unsubscribe_hq` text, `ErrorId`, payload or invocation exception
 - **AND** raw provider details MUST remain outside the backend-facing response
 

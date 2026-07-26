@@ -102,8 +102,9 @@ Layout parity SHALL not force provider-native mechanisms into identical files or
 #### Scenario: TDX-only responsibilities are inspected
 
 - **WHEN** the manifest is checked
-- **THEN** TDX official HTTP RPC list/unsubscribe and flat-native `symbol`
-  bridge snapshot extension MUST be explicit TDX-only entries
+- **THEN** TDX terminal-bridge native list/unsubscribe, datasource-private
+  `nativeProbeRevision` read barrier and flat-native `symbol` bridge snapshot
+  extension MUST be explicit TDX-only entries
 - **AND** this change MUST not require a QMT-style ID registry in TDX
 
 #### Scenario: Native frame shapes are compared

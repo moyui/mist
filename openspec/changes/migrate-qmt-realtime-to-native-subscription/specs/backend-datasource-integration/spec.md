@@ -375,7 +375,10 @@ Backend and datasource SHALL allow at most one outstanding subscription request 
 #### Scenario: TDX subscriptions are read
 
 - **WHEN** TDX subscriptions are requested
-- **THEN** `data.success` MUST be the normalized provider-symbol list returned through official HTTP RPC
+- **THEN** datasource MUST request a fresh terminal-native list observation
+  through its private read barrier
+- **AND** `data.success` MUST be the normalized provider-symbol list returned by
+  the current bridge owner for that observation
 - **AND** datasource MUST NOT synthesize QMT-style handles
 
 ### Requirement: Internal control validates symbols without adding a business desired coordinator
@@ -427,9 +430,9 @@ terminal bridge.
 ### Requirement: TDX control uses one revisioned source-local target
 
 TDX SHALL expose the same four backend-facing message types while preserving
-its existing provider split: subscribe through the existing bridge,
-unsubscribe and list through official HTTP RPC, and sync through datasource
-orchestration. Datasource SHALL serialize all three mutations through one
+its existing terminal bridge: subscribe, unsubscribe and native active-list
+observation execute inside the TDX terminal, while datasource owns desired
+state and orchestration. Datasource SHALL serialize all three mutations through one
 source-local mutation gate and atomically establish the unique transport target
 before any provider mutation: subscribe uses current desired union symbol,
 unsubscribe uses current desired difference symbol and sync uses the exact
@@ -442,7 +445,8 @@ without adding revision to the backend-facing wire.
 - **THEN** datasource MUST first publish the union target and advance the
   existing internal desired revision when the target changes
 - **AND** datasource MUST use the existing TDX bridge subscription mechanism
-- **AND** this change MUST retain the TDX subscription poll/result wire schema
+- **AND** the TDX subscription poll/result wire MAY add only a
+  datasource-private `nativeProbeRevision` read barrier
 - **AND** the separately simplified snapshot request MUST not affect control convergence
 - **AND** it MUST return `success:null` only after the bridge/native list contains the symbol
 
@@ -451,21 +455,25 @@ without adding revision to the backend-facing wire.
 - **WHEN** backend sends `unsubscribe`
 - **THEN** datasource MUST first remove the symbol from transport desired and
   advance the existing internal desired revision when the target changes
-- **AND** it MUST then use the official TDX HTTP RPC
-- **AND** unsubscribe MUST return `success:null` only after the official list no longer contains the symbol
+- **AND** the bridge MUST then execute native `unsubscribe_hq`
+- **AND** unsubscribe MUST return `success:null` only after a fresh current-owner
+  native list no longer contains the symbol
 - **AND** a success, provider failure or verification failure MUST NOT restore
   the old desired target
 
-#### Scenario: TDX subscriptions are read through official HTTP
+#### Scenario: TDX subscriptions are read through a fresh terminal-native probe
 
 - **WHEN** backend sends `get_subscriptions`
-- **THEN** datasource MUST use the official TDX HTTP RPC
-- **AND** get MUST return the normalized official list as `data.success`
+- **THEN** datasource MUST increment a private `nativeProbeRevision`
+- **AND** the terminal bridge MUST execute native
+  `get_subscribe_hq_stock_list` and echo that revision in its result
+- **AND** datasource MUST return the normalized list as `data.success` only
+  after the current owner/epoch result satisfies the barrier
 
-#### Scenario: Bridge poll races with direct HTTP unsubscribe
+#### Scenario: Bridge poll races with unsubscribe desired transition
 
 - **WHEN** a bridge poll occurs after unsubscribe has acquired the source-local
-  mutation gate but before its HTTP cancellation and verification complete
+  mutation gate but before its native cancellation and verification complete
 - **THEN** datasource MUST expose either no reconcile mutation or one derived
   from the new desired revision that excludes the symbol
 - **AND** it MUST NOT expose a subscribe instruction for that symbol from the
@@ -475,25 +483,26 @@ without adding revision to the backend-facing wire.
 - **AND** later poll/result cycles MUST converge to and retain the symbol-absent
   target
 
-#### Scenario: TDX immediate unsubscribe result contradicts the official list
+#### Scenario: TDX immediate unsubscribe result contradicts the native list
 
-- **WHEN** `unsubscribe_hq` returns text, `ErrorId`, another payload or raises but a subsequent valid official list no longer contains the symbol
+- **WHEN** `unsubscribe_hq` returns text, `ErrorId`, another payload or raises but
+  a subsequent fresh terminal-native list no longer contains the symbol
 - **THEN** datasource MUST return `unsubscribed.data.success=null`
 - **AND** the immediate payload or exception MUST remain only in bounded local log/evidence
 
 #### Scenario: TDX unsubscribe does not converge
 
-- **WHEN** the valid post-operation official list still contains the symbol
+- **WHEN** the valid fresh post-operation native list still contains the symbol
 - **THEN** datasource MUST return exactly `failure{symbol,reason:"TDX_UNSUBSCRIBE_NOT_CONVERGED",subscriptionState:"subscribed"}`
 
 #### Scenario: TDX unsubscribe cannot be verified
 
-- **WHEN** the post-operation official list fails, times out or cannot be normalized
+- **WHEN** the post-operation native list probe fails, times out, is fenced or cannot be normalized
 - **THEN** datasource MUST return exactly `failure{symbol,reason:"TDX_UNSUBSCRIBE_VERIFY_FAILED",subscriptionState:"unknown"}`
 
 #### Scenario: TDX symbol is already absent
 
-- **WHEN** the authoritative list before cancellation already excludes the symbol
+- **WHEN** a fresh authoritative native list excludes the symbol
 - **THEN** datasource MUST still remove the symbol from transport desired before
   treating the request as idempotently converged
 - **AND** it MUST return `success:null` without requiring a provider error interpretation
@@ -503,12 +512,12 @@ without adding revision to the backend-facing wire.
 - **WHEN** backend sends `sync_subscriptions`
 - **THEN** datasource MUST first publish the exact normalized set as transport
   desired under the source-local mutation gate
-- **AND** it MUST then sequentially clear using HTTP list/unsubscribe, observe
-  the official list and let the existing bridge establish that target
+- **AND** the existing bridge MUST sequentially unsubscribe extras, subscribe
+  missing symbols and observe the complete terminal-native list
 - **AND** no poll interleaving with clear or verification may derive reconcile
   work from the superseded desired target
-- **AND** temporary duplicate or opposing provider calls MAY converge through the next official list
-- **AND** it MUST return `success:null` only after the official list equals the normalized exact desired set
+- **AND** temporary duplicate or opposing provider calls MAY converge through the next native list
+- **AND** it MUST return `success:null` only after the current-owner native list equals the normalized exact desired set
 - **AND** a selected cancellation-stage failure MUST use
   `failure{symbol,reason,subscriptionState}` while a subscribe/convergence-stage
   failure MUST use `failure{symbol,reason}`

@@ -241,7 +241,8 @@ converter MUST be qualified from accepted raw fixtures.
 #### Scenario: TDX unsubscribe postcondition is captured
 
 - **WHEN** Windows TDX control HIL calls the client's internal `unsubscribe`
-- **THEN** evidence MUST preserve the bounded raw immediate response and the subsequent normalized official list
+- **THEN** evidence MUST preserve the bounded native-call outcome and the
+  subsequent normalized fresh terminal-native list
 - **AND** acceptance MUST follow list membership rather than interpreting the documented `Error` text or `ErrorId` alone
 
 #### Scenario: TDX unsubscribe remains absent across bridge polls
@@ -251,14 +252,14 @@ converter MUST be qualified from accepted raw fixtures.
 - **THEN** the poll MUST expose no stale subscribe for the target symbol
 - **AND** an older desired-revision result MUST not replace current convergence
   evidence
-- **AND** after HIL reports `success:null`, the official list MUST keep the
+- **AND** after HIL reports `success:null`, the fresh terminal-native list MUST keep the
   symbol absent for at least three complete bridge poll/result cycles
 - **AND** evidence MUST show that no public control response contains
   `desiredRevision`
 
 #### Scenario: TDX cancellation remains subscribed
 
-- **WHEN** the post-operation official list still contains the target
+- **WHEN** the fresh post-operation terminal-native list still contains the target
 - **THEN** evidence MUST show
   `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscriptionState=subscribed`
 - **AND** monitoring MUST use the same common counter schema as QMT
@@ -279,7 +280,12 @@ deployment MUST not install either artifact.
 #### Scenario: Bridge is installed
 
 - **WHEN** the operator copies either new bridge
-- **THEN** evidence MUST record provider, exact installed path, SHA-256 and runtime build ID
+- **THEN** TDX evidence MUST record provider, exact installed path, SHA-256 and runtime build ID
+- **AND** QMT evidence MUST record the manually imported artifact path/SHA-256,
+  QMT project identity, runtime build ID and bridge runtime fingerprint
+- **AND** when QMT does not expose a file-backed installed path, evidence MUST
+  record `platform_unavailable` and retain the import artifact SHA plus runtime
+  introspection instead of claiming an unverifiable installed-file SHA
 - **AND** TDX and QMT bridge identities MUST be recorded independently
 - **AND** the deployment system MUST not overwrite either artifact
 

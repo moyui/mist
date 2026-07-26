@@ -94,12 +94,12 @@ bounded stable code and MUST NOT be empty or free-form.
 
 #### Scenario: TDX cancellation does not converge
 
-- **WHEN** the valid official list still contains the cancelled symbol
+- **WHEN** the valid fresh terminal-native list still contains the cancelled symbol
 - **THEN** it MUST increment the same metric shape with `source=tdx`, `operation=unsubscribe`, `result=failure` and `reason=TDX_UNSUBSCRIBE_NOT_CONVERGED`
 
 #### Scenario: TDX cancellation cannot be verified
 
-- **WHEN** the post-cancellation official list fails, times out or cannot be normalized
+- **WHEN** the post-cancellation native list probe fails, times out, is fenced or cannot be normalized
 - **THEN** it MUST increment the same metric shape with `source=tdx`, `operation=unsubscribe`, `result=failure` and `reason=TDX_UNSUBSCRIBE_VERIFY_FAILED`
 
 #### Scenario: Unsubscribe state is displayed

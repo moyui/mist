@@ -342,7 +342,7 @@ conservative registry shape，不暴露 marker；caller 不能把该 ID 当作 p
 handle confirmed-live。`reconciliationRequired` 与 retained aggregate 只通过
 health/structured diagnostic 暴露。
 
-TDX 返回官方 HTTP RPC list 的 provider-specific value。两者不强行包装成共同 subscriptions/state 模型。
+TDX 返回 current terminal bridge fresh native list 的 provider-specific value。两者不强行包装成共同 subscriptions/state 模型。
 
 ### 4. backend ↔ datasource control
 
@@ -431,10 +431,10 @@ convergence evidence，后续 poll 必须向新 target 收敛。HTTP/provider fa
 
 | backend API | TDX 执行与成功值 | QMT 执行与成功值 |
 | --- | --- | --- |
-| `sync_subscriptions(symbols)` | datasource 先在 source-local gate 内把 transport desired 原子替换为 exact normalized symbols 并推进内部 revision，再通过 official HTTP RPC 读取当前 list、逐项 `unsubscribe_hq`、再次读取 list；TDX terminal bridge 按现有 batch 对新 desired 调用 `subscribe_hq(..., callback)` 并通过 native list 收敛。只有最终 list 等于 exact desired 才返回 `success:null` | datasource 顺序取消 `whole.subId` 与全部 `singles[symbol]`；全部退订成功后下发 control，由 QMT terminal bridge 调用一次 `subscribe_whole_quote(exactDesiredSymbols, callback)`。非空 desired 返回 `success:<newWholeSubId>`，空 desired 返回 `success:null` |
+| `sync_subscriptions(symbols)` | datasource 先在 source-local gate 内把 transport desired 原子替换为 exact normalized symbols 并推进内部 revision；TDX terminal bridge 按现有 batch 对新 desired 调用 `unsubscribe_hq/subscribe_hq(..., callback)`，随后在终端内调用 native `get_subscribe_hq_stock_list` 并回报完整 active list。只有 current owner/epoch/revision 下的 fresh native list 等于 exact desired 才返回 `success:null` | datasource 顺序取消 `whole.subId` 与全部 `singles[symbol]`；全部退订成功后下发 control，由 QMT terminal bridge 调用一次 `subscribe_whole_quote(exactDesiredSymbols, callback)`。非空 desired 返回 `success:<newWholeSubId>`，空 desired 返回 `success:null` |
 | `subscribe(symbol)` | datasource 先在 source-local gate 内把 transport desired 更新为 current union symbol 并推进内部 revision，再由现有 TDX terminal bridge 调用 `subscribe_hq([symbol], callback)`；只有 bridge/native list 已包含 symbol 才返回 `success:null` | datasource 下发 control，由 QMT terminal bridge 调用 `subscribe_quote(symbol, period='tick', dividend_type='none', result_type='dict', callback=...)`；只有 `type(result) is int` 才返回 `success:<newSingleSubId>`，其中 `0` 有效 |
-| `unsubscribe(symbol)` | datasource 先在 source-local gate 内从 transport desired 移除 symbol 并推进内部 revision，再调用 official HTTP RPC `unsubscribe_hq([symbol])`，并以 official list 不含 symbol 作为成功 postcondition；成功返回 `success:null`，仍在 list 返回 `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed`，list 不可验证返回 `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`。失败不恢复旧 desired | datasource 从 `singles[symbol]` 取得 `subId` 并下发 control，由 QMT terminal bridge 调用 `unsubscribe_quote(subId)`；只有返回 HIL 已确认的整数成功值才删除 ID并返回 `success:null`。未确认时保留 ID 并返回 `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown`；`whole.symbols` 成员返回 `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`，不调用 native |
-| `get_subscriptions` | 调用 official HTTP RPC `get_subscribe_hq_stock_list`，返回 `success:<normalizedProviderSymbolList>` | 不调用 provider；返回 datasource 当前 `whole + singles` in-memory registry |
+| `unsubscribe(symbol)` | datasource 先在 source-local gate 内从 transport desired 移除 symbol 并推进内部 revision；TDX terminal bridge 调用 `unsubscribe_hq([symbol])` 后以 fresh terminal-native active list 不含 symbol 作为成功 postcondition；成功返回 `success:null`，仍在 list 返回 `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed`，list 不可验证返回 `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`。失败不恢复旧 desired | datasource 从 `singles[symbol]` 取得 `subId` 并下发 control，由 QMT terminal bridge 调用 `unsubscribe_quote(subId)`；只有返回 HIL 已确认的整数成功值才删除 ID并返回 `success:null`。未确认时保留 ID 并返回 `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown`；`whole.symbols` 成员返回 `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`，不调用 native |
+| `get_subscriptions` | datasource-private `nativeProbeRevision` read barrier 要求 current terminal bridge 新执行一次 native `get_subscribe_hq_stock_list`；只在 current owner/epoch/revision result 回报该 probe 后返回 `success:<normalizedProviderSymbolList>` | 不调用 provider；返回 datasource 当前 `whole + singles` in-memory registry |
 
 TDX mutation 的 immediate native/HTTP payload 不直接成为公共 success value。
 尤其官方样例可能同时包含说明文本和 `ErrorId="0"`；list 是订阅集合的最终
@@ -503,7 +503,7 @@ postcondition。QMT mutation 的原始数值返回、类型与失败细节完整
 ```
 
 退订失败使用专用且仍然最小的 failure 结构。TDX postcondition 证明 symbol
-仍在 official list 时：
+仍在 fresh terminal-native list 时：
 
 ```json
 {
@@ -558,7 +558,7 @@ QMT native 返回或异常无法证明物理结果时：
   whole handle 的取消失败。
 - `sync_subscriptions` 仍尝试全部已知取消；若有多个失败，公共 response 选择固定执行顺序中的第一项（whole 在前，single 按 provider symbol 升序），并按该第一项的失败阶段选择上述精确 shape；全部失败细节保留在 journal、monitoring counter 与限频日志。
 - success 直接保存 provider-specific value；QMT subscribe 是 exact integer
-  `subId`（允许 `0`），QMT get 是 registry object，TDX get 是 official list。
+  `subId`（允许 `0`），QMT get 是 registry object，TDX get 是 fresh terminal-native list。
 - backend-facing wire response 不携带 raw provider payload、`Error`、`ErrorId`、完整
   subscription list、ack、`operationId`、revision、CAS、retry directive、
   timeout negotiation、result retention 或 common provider state union。
@@ -1319,8 +1319,8 @@ TDX provider-native control 依据：
 ```text
 sync_subscriptions:
   -> source-local gate: desired exact + desiredRevision++
-  -> HTTP list/unsubscribe/re-list
-  -> 既有bridge只按新desired subscribe/list convergence
+  -> terminal bridge native unsubscribe/subscribe/list
+  -> 只按新desired和current revision收敛
 
 subscribe:
   -> source-local gate: desired union symbol + desiredRevision++
@@ -1328,34 +1328,36 @@ subscribe:
 
 unsubscribe:
   -> source-local gate: desired difference symbol + desiredRevision++
-  -> official HTTP RPC unsubscribe
-  -> 无论 immediate payload/文本/异常如何，尽可能 official list验证
+  -> terminal bridge native unsubscribe
+  -> fresh terminal-native active list验证
 
 get_subscriptions:
-  -> official HTTP RPC list
+  -> datasource-private nativeProbeRevision++
+  -> terminal bridge强制native list probe并回报同一revision
 ```
 
 TDX terminal bridge 的 control `/tdx/bridge/poll|result`、native
 `subscribe_hq/get_market_snapshot` 保持；
 `/tdx/bridge/snapshot` 按第 9 节删除 `producerSequence`、自动 retry 与
 producer dedup。datasource→backend 则按第 10、11 节迁移为统一 schema v2
-和全新 TDX converter。poll/result wire schema 不变，但 backend-facing 三种
+和全新 TDX converter。poll/result 增加 datasource-private
+`nativeProbeRevision`，但 backend-facing 三种
 mutation 的 datasource orchestration 必须调用现有
 `set_desired/add_desired/remove_desired` 等价 transition，并共用同一个
-source-local mutation gate。gate 串行化 target transition、HTTP mutation 与
-bridge reconcile instruction emission；poll 在 HTTP 步骤中插入时不得从旧
-desired 生成反向 subscribe。HTTP 与 bridge 短暂重复 control 调用由现有
-`desiredRevision` stale-result fence 和后续 official list/reconcile 向唯一
-target 收敛；公共 mutation 只有在 official list/现有 bridge result 已证明
+source-local mutation gate。gate 串行化 target transition 与 bridge
+reconcile instruction emission；poll 不得从旧 desired 生成反向 subscribe。
+短暂重复 control 调用由现有 `desiredRevision` stale-result fence 和后续
+terminal-native list/reconcile 向唯一 target 收敛；公共 mutation 只有在
+current bridge result 已证明
 postcondition 后才返回 `success:null`。
 
 TDX `unsubscribe(symbol)` 的最终判定固定为：
 
-| official postcondition | backend-facing wire result |
+| terminal-native postcondition | backend-facing wire result |
 | --- | --- |
-| 调用前或调用后 official list 已不含 symbol | `success:null` |
-| 调用后 official list 仍含 symbol | `failure{symbol,reason:"TDX_UNSUBSCRIBE_NOT_CONVERGED",subscriptionState:"subscribed"}` |
-| official list 调用失败、超时或返回无法规范化的结果 | `failure{symbol,reason:"TDX_UNSUBSCRIBE_VERIFY_FAILED",subscriptionState:"unknown"}` |
+| current owner/epoch/revision 的 fresh native list 已不含 symbol | `success:null` |
+| fresh native list 仍含 symbol | `failure{symbol,reason:"TDX_UNSUBSCRIBE_NOT_CONVERGED",subscriptionState:"subscribed"}` |
+| native list probe 失败、超时、owner 被替换或返回无法规范化的结果 | `failure{symbol,reason:"TDX_UNSUBSCRIBE_VERIFY_FAILED",subscriptionState:"unknown"}` |
 
 官方取消订阅样例的说明文本与 `ErrorId` 存在矛盾，因此
 `unsubscribe_hq` 的 immediate payload、错误文本或 invocation exception
@@ -1452,7 +1454,7 @@ backend formal frame decoded/rejected
 backend canonical entry accepted/rejected
 allowlist identity rejection/cross-source configuration conflict
 owner/lease ready
-TDX HTTP list/unsubscribe failure
+TDX terminal-native list/unsubscribe/read-barrier failure
 ```
 
 不长期使用 symbol、subId、native error text 或 journal sequence 作为 metric label。symbol/subId 只进入脱敏限频日志。bridge-local callback/queue drops 不增加 telemetry wire；HIL 通过本地日志采集。

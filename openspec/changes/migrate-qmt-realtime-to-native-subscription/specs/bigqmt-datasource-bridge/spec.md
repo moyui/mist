@@ -211,7 +211,13 @@ The QMT builtin bridge SHALL continue to be installed only by an operator. Datas
 
 - **WHEN** datasource and backend images containing the new routes are available
 - **THEN** no workflow may copy the bridge into QMT automatically
-- **AND** the operator MUST manually install the exact bridge and record installed path, SHA-256 and runtime build ID
+- **AND** the operator MUST manually import the exact QMT bridge and record the
+  import artifact path/SHA-256, QMT project identity and runtime build ID
+- **AND** when QMT does not expose a file-backed installed path, evidence MUST
+  record `platform_unavailable` rather than inventing a path or SHA
+- **AND** the running bridge MUST expose bounded read-only
+  `runtime_introspection` containing its runtime fingerprint, Python/runtime
+  metadata and availability of the required native methods
 
 #### Scenario: Bridge-first maintenance window begins
 

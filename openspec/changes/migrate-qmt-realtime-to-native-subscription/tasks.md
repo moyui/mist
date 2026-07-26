@@ -32,7 +32,7 @@
 - [ ] 1.1 `[mist]` 以 stable `realtime-source-layout` 为基线，复核本 focused change、其他 stable specs、相关未归档 changes 与 Theme B B1，消除冲突或明确依赖。
 - [ ] 1.2 `[all repositories]` 记录 `mist`、`mist-datasource`、`mist-deploy`、`mist-fe`、`mist-monitoring`、`mist-skills` 的 branch、HEAD、upstream、dirty status、目标远端分支和生产 image/runtime 基线。
 - [ ] 1.3 `[mist/mist-datasource]` 使用 rename-aware Git history 找出 QMT bridge 的当前及历史文件名，记录历史 command/result、当前 realtime polling、owner/lease 与 TDX realtime 的实际路径。
-- [ ] 1.4 `[mist]` 建立脱敏 evidence 模板：官方文档 URL/访问日期、QMT/TDX terminal/runtime build、两份 bridge path/SHA-256/build ID、方法、返回值、callback fixture、权限、journal、HIL 时间窗及 protected digest。
+- [ ] 1.4 `[mist]` 建立脱敏 evidence 模板：官方文档 URL/访问日期、QMT/TDX terminal/runtime build、TDX installed path/SHA-256/build ID、QMT import artifact path/SHA-256/project/build ID/runtime fingerprint（平台不暴露 installed file 时明确 `platform_unavailable`）、方法、返回值、callback fixture、权限、journal、HIL 时间窗及 protected digest。
 - [ ] 1.5 `[mist]` 记录通过 `pnpm` 安装的 OpenSpec CLI `1.6.0`，使用该固定
   版本执行 strict validation，不使用未锁定 `@latest`。
 - [ ] 1.6 **阶段门**：确认 stable `realtime-source-layout` 与本 focused change 均通过 strict validation，提交只读基线与 OpenSpec review；未获确认不得修改产品代码。
@@ -69,7 +69,7 @@
 ## 3. Datasource QMT control、registry 与 journal
 
 - [ ] 3.1 `[mist-datasource]` 实现 datasource 权威内存 registry，只有两个逻辑 bucket：nullable `whole{subId,symbols}` 与 `singles{providerSymbol:subId}`；`whole.subId/symbols` 必须成对存在，按 bucket 判断类型，不从 subId 数值或 symbol 数量推断。允许 datasource-private lifecycle metadata 标记 `retained-recovery`，但不得形成第三个 public bucket、改变 get response 或进入 backend-facing wire。
-- [ ] 3.2 `[mist-datasource]` 实现 backend-facing 四种精确 request 与 `subscriptions_synced|subscribed|unsubscribed|subscriptions` response；`data` 只能是 `success` 或 `failure`。普通 failure 恰好为 `{symbol,reason}`；unsubscribe 以及 sync 取消阶段的 failure 恰好为 `{symbol,reason,subscriptionState}`，其中 state 只允许 `subscribed|unknown`。固定 success 语义：QMT full/single subscribe 返回 exact integer ID（允许 `0`）、QMT cancel-all/unsubscribe 返回 null、QMT get 返回 `whole{subId,symbols}|null + singles{providerSymbol:subId}`；TDX mutation 返回 null、TDX get 返回 normalized official list。backend-facing response 禁止 raw provider payload、`Error/ErrorId`、full list、operation ID 和 retry metadata。每个 provider WebSocket 最多一个 outstanding request，并使用 source-local 固定 bounded timeout（不进入 wire negotiation）。
+- [ ] 3.2 `[mist-datasource]` 实现 backend-facing 四种精确 request 与 `subscriptions_synced|subscribed|unsubscribed|subscriptions` response；`data` 只能是 `success` 或 `failure`。普通 failure 恰好为 `{symbol,reason}`；unsubscribe 以及 sync 取消阶段的 failure 恰好为 `{symbol,reason,subscriptionState}`，其中 state 只允许 `subscribed|unknown`。固定 success 语义：QMT full/single subscribe 返回 exact integer ID（允许 `0`）、QMT cancel-all/unsubscribe 返回 null、QMT get 返回 `whole{subId,symbols}|null + singles{providerSymbol:subId}`；TDX mutation 返回 null、TDX get 返回 current terminal bridge 的 fresh normalized native list。backend-facing response 禁止 raw provider payload、`Error/ErrorId`、full list、operation ID 和 retry metadata。每个 provider WebSocket 最多一个 outstanding request，并使用 source-local 固定 bounded timeout（不进入 wire negotiation）。
 - [ ] 3.3 `[mist-datasource]` 实现 `sync_subscriptions` 顺序 best-effort reset：whole 在前、single 按 provider symbol 升序逐个取消；native 未确认时保留原 ID、继续剩余取消、阻止 replacement；只有 confirmed result 与 registry transition 都 durable 才删除 ID。confirmed unsubscribe 后 durability 失败时保留原 bucket entry 并私有标记 `retained-recovery`，立即停止剩余 mutation 和 replacement、设置 `reconciliationRequired`；全部 durable 成功后才创建 exact desired whole；多项 native 未确认时 backend-facing response 只取固定顺序第一项，journal 保存全部。
 - [ ] 3.4 `[mist-datasource]` 实现 single subscribe/unsubscribe、
   whole/single 去重和 whole member 的 individual unsubscribe 拒绝；
@@ -92,7 +92,7 @@
   lease identity 只位于 poll/result/snapshot request 顶层，不得在 command
   内重复；禁止 token 进入日志、journal、health 或 metrics，不得把 realtime
   collector `streamEpoch` 误作 owner 或 command 字段。
-- [ ] 3.7 `[mist-datasource]` 新增 datasource 单 writer journal，默认
+- [x] 3.7 `[mist-datasource]` 新增 datasource 单 writer journal，默认
   `F:\quant\MistAPI\datasource\state\qmt\subscription-journal.jsonl`，支持
   `MIST_QMT_SUBSCRIPTION_JOURNAL_PATH`；intent 必须 append+flush+fsync 后才能
   暴露 native command，accepted result 与 registry transition 必须
@@ -163,6 +163,11 @@
   `ownerId="bigqmt-"+pid`，调整 owner 注册为 init 或 lease loss 时注册，
   正常 poll 是 heartbeat，避免每秒轮换 lease/generation；同一 QMT 进程内
   context reload 不强制更换 ownerId。
+- [x] 4.6a `[mist-datasource]` 在现有 loopback history command channel 增加
+  read-only `runtime_introspection`，返回 bounded build ID、artifact SHA
+  （`__file__` 不可用时为 `unavailable`）、loaded-function runtime
+  fingerprint、Python/context metadata 与 required native method
+  availability；不得执行 subscribe/unsubscribe mutation。
 - [ ] 4.7 `[mist-datasource tests]` 覆盖 Python 3.6 parse、无 `__file__`、
   method missing、signature unknown、poll owner identity 只出现在 request
   顶层、三种 exact command dispatch、command 无 lease/`streamEpoch`、
@@ -270,28 +275,32 @@
   duplicate/out-of-order producer rejection 及只服务该机制的代码；success
   只使用 HTTP 2xx，不返回 `accepted/sequence/retry` item response；datasource
   接受 snapshot 后直接包装统一 schema-v2 one-entry map，不分配 formal sequence。
-- [ ] 6.3 `[mist-datasource]` 保持 TDX subscribe 走既有 bridge；将 official
-  HTTP RPC unsubscribe 和 get-list 封装为 `unsubscribe/get_subscriptions`。
+- [x] 6.3 `[mist-datasource]` 保持 TDX control 走既有 terminal bridge；
+  `unsubscribe/get_subscriptions` 以 bridge 内 native
+  `get_subscribe_hq_stock_list` active list 为权威，不依赖返回 `-32601` 的
+  datasource official HTTP RPC。
   三种 mutation 共用一个 source-local gate，并在 provider mutation 前调用
   现有 `set_desired/add_desired/remove_desired` 等价 transition：sync 建立
   exact target、subscribe 建立 union、unsubscribe 建立 difference；target
   failure 后不回滚。
-- [ ] 6.4 `[mist-datasource]` 实现 TDX `sync_subscriptions`：先在 gate
+- [x] 6.4 `[mist-datasource]` 实现 TDX `sync_subscriptions`：先在 gate
   内发布 exact normalized desired 并推进现有内部 `desiredRevision`，再将
-  official list 规范化为固定 provider-symbol 顺序并执行 HTTP
-  list/unsubscribe/re-list → 既有 bridge subscribe/converge；bridge poll
+  terminal-native list 规范化为固定 provider-symbol 顺序并执行
+  bridge unsubscribe/list → subscribe/converge；bridge poll
   插入 clear/verify 时只能无 mutation 或按新 target 计算，允许旧 in-flight
   native call 造成短暂重复，但其 result 必须由现有 stale-revision fence
   拒绝并最终向新 target 收敛。
-- [ ] 6.5 `[mist/mist-datasource]` TDX 对外使用与 QMT 同名
+- [x] 6.5 `[mist/mist-datasource]` TDX 对外使用与 QMT 同名
   request/response；普通失败为 `{symbol,reason}`，unsubscribe/cancel-stage
   failure 与 QMT 使用相同 `{symbol,reason,subscriptionState}`。三种 mutation
-  仅在 official/native list 达到 postcondition 后返回 `success:null`，get
-  返回 normalized official list，不增加 QMT handle/state。TDX 目标仍在 list
+  仅在 current owner/epoch/revision 的 fresh native list 达到 postcondition
+  后返回 `success:null`；get 使用 datasource-private `nativeProbeRevision`
+  read barrier 强制一次新 native list probe，再返回 normalized list，不增加
+  QMT handle/state。TDX 目标仍在 list
   返回 `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed`，list 不可验证返回
   `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`；内部 `desiredRevision` 不得进入
   backend-facing response。
-- [ ] 6.6 `[mist-datasource tests]` 覆盖 TDX snapshot exact request 无
+- [x] 6.6 `[mist-datasource tests]` 覆盖 TDX snapshot exact request 无
   `producerSequence`、one-attempt delivery、HTTP 2xx success 无 item
   ack/sequence、POST failure/no-response 不 retry、gateway 无 producer dedup、
   datasource 无 formal sequence，以及 already-absent、immediate
@@ -312,7 +321,8 @@
 - [ ] 7.1 `[mist/mist-datasource]` 对齐 `sources/{tdx,qmt}` 与 datasource
   provider 目录中 shared client/control/types/runtime/routes/health 责任；
   两边都具备同相对路径的 `native-snapshot.converter.ts`；provider-only
-  manifest 明确 QMT journal/callback routes 与 TDX HTTP RPC。
+  manifest 明确 QMT journal/callback routes 与 TDX terminal-native
+  list/unsubscribe/read barrier。
 - [ ] 7.2 `[mist/mist-datasource]` 增加结构/能力 guard，验证四种 datasource
   operation 与四个 Mist in-process method 都有真实 request/response execution
   和测试，不使用动态 `supportedOperations`；另验证 application runtime graph
@@ -474,8 +484,8 @@
   HTTP 2xx 不返回 item ack/sequence、datasource 输出 schema-v2 one-entry
   map、新 TDX converter 与 common ingress readback，且不存在 formal
   sequence/fence；同时验证四种 datasource API、mutation `success:null`、
-  normalized official list、HTTP list/unsubscribe、bridge subscribe 及最终
-  list postcondition，覆盖 already-absent、
+  fresh terminal-native list、bridge unsubscribe/subscribe 及最终 list
+  postcondition，覆盖 read barrier、already-absent、
   `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` 和
   `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`；unsubscribe `success:null` 后继续
   至少三个完整 bridge poll/result 周期，证明 target symbol 始终 absent 且
