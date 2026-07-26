@@ -1,7 +1,31 @@
+import { DataSource as TypeOrmDataSource } from 'typeorm';
+
 import { RealtimeSubscriptionControl } from '../realtime-subscription-control';
-import { runControlSequence } from './realtime-subscription-hil';
+import {
+  realtimeSubscriptionHilEntities,
+  runControlSequence,
+} from './realtime-subscription-hil';
 
 describe('realtime subscription HIL operation sequence', () => {
+  it('registers a closed TypeORM metadata graph for the allowlist entities', async () => {
+    const dataSource = new TypeOrmDataSource({
+      type: 'mysql',
+      entities: [...realtimeSubscriptionHilEntities],
+      database: 'metadata-only',
+    });
+
+    await (
+      dataSource as unknown as { buildMetadatas(): Promise<void> }
+    ).buildMetadatas();
+
+    expect(
+      dataSource
+        .getMetadata('Security')
+        .relations.map(({ propertyName }) => propertyName),
+    ).toEqual(expect.arrayContaining(['sourceConfigs', 'ks']));
+    expect(dataSource.getMetadata('K').relations).toHaveLength(4);
+  });
+
   it('uses all four typed methods in deterministic order', async () => {
     const calls: string[] = [];
     const client: RealtimeSubscriptionControl = {

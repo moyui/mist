@@ -2,7 +2,14 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { Security, SecuritySourceConfig } from '@app/shared-data';
+import {
+  K,
+  KExtensionEf,
+  KExtensionQmt,
+  KExtensionTdx,
+  Security,
+  SecuritySourceConfig,
+} from '@app/shared-data';
 import { mistEnvSchema } from '@app/config';
 import { DynamicModule, Module, Type } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -40,6 +47,15 @@ interface HilEvidence {
 
 @Module({})
 class RealtimeSubscriptionHilModule {}
+
+export const realtimeSubscriptionHilEntities = [
+  K,
+  KExtensionEf,
+  KExtensionQmt,
+  KExtensionTdx,
+  Security,
+  SecuritySourceConfig,
+] as const;
 
 export async function runRealtimeSubscriptionHil(
   source: HilSource,
@@ -111,7 +127,7 @@ function createHilModule(source: HilSource): DynamicModule {
             database: config.get('mysql_server_database'),
             synchronize: false,
             logging: false,
-            entities: [Security, SecuritySourceConfig],
+            entities: [...realtimeSubscriptionHilEntities],
             connectorPackage: 'mysql2',
           };
         },
