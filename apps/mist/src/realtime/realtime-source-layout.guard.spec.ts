@@ -11,10 +11,9 @@ describe('realtime source layout', () => {
     'realtime/realtime.module.ts',
     'realtime/realtime.client.ts',
     'realtime/realtime.store.ts',
-    'realtime/realtime.types.ts',
     'realtime/realtime-allowlist.resolver.ts',
     'realtime/realtime-diagnostic.controller.ts',
-    'realtime/realtime-native.adapter.ts',
+    'realtime/native-snapshot.converter.ts',
   ])('keeps the shared provider responsibility at %s', (relativePath) => {
     expect(existsSync(join(sourceRoot, 'tdx', relativePath))).toBe(true);
     expect(existsSync(join(sourceRoot, 'qmt', relativePath))).toBe(true);

@@ -1,25 +1,17 @@
 export type RealtimeSource = 'tdx' | 'qmt';
 
-export interface RealtimeNativeFrame {
-  payloadType: 'mist.realtime.native_snapshot';
-  schemaVersion: 1;
-  source: RealtimeSource;
-  acquisitionProfile: 'tdx.get_market_snapshot' | 'qmt.get_full_tick';
-  streamEpoch: string;
-  sequence: number;
-  sequenceScope: 'symbol';
-  symbol: string;
+export interface RealtimeNativeMapFrame {
+  schemaVersion: 2;
   capturedAt: string;
   native: Record<string, unknown>;
 }
 
 export interface CanonicalRealtimeSnapshot {
   source: RealtimeSource;
-  symbol: string;
+  securityId: number;
+  providerSymbol: string;
   eventTime: string | null;
   capturedAt: string;
-  sequence: number;
-  streamEpoch: string;
   prices: {
     last: number;
     open: number | null;
@@ -30,18 +22,14 @@ export interface CanonicalRealtimeSnapshot {
   cumulativeVolume: number | null;
   cumulativeAmount: number | null;
   quality: {
+    level: 'latest-state';
     eventTimeAvailable: boolean;
+    aggregationEligible: boolean;
     partialPrices: boolean;
   };
-  native: Record<string, unknown>;
+  native: Readonly<Record<string, unknown>>;
 }
 
 export const REALTIME_NATIVE_CONTRACT = {
-  payloadType: 'mist.realtime.native_snapshot',
-  schemaVersion: 1,
-  sequenceScope: 'symbol',
-  acquisitionProfiles: {
-    tdx: 'tdx.get_market_snapshot',
-    qmt: 'qmt.get_full_tick',
-  },
+  schemaVersion: 2,
 } as const;

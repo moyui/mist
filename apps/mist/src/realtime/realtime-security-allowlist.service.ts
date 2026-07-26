@@ -37,6 +37,18 @@ export class RealtimeSecurityAllowlistService {
     const resolved = new Map<string, RealtimeAllowlistEntry>();
     for (const formatCode of requested) {
       const entry = await this.resolveExact(source, formatCode);
+      for (const [otherSource, otherEntries] of this.entries) {
+        if (
+          otherSource !== source &&
+          [...otherEntries.values()].some(
+            (other) => other.securityId === entry.securityId,
+          )
+        ) {
+          throw new BadRequestException(
+            `realtime securityId=${entry.securityId} is configured for both ${otherSource} and ${source}`,
+          );
+        }
+      }
       resolved.set(formatCode, entry);
       this.logger.log(
         `${source} allowlist resolved: ${formatCode} -> securityId=${entry.securityId}`,
@@ -61,6 +73,13 @@ export class RealtimeSecurityAllowlistService {
     source: DataSource.TDX | DataSource.QMT,
   ): readonly RealtimeAllowlistEntry[] {
     return [...(this.entries.get(source)?.values() ?? [])];
+  }
+
+  resolve(
+    source: DataSource.TDX | DataSource.QMT,
+    formatCode: string,
+  ): RealtimeAllowlistEntry | null {
+    return this.entries.get(source)?.get(formatCode) ?? null;
   }
 
   private parse(environmentName: string): string[] {

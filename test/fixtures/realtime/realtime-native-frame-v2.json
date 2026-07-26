@@ -1,0 +1,71 @@
+{
+  "contract": {
+    "schemaVersion": 2,
+    "outerKeys": ["type", "provider", "timestamp", "data"],
+    "dataKeys": ["schemaVersion", "capturedAt", "native"]
+  },
+  "cases": {
+    "tdxOneEntry": {
+      "type": "realtime.native_snapshot",
+      "provider": "tdx",
+      "timestamp": "2026-07-25T10:00:00+08:00",
+      "data": {
+        "schemaVersion": 2,
+        "capturedAt": "2026-07-25T10:00:00+08:00",
+        "native": {
+          "600030.SH": {
+            "Now": 31.25,
+            "Open": 31.1,
+            "Max": 31.4,
+            "Min": 30.98,
+            "LastClose": 31.0,
+            "Volume": 123456,
+            "Amount": 3862500,
+            "DateTime": "2026-07-25 10:00:00",
+            "ErrorId": 0
+          }
+        }
+      }
+    },
+    "qmtOneEntry": {
+      "type": "realtime.native_snapshot",
+      "provider": "qmt",
+      "timestamp": "2026-07-25T10:00:00+08:00",
+      "data": {
+        "schemaVersion": 2,
+        "capturedAt": "2026-07-25T10:00:00+08:00",
+        "native": {
+          "300502.SZ": {
+            "timetag": "20260725 10:00:00",
+            "lastPrice": 541.2,
+            "open": 535.0,
+            "high": 545.5,
+            "low": 532.1,
+            "lastClose": 536.8,
+            "volume": 12345,
+            "amount": 6678914
+          }
+        }
+      }
+    },
+    "qmtMultiEntry": {
+      "type": "realtime.native_snapshot",
+      "provider": "qmt",
+      "timestamp": "2026-07-25T10:00:01+08:00",
+      "data": {
+        "schemaVersion": 2,
+        "capturedAt": "2026-07-25T10:00:01+08:00",
+        "native": {
+          "300502.SZ": {
+            "timetag": "20260725 10:00:01",
+            "lastPrice": 541.3
+          },
+          "000001.SZ": {
+            "timetag": "20260725 10:00:01",
+            "lastPrice": 12.34
+          }
+        }
+      }
+    }
+  }
+}

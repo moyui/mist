@@ -17,9 +17,7 @@ export class TdxRealtimeAllowlistResolver implements OnModuleInit {
   }
 
   resolve(formatCode: string): AllowlistEntry | null {
-    return (
-      this.entriesList.find((entry) => entry.formatCode === formatCode) ?? null
-    );
+    return this.shared.resolve(DataSource.TDX, formatCode);
   }
 
   isAuthorized(formatCode: string): boolean {

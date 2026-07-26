@@ -1,138 +1,129 @@
 import { ConfigService } from '@nestjs/config';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { QmtRealtimeStore } from '../sources/qmt/realtime/realtime.store';
 import { QmtRealtimeClient } from '../sources/qmt/realtime/realtime.client';
-import { TdxRealtimeStore } from '../sources/tdx/realtime/realtime.store';
+import { QmtRealtimeStore } from '../sources/qmt/realtime/realtime.store';
 import { TdxRealtimeClient } from '../sources/tdx/realtime/realtime.client';
+import { TdxRealtimeStore } from '../sources/tdx/realtime/realtime.store';
 import { RealtimeSnapshotIngressService } from './realtime-snapshot-ingress.service';
 
 const capturedAt = new Date().toISOString();
 
-describe('formal realtime ingress contract', () => {
-  it('pins the shared golden fixture SHA', () => {
-    const root = join(process.cwd(), 'test/fixtures/realtime');
-    const fixture = readFileSync(join(root, 'realtime-native-frame-v1.json'));
-    const expectedSha = readFileSync(
-      join(root, 'realtime-native-frame-v1.sha256'),
-      'utf8',
-    )
-      .trim()
-      .split(/\s+/)[0];
-    expect(createHash('sha256').update(fixture).digest('hex')).toBe(
-      expectedSha,
-    );
-  });
-
-  it('funnels an accepted TDX native frame through the common ingress', async () => {
+describe('formal realtime schema-v2 ingress contract', () => {
+  it('funnels a TDX one-entry native map through the common ingress', () => {
     const store = new TdxRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
     const client = new TdxRealtimeClient(
       new ConfigService({ TDX_BASE_URL: 'http://127.0.0.1:9001' }),
       store,
-      { isAuthorized: () => true, entriesList: [] } as never,
-      async () => undefined,
+      resolver({ '600030.SH': 600030 }) as never,
+      undefined,
       ingress,
     );
 
-    await emit(
+    emit(client, ready('tdx'));
+    emit(
       client,
-      'realtime.ready',
-      ready('tdx', 'tdx.get_market_snapshot'),
-    );
-    await emit(
-      client,
-      'realtime.native_snapshot',
-      frame('tdx', '600030.SH', 1),
+      frame('tdx', {
+        '600030.SH': {
+          Now: 31.25,
+          DateTime: '2026-07-22 10:01:02',
+        },
+      }),
     );
 
-    expect(ingress.read('tdx', '600030.SH')?.prices.last).toBe(31.25);
+    expect(ingress.read(600030)?.prices.last).toBe(31.25);
+    expect(ingress.read(600030)?.providerSymbol).toBe('600030.SH');
   });
 
-  it('fences QMT sequences per symbol before the common ingress', async () => {
+  it('isolates malformed and unauthorized QMT entries in one native map', () => {
     const store = new QmtRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
     const client = new QmtRealtimeClient(
       new ConfigService({ QMT_BASE_URL: 'http://127.0.0.1:9002' }),
       store,
-      { isAuthorized: () => true, entriesList: [] } as never,
+      resolver({ '300502.SZ': 300502, '000001.SZ': 1 }) as never,
       Date.now,
       ingress,
     );
 
-    await emit(client, 'realtime.ready', ready('qmt', 'qmt.get_full_tick'));
-    await emit(
-      client,
-      'realtime.native_snapshot',
-      frame('qmt', '300502.SZ', 1),
-    );
-    await emit(
-      client,
-      'realtime.native_snapshot',
-      frame('qmt', '000001.SZ', 1),
-    );
-    await emit(
-      client,
-      'realtime.native_snapshot',
-      frame('qmt', '300502.SZ', 1),
-    );
+    emit(client, ready('qmt'));
+    const native = {
+      '300502.SZ': qmtNative(541.2),
+      '000001.SZ': qmtNative(12.34),
+      '600030.SH': qmtNative(31.25),
+      'BAD.SYMBOL': 'not-an-object',
+    };
+    emit(client, frame('qmt', native));
+    emit(client, frame('qmt', { '300502.SZ': qmtNative(541.2) }));
 
-    expect(ingress.read('qmt', '300502.SZ')?.prices.last).toBe(541.2);
-    expect(ingress.read('qmt', '000001.SZ')?.prices.last).toBe(12.34);
-    expect(store.status().dropCounts).toMatchObject({ duplicate: 1 });
+    expect(ingress.read(300502)?.prices.last).toBe(541.2);
+    expect(ingress.read(1)?.prices.last).toBe(12.34);
+    expect(store.status().rejectCounts).toMatchObject({
+      symbolNotAuthorized: 1,
+    });
+    expect(store.status().lastAcceptedAt).not.toBeNull();
   });
 });
 
-async function emit(
-  client: object,
-  type: string,
-  data: Record<string, unknown>,
-) {
-  await (
+function emit(client: object, message: Record<string, unknown>) {
+  (
     client as { handleMessage(raw: string): Promise<void> | void }
-  ).handleMessage(JSON.stringify({ type, data }));
+  ).handleMessage(JSON.stringify(message));
 }
 
-function ready(source: 'tdx' | 'qmt', acquisitionProfile: string) {
+function ready(provider: 'tdx' | 'qmt') {
   return {
-    mode: 'builtin',
-    payloadType: 'mist.realtime.native_snapshot',
-    schemaVersion: 1,
-    source,
-    sequenceScope: 'symbol',
-    acquisitionProfile,
-    streamEpoch: 'epoch-1',
-    generation: 1,
-    ownerId: 'owner-1',
-    bridgeBuildId: 'bridge-v1',
-    sequence: 0,
+    type: 'realtime.ready',
+    provider,
+    timestamp: capturedAt,
+    data: {
+      mode: 'builtin',
+      schemaVersion: 2,
+      source: provider,
+      quality: 'latest-state',
+      generation: 1,
+      ownerId: 'owner-1',
+      bridgeBuildId: 'bridge-v2',
+    },
   };
 }
 
-function frame(source: 'tdx' | 'qmt', symbol: string, sequence: number) {
-  const tdx = source === 'tdx';
+function frame(provider: 'tdx' | 'qmt', native: Record<string, unknown>) {
   return {
-    payloadType: 'mist.realtime.native_snapshot',
-    schemaVersion: 1,
-    source,
-    sequenceScope: 'symbol',
-    acquisitionProfile: tdx ? 'tdx.get_market_snapshot' : 'qmt.get_full_tick',
-    streamEpoch: 'epoch-1',
-    sequence,
-    symbol,
-    capturedAt,
-    native: tdx
-      ? { Now: 31.25, DateTime: '2026-07-22 10:01:02' }
-      : {
-          timetag: '20260722 10:01:02',
-          lastPrice: symbol === '300502.SZ' ? 541.2 : 12.34,
-          open: 12,
-          high: 13,
-          low: 11,
-          lastClose: 12,
-          volume: 10,
-          amount: 100,
-        },
+    type: 'realtime.native_snapshot',
+    provider,
+    timestamp: capturedAt,
+    data: {
+      schemaVersion: 2,
+      capturedAt,
+      native,
+    },
+  };
+}
+
+function resolver(entries: Record<string, number>) {
+  return {
+    resolve: (providerSymbol: string) => {
+      const securityId = entries[providerSymbol];
+      return securityId === undefined
+        ? null
+        : { formatCode: providerSymbol, securityId };
+    },
+    entriesList: Object.entries(entries).map(([formatCode, securityId]) => ({
+      formatCode,
+      securityId,
+    })),
+  };
+}
+
+function qmtNative(lastPrice: number) {
+  return {
+    timetag: '20260722 10:01:02',
+    lastPrice,
+    open: 12,
+    high: 13,
+    low: 11,
+    lastClose: 12,
+    volume: 10,
+    amount: 100,
   };
 }

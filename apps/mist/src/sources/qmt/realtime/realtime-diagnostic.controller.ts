@@ -2,6 +2,7 @@ import { Controller, Get, NotFoundException, Param, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { requireRealtimeDiagnosticLoopback } from '../../../realtime/realtime-diagnostic.guard';
+import { RealtimeSnapshotIngressService } from '../../../realtime/realtime-snapshot-ingress.service';
 import { QmtRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
 import { QmtRealtimeStore } from './realtime.store';
 
@@ -11,6 +12,7 @@ export class QmtRealtimeDiagnosticController {
   constructor(
     private readonly store: QmtRealtimeStore,
     private readonly allowlist: QmtRealtimeAllowlistResolver,
+    private readonly ingress: RealtimeSnapshotIngressService,
   ) {}
 
   @Get('status')
@@ -25,7 +27,8 @@ export class QmtRealtimeDiagnosticController {
   @Get(':formatCode')
   getSymbol(@Param('formatCode') formatCode: string, @Req() request: Request) {
     requireRealtimeDiagnosticLoopback(request);
-    const value = this.store.read(formatCode);
+    const entry = this.allowlist.resolve(formatCode);
+    const value = entry ? this.ingress.read(entry.securityId) : null;
     if (!value) {
       throw new NotFoundException(`no realtime snapshot for ${formatCode}`);
     }

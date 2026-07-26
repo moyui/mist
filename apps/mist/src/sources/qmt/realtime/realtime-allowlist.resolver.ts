@@ -20,6 +20,10 @@ export class QmtRealtimeAllowlistResolver implements OnModuleInit {
     return this.shared.isAuthorized(DataSource.QMT, formatCode);
   }
 
+  resolve(formatCode: string): QmtRealtimeAllowlistEntry | null {
+    return this.shared.resolve(DataSource.QMT, formatCode);
+  }
+
   get entriesList(): readonly QmtRealtimeAllowlistEntry[] {
     return this.shared.list(DataSource.QMT);
   }

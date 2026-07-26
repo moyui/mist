@@ -1,72 +1,63 @@
 import {
-  Inject,
   Injectable,
-  Logger,
   OnModuleDestroy,
   OnModuleInit,
   Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import WebSocket from 'ws';
-import { QmtRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
 import {
-  QmtNativeSnapshot,
-  QmtRealtimeSnapshotFrame,
-  QMT_REALTIME_CONTRACT,
-} from './realtime.types';
-import { QmtRealtimeStore } from './realtime.store';
+  decodeRealtimeNativeMapMessage,
+  isRecord,
+  RealtimeNativeMapDecodeError,
+} from '../../../realtime/realtime-native-map-frame';
+import {
+  RealtimeSubscriptionControl,
+  SubscriptionControlFailure,
+  SubscriptionControlResult,
+} from '../../../realtime/realtime-subscription-control';
 import { RealtimeSnapshotIngressService } from '../../../realtime/realtime-snapshot-ingress.service';
-import { toQmtCanonicalSnapshot } from './realtime-native.adapter';
+import { convertQmtNativeSnapshot } from './native-snapshot.converter';
+import { QmtRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
+import { QmtRealtimeStore } from './realtime.store';
 
-const MAX_FRAME_CLOCK_SKEW_MS = 60_000;
-const FRAME_KEYS = [
-  'payloadType',
-  'schemaVersion',
-  'source',
-  'acquisitionProfile',
-  'streamEpoch',
-  'sequence',
-  'sequenceScope',
-  'symbol',
-  'capturedAt',
-  'native',
-] as const;
-const NATIVE_REQUIRED_KEYS = [
-  'timetag',
-  'lastPrice',
-  'open',
-  'high',
-  'low',
-  'lastClose',
-  'volume',
-  'amount',
-] as const;
-const RFC3339_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
-const QMT_TIMETAG_PATTERN = /^(?:\d{14}|\d{8} \d{2}:\d{2}:\d{2})$/;
+type ControlRequest =
+  | { type: 'sync_subscriptions'; symbols: string[] }
+  | { type: 'subscribe'; symbol: string }
+  | { type: 'unsubscribe'; symbol: string }
+  | { type: 'get_subscriptions' };
+type ControlResponseType =
+  | 'subscriptions_synced'
+  | 'subscribed'
+  | 'unsubscribed'
+  | 'subscriptions';
 
-export const QMT_REALTIME_CLOCK = Symbol('QMT_REALTIME_CLOCK');
-export type QmtRealtimeClock = () => number;
+interface PendingControl {
+  expectedType: ControlResponseType;
+  symbol: string | null;
+  resolve: (value: SubscriptionControlResult) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
 
 @Injectable()
-export class QmtRealtimeClient implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(QmtRealtimeClient.name);
+export class QmtRealtimeClient
+  implements OnModuleInit, OnModuleDestroy, RealtimeSubscriptionControl
+{
   private readonly wsUrl: string;
   private readonly reconnectDelayMs: number;
+  private readonly controlTimeoutMs: number;
   private ws: WebSocket | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private shuttingDown = false;
   private ready = false;
-  private lastOwnerGeneration = 0;
+  private pendingControl: PendingControl | null = null;
 
   constructor(
     config: ConfigService,
     private readonly store: QmtRealtimeStore,
     private readonly allowlist: QmtRealtimeAllowlistResolver,
-    @Optional()
-    @Inject(QMT_REALTIME_CLOCK)
-    private readonly clock: QmtRealtimeClock = Date.now,
+    @Optional() clock: () => number = Date.now,
     @Optional()
     private readonly ingress?: RealtimeSnapshotIngressService,
   ) {
@@ -79,6 +70,11 @@ export class QmtRealtimeClient implements OnModuleInit, OnModuleDestroy {
       'QMT_WS_RECONNECT_DELAY_MS',
       5000,
     );
+    this.controlTimeoutMs = config.get<number>(
+      'QMT_SUBSCRIPTION_CONTROL_TIMEOUT_MS',
+      10_000,
+    );
+    void clock;
   }
 
   onModuleInit(): void {
@@ -89,7 +85,95 @@ export class QmtRealtimeClient implements OnModuleInit, OnModuleDestroy {
     this.shuttingDown = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.settleDisconnected();
     this.ws?.close();
+  }
+
+  syncSubscriptions(
+    symbols: readonly string[],
+  ): Promise<SubscriptionControlResult> {
+    const normalized = [...new Set(symbols.map(normalizeSymbol))].sort();
+    const unauthorized = normalized.find(
+      (symbol) => this.allowlist.resolve(symbol) === null,
+    );
+    if (unauthorized) {
+      return Promise.resolve(
+        localFailure(unauthorized, 'QMT_SUBSCRIPTION_SYMBOL_NOT_AUTHORIZED'),
+      );
+    }
+    return this.executeSubscriptionControl(
+      { type: 'sync_subscriptions', symbols: normalized },
+      'subscriptions_synced',
+      null,
+    );
+  }
+
+  subscribe(symbol: string): Promise<SubscriptionControlResult> {
+    const normalized = normalizeSymbol(symbol);
+    if (this.allowlist.resolve(normalized) === null) {
+      return Promise.resolve(
+        localFailure(normalized, 'QMT_SUBSCRIPTION_SYMBOL_NOT_AUTHORIZED'),
+      );
+    }
+    return this.executeSubscriptionControl(
+      { type: 'subscribe', symbol: normalized },
+      'subscribed',
+      normalized,
+    );
+  }
+
+  unsubscribe(symbol: string): Promise<SubscriptionControlResult> {
+    const normalized = normalizeSymbol(symbol);
+    if (this.allowlist.resolve(normalized) === null) {
+      return Promise.resolve(
+        localFailure(normalized, 'QMT_SUBSCRIPTION_SYMBOL_NOT_AUTHORIZED'),
+      );
+    }
+    return this.executeSubscriptionControl(
+      { type: 'unsubscribe', symbol: normalized },
+      'unsubscribed',
+      normalized,
+    );
+  }
+
+  getSubscriptions(): Promise<SubscriptionControlResult> {
+    return this.executeSubscriptionControl(
+      { type: 'get_subscriptions' },
+      'subscriptions',
+      null,
+    );
+  }
+
+  private executeSubscriptionControl(
+    request: ControlRequest,
+    expectedType: ControlResponseType,
+    symbol: string | null,
+  ): Promise<SubscriptionControlResult> {
+    if (!this.ready || this.ws?.readyState !== WebSocket.OPEN) {
+      return Promise.resolve(
+        localFailure(symbol, 'QMT_SUBSCRIPTION_CONTROL_NOT_READY'),
+      );
+    }
+    if (this.pendingControl) {
+      return Promise.resolve(
+        localFailure(symbol, 'QMT_SUBSCRIPTION_CONTROL_BUSY'),
+      );
+    }
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        if (this.pendingControl?.resolve !== resolve) return;
+        this.pendingControl = null;
+        resolve(localFailure(symbol, 'QMT_SUBSCRIPTION_CONTROL_TIMEOUT'));
+      }, this.controlTimeoutMs);
+      this.pendingControl = { expectedType, symbol, resolve, timeout };
+      try {
+        this.ws?.send(JSON.stringify(request));
+      } catch {
+        clearTimeout(timeout);
+        this.pendingControl = null;
+        resolve(localFailure(symbol, 'QMT_SUBSCRIPTION_CONTROL_SEND_FAILED'));
+      }
+    });
   }
 
   private connect(): void {
@@ -97,10 +181,11 @@ export class QmtRealtimeClient implements OnModuleInit, OnModuleDestroy {
     this.ws = new WebSocket(this.wsUrl);
     this.ws.on('open', () => {
       this.ready = false;
-      this.heartbeatTimer = setInterval(
-        () => this.send({ type: 'ping' }),
-        30_000,
-      );
+      this.heartbeatTimer = setInterval(() => {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30_000);
     });
     this.ws.on('message', (data: WebSocket.RawData) => {
       this.handleMessage(data.toString());
@@ -111,6 +196,7 @@ export class QmtRealtimeClient implements OnModuleInit, OnModuleDestroy {
     this.ws.on('close', () => {
       this.ready = false;
       this.store.markDisconnected();
+      this.settleDisconnected();
       if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
       if (!this.shuttingDown) {
@@ -127,211 +213,216 @@ export class QmtRealtimeClient implements OnModuleInit, OnModuleDestroy {
     try {
       message = JSON.parse(raw);
     } catch {
-      this.store.recordDrop(
+      this.store.recordReject(
         'decodeError',
         null,
         'QMT_REALTIME_WS_DECODE_ERROR',
       );
       return;
     }
-    if (!isRecord(message) || !isRecord(message['data'])) {
-      this.store.recordDrop(
+    if (!isRecord(message)) {
+      this.store.recordReject(
         'validationError',
         null,
         'QMT_REALTIME_WS_MESSAGE_INVALID',
       );
       return;
     }
-    const data = message['data'];
-    if (message['type'] === 'realtime.ready') this.handleReady(data);
-    else if (message['type'] === 'realtime.stream_started')
-      this.handleStreamStarted(data);
-    else if (message['type'] === 'realtime.native_snapshot')
-      this.handleSnapshot(data);
-  }
-
-  private handleReady(data: Record<string, unknown>): void {
-    if (!matchesContract(data)) {
-      this.rejectContract('ready');
+    if (message['type'] === 'realtime.ready') {
+      this.handleReady(message);
       return;
     }
-    const epoch = data['streamEpoch'];
-    const sequence = data['sequence'];
-    const ownerGeneration = data['generation'];
-    const ownerId = data['ownerId'];
+    if (isControlResponseType(message['type'])) {
+      this.handleControlResponse(message);
+      return;
+    }
+    if (message['type'] === 'realtime.native_snapshot') {
+      this.handleSnapshot(raw);
+    }
+  }
+
+  private handleReady(message: Record<string, unknown>): void {
+    const data = message['data'];
     if (
+      message['provider'] !== 'qmt' ||
+      !isRecord(data) ||
       data['mode'] !== 'builtin' ||
-      typeof epoch !== 'string' ||
-      epoch.length === 0 ||
-      !isSequence(sequence, true) ||
-      !isSequence(ownerGeneration, true) ||
-      !isOwnerIdentity(ownerId, ownerGeneration)
+      data['schemaVersion'] !== 2 ||
+      data['source'] !== 'qmt' ||
+      data['quality'] !== 'latest-state'
     ) {
-      this.store.recordDrop(
-        'validationError',
+      this.store.recordReject(
+        'contractMismatch',
         null,
-        'QMT_REALTIME_READY_INVALID',
+        'QMT_REALTIME_READY_CONTRACT_MISMATCH',
       );
       return;
     }
     this.ready = true;
-    this.lastOwnerGeneration = ownerGeneration;
-    this.store.beginEpoch(epoch);
-    this.store.setOwner(ownerId, ownerGeneration);
+    this.store.setOwner(
+      typeof data['ownerId'] === 'string' ? data['ownerId'] : null,
+      typeof data['generation'] === 'number' ? data['generation'] : null,
+      typeof data['bridgeBuildId'] === 'string' ? data['bridgeBuildId'] : null,
+    );
     this.store.markConnected();
     this.store.clearError();
-    this.sendDesired();
   }
 
-  private handleStreamStarted(data: Record<string, unknown>): void {
-    const epoch = data['streamEpoch'];
-    const generation = data['generation'];
-    const ownerId = data['ownerId'];
-    if (
-      !this.ready ||
-      !matchesContract(data) ||
-      data['mode'] !== 'builtin' ||
-      typeof epoch !== 'string' ||
-      epoch.length === 0 ||
-      !isSequence(generation, false) ||
-      generation <= this.lastOwnerGeneration ||
-      typeof ownerId !== 'string' ||
-      ownerId.length === 0 ||
-      data['sequence'] !== 0
-    ) {
-      this.store.recordDrop(
+  private handleSnapshot(raw: string): void {
+    if (!this.ready) {
+      this.store.recordReject(
         'validationError',
         null,
-        'QMT_REALTIME_STREAM_STARTED_INVALID',
-      );
-      return;
-    }
-    this.lastOwnerGeneration = generation;
-    this.store.beginEpoch(epoch);
-    this.store.setOwner(ownerId, generation);
-    this.sendDesired();
-  }
-
-  private handleSnapshot(data: Record<string, unknown>): void {
-    const symbol = typeof data['symbol'] === 'string' ? data['symbol'] : null;
-    if (!this.ready) {
-      this.store.recordDrop(
-        'validationError',
-        symbol,
         'QMT_REALTIME_READY_REQUIRED',
       );
       return;
     }
-    if (!matchesContract(data)) {
-      this.rejectContract('snapshot', symbol);
-      return;
-    }
-    const frame = this.validateFrame(data);
-    if (!frame) return;
-    if (!this.allowlist.isAuthorized(frame.symbol)) {
-      this.store.recordDrop(
-        'symbolNotAuthorized',
-        frame.symbol,
-        'QMT_REALTIME_SYMBOL_NOT_AUTHORIZED',
-      );
-      return;
-    }
-    if (this.store.apply(frame)) {
-      this.ingress?.handleSnapshot(toQmtCanonicalSnapshot(frame));
-    }
-  }
-
-  private validateFrame(
-    data: Record<string, unknown>,
-  ): QmtRealtimeSnapshotFrame | null {
-    const symbol = typeof data['symbol'] === 'string' ? data['symbol'] : null;
-    if (!hasExactKeys(data, FRAME_KEYS)) return this.invalidFrame(symbol);
-    const epoch = data['streamEpoch'];
-    const sequence = data['sequence'];
-    const capturedAt = data['capturedAt'];
-    const native = data['native'];
-    if (
-      typeof epoch !== 'string' ||
-      epoch.length === 0 ||
-      !isSequence(sequence, false) ||
-      symbol === null ||
-      !isRfc3339(capturedAt) ||
-      !isValidNative(native)
-    ) {
-      return this.invalidFrame(symbol);
-    }
-    if (
-      Math.abs(this.clock() - Date.parse(capturedAt)) > MAX_FRAME_CLOCK_SKEW_MS
-    ) {
-      this.store.recordDrop('stale', symbol, 'QMT_REALTIME_FRAME_STALE');
-      return null;
-    }
-    if (epoch !== this.store.currentEpoch) {
-      this.store.recordDrop(
-        'epochMismatch',
-        symbol,
-        'QMT_REALTIME_EPOCH_MISMATCH',
-      );
-      return null;
-    }
-    return data as unknown as QmtRealtimeSnapshotFrame;
-  }
-
-  private invalidFrame(symbol: string | null): null {
-    this.store.recordDrop(
-      'validationError',
-      symbol,
-      'QMT_REALTIME_FRAME_VALIDATION_ERROR',
-    );
-    return null;
-  }
-
-  private rejectContract(context: string, symbol: string | null = null): void {
-    this.store.recordDrop(
-      'contractMismatch',
-      symbol,
-      'QMT_REALTIME_CONTRACT_MISMATCH',
-    );
-    this.store.setError(
-      'QMT_REALTIME_CONTRACT_MISMATCH',
-      `${context} contract tuple is unsupported`,
-    );
-  }
-
-  private sendDesired(): void {
-    this.send({
-      type: 'sync_subscriptions',
-      symbols: this.allowlist.entriesList.map((entry) => entry.formatCode),
-    });
-  }
-
-  private send(payload: Record<string, unknown>): void {
-    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    let decoded;
     try {
-      this.ws.send(JSON.stringify(payload));
+      decoded = decodeRealtimeNativeMapMessage(raw, 'qmt');
     } catch (error) {
-      this.logger.error(error);
-      this.store.setError(
-        'QMT_REALTIME_WS_SEND_FAILED',
-        error instanceof Error ? error.message : String(error),
+      this.store.recordReject(
+        error instanceof RealtimeNativeMapDecodeError
+          ? 'contractMismatch'
+          : 'decodeError',
+        null,
+        error instanceof Error ? error.message : 'QMT_REALTIME_FRAME_INVALID',
       );
+      return;
     }
+    for (const [providerSymbol, value] of Object.entries(decoded.data.native)) {
+      if (!QMT_SYMBOL_PATTERN.test(providerSymbol) || !isRecord(value)) {
+        this.store.recordReject(
+          'validationError',
+          providerSymbol,
+          'QMT_REALTIME_NATIVE_INVALID',
+        );
+        continue;
+      }
+      const allowlistEntry = this.allowlist.resolve(providerSymbol);
+      if (!allowlistEntry) {
+        this.store.recordReject(
+          'symbolNotAuthorized',
+          providerSymbol,
+          'QMT_REALTIME_SYMBOL_NOT_AUTHORIZED',
+        );
+        continue;
+      }
+      try {
+        const snapshot = convertQmtNativeSnapshot({
+          securityId: allowlistEntry.securityId,
+          providerSymbol,
+          capturedAt: decoded.data.capturedAt,
+          native: value,
+        });
+        this.ingress?.handleSnapshot(snapshot);
+        this.store.recordAccepted(decoded.data.capturedAt);
+      } catch {
+        this.store.recordReject(
+          'converterError',
+          providerSymbol,
+          'QMT_REALTIME_CONVERTER_FAILED',
+        );
+      }
+    }
+  }
+
+  private handleControlResponse(message: Record<string, unknown>): void {
+    const pending = this.pendingControl;
+    if (
+      !pending ||
+      !hasExactKeys(message, CONTROL_RESPONSE_OUTER_KEYS) ||
+      message['provider'] !== 'qmt' ||
+      message['type'] !== pending.expectedType ||
+      !isRfc3339(message['timestamp']) ||
+      !isRecord(message['data'])
+    ) {
+      this.store.recordReject(
+        'controlResponseRejected',
+        null,
+        'QMT_SUBSCRIPTION_CONTROL_RESPONSE_REJECTED',
+      );
+      return;
+    }
+    const result = decodeControlResult(message['data']);
+    if (!result) {
+      this.store.recordReject(
+        'controlResponseRejected',
+        pending.symbol,
+        'QMT_SUBSCRIPTION_CONTROL_RESPONSE_INVALID',
+      );
+      return;
+    }
+    clearTimeout(pending.timeout);
+    this.pendingControl = null;
+    pending.resolve(result);
+  }
+
+  private settleDisconnected(): void {
+    const pending = this.pendingControl;
+    if (!pending) return;
+    clearTimeout(pending.timeout);
+    this.pendingControl = null;
+    pending.resolve(
+      localFailure(pending.symbol, 'QMT_SUBSCRIPTION_CONTROL_DISCONNECTED'),
+    );
   }
 }
 
-function matchesContract(value: Record<string, unknown>): boolean {
+function decodeControlResult(
+  data: Record<string, unknown>,
+): SubscriptionControlResult | null {
+  const keys = Object.keys(data);
+  if (keys.length !== 1) return null;
+  if (keys[0] === 'success') return { success: data['success'] };
+  if (keys[0] !== 'failure' || !isRecord(data['failure'])) return null;
+  const failure = data['failure'];
+  const failureKeys = Object.keys(failure);
+  if (
+    (failureKeys.length !== 2 && failureKeys.length !== 3) ||
+    !failureKeys.every((key) =>
+      ['symbol', 'reason', 'subscriptionState'].includes(key),
+    ) ||
+    (typeof failure['symbol'] !== 'string' && failure['symbol'] !== null) ||
+    typeof failure['reason'] !== 'string' ||
+    (failureKeys.length === 3 &&
+      failure['subscriptionState'] !== 'subscribed' &&
+      failure['subscriptionState'] !== 'unknown')
+  ) {
+    return null;
+  }
+  return { failure: failure as unknown as SubscriptionControlFailure };
+}
+
+function isControlResponseType(value: unknown): value is ControlResponseType {
   return (
-    value['payloadType'] === QMT_REALTIME_CONTRACT.payloadType &&
-    value['schemaVersion'] === QMT_REALTIME_CONTRACT.schemaVersion &&
-    value['source'] === QMT_REALTIME_CONTRACT.source &&
-    value['sequenceScope'] === QMT_REALTIME_CONTRACT.sequenceScope &&
-    value['acquisitionProfile'] === QMT_REALTIME_CONTRACT.acquisitionProfile
+    value === 'subscriptions_synced' ||
+    value === 'subscribed' ||
+    value === 'unsubscribed' ||
+    value === 'subscriptions'
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function normalizeSymbol(value: string): string {
+  return value.trim().toUpperCase();
 }
+
+function localFailure(
+  symbol: string | null,
+  reason: string,
+): SubscriptionControlResult {
+  return { failure: { symbol, reason } };
+}
+
+const QMT_SYMBOL_PATTERN = /^(?:\d{6}\.(?:SH|SZ|BJ)|\d{5,6}\.HK)$/;
+const CONTROL_RESPONSE_OUTER_KEYS = [
+  'type',
+  'provider',
+  'data',
+  'timestamp',
+] as const;
+const RFC3339_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
 
 function hasExactKeys(
   value: Record<string, unknown>,
@@ -344,42 +435,10 @@ function hasExactKeys(
   );
 }
 
-function isSequence(value: unknown, allowZero: boolean): value is number {
-  return (
-    typeof value === 'number' &&
-    Number.isSafeInteger(value) &&
-    value >= (allowZero ? 0 : 1)
-  );
-}
-
-function isOwnerIdentity(
-  ownerId: unknown,
-  ownerGeneration: number,
-): ownerId is string | null {
-  return ownerGeneration === 0
-    ? ownerId === null
-    : typeof ownerId === 'string' && ownerId.length > 0;
-}
-
 function isRfc3339(value: unknown): value is string {
   return (
     typeof value === 'string' &&
     RFC3339_PATTERN.test(value) &&
     Number.isFinite(Date.parse(value))
-  );
-}
-
-function isValidNative(value: unknown): value is QmtNativeSnapshot {
-  if (!isRecord(value)) return false;
-  if (!NATIVE_REQUIRED_KEYS.every((key) => key in value)) return false;
-  if (!QMT_TIMETAG_PATTERN.test(String(value['timetag']))) return false;
-  for (const key of NATIVE_REQUIRED_KEYS.slice(1)) {
-    if (typeof value[key] !== 'number' || !Number.isFinite(value[key]))
-      return false;
-  }
-  return (
-    (value['lastPrice'] as number) > 0 &&
-    (value['volume'] as number) >= 0 &&
-    (value['amount'] as number) >= 0
   );
 }

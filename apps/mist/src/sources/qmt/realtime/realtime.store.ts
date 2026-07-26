@@ -1,75 +1,69 @@
 import { Injectable } from '@nestjs/common';
-import {
-  QmtRealtimeSnapshotFrame,
-  QmtRealtimeDropEvent,
-  QmtRealtimeDropReason,
-} from './realtime.types';
-import { RealtimeSymbolSequenceFence } from '../../../realtime/realtime-symbol-sequence-fence';
 
-const STALE_AFTER_MS = 30_000;
-
-interface StoredSnapshot {
-  frame: QmtRealtimeSnapshotFrame;
-  receivedAt: number;
-}
+export type QmtRealtimeRejectReason =
+  | 'decodeError'
+  | 'contractMismatch'
+  | 'validationError'
+  | 'symbolNotAuthorized'
+  | 'converterError'
+  | 'controlResponseRejected';
 
 @Injectable()
 export class QmtRealtimeStore {
-  private readonly snapshots = new Map<string, StoredSnapshot>();
-  private readonly fence = new RealtimeSymbolSequenceFence();
-  private readonly dropCounts = new Map<QmtRealtimeDropReason, number>();
+  private readonly rejectCounts = new Map<QmtRealtimeRejectReason, number>();
   private connectedValue = false;
+  private readyValue = false;
   private ownerIdValue: string | null = null;
-  private ownerGenerationValue = 0;
-  private lastDropValue: QmtRealtimeDropEvent | null = null;
+  private ownerGenerationValue: number | null = null;
+  private bridgeBuildIdValue: string | null = null;
+  private lastAcceptedAtValue: number | null = null;
+  private lastCapturedAtValue: string | null = null;
+  private lastRejectValue: {
+    reason: QmtRealtimeRejectReason;
+    providerSymbol: string | null;
+    errorCode: string;
+    at: number;
+  } | null = null;
   private lastErrorValue: { code: string; message: string; at: number } | null =
     null;
 
-  beginEpoch(epoch: string): void {
-    if (this.fence.beginEpoch(epoch)) this.snapshots.clear();
-  }
-
   markConnected(): void {
     this.connectedValue = true;
+    this.readyValue = true;
   }
 
   markDisconnected(): void {
     this.connectedValue = false;
-    this.fence.disconnect();
+    this.readyValue = false;
   }
 
-  setOwner(ownerId: string | null, ownerGeneration: number): void {
+  setOwner(
+    ownerId: string | null,
+    ownerGeneration: number | null,
+    bridgeBuildId: string | null = null,
+  ): void {
     this.ownerIdValue = ownerId;
     this.ownerGenerationValue = ownerGeneration;
+    this.bridgeBuildIdValue = bridgeBuildId;
   }
 
-  apply(frame: QmtRealtimeSnapshotFrame): boolean {
-    const decision = this.fence.accept(
-      frame.symbol,
-      frame.streamEpoch,
-      frame.sequence,
-    );
-    if (!decision.accepted) {
-      this.recordDrop(
-        decision.reason,
-        frame.symbol,
-        decision.reason === 'epochMismatch'
-          ? 'QMT_REALTIME_EPOCH_MISMATCH'
-          : 'QMT_REALTIME_SEQUENCE_REJECTED',
-      );
-      return false;
-    }
-    this.snapshots.set(frame.symbol, { frame, receivedAt: Date.now() });
-    return true;
+  recordAccepted(capturedAt: string): void {
+    this.lastAcceptedAtValue = Date.now();
+    this.lastCapturedAtValue = capturedAt;
   }
 
-  recordDrop(
-    reason: QmtRealtimeDropReason,
-    symbol: string | null,
+  recordReject(
+    reason: QmtRealtimeRejectReason,
+    providerSymbol: string | null,
     errorCode: string,
   ): void {
-    this.dropCounts.set(reason, (this.dropCounts.get(reason) ?? 0) + 1);
-    this.lastDropValue = { reason, symbol, errorCode, at: Date.now() };
+    this.rejectCounts.set(reason, (this.rejectCounts.get(reason) ?? 0) + 1);
+    this.lastRejectValue = {
+      reason,
+      providerSymbol,
+      errorCode,
+      at: Date.now(),
+    };
   }
 
   setError(code: string, message: string): void {
@@ -80,44 +74,21 @@ export class QmtRealtimeStore {
     this.lastErrorValue = null;
   }
 
-  read(formatCode: string) {
-    const stored = this.snapshots.get(formatCode);
-    if (!stored) return null;
-    const latestAgeMs = Date.now() - stored.receivedAt;
-    const stale = !this.connectedValue || latestAgeMs > STALE_AFTER_MS;
-    return {
-      snapshot: stored.frame,
-      streamEpoch: this.fence.currentEpoch,
-      sequence: stored.frame.sequence,
-      receivedAt: stored.receivedAt,
-      latestAgeMs,
-      fresh: !stale,
-      stale,
-      staleReason: !this.connectedValue
-        ? 'disconnected'
-        : latestAgeMs > STALE_AFTER_MS
-          ? 'ageStale'
-          : null,
-    };
-  }
-
   status() {
     return {
       mode: 'builtin' as const,
+      schemaVersion: 2 as const,
+      quality: 'latest-state' as const,
       connected: this.connectedValue,
-      currentStreamEpoch: this.fence.currentEpoch,
-      lastSequences: Object.fromEntries(this.fence.sequenceEntries),
+      ready: this.readyValue,
       ownerId: this.ownerIdValue,
       ownerGeneration: this.ownerGenerationValue,
-      activeSymbolCount: this.snapshots.size,
-      activeSymbols: [...this.snapshots.keys()],
-      dropCounts: Object.fromEntries(this.dropCounts),
-      lastDrop: this.lastDropValue ? { ...this.lastDropValue } : null,
+      bridgeBuildId: this.bridgeBuildIdValue,
+      lastAcceptedAt: this.lastAcceptedAtValue,
+      lastCapturedAt: this.lastCapturedAtValue,
+      rejectCounts: Object.fromEntries(this.rejectCounts),
+      lastReject: this.lastRejectValue ? { ...this.lastRejectValue } : null,
       lastError: this.lastErrorValue ? { ...this.lastErrorValue } : null,
     };
-  }
-
-  get currentEpoch(): string | null {
-    return this.fence.currentEpoch;
   }
 }

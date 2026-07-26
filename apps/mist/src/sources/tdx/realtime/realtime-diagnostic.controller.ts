@@ -12,6 +12,7 @@ import type { Request } from 'express';
 import { requireRealtimeDiagnosticLoopback } from '../../../realtime/realtime-diagnostic.guard';
 import { TdxRealtimeStore } from './realtime.store';
 import { TdxRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
+import { RealtimeSnapshotIngressService } from '../../../realtime/realtime-snapshot-ingress.service';
 
 @ApiTags('tdx-realtime')
 @Controller('internal/realtime/tdx')
@@ -19,37 +20,26 @@ export class TdxRealtimeDiagnosticController {
   constructor(
     private readonly store: TdxRealtimeStore,
     private readonly allowlist: TdxRealtimeAllowlistResolver,
+    private readonly ingress: RealtimeSnapshotIngressService,
   ) {}
 
   @Get('status')
   getStatus(@Req() req: Request) {
     requireRealtimeDiagnosticLoopback(req);
-    const runtime = this.store.getRuntimeMetadata();
     return {
-      mode: 'builtin',
-      connected: this.store.isConnected,
-      ready: runtime.ready,
-      ownerId: runtime.ownerId,
-      datasourceBuildId: runtime.datasourceBuildId,
-      bridgeBuildId: runtime.bridgeBuildId,
-      currentGeneration: runtime.currentGeneration,
-      currentStreamEpoch: this.store.currentStreamEpoch,
-      activeSymbolCount: this.store.activeSymbolCount,
-      activeSymbols: this.store.getActiveSymbols(),
+      ...this.store.status(),
       allowlist: this.allowlist.entriesList.map((e) => ({
         formatCode: e.formatCode,
         securityId: e.securityId,
       })),
-      dropCounts: this.store.getAllDropCounts(),
-      lastDrop: this.store.getLastDrop(),
-      lastError: runtime.lastError,
     };
   }
 
   @Get(':formatCode')
   getSymbol(@Param('formatCode') formatCode: string, @Req() req: Request) {
     requireRealtimeDiagnosticLoopback(req);
-    const debug = this.store.readDebug(formatCode);
+    const entry = this.allowlist.resolve(formatCode);
+    const debug = entry ? this.ingress.read(entry.securityId) : null;
     if (!debug) {
       throw new NotFoundException(`no realtime snapshot for ${formatCode}`);
     }

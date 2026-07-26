@@ -1,0 +1,16 @@
+## ADDED Requirements
+
+### Requirement: Schedule owns provider historical synchronization only
+
+The schedule app SHALL call the existing TDX and QMT HTTP historical APIs for post-close synchronization and SHALL contain no realtime client, realtime route, or public product controller.
+
+#### Scenario: Schedule application starts
+
+- **WHEN** the schedule container starts
+- **THEN** it MUST wire historical fetch, normalization, validation, source-specific persistence, and internal health providers
+- **AND** it MUST NOT instantiate realtime transport clients or expose public market/strategy APIs
+
+#### Scenario: Backend and schedule use provider endpoints
+
+- **WHEN** historical bars are requested for TDX or QMT
+- **THEN** both applications MUST reuse the established datasource `/v1/bars/query` contract rather than call terminal SDKs directly
