@@ -34,6 +34,7 @@ WORKDIR /app
 # Copy runtime dependencies and build output from builder stage.
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/dist ./dist
+COPY --from=builder --chown=app:app /app/test/fixtures/realtime ./test/fixtures/realtime
 COPY --from=builder --chown=app:app /app/tools/run-migrations.mjs ./tools/run-migrations.mjs
 COPY --from=builder --chown=app:app /app/deploy/database ./deploy/database
 

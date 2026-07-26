@@ -94,8 +94,11 @@ describe('backend Docker runtime config', () => {
     expect(compose).not.toContain('start:dev:mcp-server');
 
     expect(packageJson.scripts?.['build:docker']).toBe(
-      'nest build mist && nest build chan',
+      'nest build mist && nest build chan && nest build realtime-subscription-hil',
     );
     expect(packageJson.scripts?.['build:docker']).not.toContain('mcp-server');
+    expect(packageJson.scripts?.['hil:realtime-subscriptions']).toBe(
+      'node dist/apps/realtime-subscription-hil/main.js',
+    );
   });
 });

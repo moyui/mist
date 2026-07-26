@@ -21,6 +21,15 @@
         "tsConfigPath": "apps/mist/tsconfig.app.json"
       }
     },
+    "realtime-subscription-hil": {
+      "type": "application",
+      "root": "apps/realtime-subscription-hil",
+      "entryFile": "main",
+      "sourceRoot": "apps/realtime-subscription-hil/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/realtime-subscription-hil/tsconfig.app.json"
+      }
+    },
     "config": {
       "type": "library",
       "root": "libs/config",

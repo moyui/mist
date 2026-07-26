@@ -13,7 +13,8 @@
   },
   "scripts": {
     "build": "nest build",
-    "build:docker": "nest build mist && nest build chan",
+    "build:docker": "nest build mist && nest build chan && nest build realtime-subscription-hil",
+    "build:hil": "nest build realtime-subscription-hil",
     "db:migrate": "node tools/run-migrations.mjs",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
@@ -23,6 +24,7 @@
     "start:debug": "nest start --debug --watch",
     "start:debug:chan": "nest start chan --debug --watch",
     "start:prod": "node dist/apps/mist/main",
+    "hil:realtime-subscriptions": "node dist/apps/realtime-subscription-hil/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "typecheck": "tsc --noEmit",
