@@ -498,10 +498,14 @@ export class BiService {
     this.assertCompleteBi(bi1, 'bi1');
     this.assertCompleteBi(bi2, 'bi2');
 
+    // 递进条件用非严格不等号（<= / >=）：
+    // 两端分型价格相等（同一阻力/支撑位的不同分型）时也应允许合并，
+    // 否则 Phase A 三笔合成会漏掉 "valid + Invalid + Invalid" 这种典型残留，
+    // 把它们留给 Phase B 反而被更大跨度合并吞掉合法反向笔。
     if (
       bi2.trend === TrendDirection.Up &&
       bi1.trend === TrendDirection.Up &&
-      bi1.endFenxing.highest < bi2.endFenxing.highest &&
+      bi1.endFenxing.highest <= bi2.endFenxing.highest &&
       bi1.startFenxing.lowest < bi2.startFenxing.lowest
     ) {
       return true;
@@ -510,7 +514,7 @@ export class BiService {
       bi2.trend === TrendDirection.Down &&
       bi1.trend === TrendDirection.Down &&
       bi1.startFenxing.highest > bi2.startFenxing.highest &&
-      bi1.endFenxing.lowest > bi2.endFenxing.lowest
+      bi1.endFenxing.lowest >= bi2.endFenxing.lowest
     ) {
       return true;
     }

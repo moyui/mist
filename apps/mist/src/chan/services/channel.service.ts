@@ -7,6 +7,7 @@ import {
   ChannelStatus,
   ChannelType,
 } from '../enums/channel.enum';
+import { TrendDirection } from '../enums/trend-direction.enum';
 import { BiVo } from '../vo/bi.vo';
 import { ChannelVo } from '../vo/channel.vo';
 import { mergeSpans } from './span-merge.helper';
@@ -126,8 +127,8 @@ export class ChannelService {
     // Phase A：固定5笔滑窗枚举所有基础中枢
     const phaseA = this.enumerateChannels(data);
 
-    // Phase B：定点迭代合并
-    const phaseB = this.mergeChannels(phaseA);
+    // Phase B：先延伸（首尾各+2笔），再重合合并
+    const phaseB = this.mergeChannels(phaseA, data);
 
     return { phaseA, phaseB };
   }
@@ -176,32 +177,157 @@ export class ChannelService {
   }
 
   /**
-   * Phase B：定点迭代合并，镜像笔的 mergeBiSegments。
+   * Phase B：先延伸，再重合合并。
    *
-   * 合并驱动由共享的 {@link mergeSpans} 提供，中枢领域谓词（完成态/同向/
-   * zone 兼容/envelope/mergeTwoChannels/重新判状态）通过 operations 注入。
+   * 步骤1（延伸）：对每个中枢，尝试首尾各延伸 2 笔（成对），用 N 笔正确定义
+   * 重算 zg/zd/gg/dd，合法则延伸。可连续延伸（+2、+4…），直到不合法为止。
+   * 即使被延伸的 2 笔和别的笔组合单独看不成立中枢，只要整体合法就延伸。
+   *
+   * 步骤2（重合合并）：对延伸后的中枢列表，用时间+价格双重叠判定合并。
    *
    * @param phaseAChannels Phase A 枚举出的基础中枢
+   * @param data 原始笔序列（延伸需要访问中枢前后的笔）
    * @returns 合并到不动点后的最终中枢序列
    */
-  private mergeChannels(phaseAChannels: readonly ChannelVo[]): ChannelVo[] {
-    const merged = mergeSpans(phaseAChannels, {
+  private mergeChannels(
+    phaseAChannels: readonly ChannelVo[],
+    data: BiVo[] = [],
+  ): ChannelVo[] {
+    // 步骤1：延伸（需要原始笔序列；无笔序列时跳过，仅做重合合并）
+    const extended =
+      data.length > 0
+        ? phaseAChannels.map((channel) => this.extendChannel(channel, data))
+        : phaseAChannels.map((channel) => ({ ...channel }));
+
+    // 步骤2：重合合并
+    const merged = mergeSpans(extended, {
       isCompleteItem: (channel) => channel.type === ChannelType.Complete,
-      isSameDirection: (head, tail) => head.trend === tail.trend,
-      spanHasInvalid: (span) =>
-        span.some((channel) => channel.status === ChannelStatus.Invalid),
+      // 中枢合并不要求 trend 相同（重叠中枢常 up/down 交替），只要求时间区间有交集
+      isSameDirection: (head, tail) => this.channelsOverlapInTime(head, tail),
+      // 中枢合并不依赖 Invalid 标记，恒允许（由 canMergeTwo 把关质量）
+      spanHasInvalid: () => true,
       canMergeTwo: (head, tail) => this.canMergeTwoChannels(head, tail),
       middleFitsEnvelope: (span) => this.middleChannelsFitEnvelope(span),
       mergeTwo: (head, tail) => this.mergeTwoChannels(head, tail),
       stampStatus: (merged) => ({
         ...merged,
-        status: this.isCandidateChannelValid(merged)
+        // 合并产物用缠论正确定义重新校验合法性
+        status: this.validateChannelGeometry(merged.bis)
           ? ChannelStatus.Valid
           : ChannelStatus.Invalid,
       }),
     });
 
     return merged.filter((channel) => channel.status === ChannelStatus.Valid);
+  }
+
+  /**
+   * 延伸中枢：尝试首尾各延伸 2 笔（成对），整体仍合法则延伸。
+   *
+   * 延伸方向：
+   * - 尾部延伸：中枢末笔之后再加 2 笔，整体 N+2 笔用正确定义重算，合法则保留
+   * - 头部延伸：中枢首笔之前再加 2 笔，同理
+   * 可连续延伸（+2、+4…），直到延伸后不合法为止。
+   *
+   * 即使被延伸的 2 笔和别的笔单独组不成中枢，只要整体 N 笔满足缠论定义即可延伸。
+   *
+   * @param channel 待延伸的中枢
+   * @param data 原始笔序列
+   * @returns 延伸后的中枢（可能比原中枢多笔）
+   */
+  private extendChannel(channel: ChannelVo, data: BiVo[]): ChannelVo {
+    // 找到中枢首笔/末笔在 data 中的索引
+    const firstBiTime = channel.bis[0].startTime.getTime();
+    const lastBiTime = channel.bis[channel.bis.length - 1].endTime.getTime();
+    let startIdx = -1;
+    let endIdx = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].startTime.getTime() === firstBiTime) startIdx = i;
+      if (data[i].endTime.getTime() === lastBiTime) endIdx = i;
+    }
+    if (startIdx === -1 || endIdx === -1) {
+      return channel;
+    }
+
+    let current = channel;
+    let curStart = startIdx;
+    let curEnd = endIdx;
+
+    // 反复尝试延伸（尾部 + 头部），直到都不再能延伸
+    let changed = true;
+    while (changed) {
+      changed = false;
+
+      // 尾部延伸 +2 笔
+      if (curEnd + 2 < data.length) {
+        const tailWindow = data.slice(curStart, curEnd + 3);
+        const geometry = this.validateChannelGeometry(tailWindow);
+        if (geometry) {
+          current = this.buildChannelFromBis(
+            tailWindow,
+            data,
+            curStart,
+            geometry,
+          );
+          curEnd += 2;
+          changed = true;
+        }
+      }
+
+      // 头部延伸 +2 笔
+      if (curStart - 2 >= 0) {
+        const headWindow = data.slice(curStart - 2, curEnd + 1);
+        const geometry = this.validateChannelGeometry(headWindow);
+        if (geometry) {
+          current = this.buildChannelFromBis(
+            headWindow,
+            data,
+            curStart - 2,
+            geometry,
+          );
+          curStart -= 2;
+          changed = true;
+        }
+      }
+    }
+
+    return current;
+  }
+
+  /**
+   * 从 N 笔序列和已算好的几何参数构建中枢对象。
+   */
+  private buildChannelFromBis(
+    bis: BiVo[],
+    originalBis: BiVo[],
+    startIndex: number,
+    geometry: { zg: number; zd: number; gg: number; dd: number },
+  ): ChannelVo {
+    const endIndex = startIndex + bis.length - 1;
+    const firstBi = originalBis[startIndex];
+    const firstBiMiddleIndex = Math.floor(firstBi.originIds.length / 2);
+    const displayStartId = firstBi.originIds[firstBiMiddleIndex];
+
+    const lastBi = originalBis[endIndex];
+    const lastBiMiddleIndex = Math.floor(lastBi.originIds.length / 2);
+    const displayEndId = lastBi.originIds[lastBiMiddleIndex];
+
+    return {
+      bis: [...bis],
+      zg: geometry.zg,
+      zd: geometry.zd,
+      gg: geometry.gg,
+      dd: geometry.dd,
+      level: ChannelLevel.Bi,
+      type: ChannelType.Complete,
+      // 延伸产物已由 validateChannelGeometry 保证合法，印 Valid
+      status: ChannelStatus.Valid,
+      startId: originalBis[startIndex].originIds[0],
+      endId: lastBi.originIds[lastBi.originIds.length - 1],
+      trend: bis[0].trend,
+      displayStartId,
+      displayEndId,
+    };
   }
 
   /**
@@ -229,57 +355,89 @@ export class ChannelService {
   }
 
   /**
-   * 验证候选笔集合是否有中枢重叠区域（zg > zd）
+   * 计算并验证 N 笔中枢（N≥5，奇数）的几何参数（zg/zd/gg/dd）与首末笔约束。
+   *
+   * 缠论标准定义（N 笔，首笔 A、末笔 E）：
+   * - 上升中枢（A 上升，从下方进入）：
+   *   zg = min(前 N-1 笔高点)   中枢上沿
+   *   zd = max(后 N-1 笔低点)   中枢下沿
+   *   gg = max(前 N-1 笔高点)   中枢最高
+   *   dd = min(后 N-1 笔低点)   中枢最低
+   *   约束：A.lowest < dd 且 E.highest > gg
+   * - 下降中枢（A 下降，从上方进入）：镜像对称
+   *   zg = min(后 N-1 笔高点)
+   *   zd = max(前 N-1 笔低点)
+   *   gg = max(后 N-1 笔高点)
+   *   dd = min(前 N-1 笔低点)
+   *   约束：A.highest > gg 且 E.lowest < dd
+   *
+   * 5 笔时前 N-1 = 前4笔（A,B,C,D），后 N-1 = 后4笔（B,C,D,E）。
+   * 7 笔时前 N-1 = 前6笔，后 N-1 = 后6笔。以此类推。
+   *
+   * 首末笔约束保证中枢是"进入-震荡-离开"的完整结构，而非趋势行情的片段。
+   *
+   * @param bis N 笔序列（N≥5，已保证趋势交替）
+   * @returns 合法时返回几何参数，否则返回 null
    */
-  private validateZgZdOverlap(bis: BiVo[]): {
-    valid: boolean;
-    zg?: number;
-    zd?: number;
-  } {
-    if (bis.length < 3) {
-      return { valid: false };
+  private validateChannelGeometry(bis: BiVo[]): {
+    zg: number;
+    zd: number;
+    gg: number;
+    dd: number;
+  } | null {
+    const n = bis.length;
+    if (n < 5) {
+      return null;
     }
 
-    // 从前5笔（不足5笔取全部）计算 zg = min(highs)、zd = max(lows)
-    const bisToCheck = bis.slice(0, Math.min(5, bis.length));
-    const highMinMax = minMaxBy(bisToCheck, (bi) => bi.highest);
-    const lowMinMax = minMaxBy(bisToCheck, (bi) => bi.lowest);
-    if (!highMinMax || !lowMinMax) {
-      return { valid: false };
+    const firstBi = bis[0];
+    const lastBi = bis[n - 1];
+    const isUp = firstBi.trend === TrendDirection.Up;
+
+    // 前 N-1 笔和后 N-1 笔（去掉首笔或末笔）
+    const front = bis.slice(0, n - 1); // 去 E
+    const back = bis.slice(1); // 去 A
+
+    let zg: number, zd: number, gg: number, dd: number;
+    if (isUp) {
+      // 上升：前 N-1 笔算 zg/gg，后 N-1 笔算 zd/dd
+      const frontHigh = minMaxBy(front, (bi) => bi.highest);
+      const backLow = minMaxBy(back, (bi) => bi.lowest);
+      if (!frontHigh || !backLow) return null;
+      zg = frontHigh.min;
+      gg = frontHigh.max;
+      zd = backLow.max;
+      dd = backLow.min;
+    } else {
+      // 下降：后 N-1 笔算 zg/gg，前 N-1 笔算 zd/dd
+      const backHigh = minMaxBy(back, (bi) => bi.highest);
+      const frontLow = minMaxBy(front, (bi) => bi.lowest);
+      if (!backHigh || !frontLow) return null;
+      zg = backHigh.min;
+      gg = backHigh.max;
+      zd = frontLow.max;
+      dd = frontLow.min;
     }
 
-    const zg = highMinMax.min;
-    const zd = lowMinMax.max;
+    // 约束1：zg > zd（中枢有重叠区间）
     if (zg <= zd) {
-      return { valid: false };
+      return null;
     }
 
-    return { valid: true, zg, zd };
-  }
+    // 约束2：首末笔必须突破中枢边界（进入段和离开段的标志性特征）
+    if (isUp) {
+      // 上升：A 从下方进入（A.lowest < dd），E 向上离开（E.highest > gg）
+      if (firstBi.lowest >= dd || lastBi.highest <= gg) {
+        return null;
+      }
+    } else {
+      // 下降：A 从上方进入（A.highest > gg），E 向下离开（E.lowest < dd）
+      if (firstBi.highest <= gg || lastBi.lowest >= dd) {
+        return null;
+      }
+    }
 
-  /**
-   * 验证第4、5笔是否与zg-zd重叠
-   */
-  private validateFiveBiOverlap(
-    fiveBis: BiVo[],
-    zg: number,
-    zd: number,
-  ): boolean {
-    return (
-      this.hasOverlap(fiveBis[3], zg, zd) && this.hasOverlap(fiveBis[4], zg, zd)
-    );
-  }
-
-  /**
-   * 检查笔是否与中枢区间重叠
-   * @param bi 笔数据
-   * @param zg 中枢高
-   * @param zd 中枢低
-   * @returns 是否重叠
-   */
-  private hasOverlap(bi: BiVo, zg: number, zd: number): boolean {
-    // 基本重叠检查：笔的低点 ≤ zg 且笔的高点 ≥ zd
-    return bi.lowest <= zg && bi.highest >= zd;
+    return { zg, zd, gg, dd };
   }
 
   /**
@@ -303,28 +461,14 @@ export class ChannelService {
       return null;
     }
 
-    // 验证2：从候选笔集合计算zg-zd
-    const zgZdResult = this.validateZgZdOverlap(fiveBis);
-    if (
-      !zgZdResult.valid ||
-      zgZdResult.zg === undefined ||
-      zgZdResult.zd === undefined
-    ) {
+    // 验证2：计算 zg/zd/gg/dd 并校验重叠 + 首末笔约束
+    const geometry = this.validateChannelGeometry(fiveBis);
+    if (!geometry) {
       return null;
     }
-    const { zg, zd } = zgZdResult;
+    const { zg, zd, gg, dd } = geometry;
 
-    // 验证3：检查第4、5笔是否与zg-zd重叠
-    if (!this.validateFiveBiOverlap(fiveBis, zg, zd)) {
-      return null;
-    }
-
-    // 计算gg-dd并创建中枢对象
     const initialFiveBis = fiveBis.slice(0, 5);
-    const ggDd = this.calculateGgDd(initialFiveBis);
-    if (!ggDd) {
-      return null;
-    }
 
     // 计算显示范围：使用第一笔和最后一笔的中间位置
     const firstBi = originalBis[startIndex];
@@ -341,8 +485,8 @@ export class ChannelService {
       bis: [...initialFiveBis],
       zg,
       zd,
-      gg: ggDd.gg,
-      dd: ggDd.dd,
+      gg,
+      dd,
       level: ChannelLevel.Bi,
       type: ChannelType.Complete,
       status: ChannelStatus.Unknown, // Phase A 枚举后由 enumerateChannels 印 status
@@ -358,37 +502,28 @@ export class ChannelService {
   }
 
   /**
-   * 计算一组笔的 gg（最高）和 dd（最低）
-   * @param bis 笔数组
-   * @returns { gg, dd } 或 null（空数组）
-   */
-  private calculateGgDd(bis: BiVo[]): { gg: number; dd: number } | null {
-    const high = minMaxBy(bis, (bi) => bi.highest);
-    const low = minMaxBy(bis, (bi) => bi.lowest);
-    if (!high || !low) {
-      return null;
-    }
-    return { gg: high.max, dd: low.min };
-  }
-
-  /**
-   * 两个中枢能否合并（Phase B 谓词，镜像笔的 canMergeTwoBis）。
+   * 两个中枢能否合并（Phase B 谓词）。
    *
-   * 合并条件：
-   * 1. 首尾中枢趋势相同（已在 isSameDirection 校验）
-   * 2. 首尾中枢的时间范围重叠
-   * 3. zone 兼容：合并后的 zg/zd 仍满足 zg > zd（合并后区间有效）
+   * 合并条件（x/y 双重叠）：
+   * 1. 时间重叠：两个中枢的时间区间有交集（x 轴）
+   * 2. 价格重叠：两个中枢的 [zd, zg] 区间有交集（y 轴）
+   *
+   * 只有双重叠才合并——单纯时间重叠但价格分离的是不同价位的中枢，
+   * 单纯价格重叠但时间分离的是不同时段的中枢，都不应合并。
    *
    * @param head 首中枢
    * @param tail 尾中枢
    * @returns 能否合并
    */
   private canMergeTwoChannels(head: ChannelVo, tail: ChannelVo): boolean {
-    if (!this.channelsOverlapInTime(head, tail)) {
+    // y 轴价格重叠：两个 zone 的交集非空
+    const priceOverlapHigh = Math.min(head.zg, tail.zg);
+    const priceOverlapLow = Math.max(head.zd, tail.zd);
+    if (priceOverlapHigh <= priceOverlapLow) {
       return false;
     }
 
-    // zone 兼容：合并所有笔后 zg > zd 仍成立
+    // 合并后 zone 仍有效（zg > zd）
     const allBis = [...head.bis, ...tail.bis];
     const highMinMax = minMaxBy(allBis, (bi) => bi.highest);
     const lowMinMax = minMaxBy(allBis, (bi) => bi.lowest);
@@ -417,22 +552,24 @@ export class ChannelService {
   }
 
   /**
-   * 中间中枢是否都落在首尾 envelope 内（Phase B 谓词，镜像笔的 envelope 检查）。
+   * 中间中枢是否都与首尾合并 zone 有价格重叠（Phase B 谓词）。
    *
-   * envelope 取首尾中枢 gg/dd 的极值：中间中枢的 zone 必须落在
-   * [min(head.dd, tail.dd), max(head.gg, tail.gg)] 内。
+   * 合并 zone 取首尾中枢 zone 的交集范围 [max(head.zd,tail.zd), min(head.zg,tail.zg)]。
+   * 每个中间中枢的 [zd, zg] 必须与该合并 zone 有交集，否则说明中间存在
+   * 价位分离的独立中枢，不应被一并合并。
    *
    * @param span 中枢 span（含首尾）
-   * @returns 中间中枢是否都落在 envelope 内
+   * @returns 中间中枢是否都与合并 zone 价格重叠
    */
   private middleChannelsFitEnvelope(span: readonly ChannelVo[]): boolean {
     const head = span[0];
     const tail = span[span.length - 1];
-    const envelopeHigh = Math.max(head.gg, tail.gg);
-    const envelopeLow = Math.min(head.dd, tail.dd);
+    // 合并 zone 的交集范围
+    const zoneHigh = Math.min(head.zg, tail.zg);
+    const zoneLow = Math.max(head.zd, tail.zd);
     return span.slice(1, -1).every((middle) => {
-      // 中间中枢的最高不超过 envelope 上沿，最低不低于下沿
-      return middle.gg <= envelopeHigh && middle.dd >= envelopeLow;
+      // 中间中枢的 [zd, zg] 与合并 zone 有交集
+      return middle.zg >= zoneLow && middle.zd <= zoneHigh;
     });
   }
 
@@ -446,8 +583,7 @@ export class ChannelService {
    * @returns 合并后的中枢
    */
   private mergeTwoChannels(head: ChannelVo, tail: ChannelVo): ChannelVo {
-    // 合并笔序列：head 的笔 + tail 的笔，按时间顺序（head 在前 tail 在后）
-    // 去重首尾共享的笔（tail 的第一笔可能等于 head 的最后一笔）
+    // 合并笔序列：head 的笔 + tail 的笔，按时间顺序去重
     const seen = new Set<number>();
     const mergedBis: BiVo[] = [];
     for (const bi of [...head.bis, ...tail.bis]) {
@@ -459,12 +595,12 @@ export class ChannelService {
       mergedBis.push(bi);
     }
 
-    const highMinMax = minMaxBy(mergedBis, (bi) => bi.highest);
-    const lowMinMax = minMaxBy(mergedBis, (bi) => bi.lowest);
-    const zg = highMinMax ? highMinMax.min : head.zg;
-    const zd = lowMinMax ? lowMinMax.max : head.zd;
-    const gg = highMinMax ? highMinMax.max : head.gg;
-    const dd = lowMinMax ? lowMinMax.min : head.dd;
+    // 用 N 笔正确定义重算几何（而非所有笔 min/max）
+    const geometry = this.validateChannelGeometry(mergedBis);
+    const zg = geometry ? geometry.zg : head.zg;
+    const zd = geometry ? geometry.zd : head.zd;
+    const gg = geometry ? geometry.gg : head.gg;
+    const dd = geometry ? geometry.dd : head.dd;
 
     return {
       bis: mergedBis,

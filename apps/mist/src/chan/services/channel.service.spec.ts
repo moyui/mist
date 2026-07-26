@@ -129,23 +129,46 @@ describe('ChannelService', () => {
 
   describe('Phase A enumeration (5-bi base channel)', () => {
     /**
-     * 构造一组 5 笔震荡序列，满足 zg > zd：
-     *   up(100-110), down(105-115), up(102-112), down(104-114), up(101-111)
-     *   zg = min(highs) = 110, zd = max(lows) = 105 → zg > zd ✓
-     *   第4、5笔都与 [zd,zg] 重叠 ✓
+     * 构造一组满足缠论标准定义的上升中枢 5 笔序列（A B C D E）：
+     *
+     *   A(up)   80→90    起点 80（低于 dd，从下方进入）
+     *   B(down) 85→100
+     *   C(up)   88→102
+     *   D(down) 90→105
+     *   E(up)   92→120   终点 120（高于 gg，向上离开）
+     *
+     * 前4笔高点：90,100,102,105 → zg=min=90, gg=max=105
+     * 后4笔低点：85,88,90,92   → zd=max=92, dd=min=85
+     * A.lowest=80 < dd=85 ✓    E.highest=120 > gg=105 ✓
+     * zg=90 > zd=92？否 → 需要调整让 zg > zd
+     *
+     * 调整：让前4笔高点更高、后4笔低点更低，使 zg > zd：
+     *   A(up)   80→110   起 80
+     *   B(down) 100→120
+     *   C(up)   105→125
+     *   D(down) 108→130
+     *   E(up)   115→140  终 140
+     * 前4高：110,120,125,130 → zg=110, gg=130
+     * 后4低：100,105,108,115 → zd=115, dd=100
+     * 80<100 ✓, 140>130 ✓, zg=110 < zd=115 ✗ 还是不够
+     *
+     * 再调：拉开中间震荡幅度
      */
-    function buildOverlappingFiveBis(): BiVo[] {
+    function buildValidUpChannel(): BiVo[] {
+      // A 从 50 涨到 110（起点 50 远低于中枢）
+      // BCD 在 90~120 之间震荡
+      // E 从 95 涨到 180（终点 180 远高于中枢）
       return [
-        makeBi(0, 100, 10), // up 100-110
-        makeBi(1, 105, 10), // down 105-115
-        makeBi(2, 102, 10), // up 102-112
-        makeBi(3, 104, 10), // down 104-114
-        makeBi(4, 101, 10), // up 101-111
+        makeBi(0, 50, 60), // A up   50→110
+        makeBi(1, 90, 30), // B down 90→120
+        makeBi(2, 85, 40), // C up   85→125
+        makeBi(3, 95, 25), // D down 95→120
+        makeBi(4, 95, 85), // E up   95→180
       ];
     }
 
-    it('detects a base channel from 5 overlapping alternating bis', () => {
-      const result = service.createChannel({ bi: buildOverlappingFiveBis() });
+    it('detects a base channel from 5 bis satisfying chanlun definition', () => {
+      const result = service.createChannel({ bi: buildValidUpChannel() });
 
       // Phase A 至少枚举出 1 个基础中枢
       expect(result.phaseA.length).toBeGreaterThanOrEqual(1);
@@ -157,12 +180,13 @@ describe('ChannelService', () => {
       expect(channel.bis.length).toBeGreaterThanOrEqual(5);
     });
 
-    it('stamps each detected base channel as Valid (zg>zd suffices)', () => {
-      const result = service.createChannel({ bi: buildOverlappingFiveBis() });
+    it('stamps each detected base channel as Valid', () => {
+      const result = service.createChannel({ bi: buildValidUpChannel() });
 
-      // 标准缠论：zg>zd + ≥3 笔即有效，无过严的极值/范围校验
-      expect(result.phaseA[0].status).toBe(ChannelStatus.Valid);
-      expect(result.phaseB.length).toBeGreaterThanOrEqual(1);
+      expect(result.phaseA.length).toBeGreaterThan(0);
+      for (const channel of result.phaseA) {
+        expect(channel.status).toBe(ChannelStatus.Valid);
+      }
     });
 
     it('stamps a detected channel that passes range and extreme rules as Valid', () => {
@@ -217,12 +241,13 @@ describe('ChannelService', () => {
     });
   });
 
-  describe('Phase B merge (mirror bi mergeBiSegments)', () => {
+  describe('Phase B merge (time + price overlap)', () => {
     /**
-     * Phase B 只消化含 Invalid 中枢的 span。
-     * 当所有 phaseA 中枢都是 Valid 时，phaseB 应等于 phaseA（不动点立即到达）。
+     * Phase B 合并条件：时间重叠（x 轴）+ 价格重叠（y 轴）。
+     * 不再依赖 Invalid 标记，也不要求 trend 相同。
+     * 两个中枢在时间和价格上都重叠时，合并为一个。
      */
-    it('keeps all valid channels when none are invalid', () => {
+    it('merges two valid channels when they overlap in time and price', () => {
       const head = makeChannel(
         0,
         [100, 101, 102, 103, 104],
@@ -236,7 +261,14 @@ describe('ChannelService', () => {
         ChannelStatus.Valid,
       );
 
-      expect(mergeChannels(service, [head, tail])).toEqual([head, tail]);
+      // 两个中枢时间重叠（bi[4] 共享）、价格重叠（zone 有交集）→ 合并
+      const result = mergeChannels(service, [head, tail]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        status: ChannelStatus.Valid,
+        startId: head.startId,
+        endId: tail.endId,
+      });
     });
 
     it('reduces an overlapping valid-invalid-valid span to one valid channel', () => {
@@ -270,7 +302,8 @@ describe('ChannelService', () => {
       });
     });
 
-    it('does not merge endpoints with different directions', () => {
+    it('merges channels with different directions when overlapping', () => {
+      // trend 不同但时间和价格都重叠 → 仍应合并
       const head = makeChannel(
         0,
         [100, 101, 102, 103, 104],
@@ -284,7 +317,8 @@ describe('ChannelService', () => {
         ChannelStatus.Invalid,
       );
 
-      expect(mergeChannels(service, [head, tail])).toEqual([head]);
+      const result = mergeChannels(service, [head, tail]);
+      expect(result).toHaveLength(1);
     });
 
     it('does not merge channels with an incompatible combined zone', () => {
