@@ -55,34 +55,59 @@ describe('realtime subscription HIL operation sequence', () => {
 
   it('uses all four typed methods in deterministic order', async () => {
     const calls: string[] = [];
+    let state: 'before' | 'whole' | 'overlay' = 'before';
     const client: RealtimeSubscriptionControl = {
       getSubscriptions: async () => {
         calls.push('get');
+        if (state === 'whole') {
+          return {
+            success: {
+              whole: { subId: 6, symbols: ['300502.SZ'] },
+              singles: {},
+            },
+          };
+        }
+        if (state === 'overlay') {
+          return {
+            success: {
+              whole: { subId: 6, symbols: ['300502.SZ'] },
+              singles: { '000001.SZ': 7 },
+            },
+          };
+        }
         return { success: { whole: null, singles: {} } };
       },
       syncSubscriptions: async (symbols) => {
         calls.push(`sync:${symbols.join(',')}`);
+        state = 'whole';
         return { success: null };
       },
       subscribe: async (symbol) => {
         calls.push(`subscribe:${symbol}`);
+        state = 'overlay';
         return { success: 7 };
       },
       unsubscribe: async (symbol) => {
         calls.push(`unsubscribe:${symbol}`);
+        state = 'whole';
         return { success: null };
       },
     };
 
-    const evidence = await runControlSequence(client, '300502.SZ');
+    const evidence = await runControlSequence(
+      client,
+      'qmt',
+      '300502.SZ',
+      '000001.SZ',
+    );
 
     expect(calls).toEqual([
       'get',
       'sync:300502.SZ',
       'get',
-      'subscribe:300502.SZ',
+      'subscribe:000001.SZ',
       'get',
-      'unsubscribe:300502.SZ',
+      'unsubscribe:000001.SZ',
       'get',
     ]);
     expect(evidence).toEqual([
@@ -116,6 +141,11 @@ describe('realtime subscription HIL operation sequence', () => {
         operation: 'getSubscriptions.afterUnsubscribe',
         result: 'success',
       }),
+      {
+        operation: 'validateSubscriptions.exactState',
+        result: 'success',
+        reason: 'none',
+      },
     ]);
   });
 
@@ -131,7 +161,7 @@ describe('realtime subscription HIL operation sequence', () => {
       },
       subscribe: async () => ({
         failure: {
-          symbol: '300502.SZ',
+          symbol: '000001.SZ',
           reason: 'QMT_UNSUBSCRIBE_UNCONFIRMED',
           subscriptionState: 'unknown',
         },
@@ -139,7 +169,12 @@ describe('realtime subscription HIL operation sequence', () => {
       unsubscribe: async () => ({ success: null }),
     };
 
-    const evidence = await runControlSequence(client, '300502.SZ');
+    const evidence = await runControlSequence(
+      client,
+      'qmt',
+      '300502.SZ',
+      '000001.SZ',
+    );
 
     expect(getCalls).toBe(4);
     expect(evidence[1]).toEqual({
@@ -153,6 +188,40 @@ describe('realtime subscription HIL operation sequence', () => {
       reason: 'QMT_UNSUBSCRIBE_UNCONFIRMED',
       subscriptionState: 'unknown',
     });
+    expect(evidence.at(-1)).toEqual({
+      operation: 'validateSubscriptions.exactState',
+      result: 'failure',
+      reason: 'HIL_SUBSCRIPTION_STATE_INVALID',
+    });
     expect(JSON.stringify(evidence)).not.toContain('provider detail');
+  });
+
+  it('requires the exact TDX active list after each mutation', async () => {
+    let active: string[] = [];
+    const client: RealtimeSubscriptionControl = {
+      getSubscriptions: async () => ({ success: [...active] }),
+      syncSubscriptions: async (symbols) => {
+        active = [...symbols];
+        return { success: null };
+      },
+      subscribe: async (symbol) => {
+        active = [...active, symbol];
+        return { success: null };
+      },
+      unsubscribe: async () => ({ success: null }),
+    };
+
+    const evidence = await runControlSequence(
+      client,
+      'tdx',
+      '600030.SH',
+      '600519.SH',
+    );
+
+    expect(evidence.at(-1)).toEqual({
+      operation: 'validateSubscriptions.exactState',
+      result: 'failure',
+      reason: 'HIL_SUBSCRIPTION_STATE_INVALID',
+    });
   });
 });

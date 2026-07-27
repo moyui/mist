@@ -21,9 +21,12 @@ describe('test-only realtime subscription HIL harness', () => {
     expect(harness).toContain('createHilModule(source)');
     expect(harness).toContain('client.syncSubscriptions([symbol])');
     expect(harness).toContain('client.syncSubscriptions([])');
-    expect(harness).toContain('client.subscribe(symbol)');
-    expect(harness).toContain('client.unsubscribe(symbol)');
+    expect(harness).toContain('client.subscribe(overlaySymbol)');
+    expect(harness).toContain('client.unsubscribe(overlaySymbol)');
     expect(harness).toContain('client.getSubscriptions()');
+    expect(harness).toContain('MIST_HIL_RAW_CAPTURE_DIRECTORY');
+    expect(harness).toContain('nativePayload: { [symbol]: snapshot.native }');
+    expect(harness).toContain('validateSubscriptions.exactState');
     expect(harness).toContain('MIST_HIL_EVIDENCE_PATH');
     expect(harness).not.toContain('@Controller');
     expect(harness).not.toContain('new WebSocket');
