@@ -69,6 +69,18 @@ host loopback bridge paths, gateway routing and internal datasource discovery.
   `tdx-datasource:9001` and `qmt-datasource:9002`
 - **AND** it MUST show TDX can reach `host.docker.internal:17709`
 
+#### Scenario: Backend and datasource realtime contracts are compatible
+- **WHEN** either realtime source is configured as `builtin`
+- **THEN** deployment health MUST read that source's internal backend status
+  through the running backend container
+- **AND** the status MUST report `connected=true` and `ready=true` over the
+  current datasource WebSocket route
+- **AND** a missing legacy route, HTTP/WebSocket rejection or incompatible
+  backend image MUST fail deployment rather than passing on container and HTTP
+  health alone
+- **AND** a source explicitly configured as `off` MUST be excluded from this
+  compatibility assertion
+
 ### Requirement: Datasource runtime smoke proves business datasource paths
 The production baseline SHALL include runtime smoke evidence produced against
 the pinned datasource containers.
@@ -105,3 +117,31 @@ that each datasource can be recovered independently.
 - **WHEN** either datasource service is restarted
 - **THEN** the other datasource and application services are not recreated
 - **AND** post-restart health and bridge readiness are captured
+
+### Requirement: Container acceptance shares the native subscription HIL window
+
+The container release SHALL use the same supported trading-session window,
+protected pre/post digest and sanitized manifest as
+`migrate-qmt-realtime-to-native-subscription`, while preserving a separate
+container-deployment verdict.
+
+#### Scenario: Shared HIL manifest is captured
+
+- **WHEN** the joint HIL begins
+- **THEN** evidence MUST record datasource container IDs, common pinned image
+  tag/digest, QMT bind mount, WinSW absence, Compose DNS and TDX
+  container-to-host `17709` reachability before provider mutation
+- **AND** the subscription harness MUST separately record native control,
+  callback, converter and common-ingress evidence
+- **AND** neither evidence class MUST substitute for the other
+
+#### Scenario: Shared recovery and soak completes
+
+- **WHEN** provider mutation cleanup has completed
+- **THEN** QMT and TDX datasource containers MUST be restarted one at a time
+- **AND** the other datasource and application container identities MUST remain
+  unchanged
+- **AND** QMT journal/checkpoint continuity, bridge re-registration and a joint
+  container/bridge/journal/realtime soak MUST be recorded
+- **AND** the joint release gate MUST remain blocked unless both OpenSpec
+  change verdicts and the protected post-digest pass

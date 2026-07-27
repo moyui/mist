@@ -51,6 +51,14 @@ loopback URLs without exposing datasource control surfaces to the LAN.
 `mist-backend`, `chan-api` and monitoring use Compose service DNS rather than
 host hairpin URLs.
 
+Routine deployment also treats backend-to-datasource WebSocket readiness as an
+image-pair compatibility gate. For each source whose effective mode is
+`builtin`, the running backend's internal source status must exist and report
+`connected=true, ready=true`. Container health and datasource HTTP reachability
+alone are insufficient: an older backend can remain HTTP-healthy while retrying
+a removed WebSocket path indefinitely. A source explicitly set to `off` is
+excluded from this gate.
+
 Docker NAT presents Windows-originated loopback-published connections as the
 container's default gateway peer. Container mode explicitly trusts only that
 exact default-gateway address in addition to native loopback; arbitrary bridge
@@ -111,6 +119,10 @@ container does not deploy bridge scripts.
   checksum before cutover; reject anonymous volumes and missing bind paths.
 - [Container restart loses terminal ownership] → Keep bridge-first,
   fail-closed readiness and require owner re-registration/reload evidence.
+- [Backend and datasource images expose different WebSocket generations] →
+  Fail routine deployment unless each enabled source reports backend
+  `connected/ready` through the current datasource route; retain both image
+  identities and recent logs in diagnostics.
 - [No WinSW rollback after deletion] → Gate deletion on the complete
   container acceptance suite and retain immutable diagnostics for
   repair-forward.
@@ -135,7 +147,13 @@ container does not deploy bridge scripts.
 7. Repeat health, journal and digest checks. Subsequent failure recovery is
    container repair-forward only.
 8. Complete a supported trading-session HIL and soak before archiving the
-   change.
+   change. This uses the same maintenance window, protected pre/post digest and
+   sanitized manifest as `migrate-qmt-realtime-to-native-subscription`, while
+   keeping separate Docker-deployment and subscription-transport verdicts.
+   The shared run records container/image/mount/WinSW-absence and Compose-DNS
+   evidence, then restarts QMT and TDX containers one at a time after mutation
+   cleanup and proves the other datasource and app containers were not
+   recreated.
 
 ## Open Questions
 

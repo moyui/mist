@@ -23,6 +23,9 @@
 - [x] 4.2 Update health, diagnostics, smoke and baseline evidence tooling for both datasource containers and terminal bridge identities
 - [x] 4.3 Add migration and recovery tests covering failed preflight, failed pre-removal acceptance, successful removal and post-removal repair-forward
 - [x] 4.4 Remove one-time WinSW cutover inputs from the routine deployment path after production removal evidence is frozen
+- [x] 4.5 Fail routine deployment when an enabled backend source cannot reach
+  the current datasource WebSocket contract; require internal
+  `connected=true,ready=true` and exclude only an explicitly `off` source
 
 ## 5. Verification
 
@@ -30,4 +33,13 @@
 - [x] 5.2 Run Compose/workflow/PowerShell contract tests and strict OpenSpec validation
 - [x] 5.3 Capture Windows preflight, cutover, journal recovery and WinSW-absence evidence
   - Evidence: `mist-deploy` run `30264703822`; datasource image `2c78f03563df371c11c5e895025444dc14e11b35`, digest `sha256:e0b0f0ee96b7cfd05c2706424f60651bee4ab27ede5a73f0b289ee343619edfc`, repair-forward evidence `E:\quant\MistDocker\diagnostics\datasource-cutover-20260727-200932`
-- [ ] 5.4 Capture supported-session TDX/QMT realtime HIL, protected-table digest and soak evidence
+- [ ] 5.4 Use the shared
+  `mist-deploy/docs/runbooks/realtime-native-subscription-joint-acceptance.md`
+  entry, its off-session checklist and the
+  `migrate-qmt-realtime-to-native-subscription` trading-session runbook to
+  capture TDX/QMT realtime HIL plus datasource container IDs, pinned image
+  tag/digest, QMT bind mount, WinSW absence, Compose DNS, TDX `17709`,
+  source-scoped QMT/TDX restart isolation, journal/checkpoint continuity,
+  bridge re-registration, protected-table digest and joint soak evidence; keep
+  separate pass/partial/blocked verdicts for both changes in one sanitized
+  manifest
