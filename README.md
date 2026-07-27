@@ -1,8 +1,8 @@
 # Mist 智能股票分析系统
 
 Mist 是面向 A 股的行情采集、技术指标、缠论分析、策略信号与告警系统。仓库采用
-NestJS monorepo，生产环境由 Windows Docker 应用栈、两个 host-side datasource、
-TDX/QMT 桌面终端和独立 monitoring 组成。
+NestJS monorepo，生产环境由 Windows Docker Compose appliance、TDX/QMT 桌面终端
+及其 builtin bridge 组成。
 
 ## 能力边界
 
@@ -77,10 +77,7 @@ SHA。当前拓扑：
 ```text
 Docker Desktop
   mysql, mist-backend, chan-api, mist-fe, web-gateway
-
-Windows Host / WinSW
-  mist-tdx-datasource :9001
-  mist-qmt-datasource :9002
+  tdx-datasource :9001, qmt-datasource :9002, monitoring
 
 Windows 用户会话
   TDX Desktop + builtin bridge

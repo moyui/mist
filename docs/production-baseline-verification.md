@@ -14,6 +14,10 @@
 - Monitoring：`mist-monitoring@048dda32d9adc6bcb3021bc849b747a94cd34a05`
 - Skills：`mist-skills@86bd69b7f6f96be04cd17ad621af678a50e91b86`
 
+2026-07-27 已完成 datasource Docker cutover。上面的 2026-07-22 SHA 清单仍是上一轮
+完整六仓基线，不应被误读为本次 cutover 的镜像清单；新的完整基线需在当前
+OpenSpec change 的交易时段 HIL 完成后重新冻结。
+
 ## 当前生产拓扑
 
 ```text
@@ -23,12 +27,10 @@ Windows Docker Desktop
   chan-api :8008
   mist-fe
   web-gateway :80
+  tdx-datasource :9001
+  qmt-datasource :9002
+  monitoring :9109
   mist-migrate（一次性迁移任务）
-
-Windows Host / WinSW
-  mist-tdx-datasource :9001
-  mist-qmt-datasource :9002
-  mist-windows-exporter :9109
 
 Windows 用户会话
   TDX 终端 + 已注册自动运行的 builtin bridge
@@ -41,7 +43,9 @@ Mac / 浏览器 / AstrBot
 TDX 非实时 `/v1/*` 通过官方 `POST :17709`；TDX 实时通过
 `/tdx/bridge/*` 与 `/ws/realtime/tdx/{client_id}`。QMT 历史 bars 和正式
 命令都通过内置 Python 的 stdlib HTTP polling bridge；QMT realtime 默认
-`off`。两个 datasource 都在 Windows Host 运行，不进入 Docker。
+`off`。两个 datasource gateway 都在 Docker 中运行；TDX/QMT builtin bridge
+仍由对应 Windows 桌面终端加载。TDX datasource 通过
+`host.docker.internal:17709` 调用官方 TDX HTTP。
 
 ## 验证边界
 
@@ -105,7 +109,7 @@ gh workflow run deploy-windows-mist-stack.yml \
   -f previous_frontend_image_tag=<previous-frontend-sha> \
   -f public_host_name=www.moyui.mist \
   -f 'docker_root=E:\quant\MistDocker' \
-  -f 'datasource_root=F:\quant\MistAPI\datasource' \
+  -f 'datasource_state_root=F:\quant\MistAPI\datasource\state' \
   -f skip_migration=false \
   -f skip_backup=false \
   -f skip_health_check=false \

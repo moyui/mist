@@ -22,6 +22,7 @@
 - [x] 4.1 Update Windows deployment workflows and runbooks for datasource image and state inputs
 - [x] 4.2 Update health, diagnostics, smoke and baseline evidence tooling for both datasource containers and terminal bridge identities
 - [x] 4.3 Add migration and recovery tests covering failed preflight, failed pre-removal acceptance, successful removal and post-removal repair-forward
+- [x] 4.4 Remove one-time WinSW cutover inputs from the routine deployment path after production removal evidence is frozen
 
 ## 5. Verification
 

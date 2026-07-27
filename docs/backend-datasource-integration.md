@@ -7,13 +7,16 @@ HTTP 路由是运行时内部通道，不是 backend 的行情 API。
 
 | 变量 | 当前含义 |
 |---|---|
-| `TDX_BASE_URL` | TDX datasource HTTP 地址；Docker 生产值为 `http://host.docker.internal:9001` |
-| `QMT_BASE_URL` | QMT datasource HTTP 地址；Docker 生产值为 `http://host.docker.internal:9002` |
+| `TDX_BASE_URL` | TDX datasource HTTP 地址；Docker 生产值为 `http://tdx-datasource:9001` |
+| `QMT_BASE_URL` | QMT datasource HTTP 地址；Docker 生产值为 `http://qmt-datasource:9002` |
 | `TDX_WS_CLIENT_ID` | TDX realtime backend leader client id |
 | `QMT_WS_CLIENT_ID` | QMT realtime client id；仅在 QMT realtime mode 启用时使用 |
 
 `DEFAULT_DATA_SOURCE` 接受 `ef`、`tdx` 或 `qmt`。TDX 与 QMT 是两个独立服务，
 TDX request 不接受 `provider=qmt`。
+
+宿主映射 `127.0.0.1:9001/9002` 只供 terminal bridge、Windows smoke 和运维检查；
+backend 不经由宿主端口访问 datasource。
 
 ## 历史数据链路
 

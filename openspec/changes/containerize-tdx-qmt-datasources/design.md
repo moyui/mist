@@ -87,6 +87,12 @@ After deletion, failures are repaired by replacing or reconfiguring the
 containers. Journal, archived logs and evidence are never deleted with the
 legacy runtime.
 
+After the successful cutover evidence is frozen, `Deploy Windows Mist Stack`
+enters steady state: it starts and verifies the datasource Compose services
+directly and no longer exposes `datasource_root` or `remove_legacy_winsw`.
+The idempotent migration script remains a separate audit/repair-forward tool
+for an exceptional machine that has not completed the cutover.
+
 ### Image and deployment identity are explicit
 
 Production workflows require a datasource image tag other than `latest` and

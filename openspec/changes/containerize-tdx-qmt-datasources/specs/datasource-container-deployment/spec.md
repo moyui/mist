@@ -96,6 +96,14 @@ a supported rollback mode.
 - **THEN** recovery replaces or reconfigures the Docker service
 - **AND** operator tooling does not reinstall or restart a WinSW datasource
 
+#### Scenario: Routine deployment runs after completed cutover
+- **WHEN** the production host has durable evidence that both WinSW services
+  and obsolete host runtime artifacts were removed
+- **THEN** routine deployment starts and verifies the datasource Compose services
+- **AND** it does not expose a legacy datasource root or WinSW-removal switch
+- **AND** the one-time migration command remains separate from the routine
+  deployment entrypoint
+
 ### Requirement: Datasource containers are least-privilege and observable
 Production datasource containers SHALL run without root privileges and expose
 Docker-native health, logs and diagnostics.

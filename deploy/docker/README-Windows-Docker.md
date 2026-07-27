@@ -12,23 +12,26 @@ Windows Docker Desktop
   chan-api :8008
   mist-fe
   web-gateway :80
+  tdx-datasource :9001
+  qmt-datasource :9002
+  monitoring :9109
   mist-migrate（一次性）
-
-Windows Host / WinSW
-  mist-tdx-datasource :9001
-  mist-qmt-datasource :9002
 
 Windows 用户会话
   TDX Desktop + builtin bridge
   QMT Desktop + builtin bridge
 ```
 
-Datasource 不进入 Docker。Backend 容器使用：
+Backend 容器通过 Compose DNS 连接 datasource：
 
 ```env
-TDX_BASE_URL=http://host.docker.internal:9001
-QMT_BASE_URL=http://host.docker.internal:9002
+TDX_BASE_URL=http://tdx-datasource:9001
+QMT_BASE_URL=http://qmt-datasource:9002
 ```
+
+TDX datasource 容器通过 `host.docker.internal:17709` 访问 Windows 上的 TDX
+官方 HTTP 服务；terminal builtin bridge 通过宿主映射端口
+`127.0.0.1:9001/9002` 访问对应容器。
 
 ## Windows 目录
 
@@ -43,10 +46,11 @@ E:\quant\MistDocker
   diagnostics\
 
 F:\quant\MistAPI\datasource
-  .env
-  logs\
-  services\mist-tdx-datasource\
-  services\mist-qmt-datasource\
+  state\
+    qmt\
+      subscription-journal.jsonl
+  logs\（迁移保留）
+  evidence\（迁移保留）
 ```
 
 生产密码只保存在 `E:\quant\MistDocker\.env`。MySQL 使用 host bind
@@ -76,11 +80,12 @@ Deploy Windows Mist Stack
 ```
 
 Backend、frontend 和 previous tags 都使用精确 commit SHA。部署顺序为：拉取镜像、
-启动 MySQL、生产备份、执行迁移、重建 backend/Chan/frontend、最后重建
-`web-gateway` 并执行 host 与 container-to-host health。
+启动 datasource 容器、MySQL、生产备份、执行迁移、重建
+backend/Chan/frontend、最后重建 `web-gateway` 并执行 host 与 container health。
 
 不要使用 `latest`，不要在这里直接维护 Windows applied `compose.yaml`，也不要用
-Docker 部署去重启 datasource 或桌面终端。
+Docker 部署去重启桌面终端。Datasource 的 source-scoped 操作由 deploy 仓库的
+统一 container manager 执行。
 
 ## 独立运维入口
 
