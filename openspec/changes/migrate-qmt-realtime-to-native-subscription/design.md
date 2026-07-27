@@ -1542,6 +1542,42 @@ application context 构造正常的 TDX/QMT realtime client，并作为目标 pr
 `syncSubscriptions/subscribe/unsubscribe/getSubscriptions`，不得绕过 client
 另开裸 WebSocket，也不得添加 production HTTP/diagnostic mutation endpoint。
 
+本 change 的交易时段 HIL 与
+`containerize-tdx-qmt-datasources` task 5.4 使用同一维护窗口和同一份脱敏
+evidence manifest。HIL 在隔离 backend 前还必须证明两个 datasource 是
+Compose services、使用同一个 pinned datasource image、WinSW absent、QMT
+journal 使用明确 bind mount，且 backend 通过 Compose DNS 访问它们。上述
+Docker evidence 不能替代 callback/control evidence；反之，绿色 Nest HIL
+也不能替代 container identity、mount 或独立恢复证据。两个 change 在 manifest
+中分别给出 `pass|partial|blocked`，联合 release gate 只有在两者都通过时通过。
+
+生产主机 HIL 在停止正常 backend 前必须完成独立的 image/recovery preflight：
+
+```text
+记录 running container image ID
+  -> 用目标 Docker root + .env 解析 Compose backend image
+  -> 确认 resolved image 等于 intended candidate full SHA
+  -> 在 resolved image 中检查 test-only HIL entrypoint
+  -> 确认 exact recovery image 已在本地
+     或先完成 registry login + exact pull
+  -> 以相同 Docker root/.env 预检 recovery command 与 health URL
+  -> 全部通过后才允许 stop backend
+```
+
+只在当前运行 container 中执行 `test -f` 不足以通过 preflight：running
+container 可能仍使用带 HIL entrypoint 的 candidate，而 Compose `.env` 已漂移
+到另一个没有 entrypoint、甚至本地不存在的 tag。此时 stop 后的 one-off
+harness 与 restore 都会解析到错误 image。任何 running/resolved/intended
+identity 不一致、entrypoint 缺失、registry/pull 不可用、Windows 路径未按
+workflow input 原样解析或 recovery command 不可执行，都必须在 stop 和
+provider mutation 之前 fail closed。
+
+stop 后的任意 setup/capture/control failure 都必须进入同一个 finally recovery
+路径：使用 preflighted exact image 与 Compose environment 恢复 backend、等待
+health、记录正常 client 是否重新连接以及 cleanup 是否执行。恢复失败是
+production recovery incident，不能只显示为普通 HIL failure；之后由独立 deploy
+恢复服务也不能把原 HIL 改写为通过。
+
 Windows QMT HIL 使用 `300502.SZ`，whole multi-code 测试再使用一只操作员批准且
 allowlisted 的 symbol。交易时段验证：
 
@@ -1577,18 +1613,23 @@ golden SHA，不得把 provider raw capture 称为 formal golden。无需重新�
 
 ```text
 OpenSpec/fixtures/tests完成
+  -> steady-state deploy只使用docker_root + datasource_state_root
+  -> 记录双datasource container/image/mount/WinSW-absence/Compose-DNS证据
   -> QMT_REALTIME_MODE=off
   -> 暂停TDX realtime bridge/datasource snapshot traffic
   -> 操作员分别手工覆盖TDX/QMT bridge并记录path/SHA/build
   -> 更新compatible datasource与Mist backend
   -> 按source分别重启受影响datasource并recreate backend
   -> 正常backend确认ready/reconnect不发送control
+  -> 记录running/resolved/intended backend image并完成HIL/recovery preflight
   -> 停止或隔离正常backend的目标source client
   -> test-only in-process harness调用四种control方法
   -> QMT交易时段callback-to-Mist HIL
   -> TDX control与snapshot-to-Mist HIL
   -> harness尽力syncSubscriptions([])并退出
-  -> restart/rollback/protected digest
+  -> 分别restart QMT/TDX container并证明另一source与app未recreate
+  -> 联合container/bridge/journal/realtime soak
+  -> rollback/protected digest
 ```
 
 bridge-first 暂时对旧 datasource 报错是维护窗口内的预期状态；此时不得发布 snapshot 或报告 ready。

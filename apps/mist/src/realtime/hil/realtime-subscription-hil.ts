@@ -325,9 +325,19 @@ export async function runControlSequence(
   await recordOperation(operations, 'unsubscribe.overlay', () =>
     client.unsubscribe(overlaySymbol),
   );
-  await recordOperation(operations, 'getSubscriptions.afterUnsubscribe', () =>
-    client.getSubscriptions(),
-  );
+  if (source === 'tdx') {
+    for (let cycle = 1; cycle <= 3; cycle += 1) {
+      await recordOperation(
+        operations,
+        `getSubscriptions.afterUnsubscribe.cycle${cycle}`,
+        () => client.getSubscriptions(),
+      );
+    }
+  } else {
+    await recordOperation(operations, 'getSubscriptions.afterUnsubscribe', () =>
+      client.getSubscriptions(),
+    );
+  }
   operations.push(
     validateSubscriptionState(source, symbol, overlaySymbol, operations),
   );
@@ -399,10 +409,15 @@ function validateSubscriptionState(
     operations,
     'getSubscriptions.afterSubscribe',
   );
-  const afterUnsubscribe = successfulValue(
-    operations,
-    'getSubscriptions.afterUnsubscribe',
-  );
+  const afterUnsubscribe =
+    source === 'tdx'
+      ? [1, 2, 3].map((cycle) =>
+          successfulValue(
+            operations,
+            `getSubscriptions.afterUnsubscribe.cycle${cycle}`,
+          ),
+        )
+      : successfulValue(operations, 'getSubscriptions.afterUnsubscribe');
   const valid =
     source === 'qmt'
       ? isQmtState(afterSync, symbol, []) &&
@@ -410,7 +425,9 @@ function validateSubscriptionState(
         isQmtState(afterUnsubscribe, symbol, [])
       : isTdxState(afterSync, [symbol]) &&
         isTdxState(afterSubscribe, [symbol, overlaySymbol]) &&
-        isTdxState(afterUnsubscribe, [symbol]);
+        Array.isArray(afterUnsubscribe) &&
+        afterUnsubscribe.length === 3 &&
+        afterUnsubscribe.every((state) => isTdxState(state, [symbol]));
   return valid
     ? {
         operation: 'validateSubscriptions.exactState',

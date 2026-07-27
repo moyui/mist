@@ -208,7 +208,71 @@ describe('realtime subscription HIL operation sequence', () => {
         active = [...active, symbol];
         return { success: null };
       },
-      unsubscribe: async () => ({ success: null }),
+      unsubscribe: async (symbol) => {
+        active = active.filter((item) => item !== symbol);
+        return { success: null };
+      },
+    };
+
+    const evidence = await runControlSequence(
+      client,
+      'tdx',
+      '600030.SH',
+      '600519.SH',
+    );
+
+    expect(
+      evidence
+        .filter((item) =>
+          item.operation.startsWith('getSubscriptions.afterUnsubscribe.cycle'),
+        )
+        .map((item) => item.operation),
+    ).toEqual([
+      'getSubscriptions.afterUnsubscribe.cycle1',
+      'getSubscriptions.afterUnsubscribe.cycle2',
+      'getSubscriptions.afterUnsubscribe.cycle3',
+    ]);
+    expect(evidence.at(-1)).toEqual({
+      operation: 'validateSubscriptions.exactState',
+      result: 'success',
+      reason: 'none',
+    });
+  });
+
+  it('fails TDX exact-state validation when a later native-list cycle resubscribes overlay', async () => {
+    let state: 'before' | 'whole' | 'overlay' | 'unsubscribed' = 'before';
+    let afterUnsubscribeReads = 0;
+    const client: RealtimeSubscriptionControl = {
+      getSubscriptions: async () => {
+        if (state === 'overlay') {
+          return { success: ['600030.SH', '600519.SH'] };
+        }
+        if (state === 'whole') {
+          return { success: ['600030.SH'] };
+        }
+        if (state === 'unsubscribed') {
+          afterUnsubscribeReads += 1;
+          return {
+            success:
+              afterUnsubscribeReads === 2
+                ? ['600030.SH', '600519.SH']
+                : ['600030.SH'],
+          };
+        }
+        return { success: [] };
+      },
+      syncSubscriptions: async () => {
+        state = 'whole';
+        return { success: null };
+      },
+      subscribe: async () => {
+        state = 'overlay';
+        return { success: null };
+      },
+      unsubscribe: async () => {
+        state = 'unsubscribed';
+        return { success: null };
+      },
     };
 
     const evidence = await runControlSequence(

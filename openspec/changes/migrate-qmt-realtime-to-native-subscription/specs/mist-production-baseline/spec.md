@@ -109,6 +109,33 @@ automatic crash recovery or a production mutation endpoint.
 - **AND** it MUST call the four in-process methods rather than open a separate
   raw WebSocket or HTTP mutation route
 
+#### Scenario: Candidate and recovery images are preflighted
+
+- **WHEN** a production-host HIL plans to stop or isolate the normal backend
+- **THEN** it MUST first record the running backend image ID, the Compose-resolved
+  backend image reference and the intended candidate full SHA
+- **AND** the Compose-resolved image MUST contain the test-only HIL entrypoint;
+  checking only the currently running container is insufficient
+- **AND** the exact recovery image MUST already exist locally, or registry
+  authentication and a pull of that exact image MUST succeed before the backend
+  is stopped
+- **AND** the recovery command and backend health endpoint MUST be validated
+  against the exact Docker root and Compose environment
+- **AND** any mismatch, missing entrypoint, unavailable image or invalid recovery
+  path MUST stop HIL before backend stop and before provider mutation
+
+#### Scenario: Harness setup fails after backend isolation
+
+- **WHEN** an unexpected failure occurs after the normal backend has been stopped
+- **THEN** the workflow MUST attempt recovery with the preflighted exact image
+  and Compose environment before reporting HIL completion
+- **AND** it MUST wait for backend health, record whether the former production
+  client reconnected and record whether provider cleanup ran
+- **AND** failure to recover MUST be reported as a production recovery incident,
+  not only as a failed HIL assertion
+- **AND** the HIL result MUST remain failed even when a later independent
+  deployment restores service
+
 #### Scenario: Whole and single converge
 
 - **WHEN** harness calls `syncSubscriptions` successfully and then calls
@@ -370,3 +397,43 @@ HIL and rollback SHALL not change protected business tables or unrelated realtim
 - **WHEN** HIL occurs outside a supported market session
 - **THEN** it MAY prove routes, owner, IDs, journal, unsubscribe attempts and restart behavior
 - **AND** it MUST not claim callback freshness or changed-symbol proof
+
+### Requirement: Trading-session evidence is shared with datasource container acceptance
+
+The production baseline MAY use one maintenance window and one sanitized
+manifest to accept this change together with
+`containerize-tdx-qmt-datasources`, but SHALL retain separate conclusions for
+the Docker datasource deployment and native subscription transport.
+
+#### Scenario: Joint HIL preflight begins
+
+- **WHEN** the operator prepares the shared trading-session HIL
+- **THEN** evidence MUST record both datasource Compose container IDs, the
+  common pinned datasource image tag/digest, Docker root, datasource state
+  root, QMT state bind and legacy WinSW absence
+- **AND** it MUST prove backend-to-datasource Compose DNS, host loopback bridge
+  access and TDX container-to-host `17709` reachability
+- **AND** routine deployment MUST NOT require `datasource_root` or
+  `remove_legacy_winsw`
+
+#### Scenario: Joint HIL exercises source-scoped recovery
+
+- **WHEN** QMT and TDX datasource containers are restarted one at a time after
+  mutation cleanup
+- **THEN** the non-target datasource and application container identities MUST
+  remain unchanged
+- **AND** QMT journal/checkpoint continuity and both bridge owner re-registration
+  MUST be recorded
+- **AND** reconnect MUST NOT automatically issue a subscription read or mutation
+
+#### Scenario: Joint manifest is reviewed
+
+- **WHEN** the shared HIL evidence is finalized
+- **THEN** it MUST contain separate
+  `containerizeTdxQmtDatasources` and
+  `migrateQmtRealtimeToNativeSubscription` results
+- **AND** container health MUST NOT satisfy callback/control requirements
+- **AND** callback/control success MUST NOT satisfy image, mount, WinSW-absence
+  or independent-recovery requirements
+- **AND** the joint release gate MUST pass only when both results pass and the
+  shared protected pre/post digest is unchanged

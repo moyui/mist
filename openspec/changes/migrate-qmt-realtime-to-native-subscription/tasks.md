@@ -414,7 +414,14 @@
   也不得另开绕过 client 的 raw WebSocket。evidence 必须分别记录 provider
   raw fixture SHA 与 Mist canonical formal schema-v2 SHA，并证明运行链路生成
   的 formal frame 与 canonical/pinned golden 一致；不得用 raw SHA 替代
-  formal SHA。
+  formal SHA。生产主机 wrapper 在 stop backend 前必须记录 running image ID、
+  用 exact Docker root/`.env` 解析 Compose backend image、确认其等于 intended
+  candidate full SHA，并在 **resolved image** 而非仅 running container 中检查
+  HIL entrypoint；exact recovery image 必须已在本地，或 registry login +
+  exact pull 已先成功。还必须预检相同 Compose environment 下的 recovery
+  command 与 health URL；任一不满足时在 stop/provider mutation 前 fail closed。
+  stop 后任意失败都必须使用 preflighted exact image 恢复 backend、等待 health
+  并记录 cleanup/reconnect；恢复失败单独标为 production recovery incident。
 - [ ] 8.6 `[all affected repositories]` 运行 unit、contract、integration、
   lint、typecheck、build、Python 3.6 guard、layout guard、
   `git diff --check` 与 clean-CI equivalent；`mist`、`mist-datasource`、
@@ -440,11 +447,16 @@
 - [ ] 9.4 `[operator/mist-deploy]` 部署 datasource/backend candidate；TDX、QMT
   datasource 按各自 bridge/contract 步骤分别重启，backend 仅按需要 recreate，
   任何 source mode 工具不得顺带重启另一 datasource；记录正常 backend 在
-  ready/reconnect 后没有发送任何 subscription control。
+  ready/reconnect 后没有发送任何 subscription control。部署 evidence 必须同时
+  记录 intended full SHA、Compose `.env` resolved image 与 running container
+  image ID；三者不一致时不得进入 HIL，也不得把“running container 暂时健康”
+  当作下一次 `docker compose run/up` 会使用同一 image 的证明。
 - [ ] 9.5 **阶段门**：routes、owner lease、journal、control readiness 与
-  protected pre-digest 正确后，只允许进入 test-only HIL。不得把 QMT builtin
-  ready、空 registry 或 HIL harness 临时订阅描述成 production lifecycle 已
-  激活。
+  protected pre-digest 正确，并且 candidate/recovery image preflight 已通过后，
+  只允许进入 test-only HIL。不得把 QMT builtin ready、空 registry 或 HIL
+  harness 临时订阅描述成 production lifecycle 已激活；image identity、
+  entrypoint、registry/pull 或 recovery path 任一失败都必须在停止正常 backend
+  前终止。
 
 ## 10. Windows HIL
 
@@ -495,15 +507,36 @@
   `securityId/providerSymbol`、按 `securityId` latest readback、duplicate state
   可再次接受、diagnostic 无 epoch/sequence，并证明 TDX canonical
   `eventTime` 只来自 accepted provider-native fixture，不能来自 callback
-  收到、datasource 发送或 backend 接收时间。
+  收到、datasource 发送或 backend 接收时间。验收核销必须把以下证据分别列出，
+  不得以一次绿色 workflow 互相替代：raw capture SHA；typed-control exact-state
+  与 cleanup；运行时 formal-frame/converter/common-latest readback；live
+  no-`producerSequence`/one-attempt/no-retry/no-item-ack；unsubscribe 后三个完整
+  poll/result 周期；两个 unsubscribe failure 分支；canonical `eventTime`
+  readback。旧 runtime smoke 在本 change 的正常 dormant `desiredSymbols=0`
+  状态不得被当作 freshness failure；需要 live quote 时必须先由唯一 test-only
+  caller 显式建立 desired。
 - [ ] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
   terminal/context reload、rollback、old callback rejection 和 protected
   post-digest；验证 QMT `off` 不产生 QMT unavailable 且不停止 TDX metrics，
   TDX `off` 或 TDX bridge rollback 不停止 QMT metrics，并覆盖 enabled source
   startup/session grace 与 closed-session freshness；restart/reconnect 只更新
   readiness，后续 read/mutation 必须由 harness 明确调用。
-- [ ] 10.5 `[mist]` 非交易时段 evidence 只声明 owner/control/journal/restart/已有 fixture，不能冒充 realtime freshness。
-- [ ] 10.6 **阶段门**：HIL/evidence 经 review 后才能接受发布。
+- [ ] 10.4a `[operator/mist-deploy]` 与
+  `containerize-tdx-qmt-datasources` task 5.4 共用同一窗口和 manifest：记录
+  两个 datasource Compose container/image/digest、QMT bind mount、WinSW
+  absence、Compose DNS 与 TDX `host.docker.internal:17709`；在 mutation cleanup
+  后分别 source-scoped restart QMT/TDX，证明另一 datasource 与应用 container
+  未 recreate、QMT journal/checkpoint 连续、bridge 重新注册且 reconnect 不
+  自动发 control；执行联合 container/bridge/journal/realtime soak。两个 change
+  必须分别给出结论，不能互相借用不相关证据。
+- [ ] 10.5 `[mist]` 按
+  `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
+  收集非交易时段 evidence；只声明 owner/control/journal/restart/已有 fixture，
+  manifest 固定 `sessionClass=off-session` 与 `freshnessProven=false`，不能冒充
+  realtime freshness。交易时段与最终 task 勾选统一从
+  `realtime-native-subscription-joint-acceptance.md` 进入。
+- [ ] 10.6 **阶段门**：HIL/evidence 经 review，且联合 manifest 中
+  `containerize-tdx-qmt-datasources` 与本 change 均为通过后才能接受发布。
 
 ## 11. Theme B B1 与 post-close 刷新
 
@@ -544,7 +577,10 @@
   `mist/test/fixtures/realtime` canonical 与 datasource/deploy/monitoring
   三个既有 pinned 路径的 v2 JSON，并确认四份 `.sha256` sidecar 文件名、
   内容和重算结果完全一致。任何 active v1 golden/path reference、缺失 pinned
-  copy 或 raw/formal SHA 混用都阻止归档。
+  copy 或 raw/formal SHA 混用都阻止归档。同一 manifest 还必须固定 deploy
+  SHA、datasource image tag/digest、container IDs、state mount、
+  source-scoped restart/soak 与两个 change 的独立结论；当前 steady-state
+  deploy workflow 不得重新出现 `datasource_root/remove_legacy_winsw`。
 - [ ] 12.4 `[mist]` 使用已记录的 OpenSpec CLI `1.6.0` 完成 focused 与
   `--all --strict` validation；CLI 缺失时不得归档。
 - [ ] 12.5 `[mist]` 刷新 production baseline、Theme B 阻塞状态和中文运维入口；
