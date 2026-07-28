@@ -619,21 +619,28 @@
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
   - [x] Current protected pre/post digests
     `30331886288/30334690762` match for all six protected tables.
-- [ ] 10.5 `[mist]` 按
+- [x] 10.5 `[mist]` 按
   `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
   收集非交易时段 evidence；只声明 owner/control/journal/restart/已有 fixture，
   manifest 固定 `sessionClass=off-session` 与 `freshnessProven=false`，不能冒充
   realtime freshness。交易时段与最终 task 勾选统一从
   `realtime-native-subscription-joint-acceptance.md` 进入。
+  - 2026-07-28 evidence: off-session dual-source smoke `30336591652`;
+    QMT controlled faults `30330119132`; TDX controlled faults
+    `30327309989`; QMT/TDX source-scoped restart evidence
+    `30330637703/30323653971`; terminal artifact disposition
+    `30339307252`; final repository/fixture/CI/sanitization review in
+    `off-session-final-review-2026-07-28.md/.json`. The review explicitly
+    keeps `freshnessProven=false`.
 - [ ] 10.6 **阶段门**：HIL/evidence 经 review，且联合 manifest 中
   `containerize-tdx-qmt-datasources` 与本 change 均为通过后才能接受发布。
   - 2026-07-28 current verdict: `partial`. QMT positive subscription,
     controlled faults, durable recovery and source-scoped restart evidence
     exist, but accepted bool-`false` unsubscribe postcondition/released-ID
-    behavior, TDX live negative/no-retry evidence, dual-source joint soak and
-    final sanitized review remain open. QMT and TDX canonical `eventTime`
-    boundaries plus the current protected post-digest are now proven. The
-    joint release gate is therefore `blocked`.
+    behavior, TDX live negative/no-retry evidence and the dual-source joint
+    soak remain open. The final sanitized review is complete. QMT and TDX
+    canonical `eventTime` boundaries plus the current protected post-digest
+    are now proven. The joint release gate is therefore `blocked`.
 
 ## 11. Theme B B1 与 post-close 刷新
 
@@ -678,6 +685,12 @@
   SHA、datasource image tag/digest、container IDs、state mount、
   source-scoped restart/soak 与两个 change 的独立结论；当前 steady-state
   deploy workflow 不得重新出现 `datasource_root/remove_legacy_winsw`。
+  - [x] 2026-07-28 off-session portion: six-repository identity audit,
+    four byte-identical formal v2 copies and sidecars, exact-ref Mist,
+    datasource and deploy CI, and sanitized manifest review are recorded in
+    `off-session-final-review-2026-07-28.md/.json`.
+  - [ ] Trading-session portion: required dual-source freshness soak and final
+    pass verdicts remain open, so task 12.3 itself stays unchecked.
 - [x] 12.4 `[mist]` 使用已记录的 OpenSpec CLI `1.6.0` 完成 focused 与
   `--all --strict` validation；CLI 缺失时不得归档。
 - [ ] 12.5 `[mist]` 刷新 production baseline、Theme B 阻塞状态和中文运维入口；

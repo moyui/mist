@@ -55,8 +55,10 @@
     pre/post runs `30331886288/30334690762`; all six row counts and content
     digests matched. TDX owner soak run `30332675452` passed 35 samples but is
     source-only and does not replace the required dual-source soak. The
-    containerization verdict remains `partial` until the dual-source joint
-    soak and final sanitized manifest review are complete.
+    Final repository/contract/sanitization review is recorded in
+    `off-session-final-review-2026-07-28.md/.json`. The containerization
+    verdict remains `partial` until the dual-source joint freshness soak is
+    complete.
   - [x] Pinned datasource image/tag/digest, two healthy Compose containers,
     QMT bind, WinSW absence, Compose DNS and TDX
     `host.docker.internal:17709`.
@@ -69,5 +71,5 @@
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
   - [x] Current protected pre/post digests
     `30331886288/30334690762` match for all six protected tables.
-  - [ ] Final sanitized manifest review with separate verdicts for both
+  - [x] Final sanitized manifest review with separate verdicts for both
     changes.
