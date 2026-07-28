@@ -39,7 +39,13 @@
 
 ## 2. QMT runtime probe 与 raw fixtures
 
-- [ ] 2.1 `[mist-datasource]` 编写 Python 3.6 只读 introspection probe，记录 `dir/getattr/__doc__/help` 的 `subscribe_quote`、`subscribe_whole_quote`、`unsubscribe_quote`、`get_market_data_ex` 和全部 `subscribe*all*|subscribe*whole*` 候选；`inspect.signature()` 失败只记 unknown。
+- [x] 2.1 `[mist-datasource]` 编写 Python 3.6 只读 introspection probe，记录 `dir/getattr/__doc__/help` 的 `subscribe_quote`、`subscribe_whole_quote`、`unsubscribe_quote`、`get_market_data_ex` 和全部 `subscribe*all*|subscribe*whole*` 候选；`inspect.signature()` 失败只记 unknown。
+  - Operator artifact:
+    `tools/qmt_runtime_probe/mist_qmt_subscription_introspection_probe.py`;
+    it writes one sanitized JSON, invokes no native method and records
+    `nativeMethodsInvoked=[]/mutationExecuted=false`. Python 3.6 grammar,
+    alias discovery, zero-call behavior and sanitization are covered by
+    `tests/unit/test_qmt_runtime_probe.py`.
 - [ ] 2.2 `[Windows QMT operator]` 记录 QMT/迅投、terminal、embedded Python、strategy runtime build、VIP/非 VIP 权限、可证明的 whole-list/active-subId/single-handle 限制和所有方法的实际可调用性；无法证明的限制记 unknown，不依据方法名猜测 alias。
 - [ ] 2.3 `[Windows QMT operator]` 在交易时段使用 `300502.SZ` 捕获：
   - `subscribe_quote(..., period='tick', result_type='dict')` 一项 `{code:data}` callback；
