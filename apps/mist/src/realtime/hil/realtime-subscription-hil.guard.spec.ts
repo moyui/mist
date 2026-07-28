@@ -26,6 +26,12 @@ describe('test-only realtime subscription HIL harness', () => {
     expect(harness).toContain('client.getSubscriptions()');
     expect(harness).toContain('MIST_HIL_RAW_CAPTURE_DIRECTORY');
     expect(harness).toContain('nativePayload: { [symbol]: snapshot.native }');
+    expect(harness).toContain(
+      'canonicalReadback: toCanonicalReadbackEvidence(snapshot)',
+    );
+    expect(harness).not.toContain(
+      'canonicalReadback: { native: snapshot.native',
+    );
     expect(harness).toContain('validateSubscriptions.exactState');
     expect(harness).toContain('MIST_HIL_EVIDENCE_PATH');
     expect(harness).not.toContain('@Controller');

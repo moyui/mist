@@ -23,11 +23,12 @@ import { TdxRealtimeClient } from '../../sources/tdx/realtime/realtime.client';
 import { TdxRealtimeAllowlistResolver } from '../../sources/tdx/realtime/realtime-allowlist.resolver';
 import { TdxRealtimeStore } from '../../sources/tdx/realtime/realtime.store';
 import { RealtimeIngressModule } from '../realtime-ingress.module';
+import { CanonicalRealtimeSnapshot } from '../realtime-native-frame';
 import { RealtimeSnapshotIngressService } from '../realtime-snapshot-ingress.service';
 import { RealtimeSubscriptionControl } from '../realtime-subscription-control';
 import { SubscriptionControlResult } from '../realtime-subscription-control';
 
-type HilSource = 'tdx' | 'qmt';
+export type HilSource = 'tdx' | 'qmt';
 
 interface HilOperationEvidence {
   operation: string;
@@ -55,6 +56,16 @@ interface CapturedRawFixtureEvidence {
   capturedAt: string;
   fileName: string;
   sha256: string;
+  canonicalReadback: CanonicalReadbackEvidence;
+}
+
+export interface CanonicalReadbackEvidence {
+  source: HilSource;
+  securityId: number;
+  providerSymbol: string;
+  eventTime: string | null;
+  capturedAt: string;
+  quality: CanonicalRealtimeSnapshot['quality'];
 }
 
 interface HilRunOptions {
@@ -240,12 +251,7 @@ function resolveClient(
   client: RealtimeSubscriptionControl;
   ready: () => boolean;
   resolveSecurityId: (providerSymbol: string) => number | null;
-  readLatest: (securityId: number) => {
-    source: HilSource;
-    providerSymbol: string;
-    capturedAt: string;
-    native: Readonly<Record<string, unknown>>;
-  } | null;
+  readLatest: (securityId: number) => CanonicalRealtimeSnapshot | null;
 } {
   const ingress = context.get(RealtimeSnapshotIngressService, {
     strict: false,
@@ -395,6 +401,20 @@ async function captureRawFixture(
     capturedAt: snapshot.capturedAt,
     fileName: basename(path),
     sha256: createHash('sha256').update(serialized).digest('hex'),
+    canonicalReadback: toCanonicalReadbackEvidence(snapshot),
+  };
+}
+
+export function toCanonicalReadbackEvidence(
+  snapshot: CanonicalRealtimeSnapshot,
+): CanonicalReadbackEvidence {
+  return {
+    source: snapshot.source,
+    securityId: snapshot.securityId,
+    providerSymbol: snapshot.providerSymbol,
+    eventTime: snapshot.eventTime,
+    capturedAt: snapshot.capturedAt,
+    quality: { ...snapshot.quality },
   };
 }
 

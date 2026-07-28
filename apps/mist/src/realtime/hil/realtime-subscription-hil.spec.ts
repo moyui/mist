@@ -9,6 +9,7 @@ import {
   realtimeSubscriptionHilEntities,
   requireMatchingRawFixtureSymbol,
   runControlSequence,
+  toCanonicalReadbackEvidence,
 } from './realtime-subscription-hil';
 
 describe('realtime subscription HIL operation sequence', () => {
@@ -51,6 +52,50 @@ describe('realtime subscription HIL operation sequence', () => {
         .relations.map(({ propertyName }) => propertyName),
     ).toEqual(expect.arrayContaining(['sourceConfigs', 'ks']));
     expect(dataSource.getMetadata('K').relations).toHaveLength(4);
+  });
+
+  it('records a sanitized canonical readback without native provider data', () => {
+    const evidence = toCanonicalReadbackEvidence({
+      source: 'tdx',
+      securityId: 42,
+      providerSymbol: '600030.SH',
+      eventTime: null,
+      capturedAt: '2026-07-28T10:34:01+08:00',
+      prices: {
+        last: 10.25,
+        open: 10,
+        high: 10.3,
+        low: 9.95,
+        lastClose: 10.05,
+      },
+      cumulativeVolume: 123456,
+      cumulativeAmount: 1234567,
+      quality: {
+        level: 'latest-state',
+        eventTimeAvailable: false,
+        aggregationEligible: false,
+        partialPrices: false,
+      },
+      native: {
+        privateProviderField: 'must-not-enter-HIL-evidence',
+      },
+    });
+
+    expect(evidence).toEqual({
+      source: 'tdx',
+      securityId: 42,
+      providerSymbol: '600030.SH',
+      eventTime: null,
+      capturedAt: '2026-07-28T10:34:01+08:00',
+      quality: {
+        level: 'latest-state',
+        eventTimeAvailable: false,
+        aggregationEligible: false,
+        partialPrices: false,
+      },
+    });
+    expect(JSON.stringify(evidence)).not.toContain('privateProviderField');
+    expect(JSON.stringify(evidence)).not.toContain('must-not-enter');
   });
 
   it('uses all four typed methods in deterministic order', async () => {

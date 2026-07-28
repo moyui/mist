@@ -476,6 +476,25 @@
   `time/stime/timetag` 存在性、值类型、候选优先级、parser、单位、时区、
   精度及同时出现时的一致性；证明 canonical `eventTime` 可回溯到原始
   provider 值，且候选不可用/冲突时为 null、不会退回任何本机时间。
+  - 2026-07-28 partial evidence: run `30323074581` used the Nest test-only
+    harness with `300502.SZ/600519.SH`, returned whole subId `2` and single
+    subId `3`, and captured fresh whole/overlay raw callbacks. Native
+    `unsubscribe_quote` returned exact bool `false`; datasource correctly
+    returned `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown` and retained both handles.
+    Accepted unsubscribe, repeated released-ID behavior, quota/ID reuse and
+    canonical `eventTime` readback remain unproven, so this task stays
+    unchecked.
+  - [x] Unique Nest test-only leader, exact integer whole/single IDs, fresh
+    whole/overlay callback and changed-symbol common-ingress readback.
+  - [x] Unconfirmed unsubscribe returns
+    `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown`, retains the original handles and
+    blocks clean replacement.
+  - [ ] Current-handle non-member rejection plus member-but-business-
+    unauthorized per-item backend rejection.
+  - [ ] Accepted unsubscribe, repeated released-ID result, callback stop,
+    quota release and later ID reuse classification.
+  - [ ] Canonical QMT `eventTime` readback traced to the exact native
+    `time/stime/timetag` candidates.
 - [ ] 10.2 `[Windows QMT operator]` 验证 callback burst、queue bound、
   malformed-one-code isolation、old lease rejection、严格递增
   `callSequence` 及可控延迟下 A-timeout/B-poll/A-late reject 且 B 保持可完成；
@@ -489,6 +508,17 @@
   HIL-qualified repeated unsubscribe durable result 分支；未证明重复退订安全时
   演练 context reload/restart、retained ID failure 和 planned/unexpected
   datasource restart runbook。
+  - [x] Datasource CI run `30322477897` on exact
+    `0b43a521187adbed737a932f4942849d88fe2295` passed deterministic unit and
+    integration coverage for queue/lease/callSequence/late-result, durability,
+    rotation, compaction, 90-day folding and interrupted publish boundaries.
+  - [x] Production recovery runs `30322786851/30322918489` proved the durable
+    context-rebuild `operator_observation` closes
+    `reconciliationRequired`.
+  - [ ] Run the Windows controlled-fault workflow against exact
+    `0b43a521187adbed737a932f4942849d88fe2295` and archive its JUnit evidence.
+  - [ ] Complete the planned/unexpected restart evidence after the current
+    unconfirmed handles are cleaned.
 - [ ] 10.3 `[Windows TDX operator/mist]` 停止或隔离正常 backend 的 TDX
   client，以同类 test-only Nest in-process harness 作为唯一 leader 调用四个
   TDX control methods，并执行受影响链路 HIL：验证 bridge snapshot
@@ -515,6 +545,22 @@
   readback。旧 runtime smoke 在本 change 的正常 dormant `desiredSymbols=0`
   状态不得被当作 freshness failure；需要 live quote 时必须先由唯一 test-only
   caller 显式建立 desired。
+  - 2026-07-28 partial evidence: run `30323295927` proved fresh whole/overlay
+    raw capture, typed-control exact state
+    `[] -> [600030] -> [600030,603127] -> [600030]`, three complete
+    post-unsubscribe reads with `603127` absent, and cleanup `[]`. The live
+    one-attempt/no-retry/no-item-ack fault, both unsubscribe failure branches
+    and canonical `eventTime` readback remain separate missing evidence, so
+    this task stays unchecked.
+  - [x] Fresh raw whole/overlay capture SHA, Nest typed-control exact state,
+    common-ingress latest readback and cleanup.
+  - [x] Mutation `success:null`, fresh native-list postconditions and three
+    complete post-unsubscribe cycles with the overlay absent.
+  - [ ] Live snapshot one-attempt/no-retry/no-item-ack evidence.
+  - [ ] `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` and
+    `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown` live failure evidence.
+  - [ ] Canonical TDX `eventTime` readback proving null when the accepted raw
+    callback has no provider-native time field.
 - [ ] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
   terminal/context reload、rollback、old callback rejection 和 protected
   post-digest；验证 QMT `off` 不产生 QMT unavailable 且不停止 TDX metrics，
@@ -529,6 +575,16 @@
   未 recreate、QMT journal/checkpoint 连续、bridge 重新注册且 reconnect 不
   自动发 control；执行联合 container/bridge/journal/realtime soak。两个 change
   必须分别给出结论，不能互相借用不相关证据。
+  - 2026-07-28 partial evidence: TDX source-scoped restart run `30323653971`
+    recreated only `tdx-datasource`, preserved every unrelated container and
+    the QMT journal checksum, and executed no native mutation. QMT restart run
+    `30323603099` correctly stopped before recreation because the registry was
+    non-empty. QMT cleanup/restart and the dual-source joint soak remain
+    required, so this task stays unchecked.
+  - [x] Protected-table digest equality and TDX source-scoped restart
+    isolation.
+  - [ ] QMT controlled cleanup and source-scoped restart isolation.
+  - [ ] Dual-source container/bridge/journal/realtime joint soak.
 - [ ] 10.5 `[mist]` 按
   `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
   收集非交易时段 evidence；只声明 owner/control/journal/restart/已有 fixture，
@@ -581,7 +637,7 @@
   SHA、datasource image tag/digest、container IDs、state mount、
   source-scoped restart/soak 与两个 change 的独立结论；当前 steady-state
   deploy workflow 不得重新出现 `datasource_root/remove_legacy_winsw`。
-- [ ] 12.4 `[mist]` 使用已记录的 OpenSpec CLI `1.6.0` 完成 focused 与
+- [x] 12.4 `[mist]` 使用已记录的 OpenSpec CLI `1.6.0` 完成 focused 与
   `--all --strict` validation；CLI 缺失时不得归档。
 - [ ] 12.5 `[mist]` 刷新 production baseline、Theme B 阻塞状态和中文运维入口；
   baseline 对 approved TDX 或 QMT `off` 都记录 affected source、双 source
