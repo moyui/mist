@@ -108,6 +108,25 @@ export const mistEnvSchema = commonEnvSchema.append({
     .allow('')
     .default('')
     .description('Comma-separated exact QMT formatCodes for realtime (max 5)'),
+
+  // ===== B1: current-day realtime market data productization =====
+  // Market-data Redis lives in a physically separate instance
+  // (mist-realtime-redis) from any future notification queue Redis
+  // (mist-queue-redis). Empty URL keeps the product path disabled.
+  MIST_REALTIME_REDIS_URL: Joi.string()
+    .uri()
+    .allow('')
+    .default('')
+    .description(
+      'Physically-isolated Redis URL for current-day realtime candles; empty = disabled (memory-only)',
+    ),
+
+  REALTIME_PRODUCTIZATION_MODE: Joi.string()
+    .valid('off', 'shadow', 'on')
+    .default('off')
+    .description(
+      'off=memory-only (default); shadow=aggregate+write Redis but hide from query; on=expose Redis-backed current-day query',
+    ),
 });
 
 /**
