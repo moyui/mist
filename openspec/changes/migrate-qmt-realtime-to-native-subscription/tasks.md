@@ -556,6 +556,13 @@
     common-ingress latest readback and cleanup.
   - [x] Mutation `success:null`, fresh native-list postconditions and three
     complete post-unsubscribe cycles with the overlay absent.
+  - [x] Windows deterministic/contract run `30327309989` on exact datasource
+    `3d130f72040675eb06305abe6dd4dbfcd4e024f9`: 43 tests, zero failures;
+    JUnit SHA
+    `08c13d01a0a3841eb714af0289c8a9c2a7d26f2c52672bcd23d889a0cf518e2a`.
+    This proves empty 2xx response, `producerSequence` rejection, the static
+    single snapshot POST/no-retry guard and datasource failure/state branches,
+    but does not replace a live terminal fault.
   - [ ] Live snapshot one-attempt/no-retry/no-item-ack evidence.
   - [ ] `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` and
     `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown` live failure evidence.
