@@ -197,6 +197,12 @@ function ready(provider: 'qmt' | 'tdx') {
       schemaVersion: 2,
       source: provider,
       quality: 'latest-state',
+      bridge: {
+        ready: true,
+        ownerId: 'owner-1',
+        ownerGeneration: 1,
+        bridgeBuildId: 'bridge-v2',
+      },
     },
   };
 }

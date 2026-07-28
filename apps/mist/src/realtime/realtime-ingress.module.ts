@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SecuritySourceConfig } from '@app/shared-data';
 import { RealtimeSnapshotIngressService } from './realtime-snapshot-ingress.service';
 import { RealtimeSecurityAllowlistService } from './realtime-security-allowlist.service';
-import { Clock } from './clock';
+import { Clock } from './clock.service';
 import { RealtimeRedisService } from './realtime-redis.service';
 
 @Global()

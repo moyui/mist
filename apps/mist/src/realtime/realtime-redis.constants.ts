@@ -1,4 +1,4 @@
-import type { RealtimeSource } from './realtime-native-frame';
+import type { RealtimeSource } from './realtime.types';
 
 /**
  * Redis key builders for the current-day realtime candle product (B1).

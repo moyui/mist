@@ -10,7 +10,7 @@ import {
   decodeRealtimeNativeMapMessage,
   isRecord,
   RealtimeNativeMapDecodeError,
-} from '../../../realtime/realtime-native-map-frame';
+} from '../../../realtime/realtime-native-map.decoder';
 import {
   RealtimeSubscriptionControl,
   SubscriptionControlFailure,
@@ -50,7 +50,7 @@ export class QmtRealtimeClient
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private shuttingDown = false;
-  private ready = false;
+  private transportReady = false;
   private pendingControl: PendingControl | null = null;
 
   constructor(
@@ -149,7 +149,7 @@ export class QmtRealtimeClient
     expectedType: ControlResponseType,
     symbol: string | null,
   ): Promise<SubscriptionControlResult> {
-    if (!this.ready || this.ws?.readyState !== WebSocket.OPEN) {
+    if (!this.transportReady || this.ws?.readyState !== WebSocket.OPEN) {
       return Promise.resolve(
         localFailure(symbol, 'QMT_SUBSCRIPTION_CONTROL_NOT_READY'),
       );
@@ -180,7 +180,7 @@ export class QmtRealtimeClient
     if (this.shuttingDown) return;
     this.ws = new WebSocket(this.wsUrl);
     this.ws.on('open', () => {
-      this.ready = false;
+      this.transportReady = false;
       this.heartbeatTimer = setInterval(() => {
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify({ type: 'ping' }));
@@ -194,7 +194,7 @@ export class QmtRealtimeClient
       this.store.setError('QMT_REALTIME_WS_ERROR', error.message);
     });
     this.ws.on('close', () => {
-      this.ready = false;
+      this.transportReady = false;
       this.store.markDisconnected();
       this.settleDisconnected();
       if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
@@ -243,13 +243,22 @@ export class QmtRealtimeClient
 
   private handleReady(message: Record<string, unknown>): void {
     const data = message['data'];
+    const bridge = isRecord(data) ? data['bridge'] : null;
     if (
       message['provider'] !== 'qmt' ||
       !isRecord(data) ||
       data['mode'] !== 'builtin' ||
       data['schemaVersion'] !== 2 ||
       data['source'] !== 'qmt' ||
-      data['quality'] !== 'latest-state'
+      data['quality'] !== 'latest-state' ||
+      !isRecord(bridge) ||
+      typeof bridge['ready'] !== 'boolean' ||
+      !(typeof bridge['ownerId'] === 'string' || bridge['ownerId'] === null) ||
+      typeof bridge['ownerGeneration'] !== 'number' ||
+      !(
+        typeof bridge['bridgeBuildId'] === 'string' ||
+        bridge['bridgeBuildId'] === null
+      )
     ) {
       this.store.recordReject(
         'contractMismatch',
@@ -258,18 +267,19 @@ export class QmtRealtimeClient
       );
       return;
     }
-    this.ready = true;
-    this.store.setOwner(
-      typeof data['ownerId'] === 'string' ? data['ownerId'] : null,
-      typeof data['generation'] === 'number' ? data['generation'] : null,
-      typeof data['bridgeBuildId'] === 'string' ? data['bridgeBuildId'] : null,
-    );
+    this.transportReady = true;
+    this.store.setBridge({
+      ready: bridge['ready'],
+      ownerId: bridge['ownerId'],
+      ownerGeneration: bridge['ownerGeneration'],
+      bridgeBuildId: bridge['bridgeBuildId'],
+    });
     this.store.markConnected();
     this.store.clearError();
   }
 
   private handleSnapshot(raw: string): void {
-    if (!this.ready) {
+    if (!this.transportReady) {
       this.store.recordReject(
         'validationError',
         null,

@@ -2,7 +2,7 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import type { CandleBucket, CandleSession } from './candle.types';
 
 /**
- * Resolve a realtime snapshot's eventTime to its trading-day / session / bucket.
+ * Convert a realtime snapshot's eventTime to its trading-day / session / bucket.
  *
  * Pure function — no I/O, no clock, deterministic from the eventTime string.
  * The aggregator and finalizer both rely on this to decide bucket membership

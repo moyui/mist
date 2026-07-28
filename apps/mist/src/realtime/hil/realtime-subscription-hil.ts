@@ -23,7 +23,7 @@ import { TdxRealtimeClient } from '../../sources/tdx/realtime/realtime.client';
 import { TdxRealtimeAllowlistResolver } from '../../sources/tdx/realtime/realtime-allowlist.resolver';
 import { TdxRealtimeStore } from '../../sources/tdx/realtime/realtime.store';
 import { RealtimeIngressModule } from '../realtime-ingress.module';
-import { CanonicalRealtimeSnapshot } from '../realtime-native-frame';
+import { CanonicalRealtimeSnapshot } from '../realtime.types';
 import { RealtimeSnapshotIngressService } from '../realtime-snapshot-ingress.service';
 import { RealtimeSubscriptionControl } from '../realtime-subscription-control';
 import { SubscriptionControlResult } from '../realtime-subscription-control';
@@ -263,7 +263,8 @@ function resolveClient(
     return {
       client: context.get(QmtRealtimeClient, { strict: false }),
       ready: () =>
-        context.get(QmtRealtimeStore, { strict: false }).status().ready,
+        context.get(QmtRealtimeStore, { strict: false }).status()
+          .transportReady,
       resolveSecurityId: (providerSymbol) =>
         resolver.resolve(providerSymbol)?.securityId ?? null,
       readLatest: (securityId) => ingress.read(securityId),
@@ -275,7 +276,7 @@ function resolveClient(
   return {
     client: context.get(TdxRealtimeClient, { strict: false }),
     ready: () =>
-      context.get(TdxRealtimeStore, { strict: false }).status().ready,
+      context.get(TdxRealtimeStore, { strict: false }).status().transportReady,
     resolveSecurityId: (providerSymbol) =>
       resolver.resolve(providerSymbol)?.securityId ?? null,
     readLatest: (securityId) => ingress.read(securityId),

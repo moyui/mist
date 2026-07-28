@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CanonicalRealtimeSnapshot } from './realtime-native-frame';
+import { CanonicalRealtimeSnapshot } from './realtime.types';
 
 @Injectable()
 export class RealtimeSnapshotIngressService {

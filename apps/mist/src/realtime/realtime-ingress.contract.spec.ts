@@ -80,9 +80,12 @@ function ready(provider: 'tdx' | 'qmt') {
       schemaVersion: 2,
       source: provider,
       quality: 'latest-state',
-      generation: 1,
-      ownerId: 'owner-1',
-      bridgeBuildId: 'bridge-v2',
+      bridge: {
+        ready: true,
+        ownerId: 'owner-1',
+        ownerGeneration: 1,
+        bridgeBuildId: 'bridge-v2',
+      },
     },
   };
 }

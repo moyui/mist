@@ -1,3 +1,4 @@
+/** Supported realtime provider identities. */
 export type RealtimeSource = 'tdx' | 'qmt';
 
 export interface RealtimeNativeMapFrame {

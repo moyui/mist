@@ -12,11 +12,11 @@ export type TdxRealtimeRejectReason =
 export class TdxRealtimeStore {
   private readonly rejectCounts = new Map<TdxRealtimeRejectReason, number>();
   private connectedValue = false;
-  private readyValue = false;
+  private transportReadyValue = false;
+  private bridgeReadyValue = false;
   private ownerIdValue: string | null = null;
-  private datasourceBuildIdValue: string | null = null;
   private bridgeBuildIdValue: string | null = null;
-  private generationValue: number | null = null;
+  private ownerGenerationValue: number | null = null;
   private lastAcceptedAtValue: number | null = null;
   private lastCapturedAtValue: string | null = null;
   private lastRejectValue: {
@@ -30,26 +30,24 @@ export class TdxRealtimeStore {
 
   markConnected(): void {
     this.connectedValue = true;
-    this.readyValue = true;
+    this.transportReadyValue = true;
   }
 
   markDisconnected(): void {
     this.connectedValue = false;
-    this.readyValue = false;
+    this.transportReadyValue = false;
   }
 
-  setRuntimeMetadata(value: {
-    ownerId?: string | null;
-    datasourceBuildId?: string | null;
-    bridgeBuildId?: string | null;
-    generation?: number | null;
+  setBridge(value: {
+    ready: boolean;
+    ownerId: string | null;
+    ownerGeneration: number;
+    bridgeBuildId: string | null;
   }): void {
-    if ('ownerId' in value) this.ownerIdValue = value.ownerId ?? null;
-    if ('datasourceBuildId' in value)
-      this.datasourceBuildIdValue = value.datasourceBuildId ?? null;
-    if ('bridgeBuildId' in value)
-      this.bridgeBuildIdValue = value.bridgeBuildId ?? null;
-    if ('generation' in value) this.generationValue = value.generation ?? null;
+    this.bridgeReadyValue = value.ready;
+    this.ownerIdValue = value.ownerId;
+    this.ownerGenerationValue = value.ownerGeneration;
+    this.bridgeBuildIdValue = value.bridgeBuildId;
   }
 
   recordAccepted(capturedAt: string): void {
@@ -71,11 +69,11 @@ export class TdxRealtimeStore {
     };
   }
 
-  setRuntimeError(code: string, message: string): void {
+  setError(code: string, message: string): void {
     this.lastErrorValue = { code, message, at: Date.now() };
   }
 
-  clearRuntimeError(): void {
+  clearError(): void {
     this.lastErrorValue = null;
   }
 
@@ -85,11 +83,13 @@ export class TdxRealtimeStore {
       schemaVersion: 2 as const,
       quality: 'latest-state' as const,
       connected: this.connectedValue,
-      ready: this.readyValue,
-      ownerId: this.ownerIdValue,
-      datasourceBuildId: this.datasourceBuildIdValue,
-      bridgeBuildId: this.bridgeBuildIdValue,
-      generation: this.generationValue,
+      transportReady: this.transportReadyValue,
+      bridge: {
+        ready: this.bridgeReadyValue,
+        ownerId: this.ownerIdValue,
+        ownerGeneration: this.ownerGenerationValue,
+        bridgeBuildId: this.bridgeBuildIdValue,
+      },
       lastAcceptedAt: this.lastAcceptedAtValue,
       lastCapturedAt: this.lastCapturedAtValue,
       rejectCounts: Object.fromEntries(this.rejectCounts),

@@ -12,7 +12,8 @@ export type QmtRealtimeRejectReason =
 export class QmtRealtimeStore {
   private readonly rejectCounts = new Map<QmtRealtimeRejectReason, number>();
   private connectedValue = false;
-  private readyValue = false;
+  private transportReadyValue = false;
+  private bridgeReadyValue = false;
   private ownerIdValue: string | null = null;
   private ownerGenerationValue: number | null = null;
   private bridgeBuildIdValue: string | null = null;
@@ -29,22 +30,24 @@ export class QmtRealtimeStore {
 
   markConnected(): void {
     this.connectedValue = true;
-    this.readyValue = true;
+    this.transportReadyValue = true;
   }
 
   markDisconnected(): void {
     this.connectedValue = false;
-    this.readyValue = false;
+    this.transportReadyValue = false;
   }
 
-  setOwner(
-    ownerId: string | null,
-    ownerGeneration: number | null,
-    bridgeBuildId: string | null = null,
-  ): void {
-    this.ownerIdValue = ownerId;
-    this.ownerGenerationValue = ownerGeneration;
-    this.bridgeBuildIdValue = bridgeBuildId;
+  setBridge(value: {
+    ready: boolean;
+    ownerId: string | null;
+    ownerGeneration: number;
+    bridgeBuildId: string | null;
+  }): void {
+    this.bridgeReadyValue = value.ready;
+    this.ownerIdValue = value.ownerId;
+    this.ownerGenerationValue = value.ownerGeneration;
+    this.bridgeBuildIdValue = value.bridgeBuildId;
   }
 
   recordAccepted(capturedAt: string): void {
@@ -80,10 +83,13 @@ export class QmtRealtimeStore {
       schemaVersion: 2 as const,
       quality: 'latest-state' as const,
       connected: this.connectedValue,
-      ready: this.readyValue,
-      ownerId: this.ownerIdValue,
-      ownerGeneration: this.ownerGenerationValue,
-      bridgeBuildId: this.bridgeBuildIdValue,
+      transportReady: this.transportReadyValue,
+      bridge: {
+        ready: this.bridgeReadyValue,
+        ownerId: this.ownerIdValue,
+        ownerGeneration: this.ownerGenerationValue,
+        bridgeBuildId: this.bridgeBuildIdValue,
+      },
       lastAcceptedAt: this.lastAcceptedAtValue,
       lastCapturedAt: this.lastCapturedAtValue,
       rejectCounts: Object.fromEntries(this.rejectCounts),

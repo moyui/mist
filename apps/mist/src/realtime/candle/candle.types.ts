@@ -1,4 +1,4 @@
-import type { RealtimeSource } from '../realtime-native-frame';
+import type { RealtimeSource } from '../realtime.types';
 
 /**
  * A-share trading session that a bucket belongs to.

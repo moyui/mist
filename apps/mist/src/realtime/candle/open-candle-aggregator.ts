@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { CanonicalRealtimeSnapshot } from '../realtime-native-frame';
-import { resolveCandleBucket } from './candle-bucket.resolver';
+import type { CanonicalRealtimeSnapshot } from '../realtime.types';
+import { resolveCandleBucket } from './candle-bucket.util';
 import type {
   ApplySnapshotOutcome,
   CandleBucket,

@@ -1,7 +1,4 @@
-import {
-  RealtimeNativeMapFrame,
-  RealtimeSource,
-} from './realtime-native-frame';
+import { RealtimeNativeMapFrame, RealtimeSource } from './realtime.types';
 
 const OUTER_KEYS = ['type', 'provider', 'data', 'timestamp'] as const;
 const DATA_KEYS = ['schemaVersion', 'capturedAt', 'native'] as const;

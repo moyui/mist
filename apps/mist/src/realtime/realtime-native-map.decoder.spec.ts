@@ -1,7 +1,7 @@
 import {
   decodeRealtimeNativeMapMessage,
   RealtimeNativeMapDecodeError,
-} from './realtime-native-map-frame';
+} from './realtime-native-map.decoder';
 
 const timestamp = '2026-07-26T10:00:00+08:00';
 

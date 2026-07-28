@@ -1,4 +1,4 @@
-import { CanonicalRealtimeSnapshot } from '../../../realtime/realtime-native-frame';
+import { CanonicalRealtimeSnapshot } from '../../../realtime/realtime.types';
 
 export interface QmtNativeSnapshotInput {
   securityId: number;

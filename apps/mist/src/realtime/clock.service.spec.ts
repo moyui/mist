@@ -1,4 +1,4 @@
-import { Clock } from './clock';
+import { Clock } from './clock.service';
 
 describe('Clock', () => {
   it('returns a positive epoch millisecond value close to Date.now()', () => {

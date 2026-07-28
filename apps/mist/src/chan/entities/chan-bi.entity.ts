@@ -1,4 +1,4 @@
-import { Security, Period } from '@app/shared-data';
+import { Period, Security } from '@app/shared-data';
 import {
   Column,
   CreateDateColumn,

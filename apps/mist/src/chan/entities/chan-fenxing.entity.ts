@@ -1,4 +1,4 @@
-import { Security, Period } from '@app/shared-data';
+import { Period, Security } from '@app/shared-data';
 import {
   Column,
   CreateDateColumn,
@@ -12,7 +12,7 @@ import { FenxingType } from '../enums/fenxing.enum';
 import { Table } from '../enums/table.enum';
 
 /**
- * Metadata type for ChanFenxings entity
+ * Metadata type for ChanFenxing entity
  * Can be extended with specific properties as needed
  */
 export interface ChanFenxingMeta {
@@ -24,7 +24,7 @@ export interface ChanFenxingMeta {
 @Entity({
   name: 'chan_fenxings',
 })
-export class ChanFenxings {
+export class ChanFenxing {
   @PrimaryGeneratedColumn()
   id!: number;
 

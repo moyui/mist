@@ -1,4 +1,4 @@
-import { resolveCandleBucket } from './candle-bucket.resolver';
+import { resolveCandleBucket } from './candle-bucket.util';
 
 /**
  * Table-driven session/bucket resolution tests.

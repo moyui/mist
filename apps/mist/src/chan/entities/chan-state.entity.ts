@@ -11,7 +11,7 @@ import {
 import { Table } from '../enums/table.enum';
 
 /**
- * Metadata type for ChanState entity
+ * Metadata type for the singular ChanState entity
  * Can be extended with specific properties as needed
  */
 export interface ChanStateMeta {

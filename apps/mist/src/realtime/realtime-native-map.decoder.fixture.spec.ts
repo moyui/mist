@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { decodeRealtimeNativeMapMessage } from './realtime-native-map-frame';
+import { decodeRealtimeNativeMapMessage } from './realtime-native-map.decoder';
 
 describe('schema-v2 canonical golden', () => {
   const fixturePath = resolve(

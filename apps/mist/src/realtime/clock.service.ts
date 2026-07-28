@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 /**
- * Injectable wall-clock abstraction.
+ * Injectable wall-clock service abstraction.
  *
  * B1 design mandates a single replaceable `Clock` so that candle bucketing,
  * finalizer cutoff, relative TTL and due-scanner all derive time from one

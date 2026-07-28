@@ -1,4 +1,4 @@
-import { CanonicalRealtimeSnapshot } from '../realtime-native-frame';
+import { CanonicalRealtimeSnapshot } from '../realtime.types';
 import { OpenCandleAggregator } from './open-candle-aggregator';
 
 /** Build a canonical snapshot with sensible defaults for candle tests. */
