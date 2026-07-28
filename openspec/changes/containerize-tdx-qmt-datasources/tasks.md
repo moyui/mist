@@ -43,22 +43,28 @@
   bridge re-registration, protected-table digest and joint soak evidence; keep
   separate pass/partial/blocked verdicts for both changes in one sanitized
   manifest
-  - 2026-07-28 partial evidence: deploy `30322642452` pinned datasource
-    `0b43a521187adbed737a932f4942849d88fe2295` at digest
-    `sha256:b97d8c4727e139a855888612fdee69410485836831ee85b04d00f2f5bf6233c8`;
-    TDX restart isolation `30323653971` and protected digest
-    `30322973973/30323540290` passed. QMT restart isolation `30323603099`
-    correctly stopped before recreation because HIL-retained handles were not
-    yet cleaned. The task remains unchecked until QMT cleanup/restart and the
-    dual-source joint soak are complete.
+  - 2026-07-28 partial evidence: deploy `30329944621` pinned datasource
+    `333830977c1b3a1c6e2bf5437a2819cbb8094b6a` at digest
+    `sha256:75df301e77db8fe1b9ef5c1089e3aaaf2d7be1fd67b4d4a3b59bd1bcb26f1947`.
+    TDX restart isolation `30323653971` passed on the preceding candidate;
+    the later datasource delta was QMT-only. QMT recovery
+    `30330469662/30330585275` durably cleared retained handles and proved an
+    empty registry, then QMT restart isolation `30330637703` recreated only
+    `qmt-datasource`, preserved unrelated containers and kept journal SHA
+    `7278121a...85bc`. Protected pre-digest `30330711987` fixed the current
+    six-table baseline. The containerization verdict remains `partial` until
+    the dual-source joint soak, matching post-digest and final sanitized
+    manifest review are complete.
   - [x] Pinned datasource image/tag/digest, two healthy Compose containers,
     QMT bind, WinSW absence, Compose DNS and TDX
     `host.docker.internal:17709`.
   - [x] TDX source-scoped restart isolation, unrelated-container stability,
     QMT journal checksum continuity and bridge re-registration.
-  - [x] Protected pre/post digest equality for six protected tables.
-  - [ ] QMT cleanup followed by source-scoped restart isolation with an empty
+  - [x] Protected pre/post digest equality for the preceding HIL window's six
+    protected tables.
+  - [x] QMT cleanup followed by source-scoped restart isolation with an empty
     registry.
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
+  - [ ] Current protected post-digest matches pre-digest run `30330711987`.
   - [ ] Final sanitized manifest review with separate verdicts for both
     changes.

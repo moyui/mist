@@ -591,16 +591,23 @@
   必须分别给出结论，不能互相借用不相关证据。
   - 2026-07-28 partial evidence: TDX source-scoped restart run `30323653971`
     recreated only `tdx-datasource`, preserved every unrelated container and
-    the QMT journal checksum, and executed no native mutation. After durable
-    context rebuild cleanup, QMT restart run `30330637703` recreated only
-    `qmt-datasource`, preserved every unrelated container, kept journal SHA
-    `7278121a...85bc`, retained owner `bigqmt-42196`, and executed no native
-    mutation. The dual-source joint soak remains required, so this task stays
-    unchecked.
-  - [x] Protected-table digest equality and TDX source-scoped restart
-    isolation.
+    the QMT journal checksum, and executed no native mutation; the later
+    datasource delta was QMT-only. Current datasource deploy run
+    `30329944621` pinned
+    `333830977c1b3a1c6e2bf5437a2819cbb8094b6a` at digest
+    `sha256:75df301e77db8fe1b9ef5c1089e3aaaf2d7be1fd67b4d4a3b59bd1bcb26f1947`.
+    After durable context rebuild cleanup, QMT restart run `30330637703`
+    recreated only `qmt-datasource`, preserved every unrelated container,
+    kept journal SHA `7278121a...85bc`, retained owner `bigqmt-42196`, and
+    executed no native mutation. Protected pre-digest run `30330711987`
+    fixed the current six-table baseline. The migration verdict remains
+    `partial`; the dual-source joint soak and matching protected post-digest
+    remain required, so this task stays unchecked.
+  - [x] TDX source-scoped restart isolation and unrelated-container
+    stability.
   - [x] QMT controlled cleanup and source-scoped restart isolation.
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
+  - [ ] Current protected post-digest matches pre-digest run `30330711987`.
 - [ ] 10.5 `[mist]` 按
   `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
   收集非交易时段 evidence；只声明 owner/control/journal/restart/已有 fixture，
@@ -609,6 +616,12 @@
   `realtime-native-subscription-joint-acceptance.md` 进入。
 - [ ] 10.6 **阶段门**：HIL/evidence 经 review，且联合 manifest 中
   `containerize-tdx-qmt-datasources` 与本 change 均为通过后才能接受发布。
+  - 2026-07-28 current verdict: `partial`. QMT positive subscription,
+    controlled faults, durable recovery and source-scoped restart evidence
+    exist, but accepted bool-`false` unsubscribe postcondition/released-ID
+    behavior, TDX live negative/no-retry/event-time evidence, dual-source
+    joint soak, protected post-digest and final sanitized review remain open.
+    The joint release gate is therefore `blocked`.
 
 ## 11. Theme B B1 与 post-close 刷新
 
