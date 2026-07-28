@@ -518,10 +518,14 @@
   - [x] Production recovery runs `30322786851/30322918489` proved the durable
     context-rebuild `operator_observation` closes
     `reconciliationRequired`.
-  - [ ] Run the Windows controlled-fault workflow against exact
-    `0b43a521187adbed737a932f4942849d88fe2295` and archive its JUnit evidence.
-  - [ ] Complete the planned/unexpected restart evidence after the current
-    unconfirmed handles are cleaned.
+  - [x] Windows controlled-fault run `30330119132` against exact datasource
+    `333830977c1b3a1c6e2bf5437a2819cbb8094b6a` passed 78 tests with zero
+    failures; archived JUnit SHA
+    `5f14c967f3fd7af4b7d3ac867033b7d15622d8ec29fd3bb932d12c1a32de9920`.
+  - [x] Recovery run `30330469662` replaced owner
+    `bigqmt-24108 -> bigqmt-42196`, published durable observation sequence
+    `40`, cleared retained handles, and post-smoke run `30330585275` proved
+    `ready=true/reconciliationRequired=false`.
 - [ ] 10.3 `[Windows TDX operator/mist]` 停止或隔离正常 backend 的 TDX
   client，以同类 test-only Nest in-process harness 作为唯一 leader 调用四个
   TDX control methods，并执行受影响链路 HIL：验证 bridge snapshot
@@ -587,13 +591,15 @@
   必须分别给出结论，不能互相借用不相关证据。
   - 2026-07-28 partial evidence: TDX source-scoped restart run `30323653971`
     recreated only `tdx-datasource`, preserved every unrelated container and
-    the QMT journal checksum, and executed no native mutation. QMT restart run
-    `30323603099` correctly stopped before recreation because the registry was
-    non-empty. QMT cleanup/restart and the dual-source joint soak remain
-    required, so this task stays unchecked.
+    the QMT journal checksum, and executed no native mutation. After durable
+    context rebuild cleanup, QMT restart run `30330637703` recreated only
+    `qmt-datasource`, preserved every unrelated container, kept journal SHA
+    `7278121a...85bc`, retained owner `bigqmt-42196`, and executed no native
+    mutation. The dual-source joint soak remains required, so this task stays
+    unchecked.
   - [x] Protected-table digest equality and TDX source-scoped restart
     isolation.
-  - [ ] QMT controlled cleanup and source-scoped restart isolation.
+  - [x] QMT controlled cleanup and source-scoped restart isolation.
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
 - [ ] 10.5 `[mist]` 按
   `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
