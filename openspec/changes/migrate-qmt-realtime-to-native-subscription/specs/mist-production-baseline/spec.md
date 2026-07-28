@@ -66,7 +66,8 @@ production desired-subscription integration is active.
 - **WHEN** the operator calls `unsubscribe_quote(subId)`
 - **THEN** evidence MUST capture the exact returned type/value or exception
 - **AND** the accepted integer success value MUST be fixed in the production contract
-- **AND** callback silence alone MUST not be presented as proof
+- **AND** if exact bool `false` is evaluated as a success candidate, evidence MUST show a fresh target callback before cancellation, target callback silence after cancellation and continued callback progress from a different current subscription ID
+- **AND** callback silence alone, K-line history reads and bridge poll heartbeat MUST not be presented as proof
 
 #### Scenario: Released subscription ID is cancelled again
 

@@ -142,14 +142,26 @@ MUST NOT expand the backend-facing wire response.
 
 #### Scenario: Single unsubscribe succeeds
 
-- **WHEN** `unsubscribe(symbol)` receives the HIL-confirmed native integer success value and durably records the matching result and registry transition
+- **WHEN** `unsubscribe(symbol)` receives the HIL-confirmed native integer success value, or exact bool `false` passes the bounded fresh-target plus live-witness callback postcondition
+- **AND** datasource durably records the matching result and registry transition
 - **THEN** `unsubscribed.data.success` MUST be null
-- **AND** the native integer MUST be retained only in the journal evidence
+- **AND** the exact native return type/value MUST be retained in journal evidence
 - **AND** datasource MUST remove the corresponding ID from its registry only as part of that durable transition
+
+#### Scenario: Exact false is corroborated by realtime callbacks
+
+- **WHEN** `unsubscribe_quote(subId)` returns exact bool `false`
+- **AND** the target `subId` had a fresh realtime quote callback immediately before the call
+- **AND** the target `subId` produces no callback during the bounded verification window while at least one different current subscription ID produces a newer callback
+- **THEN** datasource MUST confirm the unsubscribe, durably record confirmation kind `callback_silence_with_live_witness`, remove the ID and return `success:null`
+- **AND** registry MUST retain the exact bucket plus symbol or symbol list throughout verification
+- **AND** datasource MUST NOT create a replacement subscription before that durable confirmation
+- **AND** a historical K-line query, bridge poll heartbeat or target silence without a callback witness MUST NOT satisfy this postcondition
 
 #### Scenario: Single unsubscribe is unconfirmed
 
 - **WHEN** `unsubscribe_quote(subId)` raises, times out or returns a value other than the HIL-confirmed integer success value
+- **AND** exact bool `false` either was not returned or did not pass the bounded callback postcondition
 - **THEN** `unsubscribed.data.failure` MUST be exactly
   `{symbol,reason:"QMT_UNSUBSCRIBE_UNCONFIRMED",subscriptionState:"unknown"}`
 - **AND** datasource MUST retain the original ID in its original registry bucket

@@ -184,10 +184,18 @@ Non-cancellation failures SHALL continue to carry exactly
 
 #### Scenario: QMT cancellation is unconfirmed
 
-- **WHEN** `unsubscribe_quote` does not produce the HIL-confirmed integer success value
+- **WHEN** `unsubscribe_quote` does not produce the HIL-confirmed integer success value and exact bool `false` does not pass fresh-target plus live-witness callback verification
 - **THEN** datasource MUST return reason `QMT_UNSUBSCRIBE_UNCONFIRMED`
 - **AND** `subscriptionState` MUST be `unknown`
 - **AND** the original ID MUST remain in its registry bucket and journal
+
+#### Scenario: QMT exact false is verified by callback postcondition
+
+- **WHEN** exact bool `false` is returned for an ID whose quote callback was fresh before cancellation
+- **AND** a different current subscription ID continues callback progress while the target ID remains silent for the bounded verification window
+- **THEN** datasource MUST treat the cancellation as confirmed and return `success:null` only after the confirmation transition is durable
+- **AND** it MUST use the registry's stored ID-to-bucket-and-symbol mapping
+- **AND** it MUST NOT use K-line reads, bridge poll heartbeat or uncorroborated silence as release proof
 
 #### Scenario: QMT cancellation is confirmed but its transition is not durable
 

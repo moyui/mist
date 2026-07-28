@@ -216,10 +216,22 @@ provider business time 的候选表示：`time` 是数值 timestamp，
   `type(result) is int` 才算成功；`0` 允许作为有效 `subId`，不附加正负范围
   假设。`bool`、float、string、`None` 和异常均失败。
 - 成功 ID 立即写 QMT 固定格式日志，并由 datasource durable journal 保存。
-- `unsubscribe_quote(subId)` 的成功返回值由 runtime HIL 固定；只有 `type(result) is int` 且命中 HIL 成功值才删除 ID。
-- 对 `unsubscribe_quote`，`None`、`bool`、float、string、未被 HIL 确认为
-  success 的整数、异常或 timeout 均视为失败，原 ID 留在原 registry 位置并计入
-  monitoring；该规则不限制 subscribe 返回的 integer ID 范围。
+- `unsubscribe_quote(subId)` 的直接成功返回值由 runtime HIL 固定；
+  `type(result) is int` 且命中 HIL 成功值时可直接进入 durable transition。
+  若 exact result 持续为 bool `false`，datasource 只把它视为
+  postcondition-verification candidate：registry 已同时保存 `subId` 与其
+  bucket/symbol(s)，且只有在调用前目标 ID 的 callback 新鲜、调用后目标 ID
+  callback 停止、另一个仍存活 subscription ID 的 callback 在同一 bounded
+  window 内继续推进时，才允许把该次退订确认为成功。这里观察的是 realtime
+  quote callback，不是历史 K 线查询。
+- `false` 的 callback 验证期间不得创建 replacement；只有 durable
+  `unsubscribed` transition 后才删除 ID并返回 `success:null`。目标 callback
+  继续、没有 fresh precondition、没有 live witness、闭市/午休无 callback、
+  timeout 或 durability failure 都不得靠静默猜测成功。
+- 对 `unsubscribe_quote`，`None`、bool `true`、float、string、未被 HIL
+  确认为 success 的整数、异常或 timeout 均视为失败；未满足上述双 callback
+  postcondition 的 bool `false` 同样失败，原 ID 留在原 registry 位置并计入
+  monitoring。该规则不限制 subscribe 返回的 integer ID 范围。
 - 官方文档没有定义对已确认释放 subId 再次调用 `unsubscribe_quote` 的
   return/exception/idempotency 语义。Windows HIL 必须捕获
   `subscribe -> unsubscribe -> same-subId unsubscribe`，第二次退订前不得创建
@@ -309,10 +321,13 @@ reset 不绑定盘前、盘中或盘后时钟。它只在 Nest 内部 caller 明
 - symbol 属于 `whole.symbols` 时不调用 native，返回
   `QMT_SYMBOL_OWNED_BY_WHOLE` 与 `subscriptionState=subscribed`，调用方改用
   下一次 exact sync。
-- native unsubscribe 未取得 HIL 已确认的整数成功值时保留原 single ID，返回
-  `QMT_UNSUBSCRIBE_UNCONFIRMED` 与 `subscriptionState=unknown`。
-- 只有 HIL 已确认的整数成功值，且对应 result 与 registry transition 已
-  durable，才删除原 single ID 并返回 `success:null`。
+- native unsubscribe 未取得 HIL 已确认的整数成功值、也未让 exact bool
+  `false` 通过 fresh-target + live-witness callback postcondition 时，保留原
+  single ID，返回 `QMT_UNSUBSCRIBE_UNCONFIRMED` 与
+  `subscriptionState=unknown`。
+- 只有 HIL 已确认的整数成功值，或 exact bool `false` 通过上述 bounded
+  callback postcondition，且对应 result 与 registry transition 已 durable，
+  才删除原 single ID 并返回 `success:null`。
 - confirmed success 后 result/transition append、flush 或 fsync 失败时，原 ID
   暂时保留在原 bucket 并在私有 metadata 标记为 `retained-recovery`；这表示
   datasource 为恢复而保守保存 subId，不是 physical handle confirmed-live

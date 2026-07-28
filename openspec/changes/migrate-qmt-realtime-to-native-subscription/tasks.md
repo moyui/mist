@@ -70,7 +70,7 @@
 
 - [ ] 3.1 `[mist-datasource]` 实现 datasource 权威内存 registry，只有两个逻辑 bucket：nullable `whole{subId,symbols}` 与 `singles{providerSymbol:subId}`；`whole.subId/symbols` 必须成对存在，按 bucket 判断类型，不从 subId 数值或 symbol 数量推断。允许 datasource-private lifecycle metadata 标记 `retained-recovery`，但不得形成第三个 public bucket、改变 get response 或进入 backend-facing wire。
 - [ ] 3.2 `[mist-datasource]` 实现 backend-facing 四种精确 request 与 `subscriptions_synced|subscribed|unsubscribed|subscriptions` response；`data` 只能是 `success` 或 `failure`。普通 failure 恰好为 `{symbol,reason}`；unsubscribe 以及 sync 取消阶段的 failure 恰好为 `{symbol,reason,subscriptionState}`，其中 state 只允许 `subscribed|unknown`。固定 success 语义：QMT full/single subscribe 返回 exact integer ID（允许 `0`）、QMT cancel-all/unsubscribe 返回 null、QMT get 返回 `whole{subId,symbols}|null + singles{providerSymbol:subId}`；TDX mutation 返回 null、TDX get 返回 current terminal bridge 的 fresh normalized native list。backend-facing response 禁止 raw provider payload、`Error/ErrorId`、full list、operation ID 和 retry metadata。每个 provider WebSocket 最多一个 outstanding request，并使用 source-local 固定 bounded timeout（不进入 wire negotiation）。
-- [ ] 3.3 `[mist-datasource]` 实现 `sync_subscriptions` 顺序 best-effort reset：whole 在前、single 按 provider symbol 升序逐个取消；native 未确认时保留原 ID、继续剩余取消、阻止 replacement；只有 confirmed result 与 registry transition 都 durable 才删除 ID。confirmed unsubscribe 后 durability 失败时保留原 bucket entry 并私有标记 `retained-recovery`，立即停止剩余 mutation 和 replacement、设置 `reconciliationRequired`；全部 durable 成功后才创建 exact desired whole；多项 native 未确认时 backend-facing response 只取固定顺序第一项，journal 保存全部。
+- [ ] 3.3 `[mist-datasource]` 实现 `sync_subscriptions` 顺序 best-effort reset：whole 在前、single 按 provider symbol 升序逐个取消；native 未确认时保留原 ID、继续剩余取消、阻止 replacement；只有 confirmed result 与 registry transition 都 durable 才删除 ID。exact bool `false` 只允许作为 postcondition candidate：registry 保留 `subId + bucket + symbol(s)`，调用前目标 ID callback 新鲜，调用后目标 ID 静默且另一个 current ID callback 在 bounded window 内继续推进时才确认；不调用 K 线历史接口，不用 bridge poll heartbeat 或无 witness 的静默猜测成功。confirmed unsubscribe 后 durability 失败时保留原 bucket entry 并私有标记 `retained-recovery`，立即停止剩余 mutation 和 replacement、设置 `reconciliationRequired`；全部 durable 成功后才创建 exact desired whole；多项 native 未确认时 backend-facing response 只取固定顺序第一项，journal 保存全部。
 - [ ] 3.4 `[mist-datasource]` 实现 single subscribe/unsubscribe、
   whole/single 去重和 whole member 的 individual unsubscribe 拒绝；
   datasource 只处理收到的明确 control request，不自行推断
@@ -137,6 +137,9 @@
   bool/float/string/None reject、duplicate、whole member 的
   `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`、unconfirmed cancellation 的
   `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown` 与 ID retention、顺序 reset、部分
+  native bool `false` 的 fresh-target + live-witness 成功、target 继续 callback
+  失败、无 witness/无 fresh target 失败，以及 callback observation 的 process
+  bound 与 ID reuse reset；
   native failure 继续取消且 replacement blocked、lost result 不 replay；
   分别注入 intent create/append/flush/fsync failure（零 native）、integer
   subscribe-result failure（ID retained/overlap blocked）、
