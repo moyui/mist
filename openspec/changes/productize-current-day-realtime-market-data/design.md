@@ -1,10 +1,14 @@
 ## Context
 
 当前 `RealtimeSnapshotIngressService.handleSnapshot()` 只把 accepted canonical snapshot 写入
-进程内 `Map`。TDX/QMT frame 已统一为 schema v1，包含完整 native object、`eventTime`、
-`capturedAt`、quality、epoch 和 per-symbol sequence；transport HIL 已完成并归档。现有 K 查询、
-indicator、Chan 和 `StrategyScanService.runScan()` 只读取 MySQL，`apps/schedule` 尚未投产，
-Compose 也没有 Redis service。
+进程内 `Map`。TDX/QMT transport frame（schema v2）包含完整 native object、`eventTime`、
+`capturedAt` 和 quality。**注意：当前 `CanonicalRealtimeSnapshot` canonical contract 尚未携带
+`streamEpoch` 或 per-symbol `sequence` 字段**——transport 层的 epoch/sequence fencing 在
+`RealtimeSnapshotIngressService` 之前完成，但不传递到 product path。本 change 中涉及 epoch/sequence
+复核的 task（如 watermark 的 `streamEpoch`/`lastSequence`、keyed queue 的 epoch 复核）标记为
+**待 schema 升级**，待 `CanonicalRealtimeSnapshot` 补充字段后落地。transport HIL 已完成并归档。
+现有 K 查询、indicator、Chan 和 `StrategyScanService.runScan()` 只读取 MySQL，`apps/schedule`
+尚未投产，Compose 也没有 Redis service。
 
 仓库当前直接依赖 `redis` 但没有产品调用；本 change 按已确认边界使用 `ioredis`。策略 registry
 和手工 scanner 只是基础骨架，尚未形成 realtime strategy runtime；例如
@@ -62,7 +66,8 @@ OHLC/累计量计算。进程内使用无第三方依赖的
 - 前一 task 失败不得破坏后续 Promise chain；
 - queue 有 per-key/global pending 上限、oldest-age、overflow metric 和 shutdown drain；
 - overflow 不静默合并 snapshot；受影响 candle 标记 `queue_overflow` 并在封存时丢弃；
-- task 执行前复核 stream epoch；owner generation 或 epoch 已变化时丢弃旧 task。
+- task 执行前复核 stream epoch；owner generation 或 epoch 已变化时丢弃旧 task。**（待 schema
+  升级：当前 `CanonicalRealtimeSnapshot` 不携带 streamEpoch/sequence，此复核暂未实现。）**
 
 Node.js 维护 bounded per-bucket open state。Redis 不保存 mutable recovery field；每个新 bucket
 只登记一次 due/manifest/TTL，后续 accepted frame 不执行完整 candle `HSET`。finalizer 使用一个
@@ -143,6 +148,10 @@ closingCumulativeVolume, closingCumulativeAmount,
 streamEpoch, lastSequence
 ```
 
+**`streamEpoch` 和 `lastSequence` 待 schema 升级**：当前 `CanonicalRealtimeSnapshot` 不携带
+这两个字段，watermark 暂只保存前四项。sealedThroughBucket 已足以粗略阻止旧 snapshot 重开
+已封存的 bucket；epoch 级精确防护待 canonical contract 补字段后补齐。
+
 watermark 在 restart 后阻止旧 snapshot 重开 closed 或 discarded bucket。restart 时如果 due
 存在但对应 open state 已随进程消失，该 bucket 以 `backend_restart_open_state_lost` 丢弃；不得
 从残缺 checkpoint 猜测 OHLC。
@@ -156,8 +165,10 @@ cumulativeVolume, cumulativeAmount,
 quality, streamEpoch, sequence
 ```
 
-禁止复制完整 native object、order book 或其他未被产品消费的 provider fields。完整 native 仅在
-Node latest 中保留。
+**`securityCode` 需在 product boundary 从 canonical `Security.code` 解析**（当前
+`CanonicalRealtimeSnapshot` 不携带此字段）。**`streamEpoch`、`sequence` 待 schema 升级**
+（见上文 watermark 说明）。禁止复制完整 native object、order book 或其他未被产品消费的 provider
+fields。完整 native 仅在 Node latest 中保留。
 
 正常 A 股约 240 根、港股约 330 根 1 分钟 K。旧 414-byte 假设只作为被否定的下限，不再作为
 capacity baseline。目标 compact closed record 按实测约 1–2 KB 预算，对应单只股票单 source
