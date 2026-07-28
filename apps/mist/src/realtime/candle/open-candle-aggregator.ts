@@ -224,9 +224,9 @@ export class OpenCandleAggregator {
     // When no prior/external baseline exists, volume/amount deltas simply
     // start from zero relative to this snapshot's totals.
     this.open.set(key, state);
-    return state.validity === 'valid'
-      ? { kind: 'opened', bucket }
-      : { kind: 'invalidated', reason: state.invalidReason!, bucket };
+    // openNewBucket always sets validity='valid' (invalid markers like
+    // baseline_unavailable are reserved for stricter future scenarios).
+    return { kind: 'opened', bucket };
   }
 
   private updateExistingBucket(

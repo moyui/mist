@@ -68,25 +68,31 @@ export function dueKey(tradingDay: string): string {
 export const RETENTION_AFTER_DAY_END_HOURS = 72;
 
 /**
- * Due ZSET member encoding. Members must be stable and unique per
- * symbol+source+bucket so the finalizer can recover partition identity.
+ * Due ZSET member encoding. Members must carry enough identity for the due
+ * scanner to route the finalize task into the correct per-securityId keyed
+ * queue (design line 57) and resolve Redis partition keys.
+ *
+ * Format: `securityId:source:providerSymbol:bucketStartMs`
  */
 export function encodeDueMember(
+  securityId: number,
   source: RealtimeSource,
   providerSymbol: string,
   bucketStartMs: number,
 ): string {
-  return `${source}:${providerSymbol}:${bucketStartMs}`;
+  return `${securityId}:${source}:${providerSymbol}:${bucketStartMs}`;
 }
 
 /** Inverse of {@link encodeDueMember}. */
 export function decodeDueMember(member: string): {
+  securityId: number;
   source: RealtimeSource;
   providerSymbol: string;
   bucketStartMs: number;
 } {
-  const [source, providerSymbol, ms] = member.split(':');
+  const [securityId, source, providerSymbol, ms] = member.split(':');
   return {
+    securityId: Number(securityId),
     source: source as RealtimeSource,
     providerSymbol,
     bucketStartMs: Number(ms),

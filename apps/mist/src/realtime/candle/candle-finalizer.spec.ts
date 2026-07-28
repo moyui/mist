@@ -120,7 +120,7 @@ describe('CandleFinalizer', () => {
     const zrem = fake.commands.find((c) => c.cmd === 'zrem');
     expect(zrem).toBeDefined();
     expect(zrem!.args[0]).toContain(':candle:1m:due');
-    expect(zrem!.args[1]).toBe(`tdx:600030.SH:${candle.bucketStartMs}`);
+    expect(zrem!.args[1]).toBe(`1:tdx:600030.SH:${candle.bucketStartMs}`);
 
     // Manifest recorded.
     const manifest = fake.commands.find(

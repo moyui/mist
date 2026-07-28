@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { toZonedTime } from 'date-fns-tz';
 import type Redis from 'ioredis';
-import type { SealedCandle } from './candle.types';
+import type { RealtimeSource } from '../realtime.types';
+import type { InvalidReason, SealedCandle } from './candle.types';
 import {
   closedCandleKey,
   watermarkKey,
@@ -83,6 +85,7 @@ export class CandleFinalizer {
     );
     const dueK_ = dueKey(tradingDay);
     const member = encodeDueMember(
+      candle.securityId,
       candle.source,
       candle.providerSymbol,
       candle.bucketStartMs,
@@ -140,6 +143,78 @@ export class CandleFinalizer {
       );
       return false;
     }
+  }
+
+  /**
+   * Discard a due bucket that lost its Node open state (e.g. after backend
+   * restart). Design line 288-289: advance watermark to `discarded`, remove
+   * the due member, but do NOT write a closed record (no HSET).
+   */
+  async discardDue(
+    redis: Redis,
+    decoded: {
+      securityId: number;
+      source: RealtimeSource;
+      providerSymbol: string;
+      bucketStartMs: number;
+    },
+    reason: InvalidReason,
+    nowMs: number,
+  ): Promise<boolean> {
+    const tradingDay = this.tradingDayFromBucketMs(decoded.bucketStartMs);
+    const wmK = watermarkKey(
+      tradingDay,
+      decoded.source,
+      decoded.providerSymbol,
+    );
+    const dueK_ = dueKey(tradingDay);
+    const member = encodeDueMember(
+      decoded.securityId,
+      decoded.source,
+      decoded.providerSymbol,
+      decoded.bucketStartMs,
+    );
+    const ttlSeconds = Math.max(
+      Math.ceil(
+        (decoded.bucketStartMs +
+          60_000 +
+          RETENTION_AFTER_DAY_END_HOURS * 3600_000 -
+          nowMs) /
+          1000,
+      ),
+      1,
+    );
+
+    const multi = redis.multi();
+    multi.hset(wmK, {
+      sealedThroughBucket: String(decoded.bucketStartMs),
+      outcome: 'discarded',
+      invalidReason: reason,
+    });
+    multi.zrem(dueK_, member);
+    multi.expire(wmK, ttlSeconds);
+
+    try {
+      await multi.exec();
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `discardDue failed for ${decoded.providerSymbol} bucket ${decoded.bucketStartMs}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
+  }
+
+  /** Derive tradingDay (YYYYMMDD) from bucketStartMs in Asia/Shanghai. */
+  private tradingDayFromBucketMs(bucketStartMs: number): string {
+    const zoned = toZonedTime(new Date(bucketStartMs), 'Asia/Shanghai');
+    return [
+      zoned.getFullYear().toString().padStart(4, '0'),
+      (zoned.getMonth() + 1).toString().padStart(2, '0'),
+      zoned.getDate().toString().padStart(2, '0'),
+    ].join('');
   }
 
   /**

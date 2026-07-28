@@ -5,6 +5,9 @@ import { RealtimeSnapshotIngressService } from './realtime-snapshot-ingress.serv
 import { RealtimeSecurityAllowlistService } from './realtime-security-allowlist.service';
 import { Clock } from './clock.service';
 import { RealtimeRedisService } from './realtime-redis.service';
+import { OpenCandleAggregator } from './candle/open-candle-aggregator';
+import { CandleFinalizer } from './candle/candle-finalizer';
+import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
 
 @Global()
 @Module({
@@ -12,9 +15,11 @@ import { RealtimeRedisService } from './realtime-redis.service';
   providers: [
     RealtimeSnapshotIngressService,
     RealtimeSecurityAllowlistService,
-    // B1 foundation: injectable clock + market-data Redis connection.
     Clock,
     RealtimeRedisService,
+    OpenCandleAggregator,
+    CandleFinalizer,
+    RealtimeMarketDataProductService,
   ],
   exports: [
     RealtimeSnapshotIngressService,
