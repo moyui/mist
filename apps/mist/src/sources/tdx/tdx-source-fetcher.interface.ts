@@ -1,17 +1,12 @@
 import { ISourceFetcher } from '../source-fetcher.interface';
 import { Period } from '@app/shared-data';
-import { TdxResponse, TdxSnapshot } from './types';
+import { TdxResponse } from './types';
 
 /**
- * TDX-specific source fetcher interface
+ * TDX-specific source fetcher contract
  * Extends base ISourceFetcher with TDX raw data type and additional methods
  */
 export interface ITdxSourceFetcher extends ISourceFetcher<TdxResponse> {
-  /**
-   * Fetch real-time snapshot for a single stock
-   */
-  fetchSnapshot(formatCode: string): Promise<TdxSnapshot>;
-
   /**
    * Fetch dividend factors for a stock
    */

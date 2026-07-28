@@ -2,7 +2,10 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { decodeRealtimeNativeMapMessage } from './realtime-native-map.decoder';
+import {
+  decodeRealtimeNativeMapMessage,
+  parseRealtimeMessage,
+} from './realtime-native-map.decoder';
 
 describe('schema-v2 canonical golden', () => {
   const fixturePath = resolve(
@@ -23,14 +26,14 @@ describe('schema-v2 canonical golden', () => {
     expect(fixture.contract.schemaVersion).toBe(2);
     expect(
       decodeRealtimeNativeMapMessage(
-        JSON.stringify(fixture.cases.tdxOneEntry),
+        parseRealtimeMessage(JSON.stringify(fixture.cases.tdxOneEntry)),
         'tdx',
       ).data.schemaVersion,
     ).toBe(2);
     expect(
       Object.keys(
         decodeRealtimeNativeMapMessage(
-          JSON.stringify(fixture.cases.qmtMultiEntry),
+          parseRealtimeMessage(JSON.stringify(fixture.cases.qmtMultiEntry)),
           'qmt',
         ).data.native,
       ),

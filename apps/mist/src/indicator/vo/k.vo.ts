@@ -7,8 +7,8 @@ export class KVo {
   symbol!: string;
   @ApiProperty({ type: String, format: 'date-time' })
   time!: Date;
-  @ApiProperty()
-  amount!: number;
+  @ApiProperty({ type: String, nullable: true })
+  amount!: string | null;
   @ApiProperty()
   open!: number;
   @ApiProperty()

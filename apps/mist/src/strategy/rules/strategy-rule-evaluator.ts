@@ -40,12 +40,16 @@ export class StrategyRuleEvaluator {
 
     switch (condition.operator) {
       case 'gt':
+        if (actual == null) return false;
         return Number(actual) > Number(expected);
       case 'gte':
+        if (actual == null) return false;
         return Number(actual) >= Number(expected);
       case 'lt':
+        if (actual == null) return false;
         return Number(actual) < Number(expected);
       case 'lte':
+        if (actual == null) return false;
         return Number(actual) <= Number(expected);
       case 'eq':
         return actual === expected;

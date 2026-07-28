@@ -14,7 +14,7 @@ const createK = (id: number, highest: number, lowest: number): KVo => ({
   id,
   symbol: 'TEST',
   time: new Date(Date.UTC(2026, 0, id)),
-  amount: id * 100,
+  amount: String(id * 100),
   open: lowest + 1,
   close: highest - 1,
   highest,

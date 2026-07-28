@@ -10,6 +10,8 @@ type SecurityFormatCodeSource = {
   > | null;
 };
 
+const MARKET_QUALIFIED_PROVIDER_SYMBOL = /^\d{6}\.(SH|SZ|BJ)$/;
+
 export function normalizeSecurityCode(code: string): string {
   const normalized = code.trim().toUpperCase();
 
@@ -30,6 +32,20 @@ export function normalizeSecurityCode(code: string): string {
   return normalized;
 }
 
+export function isValidSecuritySourceFormatCode(
+  source: DataSource,
+  formatCode: string,
+): boolean {
+  const providerSymbol = formatCode.trim();
+  if (!providerSymbol) {
+    return false;
+  }
+  if (source === DataSource.TDX || source === DataSource.QMT) {
+    return MARKET_QUALIFIED_PROVIDER_SYMBOL.test(providerSymbol);
+  }
+  return true;
+}
+
 export function getSecurityFormatCode(
   security: SecurityFormatCodeSource,
   dataSource: DataSource,
@@ -38,5 +54,17 @@ export function getSecurityFormatCode(
     (sourceConfig) =>
       sourceConfig.source === dataSource && sourceConfig.enabled,
   );
-  return config?.formatCode || security.code;
+  if (!config) {
+    throw new Error(
+      `No enabled source config for ${dataSource}; provider symbol resolution failed`,
+    );
+  }
+
+  const formatCode = config.formatCode.trim();
+  if (!isValidSecuritySourceFormatCode(dataSource, formatCode)) {
+    throw new Error(
+      `Invalid enabled ${dataSource} formatCode '${formatCode}'; provider symbol resolution failed`,
+    );
+  }
+  return formatCode;
 }

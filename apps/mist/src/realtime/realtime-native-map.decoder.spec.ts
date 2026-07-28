@@ -1,5 +1,6 @@
 import {
   decodeRealtimeNativeMapMessage,
+  parseRealtimeMessage,
   RealtimeNativeMapDecodeError,
 } from './realtime-native-map.decoder';
 
@@ -8,11 +9,13 @@ const timestamp = '2026-07-26T10:00:00+08:00';
 describe('schema-v2 native-map decoder', () => {
   it('accepts a QMT multi-entry map without parsing provider fields', () => {
     const decoded = decodeRealtimeNativeMapMessage(
-      JSON.stringify(
-        message('qmt', {
-          '300502.SZ': { arbitrary: { nested: true } },
-          '600030.SH': { another: ['provider', 'value'] },
-        }),
+      parseRealtimeMessage(
+        JSON.stringify(
+          message('qmt', {
+            '300502.SZ': { arbitrary: { nested: true } },
+            '600030.SH': { another: ['provider', 'value'] },
+          }),
+        ),
       ),
       'qmt',
     );
@@ -26,11 +29,13 @@ describe('schema-v2 native-map decoder', () => {
   it('requires a TDX map to contain exactly one entry', () => {
     expect(() =>
       decodeRealtimeNativeMapMessage(
-        JSON.stringify(
-          message('tdx', {
-            '300502.SZ': {},
-            '600030.SH': {},
-          }),
+        parseRealtimeMessage(
+          JSON.stringify(
+            message('tdx', {
+              '300502.SZ': {},
+              '600030.SH': {},
+            }),
+          ),
         ),
         'tdx',
       ),
@@ -53,8 +58,32 @@ describe('schema-v2 native-map decoder', () => {
     message('tdx', { '300502.SZ': {} }),
   ])('rejects legacy, unknown, or wrong-provider envelope %#', (value) => {
     expect(() =>
-      decodeRealtimeNativeMapMessage(JSON.stringify(value), 'qmt'),
+      decodeRealtimeNativeMapMessage(
+        parseRealtimeMessage(JSON.stringify(value)),
+        'qmt',
+      ),
     ).toThrow(RealtimeNativeMapDecodeError);
+  });
+
+  it('rejects an oversized frame before JSON parsing', () => {
+    const parseSpy = jest.spyOn(JSON, 'parse');
+    try {
+      expect(() => parseRealtimeMessage('x'.repeat(1_048_577))).toThrow(
+        new RealtimeNativeMapDecodeError('REALTIME_FRAME_BYTES_EXCEEDED'),
+      );
+      expect(parseSpy).not.toHaveBeenCalled();
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
+  it.each([
+    ['{', 'REALTIME_FRAME_JSON_INVALID'],
+    ['[]', 'REALTIME_FRAME_ENVELOPE_INVALID'],
+  ])('rejects invalid outer input %s', (raw, code) => {
+    expect(() => parseRealtimeMessage(raw)).toThrow(
+      new RealtimeNativeMapDecodeError(code),
+    );
   });
 });
 

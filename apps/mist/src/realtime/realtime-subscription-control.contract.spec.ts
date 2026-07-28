@@ -195,8 +195,11 @@ function ready(provider: 'qmt' | 'tdx') {
     data: {
       mode: 'builtin',
       schemaVersion: 2,
-      source: provider,
+      source: provider.toUpperCase(),
       quality: 'latest-state',
+      ...(provider === 'qmt'
+        ? { leaderClientId: 'backend-test', active: [] }
+        : {}),
       bridge: {
         ready: true,
         ownerId: 'owner-1',

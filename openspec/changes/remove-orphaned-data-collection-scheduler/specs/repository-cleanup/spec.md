@@ -1,20 +1,17 @@
 ## ADDED Requirements
 
-### Requirement: Orphaned scheduler removal is lifecycle-gated
-The cleanup SHALL NOT modify or remove `DataCollectionScheduler` while the
-experimental TDX realtime lifecycle task 7.2 remains unresolved.
+### Requirement: Orphaned scheduler removal is baseline-gated
+The cleanup SHALL start from the recorded accepted `mist/master` realtime
+contract/naming baseline and SHALL NOT absorb worktree content.
 
-#### Scenario: Realtime HIL lifecycle is still pending
-- **WHEN** `experimental-tdx-realtime-slice` task 7.2 is open
-- **THEN** the scheduler cleanup MUST remain planning-only
-- **AND** no scheduler source or test file is deleted
+#### Scenario: Cleanup baseline is selected
+- **WHEN** implementation begins
+- **THEN** the exact `mist/master` commit is recorded
+- **AND** active runtime ownership is rechecked on that baseline
 
-#### Scenario: Realtime lifecycle reaches a recorded outcome
-- **WHEN** task 7.2 records accepted HIL evidence or the specified
-  reference-quarantine outcome
-- **THEN** implementation may begin from the then-current `master`
-- **AND** the cleanup commit MUST remain separate from the realtime evidence
-  commits
+#### Scenario: A worktree contains adjacent experimental work
+- **WHEN** repository worktrees are enumerated
+- **THEN** their content MUST NOT be imported into this cleanup
 
 ### Requirement: Scheduler orphan status is proven before removal
 The cleanup SHALL re-establish that `DataCollectionScheduler` has no active

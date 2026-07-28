@@ -1,7 +1,7 @@
 import { Period, Security } from '@app/shared-data';
+import type { KDecimal } from './k-decimal.util';
 
 export interface EfExtension {
-  fullCode?: string;
   amplitude?: number;
   changePct?: number;
   changeAmt?: number;
@@ -14,7 +14,6 @@ export interface EfExtension {
 }
 
 export interface TdxExtension {
-  fullCode?: string;
   forwardFactor?: number;
   volInStock?: number;
   backwardFactor?: number;
@@ -29,7 +28,6 @@ export interface TdxExtension {
 }
 
 export interface QmtExtension {
-  fullCode?: string;
   preClose?: number;
   suspendFlag?: number;
   openInterest?: number;
@@ -58,8 +56,8 @@ export interface KData {
   high: number;
   low: number;
   close: number;
-  volume: number;
-  amount?: number;
+  volume: KDecimal | null;
+  amount: KDecimal | null;
   period: number;
   extensions?: EfExtension | TdxExtension | QmtExtension;
 }

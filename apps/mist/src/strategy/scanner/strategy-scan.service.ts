@@ -10,7 +10,7 @@ import {
   StrategyStatus,
   StrategyVersion,
 } from '@app/shared-data';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere, QueryFailedError, Repository } from 'typeorm';
 import { RunStrategyScanDto } from '../dto/run-strategy-scan.dto';
 import { StrategyRuleEvaluator } from '../rules/strategy-rule-evaluator';
 import { StrategyEvaluationContextBuilder } from './strategy-evaluation-context.builder';
@@ -82,28 +82,43 @@ export class StrategyScanService {
               continue;
             }
 
-            const signal = await this.signalRepository.save(
-              this.signalRepository.create({
-                strategyDefinitionId: definition.id,
-                strategyVersionId: version.id,
-                securityCode,
-                period,
-                source,
-                signalTime: k.timestamp,
-                signalSource: StrategySignalSource.LIVE,
-                contextSnapshot: context,
-                ruleSnapshot: version.rule,
-              }),
-            );
+            try {
+              await this.signalRepository.manager.transaction(
+                async (manager) => {
+                  const signalRepository =
+                    manager.getRepository(StrategySignal);
+                  const alertEventRepository =
+                    manager.getRepository(StrategyAlertEvent);
+                  const signal = await signalRepository.save(
+                    signalRepository.create({
+                      strategyDefinitionId: definition.id,
+                      strategyVersionId: version.id,
+                      securityCode,
+                      period,
+                      source,
+                      signalTime: k.timestamp,
+                      signalSource: StrategySignalSource.LIVE,
+                      contextSnapshot: context,
+                      ruleSnapshot: version.rule,
+                    }),
+                  );
+                  await alertEventRepository.save(
+                    alertEventRepository.create({
+                      strategySignalId: signal.id,
+                      status: StrategyAlertStatus.PENDING,
+                      dedupeKey,
+                    }),
+                  );
+                },
+              );
+            } catch (error) {
+              if (this.isAlertDedupeConflict(error)) {
+                result.skippedDuplicates += 1;
+                continue;
+              }
+              throw error;
+            }
             result.createdSignals += 1;
-
-            await this.alertEventRepository.save(
-              this.alertEventRepository.create({
-                strategySignalId: signal.id,
-                status: StrategyAlertStatus.PENDING,
-                dedupeKey,
-              }),
-            );
             result.createdAlertEvents += 1;
           }
         }
@@ -171,5 +186,22 @@ export class StrategyScanService {
       source,
       signalTime.toISOString(),
     ].join(':');
+  }
+
+  private isAlertDedupeConflict(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) return false;
+    const driverError = error.driverError as {
+      code?: unknown;
+      errno?: unknown;
+      message?: unknown;
+      sqlMessage?: unknown;
+    };
+    if (driverError.code !== 'ER_DUP_ENTRY' && driverError.errno !== 1062) {
+      return false;
+    }
+    const message = [driverError.message, driverError.sqlMessage]
+      .filter((value): value is string => typeof value === 'string')
+      .join(' ');
+    return message.includes('uq_strategy_alert_events_dedupe_key');
   }
 }

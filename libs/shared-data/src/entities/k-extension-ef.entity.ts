@@ -30,14 +30,6 @@ export class KExtensionEf {
   kId!: number;
 
   @Column({
-    type: 'varchar',
-    length: 20,
-    nullable: true,
-    comment: '完整代号',
-  })
-  fullCode: string | null = null;
-
-  @Column({
     type: 'decimal',
     precision: 10,
     scale: 2,

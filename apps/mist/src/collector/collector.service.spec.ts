@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CollectorService } from './collector.service';
 import { EastMoneySource } from '../sources/east-money/east-money-source.service';
-import { TdxSource } from '../sources/tdx/source.service';
-import { QmtSource } from '../sources/qmt/source.service';
+import { TdxSource } from '../sources/tdx/tdx-source.service';
+import { QmtSource } from '../sources/qmt/qmt-source.service';
 import {
   Period,
   DataSource,
@@ -335,6 +335,32 @@ describe('CollectorService', () => {
       ).resolves.not.toThrow();
     });
 
+    it('fails before a provider request when the enabled source config has no formatCode', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue({
+        ...mockStock,
+        sourceConfigs: [
+          {
+            source: DataSource.QMT,
+            formatCode: '',
+            enabled: true,
+          },
+        ],
+      });
+
+      await expect(
+        service.collectKForSource(
+          '000001',
+          Period.ONE_MIN,
+          new Date('2024-01-01'),
+          new Date('2024-01-02'),
+          DataSource.QMT,
+        ),
+      ).rejects.toThrow('provider symbol resolution failed');
+
+      expect(mockQmtSource.fetchK).not.toHaveBeenCalled();
+      expect(mockQmtSource.saveK).not.toHaveBeenCalled();
+    });
+
     it('collects and saves historical K data from QMT when requested explicitly', async () => {
       const qmtStock = {
         ...mockStock,
@@ -358,7 +384,6 @@ describe('CollectorService', () => {
           amount: 13560,
           period: Period.THREE_MIN,
           extensions: {
-            fullCode: '600519.SH',
             effectiveDividendType: 'front_ratio',
             nativePeriod: '3m',
           },
@@ -450,8 +475,8 @@ describe('CollectorService', () => {
           high: 11.0,
           low: 10.3,
           close: 10.8,
-          volume: 1000000,
-          amount: 10500000,
+          volume: '1000000',
+          amount: '10500000',
           period: Period.ONE_MIN,
         },
       ];
@@ -485,7 +510,7 @@ describe('CollectorService', () => {
         sourceConfigs: [
           {
             source: DataSource.TDX,
-            formatCode: 'test001',
+            formatCode: '600001.SH',
             enabled: true,
           },
         ],
@@ -501,7 +526,7 @@ describe('CollectorService', () => {
           source: DataSource.TDX,
           priority: 10,
           enabled: true,
-          formatCode: 'test001',
+          formatCode: '600001.SH',
         },
       ]);
 

@@ -34,6 +34,72 @@ describe('formal realtime schema-v2 ingress contract', () => {
     expect(ingress.read(600030)?.providerSymbol).toBe('600030.SH');
   });
 
+  it('parses a snapshot frame exactly once before routing and decoding', () => {
+    const store = new TdxRealtimeStore();
+    const ingress = new RealtimeSnapshotIngressService();
+    const client = new TdxRealtimeClient(
+      new ConfigService({ TDX_BASE_URL: 'http://127.0.0.1:9001' }),
+      store,
+      resolver({ '600030.SH': 600030 }) as never,
+      undefined,
+      ingress,
+    );
+
+    emit(client, ready('tdx'));
+    const parseSpy = jest.spyOn(JSON, 'parse');
+    try {
+      emit(
+        client,
+        frame('tdx', {
+          '600030.SH': {
+            Now: 31.25,
+            DateTime: '2026-07-22 10:01:02',
+          },
+        }),
+      );
+      expect(parseSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
+  it.each(['tdx', 'qmt'] as const)(
+    'rejects oversized %s input before parsing',
+    (provider) => {
+      const store =
+        provider === 'tdx' ? new TdxRealtimeStore() : new QmtRealtimeStore();
+      const ingress = new RealtimeSnapshotIngressService();
+      const client =
+        provider === 'tdx'
+          ? new TdxRealtimeClient(
+              new ConfigService({ TDX_BASE_URL: 'http://127.0.0.1:9001' }),
+              store as TdxRealtimeStore,
+              resolver({ '600030.SH': 600030 }) as never,
+              undefined,
+              ingress,
+            )
+          : new QmtRealtimeClient(
+              new ConfigService({ QMT_BASE_URL: 'http://127.0.0.1:9002' }),
+              store as QmtRealtimeStore,
+              resolver({ '300502.SZ': 300502 }) as never,
+              Date.now,
+              ingress,
+            );
+      const parseSpy = jest.spyOn(JSON, 'parse');
+      try {
+        (
+          client as unknown as { handleMessage(raw: string): void }
+        ).handleMessage('x'.repeat(1_048_577));
+        expect(parseSpy).not.toHaveBeenCalled();
+        expect(store.status().lastReject).toMatchObject({
+          errorCode: 'REALTIME_FRAME_BYTES_EXCEEDED',
+        });
+      } finally {
+        parseSpy.mockRestore();
+      }
+    },
+  );
+
   it('isolates malformed and unauthorized QMT entries in one native map', () => {
     const store = new QmtRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
@@ -62,6 +128,59 @@ describe('formal realtime schema-v2 ingress contract', () => {
     });
     expect(store.status().lastAcceptedAt).not.toBeNull();
   });
+
+  it.each(['tdx', 'qmt'] as const)(
+    'rejects every retired %s ready-field shape without setting transportReady',
+    (provider) => {
+      const store =
+        provider === 'tdx' ? new TdxRealtimeStore() : new QmtRealtimeStore();
+      const ingress = new RealtimeSnapshotIngressService();
+      const client =
+        provider === 'tdx'
+          ? new TdxRealtimeClient(
+              new ConfigService({ TDX_BASE_URL: 'http://127.0.0.1:9001' }),
+              store as TdxRealtimeStore,
+              resolver({ '600030.SH': 600030 }) as never,
+              undefined,
+              ingress,
+            )
+          : new QmtRealtimeClient(
+              new ConfigService({ QMT_BASE_URL: 'http://127.0.0.1:9002' }),
+              store as QmtRealtimeStore,
+              resolver({ '300502.SZ': 300502 }) as never,
+              Date.now,
+              ingress,
+            );
+
+      for (const retired of [
+        'ready',
+        'tdxRealtimeBridgeReady',
+        'collectorReady',
+        'generation',
+        'ownerId',
+        'datasourceBuildId',
+      ]) {
+        const message = ready(provider);
+        (message.data as Record<string, unknown>)[retired] =
+          retired === 'ownerId' ? 'legacy-owner' : true;
+        emit(client, message);
+      }
+
+      const bridgeGeneration = ready(provider);
+      const legacyBridge = bridgeGeneration.data.bridge as Record<
+        string,
+        unknown
+      >;
+      delete legacyBridge.ownerGeneration;
+      legacyBridge.generation = 1;
+      emit(client, bridgeGeneration);
+
+      expect(store.status().transportReady).toBe(false);
+      expect(store.status().rejectCounts).toMatchObject({
+        contractMismatch: 7,
+      });
+    },
+  );
 });
 
 function emit(client: object, message: Record<string, unknown>) {
@@ -78,8 +197,11 @@ function ready(provider: 'tdx' | 'qmt') {
     data: {
       mode: 'builtin',
       schemaVersion: 2,
-      source: provider,
+      source: provider.toUpperCase(),
       quality: 'latest-state',
+      ...(provider === 'qmt'
+        ? { leaderClientId: 'backend-test', active: [] }
+        : {}),
       bridge: {
         ready: true,
         ownerId: 'owner-1',

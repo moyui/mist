@@ -35,7 +35,6 @@ describe('extension entity schema metadata', () => {
     );
 
     for (const field of [
-      'fullCode',
       'amplitude',
       'changePct',
       'changeAmt',
@@ -51,6 +50,16 @@ describe('extension entity schema metadata', () => {
       );
     }
     expect(source).not.toMatch(/=\s*0n?;/);
+  });
+
+  it('does not expose the retired fullCode identity on K extensions', () => {
+    for (const entityPath of [
+      'libs/shared-data/src/entities/k-extension-ef.entity.ts',
+      'libs/shared-data/src/entities/k-extension-tdx.entity.ts',
+      'libs/shared-data/src/entities/k-extension-qmt.entity.ts',
+    ]) {
+      expect(readRepoFile(entityPath)).not.toContain('fullCode');
+    }
   });
 
   it('exposes kId columns for extension one-to-one keys', () => {

@@ -5,8 +5,6 @@ const sourceRoot = join(process.cwd(), 'apps/mist/src/sources');
 
 describe('realtime source layout', () => {
   it.each([
-    'source.service.ts',
-    'source.service.spec.ts',
     'types.ts',
     'realtime/realtime.module.ts',
     'realtime/realtime.client.ts',
@@ -20,24 +18,35 @@ describe('realtime source layout', () => {
   });
 
   it.each([
-    'tdx/tdx-source.service.ts',
-    'qmt/qmt-source.service.ts',
+    'tdx/source.service.ts',
+    'tdx/source.service.spec.ts',
+    'qmt/source.service.ts',
+    'qmt/source.service.spec.ts',
     'tdx/realtime/tdx-realtime.client.ts',
     'qmt/realtime/qmt-realtime.client.ts',
     'tdx/realtime/in-memory-realtime.store.ts',
     'qmt/realtime/in-memory-qmt-realtime.store.ts',
-  ])('does not restore legacy provider-prefixed path %s', (relativePath) => {
+  ])('does not restore a retired source path %s', (relativePath) => {
     expect(existsSync(join(sourceRoot, relativePath))).toBe(false);
   });
 
-  it('keeps real provider-only capabilities explicit', () => {
-    expect(existsSync(join(sourceRoot, 'tdx/tdx-source.interface.ts'))).toBe(
+  it('uses explicit provider source service paths', () => {
+    expect(existsSync(join(sourceRoot, 'tdx/tdx-source.service.ts'))).toBe(
       true,
     );
+    expect(existsSync(join(sourceRoot, 'qmt/qmt-source.service.ts'))).toBe(
+      true,
+    );
+  });
+
+  it('keeps real provider-only capabilities explicit', () => {
+    expect(
+      existsSync(join(sourceRoot, 'tdx/tdx-source-fetcher.interface.ts')),
+    ).toBe(true);
     expect(
       existsSync(join(sourceRoot, 'tdx/tdx-raw-endpoint.guard.spec.ts')),
     ).toBe(true);
-    expect(existsSync(join(sourceRoot, 'qmt/tdx-source.interface.ts'))).toBe(
+    expect(existsSync(join(sourceRoot, 'tdx/tdx-source.interface.ts'))).toBe(
       false,
     );
   });

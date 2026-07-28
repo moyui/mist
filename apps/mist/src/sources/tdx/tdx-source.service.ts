@@ -1,11 +1,7 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
-import {
-  UtilsService,
-  PeriodMappingService,
-  normalizeSecurityCode,
-} from '@app/utils';
+import { UtilsService, PeriodMappingService } from '@app/utils';
 import {
   DataSource,
   Period,
@@ -16,14 +12,12 @@ import {
 import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { ITdxSourceFetcher } from './tdx-source.interface';
+import { ITdxSourceFetcher } from './tdx-source-fetcher.interface';
 import {
   TdxResponse,
-  TdxSnapshot,
   TdxExtension,
   TdxEnvelope,
   TdxBarsResponseData,
-  TdxSnapshotsResponseData,
   TdxNormalizedBar,
   TdxDividendFactorsResponseData,
   TdxDividendFactorItem,
@@ -45,7 +39,6 @@ const TDX_BAR_FIELDS = [
 const MARKET_TIME_ZONE = 'Asia/Shanghai';
 
 const TDX_EXTENSION_UPSERT_COLUMNS = [
-  'fullCode',
   'forwardFactor',
   'volInStock',
   'backwardFactor',
@@ -58,10 +51,6 @@ const TDX_EXTENSION_UPSERT_COLUMNS = [
   'priceEarningsRatio',
   'priceToBookRatio',
 ];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
-}
 
 @Injectable()
 export class TdxSource implements ITdxSourceFetcher {
@@ -153,67 +142,6 @@ export class TdxSource implements ITdxSourceFetcher {
     }
   }
 
-  async fetchSnapshot(formatCode: string): Promise<TdxSnapshot> {
-    try {
-      const response = await this.axios.post<
-        TdxEnvelope<TdxSnapshotsResponseData>
-      >('/v1/snapshots/query', {
-        symbols: [formatCode],
-      });
-      const envelope = response.data;
-
-      if (!envelope?.ok) {
-        this.throwEnvelopeError(envelope, 'TDX snapshot query failed');
-      }
-      if (!Array.isArray(envelope.data?.snapshots)) {
-        throw new HttpException(
-          'Invalid normalized TDX snapshot response',
-          HttpStatus.BAD_GATEWAY,
-        );
-      }
-
-      const snapshot = envelope.data.snapshots[0];
-      if (!snapshot) {
-        throw new HttpException(
-          'TDX snapshot response did not contain snapshots',
-          HttpStatus.BAD_GATEWAY,
-        );
-      }
-      if (typeof snapshot.lastClose !== 'number') {
-        throw new HttpException(
-          'Invalid normalized TDX snapshot response: lastClose is required',
-          HttpStatus.BAD_GATEWAY,
-        );
-      }
-
-      const snapshotFormatCode = snapshot.symbol || formatCode;
-      const raw = isRecord(snapshot.raw) ? snapshot.raw : { ...snapshot };
-
-      return {
-        code: normalizeSecurityCode(snapshotFormatCode),
-        formatCode: snapshotFormatCode,
-        now: snapshot.last,
-        open: snapshot.open,
-        high: snapshot.high,
-        low: snapshot.low,
-        lastClose: snapshot.lastClose,
-        volume: snapshot.volume,
-        amount: snapshot.amount,
-        timestamp: snapshot.asOf ? parseISO(snapshot.asOf) : new Date(),
-        raw,
-      };
-    } catch (error) {
-      this.logger.error(`TDX fetchSnapshot error: ${error.message}`);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        `Failed to fetch TDX snapshot: ${error.message}`,
-        HttpStatus.BAD_GATEWAY,
-      );
-    }
-  }
-
   async fetchDividFactors(
     formatCode: string,
     startDate: Date,
@@ -288,11 +216,6 @@ export class TdxSource implements ITdxSourceFetcher {
     if (data.length === 0) return;
 
     await this.typeOrmDataSource.transaction(async (manager) => {
-      const sourceConfig = security.sourceConfigs?.find(
-        (sc) => sc.source === DataSource.TDX,
-      );
-      const formatCode = sourceConfig?.formatCode || security.code;
-
       const savedKByTimestamp = await saveBaseK(
         manager,
         data,
@@ -307,7 +230,7 @@ export class TdxSource implements ITdxSourceFetcher {
           if (!k) return null;
 
           return manager.create(KExtensionTdx, {
-            ...this.buildExtensionPayload(k, d.extensions, formatCode),
+            ...this.buildExtensionPayload(k, d.extensions),
             kId: k.id,
           });
         })
@@ -316,7 +239,6 @@ export class TdxSource implements ITdxSourceFetcher {
       if (extensions.length > 0) {
         const extensionValues = extensions.map((extension) => ({
           kId: extension.kId,
-          fullCode: extension.fullCode,
           forwardFactor: extension.forwardFactor,
           volInStock: extension.volInStock,
           backwardFactor: extension.backwardFactor,
@@ -371,11 +293,9 @@ export class TdxSource implements ITdxSourceFetcher {
   private buildExtensionPayload(
     k: K,
     ext: TdxExtension | undefined,
-    fallbackFullCode: string,
   ): Partial<KExtensionTdx> {
     const payload: Partial<KExtensionTdx> = {
       k,
-      fullCode: ext?.fullCode ?? fallbackFullCode,
     };
 
     if (ext?.forwardFactor != null) {

@@ -51,3 +51,46 @@ Manual resolution rules:
 
 `003_security_code_identity.sql` deletes only exact duplicate source-config rows
 and then adds a unique index on `(security_id, source)`.
+
+## K volume/amount exact-decimal migration
+
+Before and after applying `007_k_volume_amount_exact_decimal.sql`, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-k-decimal-migration.sql
+```
+
+Keep both outputs with the release evidence. Row counts, null counts, numeric
+aggregates, and `normalized_row_digest` must remain identical. Confirm enough
+free disk space and a maintenance window before altering a large `k` table.
+
+Migration `007` widens `volume` and `amount` to nullable `DECIMAL(36,8)`. It
+does not repair values that older application versions already rounded or
+filled with zero. Application rollback leaves the widened schema in place.
+
+## Provider symbol audit and K extension fullCode removal
+
+Before deploying the fail-closed provider-symbol application or applying
+`008_remove_k_extension_full_code.sql`, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-provider-format-code.sql
+```
+
+Both result sets must be empty. Correct every enabled source config with an
+empty `formatCode`, and correct enabled TDX/QMT values that are not an exact
+six-digit symbol ending in `.SH`, `.SZ`, or `.BJ`.
+
+`fullCode` has no business reader and does not provide reliable capture
+provenance. Migration `008` drops it from `k_extensions_tdx`,
+`k_extensions_qmt`, and `k_extensions_ef`; it does not change K ownership or
+provider routing.
+
+Take and verify a database backup before applying this destructive migration.
+Deploy migration `008` and the application that no longer reads or writes
+`fullCode` in the same maintenance window. Old and new application versions
+must not run together. Rollback requires restoring the pre-migration database
+backup together with the previous application SHA because the removed values
+cannot be reconstructed reliably.

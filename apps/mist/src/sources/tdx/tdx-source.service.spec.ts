@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
-import { TdxSource } from './source.service';
+import { TdxSource } from './tdx-source.service';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import { DataSource } from 'typeorm';
@@ -131,6 +131,10 @@ describe('TdxSource', () => {
         timeout: DATASOURCE_HTTP_TIMEOUT_MS,
       });
     });
+
+    it('does not expose the removed on-demand snapshot method', () => {
+      expect('fetchSnapshot' in service).toBe(false);
+    });
   });
 
   describe('isSupportedPeriod', () => {
@@ -256,8 +260,8 @@ describe('TdxSource', () => {
             high: 1199,
             low: 1168.1,
             close: 1168.63,
-            volume: 5006647,
-            amount: 592201.44,
+            volume: '5006647',
+            amount: '592201.44',
           },
           {
             timestamp: olderTimestamp,
@@ -265,8 +269,8 @@ describe('TdxSource', () => {
             high: 1210,
             low: 1190,
             close: 1198,
-            volume: 4200000,
-            amount: 501000,
+            volume: '4200000',
+            amount: '501000',
           },
         ],
         security,
@@ -308,7 +312,6 @@ describe('TdxSource', () => {
       );
       expect(extensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
         [
-          'fullCode',
           'forwardFactor',
           'volInStock',
           'backwardFactor',
@@ -374,8 +377,8 @@ describe('TdxSource', () => {
           high: 1199,
           low: 1168.1,
           close: 1168.63,
-          volume: 5006647,
-          amount: 592201.44,
+          volume: '5006647',
+          amount: '592201.44',
           extensions: {
             forwardFactor: 0.711862,
             volInStock: 182942480,
@@ -394,7 +397,6 @@ describe('TdxSource', () => {
       );
       expect(extensionCreateCall?.[1]).toEqual(
         expect.objectContaining({
-          fullCode: '600519.SH',
           forwardFactor: 0.711862,
           volInStock: 182942480,
         }),
@@ -505,8 +507,8 @@ describe('TdxSource', () => {
                 high: 10.3,
                 low: 10.0,
                 close: 10.2,
-                volume: 1200,
-                amount: 12345.6,
+                volume: '1200.12500000',
+                amount: '12345.60000000',
                 provider: 'tdx',
                 receivedAt: '2026-06-26T09:31:02+08:00',
               },
@@ -542,8 +544,8 @@ describe('TdxSource', () => {
         high: 10.3,
         low: 10.0,
         close: 10.2,
-        volume: 1200,
-        amount: 12345.6,
+        volume: '1200.12500000',
+        amount: '12345.60000000',
       });
     });
 
@@ -562,8 +564,8 @@ describe('TdxSource', () => {
                 high: 1199,
                 low: 1180.42,
                 close: 1181.25,
-                volume: 2161000,
-                amount: 256979.45,
+                volume: '2161000',
+                amount: '256979.45',
                 provider: 'tdx',
                 receivedAt: '2026-06-26T10:31:00+08:00',
               },
@@ -590,6 +592,46 @@ describe('TdxSource', () => {
       );
     });
 
+    it('preserves explicit null TDX volume and amount', async () => {
+      mockAxiosPost.mockResolvedValueOnce({
+        data: {
+          ok: true,
+          provider: 'tdx',
+          data: {
+            bars: [
+              {
+                symbol: '600519.SH',
+                period: '1m',
+                barTime: '2026-06-26T09:31:00+08:00',
+                open: 10.1,
+                high: 10.3,
+                low: 10.0,
+                close: 10.2,
+                volume: null,
+                amount: null,
+                provider: 'tdx',
+                receivedAt: '2026-06-26T09:31:02+08:00',
+              },
+            ],
+          },
+          meta: null,
+          error: null,
+        },
+      });
+
+      const rows = await service.fetchK({
+        code: '600519',
+        formatCode: '600519.SH',
+        period: Period.ONE_MIN,
+        startDate: new Date('2026-06-26T00:00:00+08:00'),
+        endDate: new Date('2026-06-26T23:59:59+08:00'),
+      });
+
+      expect(rows[0]).toEqual(
+        expect.objectContaining({ volume: null, amount: null }),
+      );
+    });
+
     it('fetchK requests and maps structured TDX bar extension fields', async () => {
       mockAxiosPost.mockResolvedValueOnce({
         data: {
@@ -605,8 +647,8 @@ describe('TdxSource', () => {
                 high: 1199,
                 low: 1168.1,
                 close: 1168.63,
-                volume: 5006647,
-                amount: 592201.44,
+                volume: '5006647',
+                amount: '592201.44',
                 forwardFactor: 0.711862,
                 volInStock: 182942480,
                 unreviewedProviderField: 'not-owned',
@@ -675,136 +717,6 @@ describe('TdxSource', () => {
           endDate: new Date('2026-06-26T23:59:59+08:00'),
         }),
         'Invalid normalized TDX bars response',
-      );
-    });
-
-    it('fetchSnapshot posts to /v1/snapshots/query and maps normalized snapshot', async () => {
-      mockAxiosPost.mockResolvedValueOnce({
-        data: {
-          ok: true,
-          provider: 'tdx',
-          data: {
-            snapshots: [
-              {
-                symbol: '600519.SH',
-                last: 10.2,
-                open: 10.1,
-                high: 10.3,
-                low: 10.0,
-                lastClose: 9.9,
-                volume: 1200,
-                amount: 12345.6,
-                provider: 'tdx',
-                asOf: '2026-06-26T09:31:02+08:00',
-                raw: {
-                  Now: '10.2',
-                  NowVol: '1449',
-                  Buyp: ['10.19', '10.18'],
-                  Sellp: ['10.2', '10.21'],
-                },
-              },
-            ],
-          },
-          meta: { transport: 'http', asOf: '2026-06-26T09:31:02+08:00' },
-          error: null,
-        },
-      });
-
-      const result = await service.fetchSnapshot('600519.SH');
-
-      expect(mockAxiosPost).toHaveBeenCalledWith('/v1/snapshots/query', {
-        symbols: ['600519.SH'],
-      });
-      expect(mockAxiosGet).not.toHaveBeenCalled();
-      expect(result).toEqual({
-        code: '600519',
-        formatCode: '600519.SH',
-        now: 10.2,
-        open: 10.1,
-        high: 10.3,
-        low: 10.0,
-        lastClose: 9.9,
-        volume: 1200,
-        amount: 12345.6,
-        timestamp: new Date('2026-06-26T09:31:02+08:00'),
-        raw: {
-          Now: '10.2',
-          NowVol: '1449',
-          Buyp: ['10.19', '10.18'],
-          Sellp: ['10.2', '10.21'],
-        },
-      });
-      expect(result).not.toHaveProperty('stockCode');
-    });
-
-    it('throws bad gateway when normalized snapshot is missing lastClose', async () => {
-      mockAxiosPost.mockResolvedValueOnce({
-        data: {
-          ok: true,
-          provider: 'tdx',
-          data: {
-            snapshots: [
-              {
-                symbol: '600519.SH',
-                last: 10.2,
-                open: 10.1,
-                high: 10.3,
-                low: 10.0,
-                volume: 1200,
-                amount: 12345.6,
-                provider: 'tdx',
-                asOf: '2026-06-26T09:31:02+08:00',
-              },
-            ],
-          },
-          meta: { transport: 'http', asOf: '2026-06-26T09:31:02+08:00' },
-          error: null,
-        },
-      });
-
-      await expectBadGatewayWithMessage(
-        service.fetchSnapshot('600519.SH'),
-        'lastClose',
-      );
-    });
-
-    it('throws bad gateway when normalized snapshots payload is not an array', async () => {
-      mockAxiosPost.mockResolvedValueOnce({
-        data: {
-          ok: true,
-          provider: 'tdx',
-          data: {
-            snapshots: {},
-          },
-          meta: { transport: 'http', asOf: '2026-06-26T09:31:02+08:00' },
-          error: null,
-        },
-      });
-
-      await expectBadGatewayWithMessage(
-        service.fetchSnapshot('600519.SH'),
-        'Invalid normalized TDX snapshot response',
-      );
-    });
-
-    it('throws bad gateway when envelope ok is false', async () => {
-      mockAxiosPost.mockResolvedValueOnce({
-        data: {
-          ok: false,
-          provider: 'tdx',
-          data: null,
-          meta: null,
-          error: {
-            code: 'TDX_HTTP_UNAVAILABLE',
-            message: 'down',
-            retryable: true,
-            details: {},
-          },
-        },
-      });
-
-      await expect(service.fetchSnapshot('600519.SH')).rejects.toThrow(
-        'TDX_HTTP_UNAVAILABLE',
       );
     });
   });

@@ -7,8 +7,8 @@ export type StrategyEvaluationContext = {
     high: number;
     low: number;
     close: number;
-    volume: bigint;
-    amount: number;
+    volume: string | null;
+    amount: string | null;
     timestamp: Date;
   };
   security: {
@@ -27,7 +27,7 @@ export class StrategyEvaluationContextBuilder {
         low: Number(k.low),
         close: Number(k.close),
         volume: k.volume,
-        amount: Number(k.amount),
+        amount: k.amount,
         timestamp: k.timestamp,
       },
       security: {

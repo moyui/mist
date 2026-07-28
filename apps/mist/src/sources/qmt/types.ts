@@ -1,4 +1,5 @@
 import type { QmtExtension } from '../source-fetcher.interface';
+import type { KDecimal } from '../k-decimal.util';
 
 export type { QmtExtension } from '../source-fetcher.interface';
 
@@ -8,8 +9,8 @@ export interface QmtResponse {
   high: number;
   low: number;
   close: number;
-  volume: number;
-  amount: number;
+  volume: KDecimal | null;
+  amount: KDecimal | null;
   period: number;
   extensions?: QmtExtension;
 }

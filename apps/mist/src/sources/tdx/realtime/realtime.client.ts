@@ -9,6 +9,7 @@ import WebSocket from 'ws';
 import {
   decodeRealtimeNativeMapMessage,
   isRecord,
+  parseRealtimeMessage,
   RealtimeNativeMapDecodeError,
 } from '../../../realtime/realtime-native-map.decoder';
 import {
@@ -217,22 +218,14 @@ export class TdxRealtimeClient
   }
 
   private handleMessage(raw: string): void {
-    let message: unknown;
+    let message: Record<string, unknown>;
     try {
-      message = JSON.parse(raw);
-    } catch {
+      message = parseRealtimeMessage(raw);
+    } catch (error) {
       this.store.recordReject(
         'decodeError',
         null,
-        'TDX_REALTIME_WS_DECODE_ERROR',
-      );
-      return;
-    }
-    if (!isRecord(message)) {
-      this.store.recordReject(
-        'validationError',
-        null,
-        'TDX_REALTIME_WS_MESSAGE_INVALID',
+        error instanceof Error ? error.message : 'TDX_REALTIME_WS_DECODE_ERROR',
       );
       return;
     }
@@ -245,7 +238,7 @@ export class TdxRealtimeClient
       return;
     }
     if (message['type'] === 'realtime.native_snapshot') {
-      this.handleSnapshot(raw);
+      this.handleSnapshot(message);
     }
   }
 
@@ -257,9 +250,11 @@ export class TdxRealtimeClient
       !isRecord(data) ||
       data['mode'] !== 'builtin' ||
       data['schemaVersion'] !== 2 ||
-      data['source'] !== 'tdx' ||
+      data['source'] !== 'TDX' ||
       data['quality'] !== 'latest-state' ||
+      !hasExactKeys(data, TDX_READY_DATA_KEYS) ||
       !isRecord(bridge) ||
+      !hasExactKeys(bridge, READY_BRIDGE_KEYS) ||
       typeof bridge['ready'] !== 'boolean' ||
       !(typeof bridge['ownerId'] === 'string' || bridge['ownerId'] === null) ||
       typeof bridge['ownerGeneration'] !== 'number' ||
@@ -286,7 +281,7 @@ export class TdxRealtimeClient
     this.store.clearError();
   }
 
-  private handleSnapshot(raw: string): void {
+  private handleSnapshot(message: Record<string, unknown>): void {
     if (!this.transportReady) {
       this.store.recordReject(
         'validationError',
@@ -297,7 +292,7 @@ export class TdxRealtimeClient
     }
     let decoded;
     try {
-      decoded = decodeRealtimeNativeMapMessage(raw, 'tdx');
+      decoded = decodeRealtimeNativeMapMessage(message, 'tdx');
     } catch (error) {
       this.store.recordReject(
         error instanceof RealtimeNativeMapDecodeError
@@ -437,6 +432,19 @@ const CONTROL_RESPONSE_OUTER_KEYS = [
   'provider',
   'data',
   'timestamp',
+] as const;
+const READY_BRIDGE_KEYS = [
+  'ready',
+  'ownerId',
+  'ownerGeneration',
+  'bridgeBuildId',
+] as const;
+const TDX_READY_DATA_KEYS = [
+  'mode',
+  'schemaVersion',
+  'source',
+  'quality',
+  'bridge',
 ] as const;
 const RFC3339_PATTERN =
   /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;

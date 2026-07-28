@@ -30,14 +30,6 @@ export class KExtensionQmt {
   kId!: number;
 
   @Column({
-    type: 'varchar',
-    length: 20,
-    nullable: true,
-    comment: '完整代号',
-  })
-  fullCode: string = '';
-
-  @Column({
     type: 'decimal',
     precision: 20,
     scale: 6,

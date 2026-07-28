@@ -24,7 +24,8 @@ export class AddSecuritySourceDto {
   source!: DataSource;
 
   @ApiProperty({
-    description: 'Provider-specific transport code format',
+    description:
+      'Provider-specific transport code. Required when enabled; TDX/QMT use 600519.SH form.',
     example: '600519.SH',
     required: false,
   })

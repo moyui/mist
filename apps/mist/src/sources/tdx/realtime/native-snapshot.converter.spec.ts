@@ -25,8 +25,24 @@ describe('TDX native snapshot converter', () => {
     expect(snapshot.providerSymbol).toBe('600030.SH');
     expect(snapshot.eventTime).toBe('2026-07-22T10:01:02+08:00');
     expect(snapshot.prices.last).toBe(31.25);
+    expect(snapshot.prices.lastClose).toBe(30.5);
     expect(snapshot.native).toEqual(native);
   });
+
+  it.each(['PreClose', 'lastClose'])(
+    'does not treat retired %s as native LastClose',
+    (field) => {
+      const snapshot = convertTdxNativeSnapshot({
+        securityId: 600030,
+        providerSymbol: '600030.SH',
+        capturedAt: '2026-07-22T10:01:03+08:00',
+        native: { Now: 31.25, [field]: 30.5 },
+      });
+
+      expect(snapshot.prices.lastClose).toBeNull();
+      expect(snapshot.native[field]).toBe(30.5);
+    },
+  );
 
   it('does not fall back to capturedAt when native time is absent', () => {
     const snapshot = convertTdxNativeSnapshot({

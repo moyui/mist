@@ -29,7 +29,9 @@ Datasource root health returns a nested `bridge` object with `ready`, `ownerId`,
 
 ### Protocol readiness and bridge readiness remain independent
 
-The `realtime.ready` event name remains unchanged because it identifies a protocol event. Its metadata contains the nested bridge object. Backend diagnostics rename the state derived from accepting the event to `transportReady` and preserve bridge-owner readiness separately. Connection, protocol, owner, subscription, and freshness MUST NOT be collapsed into one boolean.
+The `realtime.ready` event name remains unchanged because it identifies a protocol event. Its metadata contains the nested bridge object. The outer `provider` remains the lowercase transport discriminator (`tdx|qmt`), while `data.source` uses the domain label (`TDX|QMT`). Backend diagnostics rename the state derived from accepting the event to `transportReady` and preserve bridge-owner readiness separately. Connection, protocol, owner, subscription, and freshness MUST NOT be collapsed into one boolean.
+
+This change owns the final ready-frame shape. `migrate-qmt-realtime-to-native-subscription` consumes this contract and cannot reintroduce or redefine its retired fields.
 
 ### No compatibility aliases
 
@@ -37,7 +39,9 @@ The `realtime.ready` event name remains unchanged because it identifies a protoc
 
 ### Internal naming follows responsibility, not mechanical symmetry
 
-Internal files are renamed when their current basename or relative path describes the wrong role: pure candle calculation is not a Nest resolver, injectable clock code is a service, and native-map conversion is a decoder. Same-role files under provider-scoped directories intentionally keep identical basenames. Different roles remain different even when both manage owner state: the accepted `realtime-source-layout` contract retains TDX `realtime/runtime.py`, provider-specific QMT `bridge.py`, TDX/QMT `source.service.ts`, and `tdx-source.interface.ts`.
+Internal files are renamed when their current basename or relative path hides the primary responsibility: pure candle calculation is not a Nest resolver, injectable clock code is a service, and native-map conversion is a decoder. Backend source services use provider-qualified basenames (`tdx-source.service.ts`, `qmt-source.service.ts`) and the TDX fetcher contract uses `tdx-source-fetcher.interface.ts`; provider-scoped `realtime.client.ts` remains intentionally symmetric because its directory already supplies the source identity.
+
+Both datasource owner/command gateway implementations live at `src/datasource/<source>/realtime/gateway.py`. QMT's separate subscription collector remains `realtime/runtime.py` because it is runtime orchestration rather than the command gateway. TDX market normalization uses `market_normalization.py` to distinguish the market-wide boundary from endpoint-level `normalizers/`.
 
 Chan entity classes and files become singular while explicit TypeORM table names remain unchanged. Security identity, previous-close, and lifecycle vocabulary are documented and corrected only at internal boundaries; persisted and provider-native names remain stable.
 

@@ -1,4 +1,5 @@
 import type { TdxExtension } from '../source-fetcher.interface';
+import type { KDecimal } from '../k-decimal.util';
 
 export type { TdxExtension } from '../source-fetcher.interface';
 
@@ -11,8 +12,8 @@ export interface TdxResponse {
   high: number;
   low: number;
   close: number;
-  volume: number;
-  amount: number;
+  volume: KDecimal | null;
+  amount: KDecimal | null;
   extensions?: TdxExtension;
 }
 
@@ -40,34 +41,16 @@ export interface TdxNormalizedBar {
   high: number;
   low: number;
   close: number;
-  volume: number;
-  amount: number;
+  volume: KDecimal | null;
+  amount: KDecimal | null;
   provider: string;
   receivedAt: string;
   forwardFactor?: number | null;
   volInStock?: number | null;
 }
 
-export interface TdxNormalizedSnapshot {
-  symbol: string;
-  last: number;
-  open: number;
-  high: number;
-  low: number;
-  volume: number;
-  amount: number;
-  provider: string;
-  asOf?: string;
-  lastClose: number;
-  raw?: Record<string, unknown>;
-}
-
 export interface TdxBarsResponseData {
   bars: TdxNormalizedBar[];
-}
-
-export interface TdxSnapshotsResponseData {
-  snapshots: TdxNormalizedSnapshot[];
 }
 
 export interface TdxDividendFactorItem {
@@ -80,21 +63,4 @@ export interface TdxDividendFactorItem {
 
 export interface TdxDividendFactorsResponseData {
   items: TdxDividendFactorItem[];
-}
-
-/**
- * Real-time snapshot mapped from mist-datasource TDX /v1/snapshots/query.
- */
-export interface TdxSnapshot {
-  code: string; // canonical internal code, e.g. "600519"
-  formatCode: string; // provider transport code, e.g. "600519.SH"
-  now: number; // current price
-  open: number;
-  high: number;
-  low: number;
-  lastClose: number; // previous close
-  volume: number;
-  amount: number;
-  timestamp: Date;
-  raw: Record<string, unknown>;
 }

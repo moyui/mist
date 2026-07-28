@@ -10,9 +10,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EastMoneySource } from '../sources/east-money/east-money-source.service';
 import { KData, KFetchParams } from '../sources/source-fetcher.interface';
-import { QmtSource } from '../sources/qmt/source.service';
+import { QmtSource } from '../sources/qmt/qmt-source.service';
 import { QmtResponse } from '../sources/qmt/types';
-import { TdxSource } from '../sources/tdx/source.service';
+import { TdxSource } from '../sources/tdx/tdx-source.service';
 import { TdxResponse } from '../sources/tdx/types';
 
 type SourceFetcher = EastMoneySource | TdxSource | QmtSource;

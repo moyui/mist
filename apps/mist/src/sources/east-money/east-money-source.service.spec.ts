@@ -179,8 +179,8 @@ describe('EastMoneySource', () => {
         high: 101.5,
         low: 99.5,
         close: 101.0,
-        volume: 1000000,
-        amount: 100500000,
+        volume: '1000000',
+        amount: '100500000',
         period: Period.ONE_MIN,
         extensions: {
           amplitude: 2.5,
@@ -191,7 +191,7 @@ describe('EastMoneySource', () => {
       });
     });
 
-    it('should handle response with zero 成交额 as undefined amount', async () => {
+    it('should preserve explicit zero 成交额', async () => {
       const responseWithZeroAmount = [
         {
           时间: '2024-01-01T00:00:00.000Z',
@@ -214,7 +214,7 @@ describe('EastMoneySource', () => {
 
       const result = await service.fetchK(mockParams);
 
-      expect(result[0].amount).toBeUndefined();
+      expect(result[0].amount).toBe('0');
     });
 
     it('should throw error for invalid response format', async () => {
@@ -250,8 +250,8 @@ describe('EastMoneySource', () => {
         high: 3050.0,
         low: 2980.0,
         close: 3020.0,
-        volume: 5000000,
-        amount: 500000000,
+        volume: '5000000',
+        amount: '500000000',
       },
     ];
 
@@ -280,8 +280,8 @@ describe('EastMoneySource', () => {
         high: 3050.0,
         low: 2980.0,
         close: 3020.0,
-        volume: 5000000,
-        amount: 500000000,
+        volume: '5000000',
+        amount: '500000000',
         period: Period.DAY,
       });
     });
@@ -403,7 +403,8 @@ describe('EastMoneySource', () => {
           high: 11.0,
           low: 10.3,
           close: 10.8,
-          volume: 1000000,
+          volume: '1000000',
+          amount: null,
           period: Period.ONE_MIN,
           extensions: {
             amplitude: 2.5,
@@ -475,7 +476,6 @@ describe('EastMoneySource', () => {
       );
       expect(mockExtensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
         [
-          'fullCode',
           'amplitude',
           'changePct',
           'changeAmt',
@@ -585,7 +585,8 @@ describe('EastMoneySource', () => {
             high: 1199,
             low: 1168.1,
             close: 1168.63,
-            volume: 5006647,
+            volume: '5006647',
+            amount: null,
             period: Period.DAY,
           },
           {
@@ -594,7 +595,8 @@ describe('EastMoneySource', () => {
             high: 1210,
             low: 1190,
             close: 1198,
-            volume: 4200000,
+            volume: '4200000',
+            amount: null,
             period: Period.DAY,
           },
         ],
@@ -633,7 +635,8 @@ describe('EastMoneySource', () => {
           high: 3050,
           low: 2980,
           close: 3020,
-          volume: 5000000,
+          volume: '5000000',
+          amount: null,
           period: Period.DAY,
         },
       ];

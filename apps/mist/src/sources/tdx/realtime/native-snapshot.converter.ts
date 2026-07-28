@@ -14,11 +14,7 @@ export function convertTdxNativeSnapshot(
   const open = readTdxNativeNumber(input.native, ['Open', 'open']);
   const high = readTdxNativeNumber(input.native, ['Max', 'High', 'high']);
   const low = readTdxNativeNumber(input.native, ['Min', 'Low', 'low']);
-  const lastClose = readTdxNativeNumber(input.native, [
-    'LastClose',
-    'PreClose',
-    'lastClose',
-  ]);
+  const lastClose = readTdxNativeNumber(input.native, ['LastClose']);
   const eventTime = parseTdxBusinessTime(
     input.native['DateTime'] ?? input.native['datetime'],
   );

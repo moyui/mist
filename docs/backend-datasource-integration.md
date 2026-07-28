@@ -5,12 +5,12 @@ HTTP 路由是运行时内部通道，不是 backend 的行情 API。
 
 ## 配置
 
-| 变量 | 当前含义 |
-|---|---|
-| `TDX_BASE_URL` | TDX datasource HTTP 地址；Docker 生产值为 `http://tdx-datasource:9001` |
-| `QMT_BASE_URL` | QMT datasource HTTP 地址；Docker 生产值为 `http://qmt-datasource:9002` |
-| `TDX_WS_CLIENT_ID` | TDX realtime backend leader client id |
-| `QMT_WS_CLIENT_ID` | QMT realtime client id；仅在 QMT realtime mode 启用时使用 |
+| 变量               | 当前含义                                                               |
+| ------------------ | ---------------------------------------------------------------------- |
+| `TDX_BASE_URL`     | TDX datasource HTTP 地址；Docker 生产值为 `http://tdx-datasource:9001` |
+| `QMT_BASE_URL`     | QMT datasource HTTP 地址；Docker 生产值为 `http://qmt-datasource:9002` |
+| `TDX_WS_CLIENT_ID` | TDX realtime backend leader client id                                  |
+| `QMT_WS_CLIENT_ID` | QMT realtime client id；仅在 QMT realtime mode 启用时使用              |
 
 `DEFAULT_DATA_SOURCE` 接受 `ef`、`tdx` 或 `qmt`。TDX 与 QMT 是两个独立服务，
 TDX request 不接受 `provider=qmt`。
@@ -52,6 +52,22 @@ Datasource 不读取 DAT、不依赖 MiniQMT、`xtquant` 或外部 QMT SDK。Bac
 
 TDX 与 QMT 的字段、复权和 native shape 天生不同；统一业务模型发生在 backend，
 datasource 不强迫两个 provider 返回相同原生结构。
+
+### TDX 两条行情路径
+
+TDX 的 HTTP/WS 是传输方式，不等同于历史/实时语义：
+
+| Mist 路径                      | 数据性质             | TDX native 方法                         | 传输链路                                                                       |
+| ------------------------------ | -------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| `/v1/bars/query`               | 历史 K 序列          | `get_market_data`                       | backend → datasource HTTP → TDX JSON-RPC HTTP                                  |
+| `/ws/realtime/tdx/{client_id}` | 持续实时 native 快照 | terminal-local `tq.get_market_snapshot` | terminal bridge → datasource bridge HTTP POST → datasource WebSocket → backend |
+
+已删除没有生产业务调用方的按需 `/v1/snapshots/query`。实时 bridge 在 TDX
+终端进程内直接调用 `tq.get_market_snapshot`，再通过内部
+`/tdx/bridge/snapshot` HTTP POST 上传完整 native 对象。TDX realtime previous
+close 只接受 exact native `LastClose`，然后由 backend 映射为 canonical
+`prices.lastClose`；`PreClose`、`lastClose` 或大小写/空格变体均不作为 native
+alias。
 
 ## 实时链路
 
@@ -101,11 +117,13 @@ TDX/QMT 都发送 schema v1 `mist.realtime.native_snapshot`，外层包含 `sour
 在 source-specific adapter 中生成同一 `CanonicalRealtimeSnapshot`，并且只有通过
 owner/epoch/sequence fencing 的 frame 才能进入共同 ingress。
 
-Backend 两个 source 目录采用相同职责文件名（例如 `source.service.ts`、
-`realtime/realtime.client.ts`、`realtime/realtime-native.adapter.ts`）；类名仍保留
-`Tdx*`/`Qmt*` 身份。Datasource 同职责代码位于
-`src/datasource/<source>/{provider.py,realtime/runtime.py,realtime/contract.py}`。
-TDX formula/raw 与 QMT command gateway 等 provider-only 能力不制造空壳对称模块。
+Backend source service 使用显式 provider basename：
+`tdx/tdx-source.service.ts`、`qmt/qmt-source.service.ts`；provider 目录已提供充分
+作用域的 realtime 文件仍采用相同职责名，例如 `realtime/realtime.client.ts`。
+类名继续保留 `Tdx*`/`Qmt*` 身份。Datasource 的 owner/command gateway 统一位于
+`src/datasource/<source>/realtime/gateway.py`，contract 位于同级
+`realtime/contract.py`。QMT 独有的 subscription collector 继续使用
+`realtime/runtime.py`；TDX formula/raw 等 provider-only 能力不制造空壳对称模块。
 
 ## 当前持久化边界
 

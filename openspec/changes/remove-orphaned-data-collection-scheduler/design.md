@@ -13,9 +13,10 @@ collection, while `TdxWebSocketService` owns its Nest lifecycle. Keeping the
 orphan therefore provides no fallback but continues to advertise an inactive
 architecture.
 
-Implementation is intentionally delayed until
-`experimental-tdx-realtime-slice` task 7.2 reaches a recorded outcome. This
-keeps the Mist SHA used by Windows HIL stable.
+The earlier experimental HIL gate has been superseded by the accepted
+realtime contract/naming baseline now present on `mist/master`. Cleanup starts
+from commit `cc9ff8f7f49fc9674ce8ec70f0e3d4485874b431` and does not absorb any
+worktree.
 
 ## Goals / Non-Goals
 
@@ -38,12 +39,11 @@ keeps the Mist SHA used by Windows HIL stable.
 
 ## Decisions
 
-### Gate implementation on the current HIL lifecycle
+### Use the accepted master baseline
 
-No source deletion begins while `experimental-tdx-realtime-slice` task 7.2 is
-open. A resolved outcome means either accepted transport HIL evidence or the
-specified reference-quarantine transition. This separates scheduler cleanup
-from the evidence SHAs and rollback boundary of the realtime experiment.
+The cleanup is independent of historical experimental HIL branches. Its
+baseline is the named `master` commit above, and its verification rechecks
+active schedule and realtime ownership without importing worktree content.
 
 ### Prove orphan status again immediately before deletion
 
@@ -82,16 +82,15 @@ must be audited separately before any interface contraction.
 - **Risk: active schedule behavior changes accidentally** → Do not edit the
   schedule controller or polling strategy logic; run their targeted tests and
   the complete backend suite.
-- **Risk: cleanup drifts the HIL build identity** → Enforce the task 7.2 gate
-  before implementation and record the new post-HIL cleanup commit separately.
+- **Risk: cleanup drifts the accepted realtime baseline** → Record the master
+  baseline and keep the cleanup independently revertible.
 - **Trade-off: some optional strategy methods may remain apparently unused** →
   Prefer a narrow, reviewable scheduler deletion over an unapproved interface
   refactor.
 
 ## Migration Plan
 
-1. Confirm `experimental-tdx-realtime-slice` task 7.2 is resolved and record
-   the prerequisite commit/evidence.
+1. Record the accepted `master` baseline and exclude all worktrees.
 2. Re-run the orphan reference inventory against the then-current `master`.
 3. Delete `data-collection.scheduler.ts` and its colocated spec.
 4. Correct stale comments/exports found by the inventory without changing

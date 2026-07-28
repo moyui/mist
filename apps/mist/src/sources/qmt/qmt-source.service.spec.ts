@@ -11,7 +11,7 @@ import {
 } from '@app/shared-data';
 import { PeriodMappingService, UtilsService } from '@app/utils';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
-import { QmtSource } from './source.service';
+import { QmtSource } from './qmt-source.service';
 import { QmtResponse } from './types';
 
 const createInsertBuilderMock = () => ({
@@ -127,8 +127,8 @@ describe('QmtSource', () => {
               high: { '20260703143000': 11.5 },
               low: { '20260703143000': 10.9 },
               close: { '20260703143000': 11.3 },
-              volume: { '20260703143000': 1200 },
-              amount: { '20260703143000': 13560 },
+              volume: { '20260703143000': '1200.12500000' },
+              amount: { '20260703143000': '13560.25000000' },
               stime: { '20260703143000': '20260703143000' },
               preClose: { '20260703143000': 10.8 },
               openInterest: { '20260703143000': 22 },
@@ -179,11 +179,10 @@ describe('QmtSource', () => {
         high: 11.5,
         low: 10.9,
         close: 11.3,
-        volume: 1200,
-        amount: 13560,
+        volume: '1200.125',
+        amount: '13560.25',
         period: Period.THREE_MIN,
         extensions: {
-          fullCode: '600519.SH',
           preClose: 10.8,
           openInterest: 22,
           suspendFlag: 0,
@@ -193,6 +192,81 @@ describe('QmtSource', () => {
         },
       },
     ]);
+  });
+
+  it('keeps an otherwise valid QMT row when volume and amount are null', async () => {
+    const rowKey = '20260703143000';
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        provider: 'qmt',
+        data: {
+          marketData: {
+            '600519.SH': {
+              open: { [rowKey]: 11.1 },
+              high: { [rowKey]: 11.5 },
+              low: { [rowKey]: 10.9 },
+              close: { [rowKey]: 11.3 },
+              volume: { [rowKey]: null },
+              amount: { [rowKey]: null },
+              stime: { [rowKey]: rowKey },
+            },
+          },
+        },
+        meta: null,
+        error: null,
+      },
+    });
+
+    const rows = await service.fetchK({
+      code: '600519',
+      formatCode: '600519.SH',
+      period: Period.ONE_MIN,
+      startDate: new Date('2026-07-03T09:30:00+08:00'),
+      endDate: new Date('2026-07-03T15:00:00+08:00'),
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual(
+      expect.objectContaining({ volume: null, amount: null }),
+    );
+  });
+
+  it('parses QMT epoch-millisecond time when stime is absent', async () => {
+    const barTime = new Date('2026-07-03T14:30:00+08:00');
+    const rowKey = '20260703143000';
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        provider: 'qmt',
+        data: {
+          marketData: {
+            '600519.SH': {
+              open: { [rowKey]: 11.1 },
+              high: { [rowKey]: 11.5 },
+              low: { [rowKey]: 10.9 },
+              close: { [rowKey]: 11.3 },
+              volume: { [rowKey]: '1200' },
+              amount: { [rowKey]: '13560' },
+              time: { [rowKey]: barTime.getTime() },
+            },
+          },
+        },
+        meta: null,
+        error: null,
+      },
+    });
+
+    const rows = await service.fetchK({
+      code: '600519',
+      formatCode: '600519.SH',
+      period: Period.ONE_MIN,
+      startDate: new Date('2026-07-03T09:30:00+08:00'),
+      endDate: new Date('2026-07-03T15:00:00+08:00'),
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].timestamp).toEqual(barTime);
   });
 
   it('formats daily and above request dates as yyyymmdd', async () => {
@@ -262,11 +336,10 @@ describe('QmtSource', () => {
         high: 11.5,
         low: 10.9,
         close: 11.3,
-        volume: 1200,
-        amount: 13560,
+        volume: '1200',
+        amount: '13560',
         period: Period.THREE_MIN,
         extensions: {
-          fullCode: '600519.SH',
           preClose: 10.8,
           openInterest: 22,
           suspendFlag: 0,
@@ -312,7 +385,6 @@ describe('QmtSource', () => {
     expect(extensionInsertBuilder.values).toHaveBeenCalledWith([
       {
         kId: 9,
-        fullCode: '600519.SH',
         preClose: 10.8,
         openInterest: 22,
         suspendFlag: 0,
@@ -323,7 +395,6 @@ describe('QmtSource', () => {
     ]);
     expect(extensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
       [
-        'fullCode',
         'preClose',
         'suspendFlag',
         'openInterest',

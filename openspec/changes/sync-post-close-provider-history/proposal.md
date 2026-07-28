@@ -9,7 +9,7 @@ Redis candle 只代表当日实时产品状态，不能成为 MySQL 历史事实
 - 正式构建和部署现有 `apps/schedule`，使用同一 Mist image 的独立 command、内部 health 和
   `HISTORICAL_SYNC_ENABLED=false` 默认关闭。
 - 先完成 `remove-orphaned-data-collection-scheduler`，不复用或恢复未注册的
-  `DataCollectionScheduler`；替换 schedule app 当前 EastMoney 分钟采集与每分钟 MySQL scan cron。
+  已退休的通用调度抽象；替换 schedule app 当前 EastMoney 分钟采集与每分钟 MySQL scan cron。
 - 对所有 active security 的 enabled TDX/QMT `SecuritySourceConfig` 分别请求目标交易日
   `Period.ONE_MIN`，不只选最高优先级 source；provider 成功返回多少条合法 bar 就保存多少条，
   不要求固定根数或末根覆盖。

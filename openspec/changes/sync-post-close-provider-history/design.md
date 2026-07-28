@@ -3,7 +3,7 @@
 `productize-current-day-realtime-market-data` 定义 Node.js bounded latest snapshot、Redis 当日 candle 和自然日查询边界，
 但 Redis candle 永远不是 MySQL 历史来源。当前 `apps/schedule` 已存在却未进入 Docker image/
 Compose，仍包含 EastMoney 多周期 cron，并在每次采集后调用 MySQL-only `runScan()`。另有
-`DataCollectionScheduler` 未被任何 module 注册，正在独立 cleanup change 中删除。
+未注册的通用采集调度抽象由独立 cleanup change 删除。
 
 TDX/QMT backend source 已能通过 datasource historical HTTP API 拉取 `Period.ONE_MIN` 并沿用
 source-specific `K`/extension upsert。migration 006 是当前生产上限，本 change 不新增 schema。
@@ -20,7 +20,7 @@ source-specific `K`/extension upsert。migration 006 是当前生产上限，本
 **Non-Goals:**
 
 - 不从 Redis candle 写 MySQL，不用 Redis 补 provider 缺口。
-- 不恢复 `DataCollectionScheduler`，不保留 EastMoney 分钟 cron 或 schedule strategy scan。
+- 不恢复已退休的通用调度抽象，不保留 EastMoney 分钟 cron 或 schedule strategy scan。
 - 不修改依赖归档后已接受的 schema-v2 realtime transport/bridge/frame，不重新
   引入 schema-v1 formal epoch/per-symbol sequence，也不实现盘中 collection。
 - 不新增 migration，不改变 B2 只读 MySQL 日 K 的边界。

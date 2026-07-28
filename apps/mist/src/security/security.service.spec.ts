@@ -10,7 +10,11 @@ import {
 import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { DataSource } from '@app/shared-data';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 
 describe('SecurityService', () => {
   let service: SecurityService;
@@ -223,6 +227,7 @@ describe('SecurityService', () => {
       const addSecuritySourceDto: AddSecuritySourceDto = {
         code: '999999',
         source: DataSource.EAST_MONEY,
+        formatCode: 'sh999999',
       };
 
       mockSecurityRepository.findOne.mockResolvedValue(null);
@@ -230,6 +235,127 @@ describe('SecurityService', () => {
       await expect(
         service.addSecuritySource(addSecuritySourceDto),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects an enabled source with an empty provider symbol', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue({
+        id: 1,
+        code: '600000',
+      } as Security);
+      await expect(
+        service.addSecuritySource({
+          code: '600000',
+          source: DataSource.EAST_MONEY,
+          formatCode: '   ',
+          enabled: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockSourceConfigRepository.save).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [DataSource.TDX, '600000'],
+      [DataSource.TDX, '600000.sh'],
+      [DataSource.QMT, 'SH600000'],
+      [DataSource.QMT, 'invalid'],
+    ])(
+      'rejects malformed enabled %s provider symbol %s',
+      async (source, formatCode) => {
+        mockSecurityRepository.findOne.mockResolvedValue({
+          id: 1,
+          code: '600000',
+        } as Security);
+        await expect(
+          service.addSecuritySource({
+            code: '600000',
+            source,
+            formatCode,
+            enabled: true,
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(mockSourceConfigRepository.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it('allows an empty provider symbol only while the source is disabled', async () => {
+      const mockSecurity = {
+        id: 1,
+        code: '600000',
+      } as Security;
+      mockSecurityRepository.findOne.mockResolvedValue(mockSecurity);
+      mockSourceConfigRepository.save.mockResolvedValue(
+        {} as SecuritySourceConfig,
+      );
+
+      await service.addSecuritySource({
+        code: '600000',
+        source: DataSource.TDX,
+        enabled: false,
+      });
+
+      expect(mockSourceConfigRepository.create).toHaveBeenCalledWith({
+        security: mockSecurity,
+        securityId: 1,
+        source: DataSource.TDX,
+        formatCode: '',
+        priority: 0,
+        enabled: false,
+      });
+    });
+
+    it('trims a valid provider symbol before persistence', async () => {
+      const mockSecurity = {
+        id: 1,
+        code: '600000',
+      } as Security;
+      mockSecurityRepository.findOne.mockResolvedValue(mockSecurity);
+      mockSourceConfigRepository.save.mockResolvedValue(
+        {} as SecuritySourceConfig,
+      );
+
+      await service.addSecuritySource({
+        code: '600000',
+        source: DataSource.QMT,
+        formatCode: ' 600000.SH ',
+      });
+
+      expect(mockSourceConfigRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ formatCode: '600000.SH', enabled: true }),
+      );
+    });
+
+    it('preserves an existing provider symbol when a partial update omits formatCode', async () => {
+      const mockSecurity = {
+        id: 1,
+        code: '600000',
+      } as Security;
+      const existingSourceConfig = {
+        id: 10,
+        securityId: 1,
+        source: DataSource.TDX,
+        formatCode: '600000.SH',
+        priority: 10,
+        enabled: false,
+      } as SecuritySourceConfig;
+      mockSecurityRepository.findOne.mockResolvedValue(mockSecurity);
+      mockSourceConfigRepository.findOne.mockResolvedValue(
+        existingSourceConfig,
+      );
+      mockSourceConfigRepository.save.mockResolvedValue(existingSourceConfig);
+
+      await service.addSecuritySource({
+        code: '600000',
+        source: DataSource.TDX,
+        enabled: true,
+      });
+
+      expect(mockSourceConfigRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          formatCode: '600000.SH',
+          priority: 10,
+          enabled: true,
+        }),
+      );
     });
   });
 

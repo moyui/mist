@@ -1,17 +1,25 @@
 import {
   DataSource,
   Period,
+  StrategyAlertEvent,
   StrategyAlertStatus,
+  StrategySignal,
   StrategySignalSource,
   StrategyStatus,
 } from '@app/shared-data';
+import { QueryFailedError } from 'typeorm';
 import { StrategyEvaluationContextBuilder } from './strategy-evaluation-context.builder';
 import { StrategyScanService } from './strategy-scan.service';
 import { StrategyRuleEvaluator } from '../rules/strategy-rule-evaluator';
 
 describe('StrategyScanService', () => {
   const signalTime = new Date('2026-07-07T09:30:00.000Z');
-  const createHarness = (existingAlert = false) => {
+  const mysqlDriverError = (fields: Record<string, string | number>): Error =>
+    Object.assign(new Error(String(fields.sqlMessage ?? '')), fields);
+  const createHarness = (
+    existingAlert = false,
+    alertSaveError: Error | null = null,
+  ) => {
     const strategy = {
       id: 1,
       status: StrategyStatus.ENABLED,
@@ -50,14 +58,36 @@ describe('StrategyScanService', () => {
     const signalRepository = {
       create: jest.fn((input) => ({ ...input })),
       save: jest.fn(async (input) => ({ id: 2, ...input })),
+      manager: undefined as unknown,
     };
     const alertEventRepository = {
       findOne: jest
         .fn()
         .mockResolvedValue(existingAlert ? { id: 9 } : undefined),
       create: jest.fn((input) => ({ ...input })),
-      save: jest.fn(async (input) => ({ id: 3, ...input })),
+      save: alertSaveError
+        ? jest.fn().mockRejectedValue(alertSaveError)
+        : jest.fn(async (input) => ({ id: 3, ...input })),
     };
+    let rolledBack = false;
+    const transactionManager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === StrategySignal) return signalRepository;
+        if (entity === StrategyAlertEvent) return alertEventRepository;
+        throw new Error('unexpected transaction repository');
+      }),
+    };
+    const manager = {
+      transaction: jest.fn(async (callback) => {
+        try {
+          return await callback(transactionManager);
+        } catch (error) {
+          rolledBack = true;
+          throw error;
+        }
+      }),
+    };
+    signalRepository.manager = manager;
     const service = new StrategyScanService(
       definitionRepository as any,
       versionRepository as any,
@@ -75,6 +105,9 @@ describe('StrategyScanService', () => {
       kRepository,
       signalRepository,
       alertEventRepository,
+      manager,
+      transactionManager,
+      wasRolledBack: () => rolledBack,
     };
   };
 
@@ -123,5 +156,110 @@ describe('StrategyScanService', () => {
     });
     expect(signalRepository.save).not.toHaveBeenCalled();
     expect(alertEventRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rolls back and reports no partial success when alert persistence fails', async () => {
+    const failure = new Error('alert write failed');
+    const {
+      service,
+      signalRepository,
+      alertEventRepository,
+      manager,
+      wasRolledBack,
+    } = createHarness(false, failure);
+
+    await expect(service.runScan({})).rejects.toThrow(failure);
+
+    expect(manager.transaction).toHaveBeenCalledTimes(1);
+    expect(signalRepository.save).toHaveBeenCalledTimes(1);
+    expect(alertEventRepository.save).toHaveBeenCalledTimes(1);
+    expect(wasRolledBack()).toBe(true);
+  });
+
+  it('classifies the exact dedupe-index race as a skipped duplicate after rollback', async () => {
+    const duplicate = new QueryFailedError(
+      'INSERT INTO strategy_alert_events ...',
+      [],
+      mysqlDriverError({
+        code: 'ER_DUP_ENTRY',
+        errno: 1062,
+        sqlMessage:
+          "Duplicate entry 'key' for key 'strategy_alert_events.uq_strategy_alert_events_dedupe_key'",
+      }),
+    );
+    const { service, manager, wasRolledBack } = createHarness(false, duplicate);
+
+    const result = await service.runScan({});
+
+    expect(result).toMatchObject({
+      createdSignals: 0,
+      createdAlertEvents: 0,
+      skippedDuplicates: 1,
+    });
+    expect(manager.transaction).toHaveBeenCalledTimes(1);
+    expect(wasRolledBack()).toBe(true);
+  });
+
+  it.each([
+    new QueryFailedError(
+      'INSERT ...',
+      [],
+      mysqlDriverError({
+        code: 'ER_DUP_ENTRY',
+        errno: 1062,
+        sqlMessage: "Duplicate entry 'key' for key 'some_other_unique_index'",
+      }),
+    ),
+    new QueryFailedError(
+      'INSERT ...',
+      [],
+      mysqlDriverError({
+        code: 'ER_LOCK_DEADLOCK',
+        errno: 1213,
+        sqlMessage: 'Deadlock found when trying to get lock',
+      }),
+    ),
+    new Error(
+      'ER_DUP_ENTRY uq_strategy_alert_events_dedupe_key text without driver shape',
+    ),
+  ])('propagates non-dedupe database errors unchanged', async (failure) => {
+    const { service } = createHarness(false, failure);
+
+    await expect(service.runScan({})).rejects.toBe(failure);
+  });
+
+  it('allows one concurrent candidate and classifies the losing insert as duplicate', async () => {
+    const { service, alertEventRepository } = createHarness();
+    const duplicate = new QueryFailedError(
+      'INSERT INTO strategy_alert_events ...',
+      [],
+      mysqlDriverError({
+        code: 'ER_DUP_ENTRY',
+        errno: 1062,
+        sqlMessage:
+          "Duplicate entry 'key' for key 'uq_strategy_alert_events_dedupe_key'",
+      }),
+    );
+    alertEventRepository.save
+      .mockResolvedValueOnce({ id: 3 })
+      .mockRejectedValueOnce(duplicate);
+
+    const results = await Promise.all([
+      service.runScan({}),
+      service.runScan({}),
+    ]);
+
+    expect(results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          createdAlertEvents: 1,
+          skippedDuplicates: 0,
+        }),
+        expect.objectContaining({
+          createdAlertEvents: 0,
+          skippedDuplicates: 1,
+        }),
+      ]),
+    );
   });
 });

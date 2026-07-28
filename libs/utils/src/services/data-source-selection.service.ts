@@ -7,7 +7,7 @@ import { DataSourceService } from './data-source.service';
 /**
  * Shared service for data source selection (方案B)
  *
- * Used by both CollectorService and DataCollectionScheduler to avoid DRY violation
+ * Shared by active collector services and historical collection strategies.
  */
 @Injectable()
 export class DataSourceSelectionService {

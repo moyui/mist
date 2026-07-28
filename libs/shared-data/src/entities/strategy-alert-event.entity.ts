@@ -2,12 +2,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { StrategyAlertStatus } from '../enums/strategy-alert-status.enum';
 
 @Entity({ name: 'strategy_alert_events' })
+@Index('uq_strategy_alert_events_dedupe_key', ['dedupeKey'], { unique: true })
 export class StrategyAlertEvent {
   @PrimaryGeneratedColumn()
   id!: number;

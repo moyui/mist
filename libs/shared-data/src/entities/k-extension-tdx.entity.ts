@@ -30,14 +30,6 @@ export class KExtensionTdx {
   kId!: number;
 
   @Column({
-    type: 'varchar',
-    length: 20,
-    nullable: true,
-    comment: '完整代号',
-  })
-  fullCode: string = '';
-
-  @Column({
     type: 'decimal',
     precision: 16,
     scale: 8,

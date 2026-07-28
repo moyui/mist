@@ -40,4 +40,13 @@ describe('StrategyRuleEvaluator', () => {
 
     expect(result).toEqual({ matched: false });
   });
+
+  it('does not coerce a missing numeric measure to zero', () => {
+    const result = evaluator.evaluate(
+      { field: 'k.amount', operator: 'lte', value: 0 },
+      { k: { amount: null } },
+    );
+
+    expect(result).toEqual({ matched: false });
+  });
 });

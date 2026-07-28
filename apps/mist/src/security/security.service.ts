@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
@@ -9,8 +10,12 @@ import {
   Security,
   SecuritySourceConfig,
   SecurityStatus,
+  DataSource,
 } from '@app/shared-data';
-import { normalizeSecurityCode } from '@app/utils';
+import {
+  isValidSecuritySourceFormatCode,
+  normalizeSecurityCode,
+} from '@app/utils';
 import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 
@@ -74,20 +79,42 @@ export class SecurityService {
         source: addSecuritySourceDto.source,
       },
     });
+    const formatCode =
+      addSecuritySourceDto.formatCode?.trim() ??
+      existingSourceConfig?.formatCode.trim() ??
+      '';
+    const enabled =
+      addSecuritySourceDto.enabled ?? existingSourceConfig?.enabled ?? true;
+    const priority =
+      addSecuritySourceDto.priority ?? existingSourceConfig?.priority ?? 0;
+
+    if (
+      enabled &&
+      !isValidSecuritySourceFormatCode(addSecuritySourceDto.source, formatCode)
+    ) {
+      const expected =
+        addSecuritySourceDto.source === DataSource.TDX ||
+        addSecuritySourceDto.source === DataSource.QMT
+          ? 'a six-digit provider symbol ending in .SH, .SZ, or .BJ'
+          : 'a non-empty provider symbol';
+      throw new BadRequestException(
+        `Enabled ${addSecuritySourceDto.source} source requires formatCode to be ${expected}`,
+      );
+    }
 
     const sourceConfig = existingSourceConfig
       ? Object.assign(existingSourceConfig, {
-          formatCode: addSecuritySourceDto.formatCode || '',
-          priority: addSecuritySourceDto.priority ?? 0,
-          enabled: addSecuritySourceDto.enabled ?? true,
+          formatCode,
+          priority,
+          enabled,
         })
       : this.sourceConfigRepository.create({
           security,
           securityId: security.id,
           source: addSecuritySourceDto.source,
-          formatCode: addSecuritySourceDto.formatCode || '',
-          priority: addSecuritySourceDto.priority ?? 0,
-          enabled: addSecuritySourceDto.enabled ?? true,
+          formatCode,
+          priority,
+          enabled,
         });
 
     await this.sourceConfigRepository.save(sourceConfig);

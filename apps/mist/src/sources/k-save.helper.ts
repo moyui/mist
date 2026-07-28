@@ -1,5 +1,6 @@
 import { DataSource, K, Period, Security } from '@app/shared-data';
 import { EntityManager, In } from 'typeorm';
+import { KDecimal, normalizeKDecimal } from './k-decimal.util';
 
 export const K_UPSERT_COLUMNS = [
   'open',
@@ -22,8 +23,8 @@ export interface BaseKInput {
   high: number;
   low: number;
   close: number;
-  volume: number;
-  amount?: number;
+  volume: KDecimal | null;
+  amount: KDecimal | null;
 }
 
 export async function saveBaseK(
@@ -44,8 +45,8 @@ export async function saveBaseK(
       high: d.high,
       low: d.low,
       close: d.close,
-      volume: BigInt(Math.round(d.volume)),
-      amount: d.amount ?? 0,
+      volume: normalizeKDecimal(d.volume, 'volume'),
+      amount: normalizeKDecimal(d.amount, 'amount'),
     }),
   );
   const kValues = kEntities.map((k) => ({

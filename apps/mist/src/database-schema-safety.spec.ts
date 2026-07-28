@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -23,4 +24,65 @@ describe('database schema safety', () => {
       );
     },
   );
+
+  it('keeps migration 006 byte-identical and aligns alert dedupe metadata', () => {
+    const migration = readFileSync(
+      join(
+        process.cwd(),
+        'deploy/database/migrations/006_strategy_platform_core.sql',
+      ),
+    );
+    const entity = readRepoFile(
+      'libs/shared-data/src/entities/strategy-alert-event.entity.ts',
+    );
+
+    expect(createHash('sha256').update(migration).digest('hex')).toBe(
+      '654937d497a1072fb7880e797f0a63b24e3da7f720cf2d528009a4c3875897a8',
+    );
+    expect(migration.toString('utf8')).toContain(
+      'UNIQUE KEY `uq_strategy_alert_events_dedupe_key` (`dedupe_key`)',
+    );
+    expect(entity).toContain(
+      "@Index('uq_strategy_alert_events_dedupe_key', ['dedupeKey'], { unique: true })",
+    );
+  });
+
+  it('adds a forward-only exact nullable K measure migration', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/007_k_volume_amount_exact_decimal.sql',
+    );
+    const entity = readRepoFile('libs/shared-data/src/entities/k.entity.ts');
+    const audit = readRepoFile('deploy/database/audit-k-decimal-migration.sql');
+
+    expect(migration).toContain('MODIFY COLUMN `volume` decimal(36,8) NULL');
+    expect(migration).toContain('MODIFY COLUMN `amount` decimal(36,8) NULL');
+    expect(entity).toContain("type: 'decimal'");
+    expect(entity).toContain('precision: 36');
+    expect(entity).toContain('scale: 8');
+    expect(entity).toContain('volume: string | null = null');
+    expect(entity).toContain('amount: string | null = null');
+    expect(audit).toContain('normalized_row_digest');
+    expect(audit).toContain('CAST(`volume` AS decimal(36,8))');
+    expect(audit).toContain('CAST(`amount` AS decimal(36,8))');
+  });
+
+  it('removes retired K extension fullCode columns with migration 008', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/008_remove_k_extension_full_code.sql',
+    );
+    const providerAudit = readRepoFile(
+      'deploy/database/audit-provider-format-code.sql',
+    );
+
+    for (const table of [
+      'k_extensions_tdx',
+      'k_extensions_qmt',
+      'k_extensions_ef',
+    ]) {
+      expect(migration).toContain(`ALTER TABLE \`${table}\``);
+    }
+    expect(migration.match(/DROP COLUMN `fullCode`/g)).toHaveLength(3);
+    expect(providerAudit).toContain("`source` IN ('tdx', 'qmt')");
+    expect(providerAudit).toContain("NOT REGEXP '^[0-9]{6}\\\\.(SH|SZ|BJ)$'");
+  });
 });

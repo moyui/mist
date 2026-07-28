@@ -19,12 +19,12 @@ import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
+import { kDecimalFromNumber } from '../k-decimal.util';
 import { saveBaseK } from '../k-save.helper';
 
 const MARKET_TIME_ZONE = 'Asia/Shanghai';
 
 const EF_EXTENSION_UPSERT_COLUMNS = [
-  'fullCode',
   'amplitude',
   'changePct',
   'changeAmt',
@@ -114,8 +114,14 @@ export class EastMoneySource implements ISourceFetcher {
       const high = Number(item['最高']);
       const low = Number(item['最低']);
       const close = Number(item['收盘']);
-      const volume = Number(item['成交量']);
-      const amount = item['成交额'] ? Number(item['成交额']) : undefined;
+      const volume = kDecimalFromNumber(Number(item['成交量']), 'volume');
+      // EastMoney missing-value semantics are outside this change; preserve
+      // its existing zero-filled persistence behavior while adapting the type.
+      const amount =
+        kDecimalFromNumber(
+          item['成交额'] == null ? null : Number(item['成交额']),
+          'amount',
+        ) ?? '0';
 
       // Only create extensions when at least one field is present
       const extAmplitude = item['振幅'] ?? undefined;
@@ -186,8 +192,12 @@ export class EastMoneySource implements ISourceFetcher {
         high: Number(item.high),
         low: Number(item.low),
         close: Number(item.close),
-        volume: Number(item.volume),
-        amount: item.amount ? Number(item.amount) : undefined,
+        volume: kDecimalFromNumber(Number(item.volume), 'volume'),
+        amount:
+          kDecimalFromNumber(
+            item.amount == null ? null : Number(item.amount),
+            'amount',
+          ) ?? '0',
         period,
       }),
     );
@@ -223,7 +233,6 @@ export class EastMoneySource implements ISourceFetcher {
           manager.create(KExtensionEf, {
             k,
             kId: k.id,
-            fullCode: ext.fullCode ?? '',
             amplitude: ext.amplitude ?? 0,
             changePct: ext.changePct ?? 0,
             changeAmt: ext.changeAmt ?? 0,
@@ -237,7 +246,6 @@ export class EastMoneySource implements ISourceFetcher {
       if (extensions.length > 0) {
         const extensionValues = extensions.map((extension) => ({
           kId: extension.kId,
-          fullCode: extension.fullCode,
           amplitude: extension.amplitude,
           changePct: extension.changePct,
           changeAmt: extension.changeAmt,

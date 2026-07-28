@@ -183,7 +183,7 @@ function assertBackendHttpConfigHygiene() {
 
   for (const relativePath of [
     'apps/mist/src/sources/east-money/east-money-source.service.ts',
-    'apps/mist/src/sources/tdx/source.service.ts',
+    'apps/mist/src/sources/tdx/tdx-source.service.ts',
   ]) {
     const content = read(join(repos.mist, relativePath));
     assertIncludes(
@@ -230,7 +230,7 @@ function assertBackendRuntimeSweep() {
   );
 
   const tdxSource = read(
-    join(repos.mist, 'apps/mist/src/sources/tdx/source.service.ts'),
+    join(repos.mist, 'apps/mist/src/sources/tdx/tdx-source.service.ts'),
   );
   assertNotIncludes(
     tdxSource,

@@ -17,6 +17,7 @@ The datasource service SHALL expose HTTP provider readiness on application healt
 - **WHEN** a caller reads `/tdx/bridge/health` or `/qmt/bridge/health`
 - **THEN** the bridge health object MUST expose its readiness as top-level `ready`
 - **AND** both providers MUST use the same owner metadata names
+- **AND** generated OpenAPI MUST describe `ready`, `ownerId`, `ownerGeneration`, and `bridgeBuildId` rather than an unconstrained generic object
 
 #### Scenario: Provider HTTP probe fails
 

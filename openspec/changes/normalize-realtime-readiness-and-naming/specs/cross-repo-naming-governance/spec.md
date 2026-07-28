@@ -35,6 +35,13 @@ Tracked implementation files SHALL use the repository language convention, align
 - **THEN** TypeScript basenames use kebab-case and Python basenames use snake_case
 - **AND** generic names such as `runtime`, `types`, `utils`, or `common` have a narrow directory-scoped responsibility
 
+#### Scenario: Provider source and gateway paths are inspected
+- **WHEN** the TDX and QMT source services and realtime gateways are compared
+- **THEN** backend source services use `tdx-source.service.ts` and `qmt-source.service.ts`
+- **AND** the TDX fetcher contract uses `tdx-source-fetcher.interface.ts`
+- **AND** datasource gateways use `src/datasource/<source>/realtime/gateway.py`
+- **AND** provider-scoped realtime clients may retain the shared basename `realtime.client.ts`
+
 #### Scenario: External or persisted name is encountered
 - **WHEN** a database name, provider-native key, or external API field violates internal naming conventions
 - **THEN** the audit records it as an explicit compatibility boundary

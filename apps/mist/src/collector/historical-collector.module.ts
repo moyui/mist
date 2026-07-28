@@ -22,8 +22,8 @@ import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.
 import { TdxCollectionStrategy } from './strategies/tdx-collection.strategy';
 import { QmtCollectionStrategy } from './strategies/qmt-collection.strategy';
 import { EastMoneySource } from '../sources/east-money/east-money-source.service';
-import { QmtSource } from '../sources/qmt/source.service';
-import { TdxSource } from '../sources/tdx/source.service';
+import { QmtSource } from '../sources/qmt/qmt-source.service';
+import { TdxSource } from '../sources/tdx/tdx-source.service';
 import { UtilsModule } from '@app/utils';
 import { SecurityModule } from '../security/security.module';
 import { TimezoneModule } from '@app/timezone';

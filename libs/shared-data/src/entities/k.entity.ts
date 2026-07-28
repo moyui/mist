@@ -81,18 +81,22 @@ export class K {
   close: number = 0;
 
   @Column({
-    type: 'bigint',
+    type: 'decimal',
+    precision: 36,
+    scale: 8,
+    nullable: true,
     comment: '成交量',
   })
-  volume: bigint = 0n;
+  volume: string | null = null;
 
   @Column({
     type: 'decimal',
-    precision: 20,
-    scale: 2,
+    precision: 36,
+    scale: 8,
+    nullable: true,
     comment: '成交额',
   })
-  amount: number = 0;
+  amount: string | null = null;
 
   // OneToOne relationships to market data extension tables
   @OneToOne(() => KExtensionEf, { eager: false })

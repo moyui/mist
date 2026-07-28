@@ -19,10 +19,7 @@ export class RealtimeNativeMapDecodeError extends Error {
   }
 }
 
-export function decodeRealtimeNativeMapMessage(
-  raw: string,
-  expectedProvider: RealtimeSource,
-): DecodedRealtimeNativeMapMessage {
+export function parseRealtimeMessage(raw: string): Record<string, unknown> {
   if (Buffer.byteLength(raw, 'utf8') > MAX_FRAME_BYTES) {
     throw new RealtimeNativeMapDecodeError('REALTIME_FRAME_BYTES_EXCEEDED');
   }
@@ -32,7 +29,17 @@ export function decodeRealtimeNativeMapMessage(
   } catch {
     throw new RealtimeNativeMapDecodeError('REALTIME_FRAME_JSON_INVALID');
   }
-  if (!isRecord(parsed) || !hasExactKeys(parsed, OUTER_KEYS)) {
+  if (!isRecord(parsed)) {
+    throw new RealtimeNativeMapDecodeError('REALTIME_FRAME_ENVELOPE_INVALID');
+  }
+  return parsed;
+}
+
+export function decodeRealtimeNativeMapMessage(
+  parsed: Record<string, unknown>,
+  expectedProvider: RealtimeSource,
+): DecodedRealtimeNativeMapMessage {
+  if (!hasExactKeys(parsed, OUTER_KEYS)) {
     throw new RealtimeNativeMapDecodeError('REALTIME_FRAME_ENVELOPE_INVALID');
   }
   if (

@@ -8,8 +8,9 @@ surface without changing active collection behavior.
 
 ## What Changes
 
-- Gate implementation until `experimental-tdx-realtime-slice` task 7.2 is
-  resolved, so the deployed HIL candidate SHAs remain stable during validation.
+- Start implementation from the accepted realtime contract/naming baseline on
+  `mist/master`; earlier experimental HIL gating has been superseded by the
+  recorded master baseline.
 - Delete the orphaned `DataCollectionScheduler` implementation and its tests
   after re-confirming that no runtime module, controller, provider, or script
   references it.

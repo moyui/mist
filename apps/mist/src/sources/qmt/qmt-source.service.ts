@@ -13,6 +13,7 @@ import {
   Security,
 } from '@app/shared-data';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
+import { normalizeKDecimal } from '../k-decimal.util';
 import {
   ISourceFetcher,
   KFetchParams,
@@ -48,7 +49,6 @@ const QMT_DEFAULT_FIELDS = [
 ];
 
 const QMT_EXTENSION_UPSERT_COLUMNS = [
-  'fullCode',
   'preClose',
   'suspendFlag',
   'openInterest',
@@ -116,12 +116,7 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
         return [];
       }
 
-      return this.mapSymbolMarketData(
-        symbolData,
-        formatCode,
-        period,
-        nativePeriod,
-      );
+      return this.mapSymbolMarketData(symbolData, period, nativePeriod);
     } catch (error) {
       this.logger.error(`QMT fetchK error: ${error.message}`);
       if (error instanceof HttpException) {
@@ -142,11 +137,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     if (data.length === 0) return;
 
     await this.typeOrmDataSource.transaction(async (manager) => {
-      const sourceConfig = security.sourceConfigs?.find(
-        (sc) => sc.source === DataSource.QMT,
-      );
-      const formatCode = sourceConfig?.formatCode || security.code;
-
       const savedKByTimestamp = await saveBaseK(
         manager,
         data,
@@ -161,7 +151,7 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
           if (!k) return null;
 
           return manager.create(KExtensionQmt, {
-            ...this.buildExtensionPayload(k, d.extensions, formatCode),
+            ...this.buildExtensionPayload(k, d.extensions),
             kId: k.id,
           });
         })
@@ -173,7 +163,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
 
       const extensionValues = extensions.map((extension) => ({
         kId: extension.kId,
-        fullCode: extension.fullCode,
         preClose: extension.preClose,
         openInterest: extension.openInterest,
         suspendFlag: extension.suspendFlag,
@@ -204,14 +193,11 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
 
   private mapSymbolMarketData(
     symbolData: QmtSymbolMarketData,
-    formatCode: string,
     period: Period,
     nativePeriod: string,
   ): QmtResponse[] {
     return this.getRowKeys(symbolData)
-      .map((rowKey) =>
-        this.mapRow(symbolData, rowKey, formatCode, period, nativePeriod),
-      )
+      .map((rowKey) => this.mapRow(symbolData, rowKey, period, nativePeriod))
       .filter((row): row is QmtResponse => row != null)
       .sort(
         (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
@@ -221,7 +207,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
   private mapRow(
     symbolData: QmtSymbolMarketData,
     rowKey: string,
-    formatCode: string,
     period: Period,
     nativePeriod: string,
   ): QmtResponse | null {
@@ -229,26 +214,19 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     const high = this.readNumber(symbolData, ['high'], rowKey);
     const low = this.readNumber(symbolData, ['low'], rowKey);
     const close = this.readNumber(symbolData, ['close'], rowKey);
-    const volume = this.readNumber(symbolData, ['volume'], rowKey);
+    const volume = this.readDecimal(symbolData, ['volume'], rowKey, 'volume');
 
-    if (
-      open == null ||
-      high == null ||
-      low == null ||
-      close == null ||
-      volume == null
-    ) {
+    if (open == null || high == null || low == null || close == null) {
       return null;
     }
 
     const rawTimestamp =
       this.readValue(symbolData, ['stime', 'time'], rowKey) ?? rowKey;
     const timestamp = this.parseQmtTimestamp(rawTimestamp);
-    const amount = this.readNumber(symbolData, ['amount'], rowKey) ?? 0;
+    const amount = this.readDecimal(symbolData, ['amount'], rowKey, 'amount');
     const extensions = this.buildMappedExtension(
       symbolData,
       rowKey,
-      formatCode,
       nativePeriod,
     );
 
@@ -268,11 +246,9 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
   private buildMappedExtension(
     symbolData: QmtSymbolMarketData,
     rowKey: string,
-    formatCode: string,
     nativePeriod: string,
   ): QmtExtension {
     const extension: QmtExtension = {
-      fullCode: formatCode,
       effectiveDividendType: QMT_CANONICAL_DIVIDEND_TYPE,
       nativePeriod,
     };
@@ -343,6 +319,19 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     return Number.isFinite(numeric) ? numeric : null;
   }
 
+  private readDecimal(
+    symbolData: QmtSymbolMarketData,
+    aliases: string[],
+    rowKey: string,
+    fieldName: 'volume' | 'amount',
+  ): string | null {
+    const value = this.readValue(symbolData, aliases, rowKey);
+    if (value == null) {
+      return null;
+    }
+    return normalizeKDecimal(value as string, fieldName);
+  }
+
   private readValue(
     symbolData: QmtSymbolMarketData,
     aliases: string[],
@@ -383,17 +372,18 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/.test(text)) {
       return parseISO(text.replace(' ', 'T') + '+08:00');
     }
+    if (/^\d{13}$/.test(text)) {
+      return new Date(Number(text));
+    }
     return parseISO(text);
   }
 
   private buildExtensionPayload(
     k: K,
     ext: QmtExtension | undefined,
-    fallbackFullCode: string,
   ): Partial<KExtensionQmt> {
     return {
       k,
-      fullCode: ext?.fullCode ?? fallbackFullCode,
       preClose: ext?.preClose ?? null,
       suspendFlag: ext?.suspendFlag ?? null,
       openInterest: ext?.openInterest ?? null,

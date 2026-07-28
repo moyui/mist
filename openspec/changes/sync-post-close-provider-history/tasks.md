@@ -1,7 +1,7 @@
 ## 1. 依赖与收盘同步基线
 
 - [ ] 1.1 确认 `productize-current-day-realtime-market-data` 已归档，并记录 Redis schema、partition manifest、query rollover 和 TTL 的 accepted evidence。
-- [ ] 1.2 先完成并归档 `remove-orphaned-data-collection-scheduler`；重新搜索证明未注册的 `DataCollectionScheduler` 未被恢复或复用。
+- [ ] 1.2 先完成并归档 `remove-orphaned-data-collection-scheduler`；重新搜索证明未注册的通用调度抽象未被恢复或复用。
 - [ ] 1.3 从各仓库最新 `master` 创建全新对应分支，记录 dirty/worktree/remote 状态、生产 SHA、migration `006` checksum、protected-table baseline 和现有 schedule/EastMoney cron inventory。
 - [ ] 1.4 盘点 TDX/QMT `/v1/bars/query`、normalizer、canonical `k` 与 source extension upsert/unique key，确认不需要 migration 后再实现。
 
@@ -9,6 +9,7 @@
 
 - [ ] 2.1 建立 TDX `600030.SH` 与 QMT `300502.SZ` 目标交易日 `Period.ONE_MIN` golden fixtures/SHA，覆盖空集合、任意条数合法非空集合、canonical 与 source-specific extension 字段；不固定预期根数或末根覆盖。
 - [ ] 2.2 在 `mist-datasource` 增加 TDX/QMT target-day query contract tests：明确 symbol/date/period、时区、session、timestamp 排序唯一；成功空集合必须与 provider 错误、超时和 malformed nonempty result 区分，缺少分钟或 final bucket 本身不是 malformed。
+- [x] 2.2a 在既有 QMT backend historical adapter 中支持 `time` 的 13 位 epoch-millisecond 值，保持 `stime` → `time` → row key 优先级、`QmtResponse.timestamp` 和 MySQL `k.timestamp` 不变，并增加无 `stime` 回归测试。
 - [ ] 2.3 以依赖归档后记录的 accepted schema-v2 baseline 为准，保持
   historical API、届时已接受的手工 bridge 行为、formal realtime
   frame/fixture SHA、provider-local bridge fence 和 `builtin|off` 不变；不得

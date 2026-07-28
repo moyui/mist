@@ -40,8 +40,8 @@ describe('saveBaseK', () => {
           high: 11,
           low: 9,
           close: 10.5,
-          volume: 1234.2,
-          amount: undefined,
+          volume: '1234.2',
+          amount: null,
         },
       ],
       security,
@@ -56,8 +56,8 @@ describe('saveBaseK', () => {
         source: DataSource.TDX,
         period: Period.ONE_MIN,
         timestamp,
-        volume: 1234n,
-        amount: 0,
+        volume: '1234.2',
+        amount: null,
       }),
     ]);
     expect(insertBuilder.orUpdate).toHaveBeenCalledWith(
