@@ -51,10 +51,12 @@
     `30330469662/30330585275` durably cleared retained handles and proved an
     empty registry, then QMT restart isolation `30330637703` recreated only
     `qmt-datasource`, preserved unrelated containers and kept journal SHA
-    `7278121a...85bc`. Protected pre-digest `30330711987` fixed the current
-    six-table baseline. The containerization verdict remains `partial` until
-    the dual-source joint soak, matching post-digest and final sanitized
-    manifest review are complete.
+    `7278121a...85bc`. The current trading-session window used protected
+    pre/post runs `30331886288/30334690762`; all six row counts and content
+    digests matched. TDX owner soak run `30332675452` passed 35 samples but is
+    source-only and does not replace the required dual-source soak. The
+    containerization verdict remains `partial` until the dual-source joint
+    soak and final sanitized manifest review are complete.
   - [x] Pinned datasource image/tag/digest, two healthy Compose containers,
     QMT bind, WinSW absence, Compose DNS and TDX
     `host.docker.internal:17709`.
@@ -65,6 +67,7 @@
   - [x] QMT cleanup followed by source-scoped restart isolation with an empty
     registry.
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
-  - [ ] Current protected post-digest matches pre-digest run `30330711987`.
+  - [x] Current protected pre/post digests
+    `30331886288/30334690762` match for all six protected tables.
   - [ ] Final sanitized manifest review with separate verdicts for both
     changes.

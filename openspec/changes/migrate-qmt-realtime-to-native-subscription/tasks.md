@@ -484,9 +484,10 @@
     subId `3`, and captured fresh whole/overlay raw callbacks. Native
     `unsubscribe_quote` returned exact bool `false`; datasource correctly
     returned `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown` and retained both handles.
-    Accepted unsubscribe, repeated released-ID behavior, quota/ID reuse and
-    canonical `eventTime` readback remain unproven, so this task stays
-    unchecked.
+    Current candidate run `30332275918` repeated the fresh whole/overlay
+    capture and proved canonical `eventTime` from provider-native time.
+    Accepted unsubscribe, repeated released-ID behavior and quota/ID reuse
+    remain unproven, so this task stays unchecked.
   - [x] Unique Nest test-only leader, exact integer whole/single IDs, fresh
     whole/overlay callback and changed-symbol common-ingress readback.
   - [x] Unconfirmed unsubscribe returns
@@ -496,8 +497,10 @@
     unauthorized per-item backend rejection.
   - [ ] Accepted unsubscribe, repeated released-ID result, callback stop,
     quota release and later ID reuse classification.
-  - [ ] Canonical QMT `eventTime` readback traced to the exact native
-    `time/stime/timetag` candidates.
+  - [x] Canonical QMT `eventTime` readback traced to provider-native time:
+    current candidate run `30332275918` captured whole
+    `2026-07-28T05:39:51.000Z` and overlay
+    `2026-07-28T05:39:53.000Z`, with no measurement-time fallback.
 - [ ] 10.2 `[Windows QMT operator]` 验证 callback burst、queue bound、
   malformed-one-code isolation、old lease rejection、严格递增
   `callSequence` 及可控延迟下 A-timeout/B-poll/A-late reject 且 B 保持可完成；
@@ -556,9 +559,11 @@
     raw capture, typed-control exact state
     `[] -> [600030] -> [600030,603127] -> [600030]`, three complete
     post-unsubscribe reads with `603127` absent, and cleanup `[]`. The live
-    one-attempt/no-retry/no-item-ack fault, both unsubscribe failure branches
-    and canonical `eventTime` readback remain separate missing evidence, so
-    this task stays unchecked.
+    Current candidate run `30332459772` repeated the exact state, three-cycle
+    absent and cleanup evidence and proved canonical `eventTime=null` when
+    the accepted raw callback has no provider-native time field. The live
+    one-attempt/no-retry/no-item-ack fault and both unsubscribe failure
+    branches remain separate missing evidence, so this task stays unchecked.
   - [x] Fresh raw whole/overlay capture SHA, Nest typed-control exact state,
     common-ingress latest readback and cleanup.
   - [x] Mutation `success:null`, fresh native-list postconditions and three
@@ -573,8 +578,11 @@
   - [ ] Live snapshot one-attempt/no-retry/no-item-ack evidence.
   - [ ] `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` and
     `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown` live failure evidence.
-  - [ ] Canonical TDX `eventTime` readback proving null when the accepted raw
-    callback has no provider-native time field.
+  - [x] Canonical TDX `eventTime` readback proving null when the accepted raw
+    callback has no provider-native time field: current candidate run
+    `30332459772` returned `eventTime=null`,
+    `eventTimeAvailable=false` and `aggregationEligible=false` for both
+    `600030.SH` and `603127.SH`.
 - [ ] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
   terminal/context reload、rollback、old callback rejection 和 protected
   post-digest；验证 QMT `off` 不产生 QMT unavailable 且不停止 TDX metrics，
@@ -599,15 +607,18 @@
     After durable context rebuild cleanup, QMT restart run `30330637703`
     recreated only `qmt-datasource`, preserved every unrelated container,
     kept journal SHA `7278121a...85bc`, retained owner `bigqmt-42196`, and
-    executed no native mutation. Protected pre-digest run `30330711987`
-    fixed the current six-table baseline. The migration verdict remains
-    `partial`; the dual-source joint soak and matching protected post-digest
-    remain required, so this task stays unchecked.
+    executed no native mutation. Current protected pre/post runs
+    `30331886288/30334690762` matched all six row counts and content digests.
+    TDX owner soak run `30332675452` passed 35 samples with one owner, build
+    v2.1, revision `4/4` and no failure, but it is source-only. The migration
+    verdict remains `partial`; the dual-source joint soak remains required,
+    so this task stays unchecked.
   - [x] TDX source-scoped restart isolation and unrelated-container
     stability.
   - [x] QMT controlled cleanup and source-scoped restart isolation.
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
-  - [ ] Current protected post-digest matches pre-digest run `30330711987`.
+  - [x] Current protected pre/post digests
+    `30331886288/30334690762` match for all six protected tables.
 - [ ] 10.5 `[mist]` 按
   `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
   收集非交易时段 evidence；只声明 owner/control/journal/restart/已有 fixture，
@@ -619,9 +630,10 @@
   - 2026-07-28 current verdict: `partial`. QMT positive subscription,
     controlled faults, durable recovery and source-scoped restart evidence
     exist, but accepted bool-`false` unsubscribe postcondition/released-ID
-    behavior, TDX live negative/no-retry/event-time evidence, dual-source
-    joint soak, protected post-digest and final sanitized review remain open.
-    The joint release gate is therefore `blocked`.
+    behavior, TDX live negative/no-retry evidence, dual-source joint soak and
+    final sanitized review remain open. QMT and TDX canonical `eventTime`
+    boundaries plus the current protected post-digest are now proven. The
+    joint release gate is therefore `blocked`.
 
 ## 11. Theme B B1 与 post-close 刷新
 
