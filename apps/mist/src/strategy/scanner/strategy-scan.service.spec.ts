@@ -20,7 +20,7 @@ describe('StrategyScanService', () => {
     existingAlert = false,
     alertSaveError: Error | null = null,
   ) => {
-    const strategy = {
+    const strategy: any = {
       id: 1,
       status: StrategyStatus.ENABLED,
       targetUniverse: ['600519'],
@@ -100,6 +100,8 @@ describe('StrategyScanService', () => {
 
     return {
       service,
+      strategy,
+      version,
       definitionRepository,
       versionRepository,
       kRepository,
@@ -112,7 +114,12 @@ describe('StrategyScanService', () => {
   };
 
   it('persists a live signal and pending alert event when an enabled strategy matches', async () => {
-    const { service, signalRepository, alertEventRepository } = createHarness();
+    const {
+      service,
+      versionRepository,
+      signalRepository,
+      alertEventRepository,
+    } = createHarness();
 
     const result = await service.runScan({});
 
@@ -140,6 +147,25 @@ describe('StrategyScanService', () => {
         status: StrategyAlertStatus.PENDING,
         dedupeKey: '1:7:600519:1440:tdx:2026-07-07T09:30:00.000Z',
       }),
+    );
+    expect(versionRepository.findOne).toHaveBeenCalledWith({
+      where: { id: 7, strategyDefinitionId: 1 },
+    });
+  });
+
+  it('fails closed when an enabled strategy has no current version', async () => {
+    const { service, strategy } = createHarness();
+    strategy.currentVersionId = null;
+
+    await expect(service.runScan({})).rejects.toThrow(/has no current version/);
+  });
+
+  it('fails closed when the current version is missing or foreign', async () => {
+    const { service, versionRepository } = createHarness();
+    versionRepository.findOne.mockResolvedValue(undefined);
+
+    await expect(service.runScan({})).rejects.toThrow(
+      /missing or belongs to another definition/,
     );
   });
 

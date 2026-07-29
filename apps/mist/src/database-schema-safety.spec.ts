@@ -85,4 +85,47 @@ describe('database schema safety', () => {
     expect(providerAudit).toContain("`source` IN ('tdx', 'qmt')");
     expect(providerAudit).toContain("NOT REGEXP '^[0-9]{6}\\\\.(SH|SZ|BJ)$'");
   });
+
+  it('hardens strategy ownership and evidence with migration 009', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/009_strategy_database_integrity.sql',
+    );
+    const audit = readRepoFile(
+      'deploy/database/audit-strategy-database-integrity.sql',
+    );
+
+    expect(migration).toContain(
+      'UNIQUE KEY `uq_strategy_versions_definition_id`',
+    );
+    expect(migration).toContain('FOREIGN KEY (`id`, `current_version_id`)');
+    expect(migration).toContain(
+      "CHECK (`status` <> 'enabled' OR `current_version_id` IS NOT NULL)",
+    );
+    expect(
+      migration.match(/`(?:context|rule)_snapshot` json NOT NULL/g),
+    ).toHaveLength(4);
+    for (const column of [
+      'strategy_definition_id',
+      'strategy_version_id',
+      'period',
+      'source',
+    ]) {
+      expect(migration).toContain(`DROP COLUMN \`${column}\``);
+    }
+    expect(migration).toContain(
+      'UNIQUE KEY `uq_backtest_signal_results_run_security_time`',
+    );
+    for (const checkName of [
+      'current_version_missing_or_foreign',
+      'enabled_definition_without_current_version',
+      'strategy_signal_null_snapshot',
+      'backtest_result_null_snapshot',
+      'backtest_result_run_mismatch',
+      'duplicate_backtest_result_identity',
+    ]) {
+      expect(audit).toContain(`'${checkName}'`);
+    }
+    expect(audit).not.toMatch(/\bUPDATE\b/i);
+    expect(audit).not.toContain('JSON_OBJECT');
+  });
 });

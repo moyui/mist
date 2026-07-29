@@ -232,6 +232,95 @@ describe('QmtSource', () => {
     );
   });
 
+  it.each([
+    ['missing', undefined],
+    ['blank', ''],
+    ['non-numeric', 'not-a-price'],
+    ['NaN', Number.NaN],
+    ['positive infinity', Number.POSITIVE_INFINITY],
+    ['negative infinity', Number.NEGATIVE_INFINITY],
+  ])(
+    'rejects the complete QMT result when required OHLC is %s',
+    async (_caseName, invalidClose) => {
+      const rowKey = '20260703143000';
+      mockAxiosPost.mockResolvedValueOnce({
+        data: {
+          ok: true,
+          provider: 'qmt',
+          data: {
+            marketData: {
+              '600519.SH': {
+                open: { [rowKey]: 11.1 },
+                high: { [rowKey]: 11.5 },
+                low: { [rowKey]: 10.9 },
+                close: { [rowKey]: invalidClose },
+                volume: { [rowKey]: '1200' },
+                amount: { [rowKey]: '13560' },
+                stime: { [rowKey]: rowKey },
+              },
+            },
+          },
+          meta: null,
+          error: null,
+        },
+      });
+
+      await expect(
+        service.fetchK({
+          code: '600519',
+          formatCode: '600519.SH',
+          period: Period.ONE_MIN,
+          startDate: new Date('2026-07-03T09:30:00+08:00'),
+          endDate: new Date('2026-07-03T15:00:00+08:00'),
+        }),
+      ).rejects.toThrow(
+        `QMT_INVALID_REQUIRED_OHLC: symbol=600519.SH rowKey=${rowKey} invalidFields=close`,
+      );
+    },
+  );
+
+  it('preserves explicit numeric zero in QMT required OHLC', async () => {
+    const rowKey = '20260703143000';
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        provider: 'qmt',
+        data: {
+          marketData: {
+            '600519.SH': {
+              open: { [rowKey]: 0 },
+              high: { [rowKey]: 0 },
+              low: { [rowKey]: 0 },
+              close: { [rowKey]: 0 },
+              volume: { [rowKey]: null },
+              amount: { [rowKey]: null },
+              stime: { [rowKey]: rowKey },
+            },
+          },
+        },
+        meta: null,
+        error: null,
+      },
+    });
+
+    await expect(
+      service.fetchK({
+        code: '600519',
+        formatCode: '600519.SH',
+        period: Period.ONE_MIN,
+        startDate: new Date('2026-07-03T09:30:00+08:00'),
+        endDate: new Date('2026-07-03T15:00:00+08:00'),
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        open: 0,
+        high: 0,
+        low: 0,
+        close: 0,
+      }),
+    ]);
+  });
+
   it('parses QMT epoch-millisecond time when stime is absent', async () => {
     const barTime = new Date('2026-07-03T14:30:00+08:00');
     const rowKey = '20260703143000';

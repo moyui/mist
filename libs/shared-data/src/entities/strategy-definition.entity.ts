@@ -2,6 +2,8 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -40,6 +42,16 @@ export class StrategyDefinition {
 
   @Column({ name: 'current_version_id', type: 'int', nullable: true })
   currentVersionId?: number | null;
+
+  @ManyToOne(() => StrategyVersion, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn([
+    { name: 'id', referencedColumnName: 'strategyDefinitionId' },
+    { name: 'current_version_id', referencedColumnName: 'id' },
+  ])
+  currentVersion?: StrategyVersion | null;
 
   @OneToMany(() => StrategyVersion, (version) => version.strategyDefinition)
   versions!: StrategyVersion[];

@@ -109,12 +109,9 @@ export class StrategyBacktestService {
 
         await this.signalResultRepository.save(
           this.signalResultRepository.create({
+            backtestRun: run,
             backtestRunId: run.id,
-            strategyDefinitionId: run.strategyDefinitionId,
-            strategyVersionId: run.strategyVersionId,
             securityCode: row.security.code,
-            period: row.period,
-            source: row.source,
             signalTime: row.timestamp,
             contextSnapshot: context,
             ruleSnapshot: version.rule,

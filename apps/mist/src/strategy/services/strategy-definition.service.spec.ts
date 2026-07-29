@@ -1,5 +1,11 @@
-import { NotFoundException } from '@nestjs/common';
-import { DataSource, Period, StrategyStatus } from '@app/shared-data';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  DataSource,
+  Period,
+  StrategyDefinition,
+  StrategyStatus,
+  StrategyVersion,
+} from '@app/shared-data';
 import { StrategyRuleValidator } from '../rules/strategy-rule-validator';
 import { StrategyDefinitionService } from './strategy-definition.service';
 
@@ -10,6 +16,7 @@ describe('StrategyDefinitionService', () => {
     const definitions: any[] = [];
     const versions: any[] = [];
     const definitionRepository = {
+      manager: undefined as any,
       create: jest.fn((input) => ({ ...input })),
       save: jest.fn(async (entity) => {
         if (!entity.id) {
@@ -42,14 +49,48 @@ describe('StrategyDefinitionService', () => {
             version.strategyDefinitionId === where.strategyDefinitionId,
         );
       }),
+      findOne: jest.fn(async ({ where }) => {
+        return versions.find(
+          (version) =>
+            version.id === where.id &&
+            (where.strategyDefinitionId === undefined ||
+              version.strategyDefinitionId === where.strategyDefinitionId),
+        );
+      }),
     };
+    const transaction = jest.fn(async (callback) => {
+      const definitionsBefore = definitions.map((value) => ({ ...value }));
+      const versionsBefore = versions.map((value) => ({ ...value }));
+      const transactionManager = {
+        getRepository: jest.fn((entity) => {
+          if (entity === StrategyDefinition) return definitionRepository;
+          if (entity === StrategyVersion) return versionRepository;
+          throw new Error('unexpected transaction repository');
+        }),
+      };
+      try {
+        return await callback(transactionManager);
+      } catch (error) {
+        definitions.splice(0, definitions.length, ...definitionsBefore);
+        versions.splice(0, versions.length, ...versionsBefore);
+        throw error;
+      }
+    });
+    definitionRepository.manager = { transaction };
     const service = new StrategyDefinitionService(
       definitionRepository as any,
       versionRepository as any,
       new StrategyRuleValidator(),
     );
 
-    return { service, definitions, versions };
+    return {
+      service,
+      definitions,
+      versions,
+      definitionRepository,
+      versionRepository,
+      transaction,
+    };
   };
 
   const createDto = {
@@ -131,5 +172,70 @@ describe('StrategyDefinitionService', () => {
     const { service } = createHarness();
 
     await expect(service.findById(404)).rejects.toThrow(NotFoundException);
+  });
+
+  it('rolls back definition creation when initial version persistence fails', async () => {
+    const { service, definitions, versions, versionRepository, transaction } =
+      createHarness();
+    versionRepository.save.mockRejectedValueOnce(
+      new Error('version write failed'),
+    );
+
+    await expect(service.create(createDto)).rejects.toThrow(
+      'version write failed',
+    );
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(definitions).toEqual([]);
+    expect(versions).toEqual([]);
+  });
+
+  it('rolls back a rule update when the current-version pointer cannot be saved', async () => {
+    const {
+      service,
+      definitions,
+      versions,
+      definitionRepository,
+      transaction,
+    } = createHarness();
+    const strategy = await service.create(createDto);
+    definitionRepository.save.mockRejectedValueOnce(
+      new Error('definition update failed'),
+    );
+
+    await expect(
+      service.update(strategy.id, {
+        description: 'must roll back',
+        rule: { field: 'k.close', operator: 'gt', value: 100 },
+      }),
+    ).rejects.toThrow('definition update failed');
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(definitions).toHaveLength(1);
+    expect(definitions[0]).toMatchObject({
+      description: createDto.description,
+      currentVersionId: 1,
+    });
+    expect(versions).toHaveLength(1);
+  });
+
+  it('rejects enablement when the current version is missing', async () => {
+    const { service, definitions } = createHarness();
+    const strategy = await service.create(createDto);
+    definitions[0].currentVersionId = null;
+
+    await expect(service.enable(strategy.id)).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
+  it('rejects enablement when the current version belongs to another definition', async () => {
+    const { service, versions } = createHarness();
+    const strategy = await service.create(createDto);
+    versions[0].strategyDefinitionId = 99;
+
+    await expect(service.enable(strategy.id)).rejects.toThrow(
+      /missing or belongs to another definition/,
+    );
   });
 });

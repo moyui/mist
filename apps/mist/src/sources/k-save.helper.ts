@@ -27,6 +27,27 @@ export interface BaseKInput {
   amount: KDecimal | null;
 }
 
+const REQUIRED_PRICE_FIELDS = ['open', 'high', 'low', 'close'] as const;
+
+function assertFiniteRequiredPrices(data: BaseKInput[]): void {
+  data.forEach((row, index) => {
+    const invalidFields = REQUIRED_PRICE_FIELDS.filter(
+      (field) => !Number.isFinite(row[field]),
+    );
+    if (invalidFields.length === 0) {
+      return;
+    }
+
+    const timestamp =
+      row.timestamp instanceof Date && Number.isFinite(row.timestamp.getTime())
+        ? row.timestamp.toISOString()
+        : String(row.timestamp);
+    throw new TypeError(
+      `Invalid required K prices at row ${index} (timestamp=${timestamp}): ${invalidFields.join(', ')} must be finite numbers`,
+    );
+  });
+}
+
 export async function saveBaseK(
   manager: EntityManager,
   data: BaseKInput[],
@@ -34,6 +55,8 @@ export async function saveBaseK(
   source: DataSource,
   period: Period,
 ): Promise<Map<number, K>> {
+  assertFiniteRequiredPrices(data);
+
   const kEntities = data.map((d) =>
     manager.create(K, {
       security,

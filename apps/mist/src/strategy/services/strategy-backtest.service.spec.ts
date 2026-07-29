@@ -116,16 +116,18 @@ describe('StrategyBacktestService', () => {
     expect(resultRepository.save).toHaveBeenCalledTimes(1);
     expect(resultRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
+        backtestRun: expect.objectContaining({ id: 1 }),
         backtestRunId: 1,
-        strategyDefinitionId: 3,
-        strategyVersionId: 9,
         securityCode: '600519',
-        period: Period.DAY,
-        source: DataSource.TDX,
         signalTime: new Date('2026-01-02T00:00:00.000Z'),
         ruleSnapshot: { field: 'k.close', operator: 'gt', value: 100 },
       }),
     );
+    const persistedResult = resultRepository.save.mock.calls[0][0];
+    expect(persistedResult).not.toHaveProperty('strategyDefinitionId');
+    expect(persistedResult).not.toHaveProperty('strategyVersionId');
+    expect(persistedResult).not.toHaveProperty('period');
+    expect(persistedResult).not.toHaveProperty('source');
     expect(run).not.toHaveProperty('cash');
     expect(run).not.toHaveProperty('positions');
     expect(run).not.toHaveProperty('orders');

@@ -3,10 +3,13 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { StrategyAlertStatus } from '../enums/strategy-alert-status.enum';
+import { StrategySignal } from './strategy-signal.entity';
 
 @Entity({ name: 'strategy_alert_events' })
 @Index('uq_strategy_alert_events_dedupe_key', ['dedupeKey'], { unique: true })
@@ -16,6 +19,10 @@ export class StrategyAlertEvent {
 
   @Column({ name: 'strategy_signal_id', type: 'int' })
   strategySignalId: number = 0;
+
+  @ManyToOne(() => StrategySignal, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'strategy_signal_id' })
+  strategySignal!: StrategySignal;
 
   @Column({
     type: 'enum',

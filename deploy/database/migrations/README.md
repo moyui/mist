@@ -94,3 +94,39 @@ Deploy migration `008` and the application that no longer reads or writes
 must not run together. Rollback requires restoring the pre-migration database
 backup together with the previous application SHA because the removed values
 cannot be reconstructed reliably.
+
+## Strategy database integrity migration
+
+Before applying `009_strategy_database_integrity.sql`, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-strategy-database-integrity.sql
+```
+
+Every `violation_count` must be zero. The audit checks:
+
+- non-null current versions that are missing or belong to another definition;
+- enabled definitions without a current version;
+- NULL context/rule snapshots in live and backtest signal rows;
+- backtest result strategy/version/period/source values that disagree with the
+  owning run;
+- duplicate `(backtest_run_id, security_code, signal_time)` identities.
+
+Do not replace missing snapshots with `{}`. Remove only explicitly identified
+test rows, or reconstruct a snapshot only when exact source evidence exists.
+
+Migration `009` makes snapshots non-null, adds current-version ownership and
+enabled-version constraints, removes run-owned columns from
+`backtest_signal_results`, and adds the result unique key. It must ship with the
+matching backend and frontend in one maintenance window. Take and verify a
+database backup first. Rollback requires restoring that backup together with
+the prior backend and frontend SHAs because the dropped result columns are not
+recoverable from the new schema alone.
+
+The composite current-version foreign key intentionally rejects directly
+deleting a definition that still points at a current version. There is no
+product hard-delete API; normal lifecycle removal uses `archived`. For an
+explicit maintenance delete, first change the definition to a non-enabled
+status and set `current_version_id` to NULL, then delete it. The existing
+definition-owned cascades will remove versions and dependent rows.

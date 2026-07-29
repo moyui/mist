@@ -116,7 +116,12 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
         return [];
       }
 
-      return this.mapSymbolMarketData(symbolData, period, nativePeriod);
+      return this.mapSymbolMarketData(
+        formatCode,
+        symbolData,
+        period,
+        nativePeriod,
+      );
     } catch (error) {
       this.logger.error(`QMT fetchK error: ${error.message}`);
       if (error instanceof HttpException) {
@@ -192,24 +197,27 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
   }
 
   private mapSymbolMarketData(
+    providerSymbol: string,
     symbolData: QmtSymbolMarketData,
     period: Period,
     nativePeriod: string,
   ): QmtResponse[] {
     return this.getRowKeys(symbolData)
-      .map((rowKey) => this.mapRow(symbolData, rowKey, period, nativePeriod))
-      .filter((row): row is QmtResponse => row != null)
+      .map((rowKey) =>
+        this.mapRow(providerSymbol, symbolData, rowKey, period, nativePeriod),
+      )
       .sort(
         (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
       );
   }
 
   private mapRow(
+    providerSymbol: string,
     symbolData: QmtSymbolMarketData,
     rowKey: string,
     period: Period,
     nativePeriod: string,
-  ): QmtResponse | null {
+  ): QmtResponse {
     const open = this.readNumber(symbolData, ['open'], rowKey);
     const high = this.readNumber(symbolData, ['high'], rowKey);
     const low = this.readNumber(symbolData, ['low'], rowKey);
@@ -217,7 +225,16 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     const volume = this.readDecimal(symbolData, ['volume'], rowKey, 'volume');
 
     if (open == null || high == null || low == null || close == null) {
-      return null;
+      const invalidFields = [
+        ...(open == null ? ['open'] : []),
+        ...(high == null ? ['high'] : []),
+        ...(low == null ? ['low'] : []),
+        ...(close == null ? ['close'] : []),
+      ];
+      throw new HttpException(
+        `QMT_INVALID_REQUIRED_OHLC: symbol=${providerSymbol} rowKey=${rowKey} invalidFields=${invalidFields.join(',')}`,
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     const rawTimestamp =
@@ -295,7 +312,16 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
 
   private getRowKeys(symbolData: QmtSymbolMarketData): string[] {
     const keys = new Set<string>();
-    for (const field of ['open', 'high', 'low', 'close', 'volume']) {
+    for (const field of [
+      'open',
+      'high',
+      'low',
+      'close',
+      'volume',
+      'amount',
+      'time',
+      'stime',
+    ]) {
       const column = symbolData[field];
       if (Array.isArray(column)) {
         column.forEach((_, index) => keys.add(String(index)));

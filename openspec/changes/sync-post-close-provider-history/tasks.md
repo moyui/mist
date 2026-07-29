@@ -1,3 +1,7 @@
+> **延期说明（2026-07-29）**：本 change 当前不授权实施。`apps/schedule` 包和现有行为暂时
+> 保留；未完成任务仅作为以后逐项讨论的候选清单。恢复前必须重新确认 owner、现有 cron/
+> `runScan()` 去留、TDX/QMT 范围、readback digest 和 Redis cleanup 契约。
+
 ## 1. 依赖与收盘同步基线
 
 - [ ] 1.1 确认 `productize-current-day-realtime-market-data` 已归档，并记录 Redis schema、partition manifest、query rollover 和 TTL 的 accepted evidence。

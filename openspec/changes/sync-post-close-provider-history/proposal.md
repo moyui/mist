@@ -4,6 +4,24 @@ Redis candle 只代表当日实时产品状态，不能成为 MySQL 历史事实
 历史接口回填各自 source-specific 1 分钟 K，并在逐项验证成功后安全清理对应 Redis 分区，才能让
 次日查询稳定地只依赖 provider 权威历史。
 
+## 当前状态与授权边界（2026-07-29）
+
+本 change 当前是**延期草案**，不授权修改或部署 `apps/schedule`。恢复实施前必须重新逐项评审
+proposal、design、specs 和未完成 tasks，不能因为已有详细草案就推定方案已经确认。
+
+当前只确认以下边界：
+
+- `apps/schedule` 包必须保留；它后续除历史同步外还可能承载其他内部任务，本 change 不删除、
+  不改名，也不把它收缩成只能存在一个用途的包。
+- 现有 EastMoney cron 和采集后 `StrategyScanService.runScan()` 暂时保持现状。是否删除、替换或
+  迁移到其他 owner，留待以后重新讨论。
+- TDX/QMT 收盘后权威历史同步、MySQL readback digest 和 Redis 精确清理是未来候选能力，当前
+  均未授权实施；具体 source、market、时间窗、空集合、重试、digest 和 cleanup 规则仍可修改。
+- 当前生产 Compose 继续不部署 `apps/schedule`。未来任何启用必须有独立 feature flag、dry-run、
+  隔离验证和生产发布审批。
+
+下面的 “What Changes”、delta specs 和 tasks 记录的是后续讨论底稿，不表示当前生产承诺。
+
 ## What Changes
 
 - 正式构建和部署现有 `apps/schedule`，使用同一 Mist image 的独立 command、内部 health 和

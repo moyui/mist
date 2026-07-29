@@ -54,7 +54,7 @@ export class K {
     scale: 2,
     comment: '开盘价',
   })
-  open: number = 0;
+  open: number = Number.NaN;
 
   @Column({
     type: 'decimal',
@@ -62,7 +62,7 @@ export class K {
     scale: 2,
     comment: '最高价',
   })
-  high: number = 0;
+  high: number = Number.NaN;
 
   @Column({
     type: 'decimal',
@@ -70,7 +70,7 @@ export class K {
     scale: 2,
     comment: '最低价',
   })
-  low: number = 0;
+  low: number = Number.NaN;
 
   @Column({
     type: 'decimal',
@@ -78,7 +78,7 @@ export class K {
     scale: 2,
     comment: '收盘价',
   })
-  close: number = 0;
+  close: number = Number.NaN;
 
   @Column({
     type: 'decimal',

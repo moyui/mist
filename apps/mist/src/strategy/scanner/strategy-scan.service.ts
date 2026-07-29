@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   K,
@@ -47,7 +47,6 @@ export class StrategyScanService {
 
     for (const definition of definitions) {
       const version = await this.loadCurrentVersion(definition);
-      if (!version) continue;
 
       const periods = dto.period ? [dto.period] : definition.periods;
       const sources = dto.source ? [dto.source] : definition.sources;
@@ -147,11 +146,24 @@ export class StrategyScanService {
 
   private async loadCurrentVersion(
     definition: StrategyDefinition,
-  ): Promise<StrategyVersion | null> {
-    if (!definition.currentVersionId) return null;
-    return await this.versionRepository.findOne({
-      where: { id: definition.currentVersionId },
+  ): Promise<StrategyVersion> {
+    if (definition.currentVersionId == null) {
+      throw new ConflictException(
+        `Enabled strategy definition ${definition.id} has no current version`,
+      );
+    }
+    const version = await this.versionRepository.findOne({
+      where: {
+        id: definition.currentVersionId,
+        strategyDefinitionId: definition.id,
+      },
     });
+    if (!version) {
+      throw new ConflictException(
+        `Enabled strategy definition ${definition.id} current version ${definition.currentVersionId} is missing or belongs to another definition`,
+      );
+    }
+    return version;
   }
 
   private async loadLatestK(
