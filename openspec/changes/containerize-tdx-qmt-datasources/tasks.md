@@ -59,6 +59,19 @@
     `off-session-final-review-2026-07-28.md/.json`. The containerization
     verdict remains `partial` until the dual-source joint freshness soak is
     complete.
+  - 2026-07-29 quality-governance requalification: the one-time Docker
+    cutover and WinSW-removal evidence remains accepted, but the current
+    datasource candidate is now
+    `c8b140b07f9d053c547e1e696f5a1779d0368b12`, resolved as
+    `sha256:5b844cb5add96085cd5a58de575f9029716a80ca1ad0f98f5f2af81412caac55`.
+    Normal deploy run `30439521072` started both datasource containers and
+    then correctly rolled back because the TDX terminal bridge owner did not
+    register. Recovery run `30439986842` restarted and logged into TDX but
+    likewise observed no owner. Maintenance deploy `30440335811` may correct
+    the running image identity with health checks explicitly skipped; it does
+    not complete this task. Current normalized readiness, a subsequent normal
+    health-gated deploy, current protected digests and the dual-source joint
+    soak remain required.
   - [x] Pinned datasource image/tag/digest, two healthy Compose containers,
     QMT bind, WinSW absence, Compose DNS and TDX
     `host.docker.internal:17709`.

@@ -458,6 +458,21 @@
   记录 intended full SHA、Compose `.env` resolved image 与 running container
   image ID；三者不一致时不得进入 HIL，也不得把“running container 暂时健康”
   当作下一次 `docker compose run/up` 会使用同一 image 的证明。
+  - 2026-07-29 requalification: a later full-stack deploy had drifted the
+    datasource to `ddbbdd0a...`. Normal correction run `30439521072` resolved
+    intended `c8b140b...` to
+    `sha256:5b844cb5add96085cd5a58de575f9029716a80ca1ad0f98f5f2af81412caac55`
+    but rolled back because no TDX bridge owner registered. TDX recovery run
+    `30439986842` also ended owner-missing. Maintenance deploy
+    `30440335811` is image correction only and cannot complete 9.4 until a
+    subsequent normal health-gated deployment proves resolved/running identity
+    and normalized readiness.
+  - QMT source-scoped mode/recovery runs
+    `30440749753/30440938384` restored `builtin` and published the required
+    durable context-rebuild observation. Final smoke `30441051512` proved
+    `subscriptions.ready=true`, journal healthy, no reconciliation required,
+    an empty registry and owner `bigqmt-29616`. TDX current probe
+    `30440607292` remains blocked by the missing terminal bridge owner.
 - [ ] 9.5 **阶段门**：routes、owner lease、journal、control readiness 与
   protected pre-digest 正确，并且 candidate/recovery image preflight 已通过后，
   只允许进入 test-only HIL。不得把 QMT builtin ready、空 registry 或 HIL
@@ -553,6 +568,10 @@
       canonical readback、两次 bool `true` 取消和空 registry 清理；由于运行
       在收盘后且 whole `300502.SZ` 未在 90 秒内产生新 callback，它不能替代
       本补验，也不得被改写为完整绿色 HIL。
+    - 治理后边界：run `30430369735` 的 exact bool `true`、durable
+      transition 与清理证据继续有效；但它之后发生过 datasource image drift。
+      下一次交易时段必须在运行中的 exact `c8b140b...` 镜像、normalized
+      readiness 与新 pre-digest 下重新证明 fresh whole + overlay。
 - [ ] 10.2 `[Windows QMT operator]` 验证 callback burst、queue bound、
   malformed-one-code isolation、old lease rejection、严格递增
   `callSequence` 及可控延迟下 A-timeout/B-poll/A-late reject 且 B 保持可完成；
@@ -581,6 +600,11 @@
     `bigqmt-24108 -> bigqmt-42196`, published durable observation sequence
     `40`, cleared retained handles, and post-smoke run `30330585275` proved
     `ready=true/reconciliationRequired=false`.
+  - [ ] Current-candidate requalification: datasource CI run `30428635434`
+    covers the `c8b140b...` code line, but exact-image Windows controlled
+    faults must be rerun after the maintenance deployment is independently
+    confirmed. Historical green runs remain retained and are not relabelled as
+    current-image evidence.
 - [ ] 10.3 `[Windows TDX operator/mist]` 停止或隔离正常 backend 的 TDX
   client，以同类 test-only Nest in-process harness 作为唯一 leader 调用四个
   TDX control methods，并执行受影响链路 HIL：验证 bridge snapshot
@@ -635,6 +659,12 @@
     `30332459772` returned `eventTime=null`,
     `eventTimeAvailable=false` and `aggregationEligible=false` for both
     `600030.SH` and `603127.SH`.
+  - [ ] Quality-governance requalification: prior TDX HIL is historical after
+    the exact `LastClose` converter and normalized readiness changes. Re-run
+    raw `LastClose` -> formal v2 -> `prices.lastClose` -> common ingress,
+    typed control and three absent cycles on the current candidate. Runs
+    `30439521072/30439986842` additionally prove that the TDX terminal bridge
+    owner is currently missing, so no current TDX HIL can be credited yet.
 - [ ] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
   terminal/context reload、rollback、old callback rejection 和 protected
   post-digest；验证 QMT `off` 不产生 QMT unavailable 且不停止 TDX metrics，
@@ -665,6 +695,12 @@
     v2.1, revision `4/4` and no failure, but it is source-only. The migration
     verdict remains `partial`; the dual-source joint soak remains required,
     so this task stays unchecked.
+  - 2026-07-29 current-image correction evidence: normal deploy
+    `30439521072` resolved the required c8 image/digest but rolled back on
+    missing TDX owner; recovery `30439986842` did not restore the owner.
+    Maintenance deploy `30440335811` is recorded as a controlled,
+    health-skipped image correction and cannot replace source readiness,
+    restart isolation, current protected digests or joint soak evidence.
   - [x] TDX source-scoped restart isolation and unrelated-container
     stability.
   - [x] QMT controlled cleanup and source-scoped restart isolation.
@@ -694,6 +730,10 @@
     final sanitized review is complete. QMT and TDX
     canonical `eventTime` boundaries plus the current protected post-digest
     are now proven. The joint release gate is therefore `blocked`.
+  - 2026-07-29 governance verdict remains `partial/blocked`: exact QMT bool
+    semantics are retained, while current-image normalized readiness,
+    QMT whole/overlay, TDX LastClose/live faults, protected digests and the
+    joint soak must be requalified under the shared acceptance entry.
 
 ## 11. Theme B B1 与 post-close 刷新
 
@@ -742,6 +782,12 @@
     four byte-identical formal v2 copies and sidecars, exact-ref Mist,
     datasource and deploy CI, and sanitized manifest review are recorded in
     `off-session-final-review-2026-07-28.md/.json`.
+  - [ ] 2026-07-29 governance portion: OpenSpec strict validation now covers
+    57 specs and the formal v2 SHA remains unchanged. Current heads and the
+    c8 image digest are recorded in
+    `quality-governance-requalification-2026-07-29.md/.json`, but normal
+    deployment readiness, current protected digests, trading HIL and the joint
+    soak remain open.
   - [ ] Trading-session portion: required dual-source freshness soak and final
     pass verdicts remain open, so task 12.3 itself stays unchecked.
 - [x] 12.4 `[mist]` 使用已记录的 OpenSpec CLI `1.6.0` 完成 focused 与
