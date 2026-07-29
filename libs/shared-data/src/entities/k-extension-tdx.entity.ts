@@ -30,6 +30,7 @@ export class KExtensionTdx {
   kId!: number;
 
   @Column({
+    name: 'forward_factor',
     type: 'decimal',
     precision: 16,
     scale: 8,
@@ -39,6 +40,7 @@ export class KExtensionTdx {
   forwardFactor: number | null = null;
 
   @Column({
+    name: 'vol_in_stock',
     type: 'decimal',
     precision: 20,
     scale: 2,
@@ -48,6 +50,7 @@ export class KExtensionTdx {
   volInStock: number | null = null;
 
   @Column({
+    name: 'backward_factor',
     type: 'decimal',
     precision: 16,
     scale: 8,
@@ -57,6 +60,7 @@ export class KExtensionTdx {
   backwardFactor: number | null = null;
 
   @Column({
+    name: 'volume_ratio',
     type: 'decimal',
     precision: 10,
     scale: 2,
@@ -66,6 +70,7 @@ export class KExtensionTdx {
   volumeRatio: number | null = null;
 
   @Column({
+    name: 'turnover_rate',
     type: 'decimal',
     precision: 10,
     scale: 2,
@@ -75,6 +80,7 @@ export class KExtensionTdx {
   turnoverRate: number | null = null;
 
   @Column({
+    name: 'turnover_amount',
     type: 'decimal',
     precision: 20,
     scale: 2,
@@ -84,6 +90,7 @@ export class KExtensionTdx {
   turnoverAmount: number | null = null;
 
   @Column({
+    name: 'total_market_value',
     type: 'decimal',
     precision: 20,
     scale: 2,
@@ -93,6 +100,7 @@ export class KExtensionTdx {
   totalMarketValue: number | null = null;
 
   @Column({
+    name: 'float_market_value',
     type: 'decimal',
     precision: 20,
     scale: 2,
@@ -102,6 +110,7 @@ export class KExtensionTdx {
   floatMarketValue: number | null = null;
 
   @Column({
+    name: 'earnings_per_share',
     type: 'decimal',
     precision: 10,
     scale: 2,
@@ -111,6 +120,7 @@ export class KExtensionTdx {
   earningsPerShare: number | null = null;
 
   @Column({
+    name: 'price_earnings_ratio',
     type: 'decimal',
     precision: 8,
     scale: 2,
@@ -120,6 +130,7 @@ export class KExtensionTdx {
   priceEarningsRatio: number | null = null;
 
   @Column({
+    name: 'price_to_book_ratio',
     type: 'decimal',
     precision: 6,
     scale: 2,

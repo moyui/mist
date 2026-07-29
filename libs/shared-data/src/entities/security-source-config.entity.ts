@@ -36,6 +36,7 @@ export class SecuritySourceConfig {
   source: DataSource = DataSource.EAST_MONEY;
 
   @Column({
+    name: 'format_code',
     type: 'varchar',
     length: 50,
     comment: '数据源特定的代码格式',

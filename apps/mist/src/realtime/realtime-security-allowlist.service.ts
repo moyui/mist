@@ -106,12 +106,15 @@ export class RealtimeSecurityAllowlistService {
   ): Promise<RealtimeAllowlistEntry> {
     const rows = await this.sourceConfigs
       .createQueryBuilder('cfg')
-      .innerJoin(Security, 'sec', 'sec.id = cfg.securityId')
+      .innerJoin(Security, 'sec', 'sec.id = cfg.security_id')
       .where('cfg.source = :source', { source })
       .andWhere('cfg.enabled = :enabled', { enabled: true })
       .andWhere('sec.status = :status', { status: SecurityStatus.ACTIVE })
-      .andWhere('BINARY cfg.formatCode = :formatCode', { formatCode })
-      .select(['cfg.securityId AS securityId', 'cfg.formatCode AS formatCode'])
+      .andWhere('BINARY cfg.format_code = :formatCode', { formatCode })
+      .select([
+        'cfg.security_id AS securityId',
+        'cfg.format_code AS formatCode',
+      ])
       .getRawMany<RealtimeAllowlistEntry>();
 
     if (rows.length !== 1) {

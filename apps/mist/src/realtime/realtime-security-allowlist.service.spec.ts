@@ -40,7 +40,7 @@ describe('RealtimeSecurityAllowlistService', () => {
     expect(service.isAuthorized(DataSource.TDX, '600030.SH')).toBe(true);
     expect(service.isAuthorized(DataSource.TDX, '600030.sh')).toBe(false);
     expect(builder.andWhere).toHaveBeenCalledWith(
-      'BINARY cfg.formatCode = :formatCode',
+      'BINARY cfg.format_code = :formatCode',
       { formatCode: '600030.SH' },
     );
   });

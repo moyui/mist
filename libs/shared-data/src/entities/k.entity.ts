@@ -115,6 +115,6 @@ export class K {
   updateTime!: Date;
 
   // Virtual column for securityId to support the unique constraint
-  @Column({ select: false })
+  @Column({ name: 'security_id', select: false })
   securityId: number = 0;
 }

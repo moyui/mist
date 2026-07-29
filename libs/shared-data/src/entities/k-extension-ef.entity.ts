@@ -39,6 +39,7 @@ export class KExtensionEf {
   amplitude: number | null = null;
 
   @Column({
+    name: 'change_pct',
     type: 'decimal',
     precision: 10,
     scale: 2,
@@ -48,6 +49,7 @@ export class KExtensionEf {
   changePct: number | null = null;
 
   @Column({
+    name: 'change_amt',
     type: 'decimal',
     precision: 12,
     scale: 3,
@@ -57,6 +59,7 @@ export class KExtensionEf {
   changeAmt: number | null = null;
 
   @Column({
+    name: 'turnover_rate',
     type: 'decimal',
     precision: 10,
     scale: 2,
@@ -66,6 +69,7 @@ export class KExtensionEf {
   turnoverRate: number | null = null;
 
   @Column({
+    name: 'volume_count',
     type: 'bigint',
     nullable: true,
     comment: '成交笔数',
@@ -73,6 +77,7 @@ export class KExtensionEf {
   volumeCount: bigint | null = null;
 
   @Column({
+    name: 'inner_volume',
     type: 'bigint',
     nullable: true,
     comment: '内盘量',
@@ -80,6 +85,7 @@ export class KExtensionEf {
   innerVolume: bigint | null = null;
 
   @Column({
+    name: 'outer_volume',
     type: 'bigint',
     nullable: true,
     comment: '外盘量',
@@ -87,6 +93,7 @@ export class KExtensionEf {
   outerVolume: bigint | null = null;
 
   @Column({
+    name: 'prev_close',
     type: 'decimal',
     precision: 12,
     scale: 3,
@@ -96,6 +103,7 @@ export class KExtensionEf {
   prevClose: number | null = null;
 
   @Column({
+    name: 'prev_open',
     type: 'decimal',
     precision: 12,
     scale: 3,

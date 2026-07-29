@@ -153,3 +153,35 @@ There is intentionally no automatic `DROP TABLE` migration in this change. A
 physical cleanup requires a separate reviewed forward-only change with the
 captured production evidence, a verified backup, an explicit table list and
 drop order, and a database-restore rollback procedure.
+
+## Managed column snake_case normalization
+
+Migration `010_normalize_managed_column_names.sql` renames 26 application-owned
+physical columns in `security_source_configs`, `k`, and the EF/TDX/QMT K
+extension tables. It changes names only: data types, nullability, values,
+indexes, and foreign keys must remain unchanged. TypeScript properties stay
+camelCase and map explicitly to the new physical names.
+
+Before and after migration 010, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-managed-column-names.sql
+```
+
+Before migration, all 26 rows must report `pre_migration_ready`; after migration,
+all must report `post_migration_ready`, with `old_column_count = 0`,
+`new_column_count = 26`, and `invalid_mapping_count = 0`. The final uppercase
+column-name result set must also be empty.
+
+The older security identity, K decimal, and provider-symbol audits refer to the
+schema stage immediately before their corresponding migrations. Run them at
+that documented stage; use `audit-managed-column-names.sql` for the current
+post-010 physical naming contract.
+
+Take and verify a database backup before migration 010. Deploy migration 010 and
+the matching backend atomically; old and new application versions must not run
+against the same database at the same time. Verify row values and the K
+natural-key/FK and extension one-to-one constraints before reopening traffic.
+Rollback is a database restore from the pre-010 backup together with the
+previous backend SHA; do not attempt mixed-schema application rollback.

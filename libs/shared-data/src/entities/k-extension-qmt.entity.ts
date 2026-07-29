@@ -30,6 +30,7 @@ export class KExtensionQmt {
   kId!: number;
 
   @Column({
+    name: 'pre_close',
     type: 'decimal',
     precision: 20,
     scale: 6,
@@ -39,6 +40,7 @@ export class KExtensionQmt {
   preClose: number | null = null;
 
   @Column({
+    name: 'suspend_flag',
     type: 'int',
     nullable: true,
     comment: '停牌标记',
@@ -46,6 +48,7 @@ export class KExtensionQmt {
   suspendFlag: number | null = null;
 
   @Column({
+    name: 'open_interest',
     type: 'decimal',
     precision: 20,
     scale: 4,
@@ -64,6 +67,7 @@ export class KExtensionQmt {
   settle: number | null = null;
 
   @Column({
+    name: 'effective_dividend_type',
     type: 'varchar',
     length: 32,
     nullable: true,
@@ -72,6 +76,7 @@ export class KExtensionQmt {
   effectiveDividendType: string | null = null;
 
   @Column({
+    name: 'native_period',
     type: 'varchar',
     length: 16,
     nullable: true,
