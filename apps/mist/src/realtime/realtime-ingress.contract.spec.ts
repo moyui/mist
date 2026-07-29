@@ -100,7 +100,7 @@ describe('formal realtime schema-v2 ingress contract', () => {
     },
   );
 
-  it('isolates malformed and unauthorized QMT entries in one native map', () => {
+  it('isolates member-but-business-unauthorized QMT entries in one native map', () => {
     const store = new QmtRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
     const client = new QmtRealtimeClient(
@@ -123,6 +123,7 @@ describe('formal realtime schema-v2 ingress contract', () => {
 
     expect(ingress.read(300502)?.prices.last).toBe(541.2);
     expect(ingress.read(1)?.prices.last).toBe(12.34);
+    expect(ingress.read(600030)).toBeNull();
     expect(store.status().rejectCounts).toMatchObject({
       symbolNotAuthorized: 1,
     });

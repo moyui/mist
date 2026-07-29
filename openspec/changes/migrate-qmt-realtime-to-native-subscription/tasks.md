@@ -537,8 +537,13 @@
   - [x] Unconfirmed unsubscribe returns
     `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown`, retains the original handles and
     blocks clean replacement.
-  - [ ] Current-handle non-member rejection plus member-but-business-
-    unauthorized per-item backend rejection.
+  - [x] Current-handle non-member rejection plus member-but-business-
+    unauthorized per-item backend rejection. 2026-07-30 deterministic
+    cross-repo fixture uses the same `300502.SZ/600030.SH` whole membership:
+    datasource accepts both members and rejects `000001.SZ` as
+    `QMT_SNAPSHOT_NON_MEMBER`; Mist accepts authorized entries while rejecting
+    member `600030.SH` before converter/common ingress. Datasource QMT control
+    suite: 42 passed; Mist allowlist/control/ingress suites: 19 passed.
   - [x] Accepted unsubscribe returns exact bool `true`; the repeated released-ID
     call returns exact bool `false` and remains unconfirmed. Evidence:
     `30427618972/30427924763`; deployed acceptance and empty-registry cleanup:
