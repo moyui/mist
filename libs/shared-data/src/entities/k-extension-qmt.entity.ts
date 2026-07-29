@@ -66,15 +66,6 @@ export class KExtensionQmt {
   })
   settle: number | null = null;
 
-  @Column({
-    name: 'native_period',
-    type: 'varchar',
-    length: 16,
-    nullable: true,
-    comment: 'QMT 原生周期',
-  })
-  nativePeriod: string | null = null;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

@@ -383,9 +383,7 @@ describe('CollectorService', () => {
           volume: 1200,
           amount: 13560,
           period: Period.THREE_MIN,
-          extensions: {
-            nativePeriod: '3m',
-          },
+          extensions: {},
         },
       ]);
 
@@ -409,9 +407,7 @@ describe('CollectorService', () => {
         expect.arrayContaining([
           expect.objectContaining({
             period: Period.THREE_MIN,
-            extensions: expect.objectContaining({
-              nativePeriod: '3m',
-            }),
+            extensions: {},
           }),
         ]),
         qmtStock,

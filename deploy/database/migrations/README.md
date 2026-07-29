@@ -233,3 +233,24 @@ The audit count must be `1` before migration and `0` afterward. Deploy migration
 Do not run the previous application against the post-012 schema. Take a
 database backup before migration; rollback requires that backup and the
 previous backend SHA.
+
+## QMT native request-period provenance removal
+
+Migration `013_remove_qmt_native_period.sql` removes
+`k_extensions_qmt.native_period`. The column repeated the QMT request string
+derived by `PeriodMappingService` for every K row. It was not an independently
+returned provider field, while the authoritative domain period already remains
+in `k.period`.
+
+Before and after migration 013, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-qmt-native-period-removal.sql
+```
+
+The audit count must be `1` before migration and `0` afterward. Deploy migration
+013 and the application that no longer reads or writes the property together.
+Do not run the previous application against the post-013 schema. Take a
+database backup before migration; rollback requires that backup and the
+previous backend SHA.

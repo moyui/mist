@@ -67,6 +67,10 @@ describe('database schema safety', () => {
       '012_remove_qmt_effective_dividend_type.sql',
       '7753141113ed4330a6e9fb49b05c724264a93b1e1f8f863c3a810c38c1d9ac89',
     ],
+    [
+      '013_remove_qmt_native_period.sql',
+      '7db3d388d8a01ac45031ed43c384f3acfa5fdd1ffc48e83636e9475b398c2d47',
+    ],
   ]);
 
   it.each(appModulePaths)(
@@ -321,5 +325,28 @@ describe('database schema safety', () => {
     expect(entity).not.toContain('effectiveDividendType');
     expect(source).not.toContain('effectiveDividendType');
     expect(source).toContain('dividend_type: QMT_CANONICAL_DIVIDEND_TYPE');
+  });
+
+  it('removes redundant QMT native request-period provenance', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/013_remove_qmt_native_period.sql',
+    );
+    const audit = readRepoFile(
+      'deploy/database/audit-qmt-native-period-removal.sql',
+    );
+    const entity = readRepoFile(
+      'libs/shared-data/src/entities/k-extension-qmt.entity.ts',
+    );
+    const source = readRepoFile(
+      'apps/mist/src/sources/qmt/qmt-source.service.ts',
+    );
+
+    expect(migration).toContain('DROP COLUMN `native_period`');
+    expect(audit).toContain(
+      "AND BINARY `column_name` = BINARY 'native_period'",
+    );
+    expect(entity).not.toContain('nativePeriod');
+    expect(source).not.toContain('nativePeriod:');
+    expect(source).toContain('period: nativePeriod');
   });
 });

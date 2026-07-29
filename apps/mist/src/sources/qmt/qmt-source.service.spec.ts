@@ -187,7 +187,6 @@ describe('QmtSource', () => {
           openInterest: 22,
           suspendFlag: 0,
           settle: 11.2,
-          nativePeriod: '3m',
         },
       },
     ]);
@@ -432,7 +431,6 @@ describe('QmtSource', () => {
           openInterest: 22,
           suspendFlag: 0,
           settle: 11.2,
-          nativePeriod: '3m',
         },
       },
     ];
@@ -476,11 +474,10 @@ describe('QmtSource', () => {
         openInterest: 22,
         suspendFlag: 0,
         settle: 11.2,
-        nativePeriod: '3m',
       },
     ]);
     expect(extensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
-      ['preClose', 'suspendFlag', 'openInterest', 'settle', 'nativePeriod'],
+      ['preClose', 'suspendFlag', 'openInterest', 'settle'],
       ['k_id'],
     );
   });

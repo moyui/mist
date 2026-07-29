@@ -53,7 +53,6 @@ const QMT_EXTENSION_UPSERT_COLUMNS = [
   'suspendFlag',
   'openInterest',
   'settle',
-  'nativePeriod',
 ];
 
 @Injectable()
@@ -115,12 +114,7 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
         return [];
       }
 
-      return this.mapSymbolMarketData(
-        formatCode,
-        symbolData,
-        period,
-        nativePeriod,
-      );
+      return this.mapSymbolMarketData(formatCode, symbolData, period);
     } catch (error) {
       this.logger.error(`QMT fetchK error: ${error.message}`);
       if (error instanceof HttpException) {
@@ -171,7 +165,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
         openInterest: extension.openInterest,
         suspendFlag: extension.suspendFlag,
         settle: extension.settle,
-        nativePeriod: extension.nativePeriod,
       }));
 
       await manager
@@ -198,12 +191,9 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     providerSymbol: string,
     symbolData: QmtSymbolMarketData,
     period: Period,
-    nativePeriod: string,
   ): QmtResponse[] {
     return this.getRowKeys(symbolData)
-      .map((rowKey) =>
-        this.mapRow(providerSymbol, symbolData, rowKey, period, nativePeriod),
-      )
+      .map((rowKey) => this.mapRow(providerSymbol, symbolData, rowKey, period))
       .sort(
         (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
       );
@@ -214,7 +204,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     symbolData: QmtSymbolMarketData,
     rowKey: string,
     period: Period,
-    nativePeriod: string,
   ): QmtResponse {
     const open = this.readNumber(symbolData, ['open'], rowKey);
     const high = this.readNumber(symbolData, ['high'], rowKey);
@@ -239,11 +228,7 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
       this.readValue(symbolData, ['stime', 'time'], rowKey) ?? rowKey;
     const timestamp = this.parseQmtTimestamp(rawTimestamp);
     const amount = this.readDecimal(symbolData, ['amount'], rowKey, 'amount');
-    const extensions = this.buildMappedExtension(
-      symbolData,
-      rowKey,
-      nativePeriod,
-    );
+    const extensions = this.buildMappedExtension(symbolData, rowKey);
 
     return {
       timestamp,
@@ -261,11 +246,8 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
   private buildMappedExtension(
     symbolData: QmtSymbolMarketData,
     rowKey: string,
-    nativePeriod: string,
   ): QmtExtension {
-    const extension: QmtExtension = {
-      nativePeriod,
-    };
+    const extension: QmtExtension = {};
     this.assignNumber(extension, 'preClose', symbolData, ['preClose'], rowKey);
     this.assignNumber(
       extension,
@@ -411,7 +393,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
       suspendFlag: ext?.suspendFlag ?? null,
       openInterest: ext?.openInterest ?? null,
       settle: ext?.settle ?? null,
-      nativePeriod: ext?.nativePeriod ?? null,
     };
   }
 
