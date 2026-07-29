@@ -92,6 +92,7 @@ Windows 用户会话
 
 ## 文档入口
 
+- [项目质量常驻治理指南](docs/project-quality-governance-guide.md)
 - [生产基线验证](docs/production-baseline-verification.md)
 - [跨仓库文档盘点](docs/documentation-audit-2026-07-22.md)
 - [Backend 与 datasource 集成](docs/backend-datasource-integration.md)
