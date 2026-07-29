@@ -43,5 +43,5 @@ export class StrategyVersion {
   validationSummary: Record<string, unknown> = {};
 
   @CreateDateColumn({ name: 'created_at' })
-  createTime!: Date;
+  createdAt!: Date;
 }

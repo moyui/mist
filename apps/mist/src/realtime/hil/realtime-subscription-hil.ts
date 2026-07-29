@@ -225,6 +225,7 @@ function createHilModule(source: HilSource): DynamicModule {
             username: config.get('mysql_server_username'),
             password: config.get('mysql_server_password'),
             database: config.get('mysql_server_database'),
+            timezone: '+08:00',
             synchronize: false,
             logging: false,
             entities: [...realtimeSubscriptionHilEntities],

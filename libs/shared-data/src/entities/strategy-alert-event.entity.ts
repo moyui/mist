@@ -44,8 +44,8 @@ export class StrategyAlertEvent {
   acknowledgedAt?: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
-  createTime!: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updateTime!: Date;
+  updatedAt!: Date;
 }

@@ -8,6 +8,11 @@ const appModulePaths = [
   'apps/schedule/src/schedule.module.ts',
 ];
 
+const typeormConfigPaths = [
+  ...appModulePaths,
+  'apps/mist/src/realtime/hil/realtime-subscription-hil.ts',
+];
+
 function readRepoFile(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), 'utf8');
 }
@@ -50,6 +55,10 @@ describe('database schema safety', () => {
       '009_strategy_database_integrity.sql',
       '82d2ff311ab2f5345ded55060a0ea162707228e5b6ad6f91eac3c4040a284ac7',
     ],
+    [
+      '010_normalize_managed_column_names.sql',
+      '8e90ae62370edf6796cf6e385e9d8dc12866933208e0f8f29ca560de6453132a',
+    ],
   ]);
 
   it.each(appModulePaths)(
@@ -61,6 +70,13 @@ describe('database schema safety', () => {
       expect(source).not.toMatch(
         /synchronize:\s*configService\.get\(['"]NODE_ENV['"]\)\s*!==\s*['"]production['"]/,
       );
+    },
+  );
+
+  it.each(typeormConfigPaths)(
+    '%s interprets MySQL DATETIME as the market wall clock',
+    (modulePath) => {
+      expect(readRepoFile(modulePath)).toContain("timezone: '+08:00'");
     },
   );
 
@@ -246,5 +262,33 @@ describe('database schema safety', () => {
     expect(audit).toContain('post_migration_ready');
     expect(audit).toContain('invalid_mapping_count');
     expect(audit).toContain("REGEXP BINARY '[A-Z]'");
+  });
+
+  it('normalizes exactly five legacy audit timestamp pairs in migration 011', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/011_normalize_audit_timestamp_names.sql',
+    );
+    const audit = readRepoFile('deploy/database/audit-timestamp-names.sql');
+    const tables = [
+      'security_source_configs',
+      'k',
+      'k_extensions_ef',
+      'k_extensions_tdx',
+      'k_extensions_qmt',
+    ];
+
+    expect(migration.match(/RENAME COLUMN/g)).toHaveLength(10);
+    for (const table of tables) {
+      expect(migration).toContain(`ALTER TABLE \`${table}\``);
+      expect(audit).toContain(
+        `('${table}', 'create_time', 'created_at', 'created')`,
+      );
+      expect(audit).toContain(
+        `('${table}', 'update_time', 'updated_at', 'updated')`,
+      );
+    }
+    expect(audit).toContain('post_migration_ready');
+    expect(audit).toContain('invalid_mapping_count');
+    expect(audit).toContain('invalid_attribute_count');
   });
 });

@@ -40,6 +40,7 @@ import {
           username: configService.get('mysql_server_username'),
           password: configService.get('mysql_server_password'),
           database: configService.get('mysql_server_database'),
+          timezone: '+08:00',
           synchronize: false,
           logging: configService.get('NODE_ENV') !== 'production',
           entities: [

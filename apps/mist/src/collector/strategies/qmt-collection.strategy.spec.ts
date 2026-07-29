@@ -38,8 +38,8 @@ describe('QmtCollectionStrategy', () => {
     status: SecurityStatus.ACTIVE,
     sourceConfigs: [],
     ks: [],
-    createTime: new Date(),
-    updateTime: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 
   it('uses QMT as a polling historical bars strategy', () => {

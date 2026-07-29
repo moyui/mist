@@ -108,11 +108,11 @@ export class K {
   @OneToOne(() => KExtensionQmt, { eager: false })
   kExtensionQmt!: KExtensionQmt;
 
-  @CreateDateColumn({ name: 'create_time' })
-  createTime!: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'update_time' })
-  updateTime!: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt!: Date;
 
   // Virtual column for securityId to support the unique constraint
   @Column({ name: 'security_id', select: false })

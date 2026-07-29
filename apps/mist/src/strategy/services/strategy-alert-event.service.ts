@@ -24,7 +24,7 @@ export class StrategyAlertEventService {
 
     return await this.alertEventRepository.find({
       where,
-      order: { createTime: 'DESC' },
+      order: { createdAt: 'DESC' },
     });
   }
 

@@ -185,3 +185,31 @@ against the same database at the same time. Verify row values and the K
 natural-key/FK and extension one-to-one constraints before reopening traffic.
 Rollback is a database restore from the pre-010 backup together with the
 previous backend SHA; do not attempt mixed-schema application rollback.
+
+## Audit timestamp naming normalization
+
+Migration `011_normalize_audit_timestamp_names.sql` renames the remaining five
+managed `create_time/update_time` pairs to `created_at/updated_at`. It does not
+add update timestamps to append-only strategy versions, strategy signals, or
+backtest signal results. TypeScript and HTTP JSON switch from
+`createTime/updateTime` to `createdAt/updatedAt` in the same release.
+
+Before and after migration 011, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-timestamp-names.sql
+```
+
+Before migration, all ten rows must report `pre_migration_ready`; after
+migration, all must report `post_migration_ready`, with
+`old_column_count = 0`, `new_column_count = 10`,
+`invalid_mapping_count = 0`, and `invalid_attribute_count = 0`. The final
+legacy-column result set must be empty.
+
+The renamed columns must retain `DATETIME(6) NOT NULL` and
+`DEFAULT CURRENT_TIMESTAMP(6)`. Every `updated_at` must also retain
+`ON UPDATE CURRENT_TIMESTAMP(6)`. Deploy migration 011, backend, and `mist-fe`
+atomically because the HTTP property rename is intentionally breaking and has
+no compatibility aliases. Rollback requires the pre-011 database backup and
+both previous application SHAs.

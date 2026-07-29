@@ -464,8 +464,8 @@ describe('CollectorService', () => {
         status: 1,
         sourceConfigs: [],
         ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       const mockRawData = [
@@ -515,8 +515,8 @@ describe('CollectorService', () => {
           },
         ],
         ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       mockSecurityRepository.findOne.mockResolvedValue(security);
@@ -576,8 +576,8 @@ describe('CollectorService', () => {
           },
         ],
         ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       mockSecurityRepository.findOne.mockResolvedValue(security);

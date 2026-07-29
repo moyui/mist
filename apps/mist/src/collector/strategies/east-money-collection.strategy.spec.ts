@@ -51,8 +51,8 @@ describe('EastMoneyCollectionStrategy', () => {
       status: SecurityStatus.ACTIVE,
       sourceConfigs: [],
       ks: [],
-      createTime: new Date(),
-      updateTime: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     it('should pass startDate/endDate directly to collectorService', async () => {
@@ -105,8 +105,8 @@ describe('EastMoneyCollectionStrategy', () => {
       status: SecurityStatus.ACTIVE,
       sourceConfigs: [],
       ks: [],
-      createTime: new Date(),
-      updateTime: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     it('should calculate boundary and collect for minute period', async () => {
@@ -168,8 +168,8 @@ describe('EastMoneyCollectionStrategy', () => {
       status: SecurityStatus.ACTIVE,
       sourceConfigs: [],
       ks: [],
-      createTime: new Date(),
-      updateTime: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     it('should query active securities and collect for each', async () => {

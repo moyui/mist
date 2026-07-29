@@ -84,9 +84,9 @@ export class KExtensionQmt {
   })
   nativePeriod: string | null = null;
 
-  @CreateDateColumn({ name: 'create_time' })
-  createTime!: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'update_time' })
-  updateTime!: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt!: Date;
 }

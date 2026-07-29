@@ -57,8 +57,8 @@ export class StrategyDefinition {
   versions!: StrategyVersion[];
 
   @CreateDateColumn({ name: 'created_at' })
-  createTime!: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updateTime!: Date;
+  updatedAt!: Date;
 }

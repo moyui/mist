@@ -400,8 +400,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.SUSPENDED,
         sourceConfigs: [],
         ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       mockSecurityRepository.findOne.mockResolvedValue(suspendedStock);
@@ -426,8 +426,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
         sourceConfigs: [],
         ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as Security;
 
       const sourceConfigs = [
@@ -479,8 +479,8 @@ describe('SecurityService', () => {
         status: SecurityStatus.ACTIVE,
         sourceConfigs: [],
         ks: [],
-        createTime: new Date(),
-        updateTime: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as Security;
 
       mockSecurityRepository.findOne.mockResolvedValue(stock);
@@ -505,8 +505,8 @@ describe('SecurityService', () => {
           type: SecurityType.STOCK,
           exchange: 'SH',
           status: SecurityStatus.ACTIVE,
-          createTime: new Date(),
-          updateTime: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
         {
           id: 2,
@@ -515,8 +515,8 @@ describe('SecurityService', () => {
           type: SecurityType.INDEX,
           exchange: 'SZ',
           status: SecurityStatus.ACTIVE,
-          createTime: new Date(),
-          updateTime: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ];
 

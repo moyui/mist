@@ -41,5 +41,5 @@ export class BacktestSignalResult {
   ruleSnapshot!: Record<string, unknown>;
 
   @CreateDateColumn({ name: 'created_at' })
-  createTime!: Date;
+  createdAt!: Date;
 }

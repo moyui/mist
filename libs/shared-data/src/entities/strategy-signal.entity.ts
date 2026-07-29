@@ -57,5 +57,5 @@ export class StrategySignal {
   ruleSnapshot!: Record<string, unknown>;
 
   @CreateDateColumn({ name: 'created_at' })
-  createTime!: Date;
+  createdAt!: Date;
 }

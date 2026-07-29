@@ -425,7 +425,7 @@ No `PortfolioBacktest*` parallel class family is introduced. New filenames are
 kebab-case and services/entities are registered through the existing
 `strategyEntities` and `strategyProviders` arrays. Entity members remain
 camelCase with explicit snake_case column names, and timestamp names remain
-`createTime`, `updateTime`, `startedAt`, and `completedAt`.
+`createdAt`, `updatedAt`, `startedAt`, and `completedAt`.
 `BacktestRunStatus.CANCELLED = 'cancelled'` follows the existing enum pattern.
 
 Backend tests remain colocated `*.spec.ts`; frontend tests remain
