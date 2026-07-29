@@ -114,35 +114,6 @@ provider-neutral `K` base table.
 - **THEN** the backend does not persist that field as opaque raw JSON and records
   the need for a structured owner before product use
 
-### Requirement: Normalized snapshot query mapping
-
-The backend TDX source SHALL fetch snapshots through the datasource
-`POST /v1/snapshots/query` endpoint and map normalized snapshots into the
-Mist `TdxSnapshot` shape with canonical identity, provider transport identity,
-normalized aggregation fields, and raw datasource payload preservation.
-
-#### Scenario: Datasource preserves backend-required snapshot parameters
-
-- **WHEN** the backend migrates from legacy `/api/tdx/market-snapshot` to
-  `/v1/snapshots/query`
-- **THEN** the datasource contract preserves backend-required meanings for
-  symbol and field-list filtering, or the missing behavior is added before
-  migration
-
-#### Scenario: Backend requests normalized snapshot
-
-- **WHEN** `TdxSource.fetchSnapshot` receives a TDX symbol
-- **THEN** it posts the symbol in `symbols` to `/v1/snapshots/query`
-
-#### Scenario: Successful snapshot response is mapped
-
-- **WHEN** the datasource returns an envelope with `ok: true` and at least one
-  normalized snapshot
-- **THEN** the backend returns `TdxSnapshot` with `code`, `formatCode`, `now`,
-  `open`, `high`, `low`, `lastClose`, `volume`, `amount`, `timestamp`, and
-  `raw`
-- **AND** the returned `TdxSnapshot` MUST NOT include `stockCode`
-
 ### Requirement: Datasource error envelope handling
 
 The backend SHALL treat datasource failure envelopes and invalid envelopes as
@@ -217,20 +188,21 @@ by backend containers from both the Windows host and the backend container.
 
 ### Requirement: Interface test coverage
 
-The backend datasource integration SHALL include automated tests for request
-shape, response mapping, error handling, WebSocket protocol behavior,
+The backend datasource integration SHALL include automated tests for supported
+request shapes, response mapping, error handling, WebSocket protocol behavior,
 deployment script URL resolution, and datasource WebSocket envelope behavior.
 
 #### Scenario: HTTP unit tests cover normalized contracts
 
 - **WHEN** backend unit tests run for `TdxSource`
-- **THEN** they verify `/v1/bars/query`, `/v1/snapshots/query`, successful
-  envelope mapping, failure envelope handling, and invalid payload handling
+- **THEN** they verify `/v1/bars/query`, successful envelope mapping, failure
+  envelope handling, and invalid payload handling
+- **AND** they verify `TdxSource` does not expose an on-demand snapshot method
 
 #### Scenario: WebSocket unit tests cover datasource protocol
 
-- **WHEN** backend unit tests run for `ExperimentalTdxRealtimeClient`
-- **THEN** they verify `ready`, full-set `sync_subscriptions`, snapshot,
+- **WHEN** backend unit tests run for the TDX realtime client
+- **THEN** they verify `ready`, full-set `sync_subscriptions`, native snapshot,
   `stream_started`, reconnect, and error behavior
 
 #### Scenario: Deployment script tests cover configured URL
@@ -243,32 +215,33 @@ deployment script URL resolution, and datasource WebSocket envelope behavior.
 
 - **WHEN** datasource tests run for WS protocol and quote routes
 - **THEN** they verify pong timestamps, canonical error payloads, data-based
-  subscription acknowledgements, and centrally serialized TDX snapshot quotes
+  subscription acknowledgements, and centrally serialized TDX native snapshots
 
 #### Scenario: Removed route tests cover the stable boundary
 
 - **WHEN** datasource route contract tests run
-- **THEN** they verify `/api/tdx/*` and `/ws/quote/*` are absent
-- **AND** they verify normalized `/v1` and the builtin realtime route remain
+- **THEN** they verify `/api/tdx/*`, `/ws/quote/*`, and
+  `/v1/snapshots/query` are absent
+- **AND** they verify `/v1/bars/query` and the builtin realtime route remain
 
 ### Requirement: Integration documentation
 
-The project SHALL document how the backend client connects to the datasource
-and how to verify that connection locally and on Windows.
+The project SHALL document how the backend client connects to each supported
+datasource path and how to verify that connection locally and on Windows.
 
 #### Scenario: Developer reads backend datasource docs
 
 - **WHEN** a developer needs to understand the backend datasource connection
-- **THEN** the docs identify `TdxSource`, `QmtSource`,
-  `ExperimentalTdxRealtimeClient`, `TDX_BASE_URL`, `QMT_BASE_URL`,
-  `/v1/bars/query`, `/v1/snapshots/query`, the dedicated builtin realtime
-  WebSocket, and the relevant test commands
+- **THEN** the docs identify `TdxSource`, `QmtSource`, the TDX and QMT realtime
+  clients, `TDX_BASE_URL`, `QMT_BASE_URL`, `/v1/bars/query`, the dedicated
+  builtin realtime WebSockets, and the relevant test commands
+- **AND** the docs MUST NOT advertise an on-demand TDX snapshot product route
 
 #### Scenario: Operator follows Windows verification docs
 
 - **WHEN** an operator deploys backend and datasource on Windows
-- **THEN** the docs show the startup order, health checks, normalized API probe,
-  expected success output, and rollback path
+- **THEN** the docs show startup order, health checks, supported normalized API
+  probes, realtime proof, expected success output, and rollback path
 
 ### Requirement: Snapshot raw preservation boundary
 The backend SHALL preserve the validated provider-native object carried by an accepted formal realtime frame, SHALL convert it through a source-specific adapter into the shared canonical ingress shape, and MUST keep this change memory-only without K-line or business persistence.

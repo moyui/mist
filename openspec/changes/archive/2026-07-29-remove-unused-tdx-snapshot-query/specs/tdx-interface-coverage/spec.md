@@ -43,6 +43,12 @@ dedicated terminal bridge and WebSocket HIL.
 - **THEN** it checks for the documented result shape including K-line field
   arrays before checking `/v1/bars/query`
 
+#### Scenario: Native snapshot shape is validated
+
+- **WHEN** the runtime smoke suite verifies the retired HTTP snapshot capability
+- **THEN** it confirms `get_market_snapshot` and `/v1/snapshots/query` are not
+  called by the normalized HTTP smoke path
+
 #### Scenario: Realtime snapshot shape is validated
 
 - **WHEN** TDX realtime HIL runs

@@ -3,9 +3,7 @@
 ## Purpose
 Defines the reviewed TdxQuant interface coverage matrix, exposure policy, and
 non-trading implementation priorities for the TDX datasource provider.
-
 ## Requirements
-
 ### Requirement: TDX coverage matrix
 The project SHALL maintain a TDX official-interface coverage matrix that
 classifies every reviewed TdxQuant method by datasource exposure policy.
@@ -40,27 +38,32 @@ market datasource boundary.
   than as an ordinary datasource endpoint
 
 ### Requirement: Core market data coverage
-The TDX provider SHALL treat core quote and K-line methods as the highest
-priority normalized market-data surface.
+
+The TDX provider SHALL expose normalized market-data methods only when an owned
+product consumer exists, while terminal-owned realtime acquisition SHALL remain
+on the dedicated bridge path.
 
 #### Scenario: K-line data is classified
+
 - **WHEN** `get_market_data` is reviewed
 - **THEN** it is classified as `normalized-now` through `/v1/bars/query` and
   must preserve support for native TDX HTTP shape variants such as `Value`
   wrappers
 
 #### Scenario: Snapshot data is classified
+
 - **WHEN** `get_market_snapshot` is reviewed
-- **THEN** it is classified as `normalized-now` through
-  `/v1/snapshots/query`
+- **THEN** terminal-local use is classified as realtime bridge acquisition
+- **AND** it MUST NOT be exposed as `/v1/snapshots/query`
 
 #### Scenario: Secondary quote methods are classified
+
 - **WHEN** `get_pricevol` or `get_benchmark_data` are reviewed
-- **THEN** they are classified as normalized market-data targets and assigned
-  to the core or reference-data implementation phase based on live behavior and
-  QMT alignment
+- **THEN** they are classified as normalized market-data candidates only after
+  an owned consumer and live behavior are established
 
 #### Scenario: Example helper is found
+
 - **WHEN** `get_real_time_data` is found in official example code
 - **THEN** it is classified as `example-helper-not-api` unless a native
   `tq.get_real_time_data` API is verified in the target TDX runtime
@@ -184,20 +187,32 @@ market datasource boundary.
   service spec before any implementation
 
 ### Requirement: TDX native HTTP validation
-The TDX coverage work SHALL validate native TDX HTTP behavior before relying on
-normalized endpoint behavior for smoke tests.
+
+TDX runtime smoke SHALL validate native HTTP behavior only for supported
+normalized HTTP product capabilities; realtime snapshot validation SHALL use the
+dedicated terminal bridge and WebSocket HIL.
 
 #### Scenario: Native K-line shape is validated
+
 - **WHEN** the runtime smoke test calls native TDX HTTP `get_market_data`
 - **THEN** it checks for the documented result shape including K-line field
   arrays before checking `/v1/bars/query`
 
 #### Scenario: Native snapshot shape is validated
-- **WHEN** the runtime smoke test calls native TDX HTTP `get_market_snapshot`
-- **THEN** it checks for native price, volume, amount, and `ErrorId` fields
-  before checking `/v1/snapshots/query`
+
+- **WHEN** the runtime smoke suite verifies the retired HTTP snapshot capability
+- **THEN** it confirms `get_market_snapshot` and `/v1/snapshots/query` are not
+  called by the normalized HTTP smoke path
+
+#### Scenario: Realtime snapshot shape is validated
+
+- **WHEN** TDX realtime HIL runs
+- **THEN** it verifies terminal-local `get_market_snapshot` acquisition,
+  bridge acceptance, WebSocket delivery, and backend ingress
+- **AND** it MUST NOT call `/v1/snapshots/query`
 
 #### Scenario: Native sector shape is validated
+
 - **WHEN** the runtime smoke test calls native TDX HTTP
   `get_stock_list_in_sector`
 - **THEN** it checks that a non-empty list or documented value wrapper is

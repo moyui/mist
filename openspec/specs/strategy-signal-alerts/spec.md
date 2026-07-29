@@ -3,19 +3,19 @@
 Define Mist strategy alert foundations for scanning enabled strategy
 definitions, deterministic rule evaluation, persisted live strategy signals,
 persisted alert events, duplicate suppression, and version-first scan APIs.
-
 ## Requirements
-
 ### Requirement: Enabled Strategies Shall Be Scanned
 
 Mist SHALL provide a shared scan service that evaluates enabled strategy
-definitions against current market context.
+definitions against current market context and SHALL fail closed when the
+stored current version does not belong to the scanned definition.
 
 #### Scenario: Manual scan is requested
 
 - **WHEN** an operator requests a strategy scan
 - **THEN** the backend MUST evaluate enabled strategy definitions
 - **AND** it MUST use each definition current strategy version
+- **AND** that version MUST exist and belong to the definition
 - **AND** it MUST evaluate configured target universe, period, and source
   coverage
 
@@ -43,7 +43,9 @@ rules match.
 
 - **WHEN** an enabled strategy current version matches a scanned security
 - **THEN** the backend MUST persist a `StrategySignal`
+- **AND** the signal MUST include non-null context and rule snapshots
 - **AND** it MUST persist a linked `StrategyAlertEvent` in pending status
+- **AND** the signal and alert writes MUST commit or roll back together
 
 ### Requirement: Alert Events Shall Be Deduplicated
 
@@ -66,3 +68,46 @@ Manual scan APIs SHALL be exposed from `apps/mist` using `/v1/<resource>` paths.
 - **WHEN** strategy scan controller route metadata is inspected
 - **THEN** it MUST expose `/v1/strategy-scans/run`
 - **AND** it MUST NOT include `/api/mist`, `/api/chan`, or `/strategy/v1`
+
+### Requirement: Matching signal and alert persistence is atomic
+The strategy scanner SHALL persist a matched `StrategySignal` and its linked pending `StrategyAlertEvent` in one database transaction and SHALL update created counters only after that transaction commits.
+
+#### Scenario: Both writes succeed
+- **WHEN** an enabled strategy matches and no existing alert event has the dedupe key
+- **THEN** the signal and linked pending alert event commit together
+- **AND** both created counters increment after commit
+
+#### Scenario: Alert event persistence fails
+- **WHEN** signal creation succeeds inside the transaction but alert event persistence fails
+- **THEN** the transaction rolls back the signal
+- **AND** neither created counter increments
+
+### Requirement: Concurrent alert dedupe is a successful skip
+The strategy scanner SHALL rely on the existing named database unique index to
+serialize concurrent creation of the same alert dedupe key. Only a conflict
+from that exact index SHALL be classified as a skipped duplicate.
+
+#### Scenario: Two scans race on one dedupe key
+- **WHEN** both scans pass the application pre-check and attempt the same
+  dedupe key concurrently
+- **THEN** exactly one signal and linked alert event commit
+- **AND** the losing transaction rolls back its signal and reports one skipped
+  duplicate
+
+#### Scenario: Another database error occurs
+- **WHEN** signal/alert persistence fails for any reason other than the named
+  dedupe unique index
+- **THEN** the scanner propagates the error
+- **AND** it MUST NOT count the failure as a skipped duplicate
+
+### Requirement: Strategy Entity Relations Match Physical Foreign Keys
+
+TypeORM metadata SHALL expose the same definition/version, signal/alert, and
+run/result relationships enforced by repository migrations.
+
+#### Scenario: Strategy entity metadata is inspected
+
+- **WHEN** TypeORM relation metadata is built
+- **THEN** scalar foreign-key columns that remain in the schema MUST have
+  relation properties using the same physical join-column names
+- **AND** the metadata MUST NOT create duplicate compatibility columns

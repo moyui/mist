@@ -3,9 +3,7 @@
 Define Mist backend API path conventions for version-first product routes,
 removed legacy aliases, deployment gateway prefix boundaries, and stable
 collector/datasource route assumptions.
-
 ## Requirements
-
 ### Requirement: New Preferred Paths Shall Use Version First
 
 Mist backend business APIs SHALL expose preferred paths using the
@@ -54,8 +52,9 @@ definitions.
 
 ### Requirement: Collector And Datasource Routes Shall Remain Stable
 
-This compatibility change SHALL NOT rename collector or datasource normalized
-routes.
+The supported collector and datasource routes SHALL remain outside Mist backend
+controller path migrations, while orphaned datasource product routes MAY be
+removed through an explicit breaking OpenSpec change.
 
 #### Scenario: Collector path is inspected
 
@@ -65,6 +64,7 @@ routes.
 #### Scenario: Datasource route assumptions are inspected
 
 - **WHEN** this change is applied
-- **THEN** datasource normalized routes such as `/v1/bars/query` and
-  `/v1/snapshots/query` MUST remain outside the Mist backend controller
+- **THEN** `/v1/bars/query` MUST remain outside the Mist backend controller
   migration scope
+- **AND** `/v1/snapshots/query` MUST be absent because its independent product
+  contract has been removed

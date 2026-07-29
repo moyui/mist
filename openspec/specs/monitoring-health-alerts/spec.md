@@ -131,3 +131,38 @@ The formal monitoring release SHALL emit only documented `mist_realtime_*` metri
 #### Scenario: Monitoring contract tests run
 - **WHEN** exporter and watchdog render realtime metrics
 - **THEN** formal names match `mist-monitoring/docs/metrics.md` and old experimental names are absent
+
+### Requirement: Readiness consumers use the normalized component contract
+Monitoring, deployment health checks, and automated recovery SHALL consume datasource bridge readiness from the normalized component path and SHALL keep service, transport, bridge-owner, subscription, and freshness evidence distinct.
+
+#### Scenario: Root datasource health is evaluated
+- **WHEN** monitoring or deployment reads TDX or QMT root health
+- **THEN** it reads bridge-owner readiness from `bridge.ready`
+- **AND** does not read `tdxRealtimeBridgeReady` or `collectorReady`
+
+#### Scenario: Bridge-scoped health is evaluated
+- **WHEN** a guard reads a source bridge health endpoint
+- **THEN** it reads top-level `ready` for both TDX and QMT
+
+#### Scenario: Automated recovery evaluates readiness
+- **WHEN** a service is healthy and the transport is connected but the bridge owner is unavailable
+- **THEN** recovery classifies the bridge layer explicitly
+- **AND** does not treat an absent retired field as evidence that the datasource process is down
+
+### Requirement: QMT historical command capacity is observable
+Datasource health and monitoring SHALL expose QMT historical command counts,
+limits, retained bytes, oldest ages, and rejection totals using fixed
+low-cardinality fields and labels.
+
+#### Scenario: Monitoring scrapes QMT health
+- **WHEN** QMT realtime mode is enabled and the strict bridge health contract is
+  valid
+- **THEN** monitoring emits pending, in-flight, retained-result, byte, limit,
+  oldest-age, and rejection metrics
+- **AND** rejection reasons are restricted to a fixed allowlist
+
+#### Scenario: Capacity field is malformed
+- **WHEN** a required QMT capacity field is missing, negative, non-finite, or
+  has the wrong type
+- **THEN** monitoring reports a health-contract violation
+- **AND** it MUST NOT emit misleading capacity samples

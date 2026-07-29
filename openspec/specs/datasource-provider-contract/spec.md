@@ -230,15 +230,28 @@ production code path.
   legacy QMT route groups, and bridge realtime-duplex endpoints
 
 ### Requirement: Internal realtime frames preserve provider native data
-The datasource SHALL expose provider-native realtime objects only through the authenticated internal realtime WebSocket envelope while normalized public `/v1` HTTP endpoints remain provider-neutral.
+
+The datasource SHALL expose provider-native realtime objects only through the
+authenticated internal realtime WebSocket envelope, while public normalized
+`/v1` HTTP endpoints SHALL be limited to actively owned product capabilities.
 
 #### Scenario: Internal realtime consumer receives a frame
+
 - **WHEN** the authorized backend leader receives a TDX or QMT realtime frame
-- **THEN** the frame contains the complete validated provider-native object and a source acquisition profile
+- **THEN** the frame contains the complete validated provider-native object and
+  a source acquisition profile
 
 #### Scenario: Public normalized endpoint is called
-- **WHEN** a product caller uses `/v1/bars/query` or `/v1/snapshots/query`
-- **THEN** the existing provider-neutral response contract remains unchanged
+
+- **WHEN** a product caller requests historical bars
+- **THEN** `/v1/bars/query` returns the existing provider-neutral response
+  contract
+
+#### Scenario: Removed snapshot endpoint is called
+
+- **WHEN** a caller requests `/v1/snapshots/query`
+- **THEN** the datasource returns HTTP 404
+- **AND** no provider-specific alias or compatibility route is used
 
 ### Requirement: Realtime sequence scope is per symbol
 Each datasource SHALL assign a sequence that is strictly monotonic for the same `(symbol, streamEpoch)` and SHALL declare `sequenceScope=symbol` in schema v1 frames.
@@ -248,12 +261,14 @@ Each datasource SHALL assign a sequence that is strictly monotonic for the same 
 - **THEN** each symbol advances only its own sequence and does not depend on another symbol's sequence
 
 ### Requirement: Provider packages separate runtime and contract concerns
-Each datasource realtime provider SHALL expose provider-local runtime behavior from `realtime/runtime.py` and frame validation or protocol constants from `realtime/contract.py`, while retaining provider-native objects without cross-provider normalization.
+Each datasource realtime provider SHALL expose owner or command gateway behavior from `realtime/gateway.py` and frame validation or protocol constants from `realtime/contract.py`, while retaining provider-native objects without cross-provider normalization. Provider-specific runtime orchestration SHALL remain in a narrowly scoped runtime module only when that distinct responsibility exists.
 
 #### Scenario: Realtime provider modules are imported
 - **WHEN** TDX or QMT application wiring loads its realtime implementation
-- **THEN** runtime ownership and transport logic come from the provider-local runtime module
-- **AND** frame contract validation comes from the provider-local contract module
+- **THEN** owner or command gateway logic comes from the provider-local `realtime/gateway.py`
+- **AND** frame contract validation comes from the provider-local `realtime/contract.py`
+- **AND** QMT subscription collector orchestration remains in `realtime/runtime.py`
+- **AND** TDX does not retain a compatibility `realtime/runtime.py`
 
 ### Requirement: Runtime probe configuration is tooling-only
 QMT runtime probing SHALL use `MIST_QMT_RUNTIME_PROBE_OUTPUT_PATH` only from the tooling probe and SHALL NOT expose spike evidence configuration through production datasource settings.
@@ -261,3 +276,54 @@ QMT runtime probing SHALL use `MIST_QMT_RUNTIME_PROBE_OUTPUT_PATH` only from the
 #### Scenario: Production QMT datasource settings load
 - **WHEN** the QMT datasource starts without runtime probe tooling
 - **THEN** no spike evidence directory is required or initialized
+
+### Requirement: Normalized TDX bars reject incomplete required prices
+The TDX datasource SHALL emit a normalized bar only when `open`, `high`, `low`, and `close` are present and finite for the same provider timestamp. It MUST distinguish an explicit numeric zero from a missing, blank, non-numeric, or non-finite value.
+
+#### Scenario: Required price series are misaligned
+- **WHEN** any required OHLC series lacks the timestamp emitted by another bar series
+- **THEN** the normalized request fails with a structured error identifying the source, symbol, timestamp, and invalid fields
+- **AND** no zero-price substitute or partial normalized result is emitted
+
+#### Scenario: Provider explicitly returns zero
+- **WHEN** the provider returns an explicit finite numeric zero for a required price
+- **THEN** the normalizer preserves that zero as provider data
+- **AND** does not classify it as a missing field
+
+### Requirement: Historical volume and amount preserve exact provider numeric semantics
+
+TDX and QMT normalized historical bars SHALL expose `volume` and `amount` as decimal strings or explicit `null`. A finite provider value, including zero, MUST preserve its numeric value without float coercion, integer rounding, or zero filling.
+
+#### Scenario: Provider returns a finite decimal
+
+- **WHEN** TDX or QMT returns a finite `volume` or `amount`
+- **THEN** the normalized historical contract MUST emit a decimal string representing the same numeric value
+- **AND** it MUST NOT round volume to an integer or truncate amount to two decimal places before persistence
+
+#### Scenario: Provider explicitly returns zero
+
+- **WHEN** TDX or QMT explicitly returns numeric zero for `volume` or `amount`
+- **THEN** the normalized contract MUST emit a decimal string representing zero
+- **AND** the value MUST remain distinguishable from `null`
+
+#### Scenario: Provider omits or returns an invalid optional measure
+
+- **WHEN** `volume` or `amount` is missing, blank, non-numeric, `NaN`, positive infinity, or negative infinity
+- **THEN** the normalized contract MUST emit that field as explicit `null`
+- **AND** it MUST NOT synthesize zero
+- **AND** an otherwise valid bar MUST NOT be discarded solely because either measure is `null`
+
+#### Scenario: Provider returns invalid OHLC
+
+- **WHEN** any required OHLC value is missing, blank, non-numeric, `NaN`, or infinite
+- **THEN** the existing invalid-nonempty-history rejection behavior MUST remain in force
+
+### Requirement: Historical decimal values are bounded before persistence
+
+The datasource and backend SHALL reject finite `volume` or `amount` values that cannot fit `DECIMAL(36,8)` without rounding.
+
+#### Scenario: Decimal exceeds configured precision or scale
+
+- **WHEN** a finite provider value has more than 28 integer digits or more than eight fractional digits
+- **THEN** the historical work item MUST fail validation
+- **AND** no matching K row may be partially written or silently rounded

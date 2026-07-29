@@ -72,3 +72,52 @@ The formal contract MUST NOT become the production baseline until source-specifi
 - **THEN** owner, subscription, cached readback and recovery evidence may be retained
 - **AND** it MUST NOT be presented as realtime freshness evidence
 
+### Requirement: Realtime protocol and bridge readiness are distinct
+The datasource realtime ready frame SHALL identify successful protocol negotiation separately from terminal bridge-owner readiness, and the backend SHALL expose the accepted protocol state as `transportReady`.
+
+#### Scenario: Datasource emits realtime ready metadata
+- **WHEN** a TDX or QMT backend client completes WebSocket negotiation
+- **THEN** the datasource emits a `realtime.ready` frame whose data includes `bridge.ready`, `bridge.ownerId`, `bridge.ownerGeneration`, and `bridge.bridgeBuildId`
+- **AND** `data.source` is the domain label `TDX` or `QMT` while the outer transport `provider` remains lowercase `tdx` or `qmt`
+- **AND** it does not emit `tdxRealtimeBridgeReady`, `collectorReady`, a top-level owner `generation`, or `datasourceBuildId`
+
+#### Scenario: Backend receives a retired ready shape
+- **WHEN** a ready frame uses a retired top-level readiness or owner field instead of the normalized nested bridge object
+- **THEN** the backend rejects the frame as a contract mismatch
+- **AND** it does not set `transportReady`
+
+#### Scenario: Backend accepts a realtime ready frame
+- **WHEN** a source client validates the ready frame
+- **THEN** backend diagnostics set `transportReady=true`
+- **AND** retain bridge-owner state separately
+- **AND** do not infer subscription or market-data freshness from either value
+
+### Requirement: Realtime messages are bounded and parsed once
+Each backend realtime client SHALL enforce the raw UTF-8 frame byte limit before JSON parsing and SHALL route ready, control, and native snapshot messages from that single parsed object.
+
+#### Scenario: An oversized message arrives
+- **WHEN** a WebSocket message exceeds the configured raw byte limit
+- **THEN** the backend rejects it before `JSON.parse`
+- **AND** no protocol, bridge, or snapshot state is updated
+
+#### Scenario: A native snapshot arrives
+- **WHEN** a bounded message parses to a native snapshot envelope
+- **THEN** strict native-map validation consumes the parsed envelope
+- **AND** the raw text is not parsed a second time
+
+### Requirement: TDX realtime previous close uses one exact native key
+
+The TDX realtime datasource and backend converter SHALL accept only exact provider-native `LastClose` as the previous-close input and SHALL map it to canonical `prices.lastClose`. They MUST NOT treat `PreClose`, camelCase `lastClose`, spacing variants, or case-normalized variants as aliases.
+
+#### Scenario: Exact native LastClose is received
+
+- **WHEN** a TDX realtime native snapshot contains finite `LastClose`
+- **THEN** datasource validation accepts the previous-close field
+- **AND** backend maps it to canonical `prices.lastClose`
+
+#### Scenario: Retired previous-close alias is received
+
+- **WHEN** a TDX realtime native snapshot supplies `PreClose` or `lastClose` without exact `LastClose`
+- **THEN** datasource validation rejects the frame
+- **AND** backend conversion does not use the retired alias
+
