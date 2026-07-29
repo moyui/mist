@@ -67,7 +67,7 @@
   停止 change review，不实现 current-K 或 polling fallback。
 - [ ] 2.6 `[mist/mist-datasource]` 在 contract/evidence 中固定 `latest-state native snapshot` 质量等级：native 字段与 `get_full_tick` 相同不构成 tick-complete 证明，whole changed-symbol callback count 只用于测量。
 - [ ] 2.7 **阶段门**：操作员确认方法、exact integer subId（允许 `0`）、
-  unsubscribe 成功整数、对已释放同一 subId 重复 unsubscribe 的
+  unsubscribe 精确成功返回类型和值、对已释放同一 subId 重复 unsubscribe 的
   `safe|unsafe|unknown` 分类、single/whole callback contract 及 production
   时间字段映射后再开发 runtime；未证明重复退订安全时 recovery 固定为
   context reload/rebuild，不猜测幂等或有害。
@@ -76,7 +76,7 @@
 
 - [ ] 3.1 `[mist-datasource]` 实现 datasource 权威内存 registry，只有两个逻辑 bucket：nullable `whole{subId,symbols}` 与 `singles{providerSymbol:subId}`；`whole.subId/symbols` 必须成对存在，按 bucket 判断类型，不从 subId 数值或 symbol 数量推断。允许 datasource-private lifecycle metadata 标记 `retained-recovery`，但不得形成第三个 public bucket、改变 get response 或进入 backend-facing wire。
 - [ ] 3.2 `[mist-datasource]` 实现 backend-facing 四种精确 request 与 `subscriptions_synced|subscribed|unsubscribed|subscriptions` response；`data` 只能是 `success` 或 `failure`。普通 failure 恰好为 `{symbol,reason}`；unsubscribe 以及 sync 取消阶段的 failure 恰好为 `{symbol,reason,subscriptionState}`，其中 state 只允许 `subscribed|unknown`。固定 success 语义：QMT full/single subscribe 返回 exact integer ID（允许 `0`）、QMT cancel-all/unsubscribe 返回 null、QMT get 返回 `whole{subId,symbols}|null + singles{providerSymbol:subId}`；TDX mutation 返回 null、TDX get 返回 current terminal bridge 的 fresh normalized native list。backend-facing response 禁止 raw provider payload、`Error/ErrorId`、full list、operation ID 和 retry metadata。每个 provider WebSocket 最多一个 outstanding request，并使用 source-local 固定 bounded timeout（不进入 wire negotiation）。
-- [ ] 3.3 `[mist-datasource]` 实现 `sync_subscriptions` 顺序 best-effort reset：whole 在前、single 按 provider symbol 升序逐个取消；native 未确认时保留原 ID、继续剩余取消、阻止 replacement；只有 confirmed result 与 registry transition 都 durable 才删除 ID。exact bool `false` 只允许作为 postcondition candidate：registry 保留 `subId + bucket + symbol(s)`，调用前目标 ID callback 新鲜，调用后目标 ID 静默且另一个 current ID callback 在 bounded window 内继续推进时才确认；不调用 K 线历史接口，不用 bridge poll heartbeat 或无 witness 的静默猜测成功。confirmed unsubscribe 后 durability 失败时保留原 bucket entry 并私有标记 `retained-recovery`，立即停止剩余 mutation 和 replacement、设置 `reconciliationRequired`；全部 durable 成功后才创建 exact desired whole；多项 native 未确认时 backend-facing response 只取固定顺序第一项，journal 保存全部。
+- [ ] 3.3 `[mist-datasource]` 实现 `sync_subscriptions` 顺序 best-effort reset：whole 在前、single 按 provider symbol 升序逐个取消；native 未确认时保留原 ID、继续剩余取消、阻止 replacement；只有 exact bool `true`（或显式配置且有独立 HIL 证据的整数白名单值）与 registry transition 都 durable 才删除 ID。exact bool `false` 固定为未确认，不允许通过 callback silence、live witness、K 线历史接口或 bridge poll heartbeat 提升为成功。confirmed unsubscribe 后 durability 失败时保留原 bucket entry 并私有标记 `retained-recovery`，立即停止剩余 mutation 和 replacement、设置 `reconciliationRequired`；全部 durable 成功后才创建 exact desired whole；多项 native 未确认时 backend-facing response 只取固定顺序第一项，journal 保存全部。
 - [ ] 3.4 `[mist-datasource]` 实现 single subscribe/unsubscribe、
   whole/single 去重和 whole member 的 individual unsubscribe 拒绝；
   datasource 只处理收到的明确 control request，不自行推断
@@ -117,9 +117,8 @@
   失败。在下一 append 越界前于 writer lock 内
   flush+fsync、first/last-sequence archive rename、SHA-256 manifest atomic
   publish、新 active `rotation_anchor` fsync；startup 确定性处理
-  `.tmp/.rotating`。只对已有 durable confirmed-unsubscribe、proven context
-  reload/rebuild terminal observation，或 HIL-qualified repeated unsubscribe
-  durable result 的 fully resolved lifecycle 写并 fsync 保留
+  `.tmp/.rotating`。只对已有 durable confirmed-unsubscribe 或 proven context
+  reload/rebuild terminal observation 的 fully resolved lifecycle 写并 fsync 保留
   subId/bucket/sequence/hash/archive digest 的 immutable
   `compaction_checkpoint` 后删除源 archive；resolved detail 超过 retention
   后，只能在 atomic+fsync 发布含 sequence range、resolved count、prior sealed
@@ -143,9 +142,8 @@
   bool/float/string/None reject、duplicate、whole member 的
   `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`、unconfirmed cancellation 的
   `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown` 与 ID retention、顺序 reset、部分
-  native bool `false` 的 fresh-target + live-witness 成功、target 继续 callback
-  失败、无 witness/无 fresh target 失败，以及 callback observation 的 process
-  bound 与 ID reuse reset；
+  native bool `true` 的直接成功、bool `false` 无条件未确认，以及 callback
+  observation 的 process bound 与 ID reuse reset；
   native failure 继续取消且 replacement blocked、lost result 不 replay；
   分别注入 intent create/append/flush/fsync failure（零 native）、integer
   subscribe-result failure（ID retained/overlap blocked）、
@@ -363,9 +361,9 @@
   ready/reconnect 不发 control、没有 operator/product mutation endpoint；同时
   区分 native 未确认 retained ID 与 confirmed-unsubscribe durability failure
   的 `retained-recovery`；写明 journal storage 恢复不自动解锁、same-process
-  只接受证明 context reload/rebuild 的 durable `operator_observation`，或
-  HIL-qualified repeated unsubscribe 的 durable accepted result；当前 runtime
-  未证明重复退订安全时必须 reload/rebuild QMT context 并 restart datasource；同时写明
+  只接受证明 context reload/rebuild 的 durable `operator_observation`；当前
+  runtime 的重复退订返回 bool `false`，必须 reload/rebuild QMT context 并
+  restart datasource；同时写明
   rotation/compaction 阈值、resolved detail 90-day default/rolling sealed
   checkpoint、SHA-256/中断恢复、pinned-cap maintenance、
   unexpected restart、TDX/QMT 双 bridge manual install、source-scoped
@@ -481,7 +479,8 @@
   验证 `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown`、原 ID 保留和 replacement
   blocked；首次 accepted unsubscribe 后对同一个已释放 subId 再调用一次，
   记录精确返回/异常、callback 持续停止、可观察的 active/quota 释放和后续 ID
-  复用，并将 recovery 行为固定为 `safe|unsafe|unknown`。固定当前 runtime 的
+  复用；当前 runtime 首次成功固定为 exact bool `true`、重复已释放 ID 固定为
+  exact bool `false`，后者不得作为 recovery success。固定当前 runtime 的
   `time/stime/timetag` 存在性、值类型、候选优先级、parser、单位、时区、
   精度及同时出现时的一致性；证明 canonical `eventTime` 可回溯到原始
   provider 值，且候选不可用/冲突时为 null、不会退回任何本机时间。
@@ -492,8 +491,11 @@
     returned `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown` and retained both handles.
     Current candidate run `30332275918` repeated the fresh whole/overlay
     capture and proved canonical `eventTime` from provider-native time.
-    Accepted unsubscribe, repeated released-ID behavior and quota/ID reuse
-    remain unproven, so this task stays unchecked.
+    Run `30427618972` later captured exact bool `true` for successful
+    cancellations and exact bool `false` for the same released ID; retained
+    artifact run `30427924763` preserves the native result sequence. Quota/ID
+    reuse and the remaining membership-negative scenario keep this task
+    unchecked.
   - [x] Unique Nest test-only leader, exact integer whole/single IDs, fresh
     whole/overlay callback and changed-symbol common-ingress readback.
   - [x] Unconfirmed unsubscribe returns
@@ -501,8 +503,10 @@
     blocks clean replacement.
   - [ ] Current-handle non-member rejection plus member-but-business-
     unauthorized per-item backend rejection.
-  - [ ] Accepted unsubscribe, repeated released-ID result, callback stop,
-    quota release and later ID reuse classification.
+  - [x] Accepted unsubscribe returns exact bool `true`; the repeated released-ID
+    call returns exact bool `false` and remains unconfirmed. Evidence:
+    `30427618972/30427924763`.
+  - [ ] Callback stop, quota release and later ID reuse classification.
   - [x] Canonical QMT `eventTime` readback traced to provider-native time:
     current candidate run `30332275918` captured whole
     `2026-07-28T05:39:51.000Z` and overlay
@@ -516,9 +520,9 @@
   `QMT_JOURNAL_DURABILITY_FAILED/unknown`、阻止 replacement/后续 mutation并
   不自动重复；使用小阈值验证 rotation/compaction、各 publish 边界中断恢复、
   unresolved pinned 与 cap 前 fail closed，并演练 journal 恢复后
-  context reload/rebuild proof 的 durable `operator_observation`，或
-  HIL-qualified repeated unsubscribe durable result 分支；未证明重复退订安全时
-  演练 context reload/restart、retained ID failure 和 planned/unexpected
+  context reload/rebuild proof 的 durable `operator_observation`；不得使用
+  repeated unsubscribe bool `false` 解锁。演练 context reload/restart、
+  retained ID failure 和 planned/unexpected
   datasource restart runbook。
   - [x] Datasource CI run `30322477897` on exact
     `0b43a521187adbed737a932f4942849d88fe2295` passed deterministic unit and
@@ -642,9 +646,10 @@
   `containerize-tdx-qmt-datasources` 与本 change 均为通过后才能接受发布。
   - 2026-07-28 current verdict: `partial`. QMT positive subscription,
     controlled faults, durable recovery and source-scoped restart evidence
-    exist, but accepted bool-`false` unsubscribe postcondition/released-ID
-    behavior, TDX live negative/no-retry evidence and the dual-source joint
-    soak remain open. The final sanitized review is complete. QMT and TDX
+    exist, and QMT exact bool `true` success plus repeated released-ID bool
+    `false` behavior is now fixed by `30427618972/30427924763`; TDX live
+    negative/no-retry evidence and the dual-source joint soak remain open. The
+    final sanitized review is complete. QMT and TDX
     canonical `eventTime` boundaries plus the current protected post-digest
     are now proven. The joint release gate is therefore `blocked`.
 

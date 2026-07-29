@@ -142,33 +142,35 @@ MUST NOT expand the backend-facing wire response.
 
 #### Scenario: Single unsubscribe succeeds
 
-- **WHEN** `unsubscribe(symbol)` receives the HIL-confirmed native integer success value, or exact bool `false` passes the bounded fresh-target plus live-witness callback postcondition
+- **WHEN** `unsubscribe(symbol)` receives exact bool `true`, or an explicitly
+  configured integer value backed by separate HIL evidence
 - **AND** datasource durably records the matching result and registry transition
 - **THEN** `unsubscribed.data.success` MUST be null
 - **AND** the exact native return type/value MUST be retained in journal evidence
 - **AND** datasource MUST remove the corresponding ID from its registry only as part of that durable transition
 
-#### Scenario: Exact false is corroborated by realtime callbacks
+#### Scenario: Exact false is returned
 
 - **WHEN** `unsubscribe_quote(subId)` returns exact bool `false`
-- **AND** the target `subId` had a fresh realtime quote callback immediately before the call
-- **AND** the target `subId` produces no callback during the bounded verification window while at least one different current subscription ID produces a newer callback
-- **THEN** datasource MUST confirm the unsubscribe, durably record confirmation kind `callback_silence_with_live_witness`, remove the ID and return `success:null`
-- **AND** registry MUST retain the exact bucket plus symbol or symbol list throughout verification
-- **AND** datasource MUST NOT create a replacement subscription before that durable confirmation
-- **AND** a historical K-line query, bridge poll heartbeat or target silence without a callback witness MUST NOT satisfy this postcondition
+- **THEN** datasource MUST return
+  `QMT_UNSUBSCRIBE_UNCONFIRMED/subscriptionState=unknown`
+- **AND** it MUST retain the ID in its original registry bucket
+- **AND** callback silence, a live witness, a historical K-line query or bridge
+  poll heartbeat MUST NOT promote bool `false` to success
 
 #### Scenario: Single unsubscribe is unconfirmed
 
-- **WHEN** `unsubscribe_quote(subId)` raises, times out or returns a value other than the HIL-confirmed integer success value
-- **AND** exact bool `false` either was not returned or did not pass the bounded callback postcondition
+- **WHEN** `unsubscribe_quote(subId)` raises, times out or returns a value other
+  than exact bool `true` or an explicitly HIL-qualified integer success value
 - **THEN** `unsubscribed.data.failure` MUST be exactly
   `{symbol,reason:"QMT_UNSUBSCRIBE_UNCONFIRMED",subscriptionState:"unknown"}`
 - **AND** datasource MUST retain the original ID in its original registry bucket
 
 #### Scenario: Confirmed single unsubscribe cannot be made durable
 
-- **WHEN** `unsubscribe_quote(subId)` returns the HIL-confirmed integer success value but the matching result or registry transition cannot be appended, flushed and `fsync`ed
+- **WHEN** `unsubscribe_quote(subId)` returns exact bool `true` or an explicitly
+  HIL-qualified integer success value but the matching result or registry
+  transition cannot be appended, flushed and `fsync`ed
 - **THEN** `unsubscribed.data.failure` MUST be exactly
   `{symbol,reason:"QMT_JOURNAL_DURABILITY_FAILED",subscriptionState:"unknown"}`
 - **AND** datasource MUST retain the original ID in its original public registry bucket with private `retained-recovery` metadata
@@ -186,7 +188,9 @@ durable create one replacement whole subscription for the exact desired set.
 
 #### Scenario: All existing handles are confirmed and durably recorded unsubscribed
 
-- **WHEN** every required `unsubscribe_quote(subId)` returns the runtime-HIL-confirmed success integer and every matching result and registry transition becomes durable
+- **WHEN** every required `unsubscribe_quote(subId)` returns exact bool `true`
+  or an explicitly HIL-qualified integer success value and every matching
+  result and registry transition becomes durable
 - **THEN** datasource MUST remove each corresponding ID from its registry
 - **AND** it MUST create the replacement whole subscription when the desired list is non-empty
 - **AND** an empty desired list MUST converge without issuing a subscribe call
@@ -194,7 +198,8 @@ durable create one replacement whole subscription for the exact desired set.
 
 #### Scenario: One unsubscribe is not confirmed
 
-- **WHEN** an unsubscribe raises, times out or returns a value other than the runtime-HIL-confirmed success integer
+- **WHEN** an unsubscribe raises, times out or returns a value other than exact
+  bool `true` or an explicitly HIL-qualified integer success value
 - **THEN** datasource MUST retain the original ID in its original registry bucket
 - **AND** it MUST continue attempting the remaining explicitly requested unsubscribe calls
 - **AND** it MUST NOT create the replacement whole subscription
@@ -207,7 +212,9 @@ durable create one replacement whole subscription for the exact desired set.
 
 #### Scenario: Confirmed reset cancellation cannot be made durable
 
-- **WHEN** one reset cancellation returns the HIL-confirmed success integer but its result or registry transition cannot be made durable
+- **WHEN** one reset cancellation returns exact bool `true` or an explicitly
+  HIL-qualified integer success value but its result or registry transition
+  cannot be made durable
 - **THEN** datasource MUST retain that ID as private `retained-recovery` evidence in its original public bucket
 - **AND** that step's failure MUST use
   `QMT_JOURNAL_DURABILITY_FAILED/subscriptionState=unknown`
@@ -221,7 +228,9 @@ durable create one replacement whole subscription for the exact desired set.
 - **THEN** datasource MUST act from the IDs still present in its current registry
 - **AND** it MUST NOT attempt to reconstruct an atomic transaction or silently assume an earlier failed unsubscribe succeeded
 - **AND** a `retained-recovery` ID MUST NOT be automatically retried
-- **AND** an explicit recovery MAY call `unsubscribe_quote` for that ID only when current-runtime HIL has proved repeated cancellation of a released ID safe; otherwise recovery MUST reload or rebuild the QMT context
+- **AND** recovery MUST reload or rebuild the QMT context; the current runtime's
+  repeated cancellation result is exact bool `false` and is not accepted as
+  recovery success
 
 ### Requirement: QMT control transport maps one command to one native call
 
@@ -437,7 +446,8 @@ Datasource SHALL append subscription intents and observed native results to a lo
   `QMT_JOURNAL_DURABILITY_FAILED/subscriptionState=unknown`
 - **AND** it MUST retain the original ID in the same public bucket with private `retained-recovery` metadata
 - **AND** it MUST NOT report the ID as confirmed-live, accept callback membership for it, replay the native call or expose another mutation
-- **AND** only a durable explicit `operator_observation` proving QMT context reload/rebuild, or following a HIL-qualified repeated unsubscribe with a durable accepted result, MAY clear `reconciliationRequired`
+- **AND** only a durable explicit `operator_observation` proving QMT context
+  reload/rebuild MAY clear `reconciliationRequired`
 
 #### Scenario: Sensitive or large data would enter the journal
 
@@ -458,7 +468,9 @@ Datasource SHALL append subscription intents and observed native results to a lo
 #### Scenario: Journal archives require compaction
 
 - **WHEN** active, archive, manifest and checkpoint bytes would exceed `MIST_QMT_SUBSCRIPTION_JOURNAL_ARCHIVE_MAX_BYTES`, whose default MUST be exactly `536870912` bytes
-- **THEN** the datasource single writer MAY compact only archives whose every ID lifecycle has a durable terminal unsubscribe, a durable terminal `operator_observation` proving QMT context reload/rebuild, or a HIL-qualified repeated unsubscribe with a durable accepted result
+- **THEN** the datasource single writer MAY compact only archives whose every
+  ID lifecycle has a durable terminal unsubscribe or a durable terminal
+  `operator_observation` proving QMT context reload/rebuild
 - **AND** an acknowledgement or storage-health observation alone MUST NOT resolve an ID lifecycle
 - **AND** it MUST atomically publish and `fsync` an immutable `compaction_checkpoint` preserving each still-retained resolved lifecycle's ID, bucket, first/last journal sequence, terminal record hash and archive SHA-256 before deleting a source archive
 - **AND** every unresolved or `retained-recovery` lifecycle MUST retain its complete records rather than only a summary
@@ -536,7 +548,9 @@ is integrated.
 
 - **WHEN** Windows HIL captures single and whole callbacks
 - **THEN** fixtures MUST prove the outer `{code: data}` shape, changed-symbol behavior, native field preservation and exact integer subscription IDs, with `0` accepted if returned
-- **AND** HIL MUST determine the exact integer success semantics of `unsubscribe_quote`
+- **AND** HIL MUST prove the exact return type/value semantics of
+  `unsubscribe_quote`; the current accepted runtime returns bool `true` for the
+  first successful cancellation and bool `false` for the repeated released ID
 - **AND** before creating another subscription, HIL MUST call `unsubscribe_quote` again with the same released `subId` and record the exact return or exception, callback cessation, observable active-subscription or quota release when available, and later ID reuse
 - **AND** absent compatible evidence, production recovery MUST treat repeated cancellation as unknown and require QMT context reload rather than guessing idempotence or harm
 - **AND** evidence MUST record observed or documented whole-list size, active ID limits and VIP/non-VIP permission constraints, using unknown where runtime cannot prove them

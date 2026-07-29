@@ -261,7 +261,8 @@ Every response SHALL contain top-level `type`, `provider`, `timestamp` and `data
 
 #### Scenario: QMT single unsubscribe succeeds
 
-- **WHEN** QMT `unsubscribe` receives the HIL-confirmed native integer success value, or exact bool `false` passes the datasource-private fresh-target plus live-witness callback postcondition
+- **WHEN** QMT `unsubscribe` receives exact bool `true`, or an explicitly
+  configured integer value backed by separate HIL evidence
 - **AND** datasource durably records its result and registry transition
 - **THEN** `unsubscribed.data.success` MUST be null
 - **AND** the exact native return type/value MUST remain in the QMT journal
@@ -269,7 +270,9 @@ Every response SHALL contain top-level `type`, `provider`, `timestamp` and `data
 
 #### Scenario: QMT confirmed unsubscribe cannot be made durable
 
-- **WHEN** QMT receives the HIL-confirmed native unsubscribe success value but cannot append, flush and `fsync` the matching result or registry transition
+- **WHEN** QMT receives exact bool `true` or an explicitly HIL-qualified integer
+  success value but cannot append, flush and `fsync` the matching result or
+  registry transition
 - **THEN** `data.failure` MUST contain exactly
   `{symbol,reason:"QMT_JOURNAL_DURABILITY_FAILED",subscriptionState:"unknown"}`
 - **AND** the retained ID marker and `reconciliationRequired` health state MUST remain datasource-private

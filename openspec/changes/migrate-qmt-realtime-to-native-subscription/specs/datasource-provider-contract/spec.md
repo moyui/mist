@@ -184,22 +184,25 @@ Non-cancellation failures SHALL continue to carry exactly
 
 #### Scenario: QMT cancellation is unconfirmed
 
-- **WHEN** `unsubscribe_quote` does not produce the HIL-confirmed integer success value and exact bool `false` does not pass fresh-target plus live-witness callback verification
+- **WHEN** `unsubscribe_quote` does not produce exact bool `true` or an
+  explicitly HIL-qualified integer success value
 - **THEN** datasource MUST return reason `QMT_UNSUBSCRIBE_UNCONFIRMED`
 - **AND** `subscriptionState` MUST be `unknown`
 - **AND** the original ID MUST remain in its registry bucket and journal
 
-#### Scenario: QMT exact false is verified by callback postcondition
+#### Scenario: QMT exact false remains unconfirmed
 
-- **WHEN** exact bool `false` is returned for an ID whose quote callback was fresh before cancellation
-- **AND** a different current subscription ID continues callback progress while the target ID remains silent for the bounded verification window
-- **THEN** datasource MUST treat the cancellation as confirmed and return `success:null` only after the confirmation transition is durable
-- **AND** it MUST use the registry's stored ID-to-bucket-and-symbol mapping
-- **AND** it MUST NOT use K-line reads, bridge poll heartbeat or uncorroborated silence as release proof
+- **WHEN** exact bool `false` is returned
+- **THEN** datasource MUST return
+  `QMT_UNSUBSCRIBE_UNCONFIRMED/subscriptionState=unknown`
+- **AND** callback silence or progress from another subscription MUST NOT
+  promote it to success
 
 #### Scenario: QMT cancellation is confirmed but its transition is not durable
 
-- **WHEN** `unsubscribe_quote` produces the HIL-confirmed integer success value but datasource cannot make the result and registry transition durable
+- **WHEN** `unsubscribe_quote` produces exact bool `true` or an explicitly
+  HIL-qualified integer success value but datasource cannot make the result and
+  registry transition durable
 - **THEN** datasource MUST return reason `QMT_JOURNAL_DURABILITY_FAILED`
 - **AND** `subscriptionState` MUST be `unknown`
 - **AND** the original ID MUST remain in its public registry bucket as a private `retained-recovery` candidate

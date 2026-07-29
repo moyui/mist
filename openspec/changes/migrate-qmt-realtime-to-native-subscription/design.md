@@ -216,28 +216,20 @@ provider business time 的候选表示：`time` 是数值 timestamp，
   `type(result) is int` 才算成功；`0` 允许作为有效 `subId`，不附加正负范围
   假设。`bool`、float、string、`None` 和异常均失败。
 - 成功 ID 立即写 QMT 固定格式日志，并由 datasource durable journal 保存。
-- `unsubscribe_quote(subId)` 的直接成功返回值由 runtime HIL 固定；
-  `type(result) is int` 且命中 HIL 成功值时可直接进入 durable transition。
-  若 exact result 持续为 bool `false`，datasource 只把它视为
-  postcondition-verification candidate：registry 已同时保存 `subId` 与其
-  bucket/symbol(s)，且只有在调用前目标 ID 的 callback 新鲜、调用后目标 ID
-  callback 停止、另一个仍存活 subscription ID 的 callback 在同一 bounded
-  window 内继续推进时，才允许把该次退订确认为成功。这里观察的是 realtime
-  quote callback，不是历史 K 线查询。
-- `false` 的 callback 验证期间不得创建 replacement；只有 durable
-  `unsubscribed` transition 后才删除 ID并返回 `success:null`。目标 callback
-  继续、没有 fresh precondition、没有 live witness、闭市/午休无 callback、
-  timeout 或 durability failure 都不得靠静默猜测成功。
-- 对 `unsubscribe_quote`，`None`、bool `true`、float、string、未被 HIL
-  确认为 success 的整数、异常或 timeout 均视为失败；未满足上述双 callback
-  postcondition 的 bool `false` 同样失败，原 ID 留在原 registry 位置并计入
-  monitoring。该规则不限制 subscribe 返回的 integer ID 范围。
-- 官方文档没有定义对已确认释放 subId 再次调用 `unsubscribe_quote` 的
-  return/exception/idempotency 语义。Windows HIL 必须捕获
-  `subscribe -> unsubscribe -> same-subId unsubscribe`，第二次退订前不得创建
-  其他 subscription；同时记录可观察的 callback 停止、订阅额度释放和随后新建
-  subscription 的 subId 复用情况。未通过前不得把 retained recovery ID 的重复
-  退订作为自动恢复路径，也不得宣称它一定有害。
+- 当前 QMT runtime 已由 Windows HIL 固定：对仍有效的 `subId` 成功调用
+  `unsubscribe_quote(subId)` 返回 exact bool `true`；对同一个已释放 `subId`
+  再次调用返回 exact bool `false`。因此 exact bool `true` 可直接进入 durable
+  transition，exact bool `false` 必须视为未确认，不能再通过 callback silence
+  或 live witness 提升为成功。
+- 显式配置且另有 HIL 证据的 exact integer 白名单值仍可作为成功值；该白名单
+  不影响当前 bool contract，也不允许用 Python truthiness 混淆 bool 与 int。
+- 对 `unsubscribe_quote`，`None`、bool `false`、float、string、未在显式 HIL
+  白名单中的整数、异常或 timeout 均视为失败，原 ID 留在原 registry 位置并
+  计入 monitoring。只有成功结果与 `unsubscribed` transition 都 durable 后才
+  删除 ID 并返回 `success:null`。
+- 已释放 ID 的重复调用证据只固定为 bool `false`，不能解除
+  `retained-recovery` 或 `reconciliationRequired`。该恢复路径必须
+  reload/rebuild QMT context 后 restart datasource。
 - runtime alias 只做 introspection，不根据名称猜测调用。正式候选仍为 `subscribe_quote`、`subscribe_whole_quote`、`unsubscribe_quote`。
 
 ### 2. 质量等级
@@ -321,13 +313,11 @@ reset 不绑定盘前、盘中或盘后时钟。它只在 Nest 内部 caller 明
 - symbol 属于 `whole.symbols` 时不调用 native，返回
   `QMT_SYMBOL_OWNED_BY_WHOLE` 与 `subscriptionState=subscribed`，调用方改用
   下一次 exact sync。
-- native unsubscribe 未取得 HIL 已确认的整数成功值、也未让 exact bool
-  `false` 通过 fresh-target + live-witness callback postcondition 时，保留原
-  single ID，返回 `QMT_UNSUBSCRIBE_UNCONFIRMED` 与
-  `subscriptionState=unknown`。
-- 只有 HIL 已确认的整数成功值，或 exact bool `false` 通过上述 bounded
-  callback postcondition，且对应 result 与 registry transition 已 durable，
-  才删除原 single ID 并返回 `success:null`。
+- native unsubscribe 未返回 exact bool `true`，也未命中显式配置且另有 HIL
+  证据的整数成功值时，保留原 single ID，返回
+  `QMT_UNSUBSCRIBE_UNCONFIRMED` 与 `subscriptionState=unknown`。
+- 只有 exact bool `true` 或上述整数白名单成功值，且对应 result 与 registry
+  transition 已 durable，才删除原 single ID 并返回 `success:null`。
 - confirmed success 后 result/transition append、flush 或 fsync 失败时，原 ID
   暂时保留在原 bucket 并在私有 metadata 标记为 `retained-recovery`；这表示
   datasource 为恢复而保守保存 subId，不是 physical handle confirmed-live
@@ -448,7 +438,7 @@ convergence evidence，后续 poll 必须向新 target 收敛。HTTP/provider fa
 | --- | --- | --- |
 | `sync_subscriptions(symbols)` | datasource 先在 source-local gate 内把 transport desired 原子替换为 exact normalized symbols 并推进内部 revision；TDX terminal bridge 按现有 batch 对新 desired 调用 `unsubscribe_hq/subscribe_hq(..., callback)`，随后在终端内调用 native `get_subscribe_hq_stock_list` 并回报完整 active list。只有 current owner/epoch/revision 下的 fresh native list 等于 exact desired 才返回 `success:null` | datasource 顺序取消 `whole.subId` 与全部 `singles[symbol]`；全部退订成功后下发 control，由 QMT terminal bridge 调用一次 `subscribe_whole_quote(exactDesiredSymbols, callback)`。非空 desired 返回 `success:<newWholeSubId>`，空 desired 返回 `success:null` |
 | `subscribe(symbol)` | datasource 先在 source-local gate 内把 transport desired 更新为 current union symbol 并推进内部 revision，再由现有 TDX terminal bridge 调用 `subscribe_hq([symbol], callback)`；只有 bridge/native list 已包含 symbol 才返回 `success:null` | datasource 下发 control，由 QMT terminal bridge 调用 `subscribe_quote(symbol, period='tick', dividend_type='none', result_type='dict', callback=...)`；只有 `type(result) is int` 才返回 `success:<newSingleSubId>`，其中 `0` 有效 |
-| `unsubscribe(symbol)` | datasource 先在 source-local gate 内从 transport desired 移除 symbol 并推进内部 revision；TDX terminal bridge 调用 `unsubscribe_hq([symbol])` 后以 fresh terminal-native active list 不含 symbol 作为成功 postcondition；成功返回 `success:null`，仍在 list 返回 `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed`，list 不可验证返回 `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`。失败不恢复旧 desired | datasource 从 `singles[symbol]` 取得 `subId` 并下发 control，由 QMT terminal bridge 调用 `unsubscribe_quote(subId)`；只有返回 HIL 已确认的整数成功值才删除 ID并返回 `success:null`。未确认时保留 ID 并返回 `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown`；`whole.symbols` 成员返回 `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`，不调用 native |
+| `unsubscribe(symbol)` | datasource 先在 source-local gate 内从 transport desired 移除 symbol 并推进内部 revision；TDX terminal bridge 调用 `unsubscribe_hq([symbol])` 后以 fresh terminal-native active list 不含 symbol 作为成功 postcondition；成功返回 `success:null`，仍在 list 返回 `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed`，list 不可验证返回 `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`。失败不恢复旧 desired | datasource 从 `singles[symbol]` 取得 `subId` 并下发 control，由 QMT terminal bridge 调用 `unsubscribe_quote(subId)`；当前 runtime 只有 exact bool `true`（或显式 HIL 整数白名单值）才删除 ID并返回 `success:null`。bool `false` 保留 ID 并返回 `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown`；`whole.symbols` 成员返回 `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`，不调用 native |
 | `get_subscriptions` | datasource-private `nativeProbeRevision` read barrier 要求 current terminal bridge 新执行一次 native `get_subscribe_hq_stock_list`；只在 current owner/epoch/revision result 回报该 probe 后返回 `success:<normalizedProviderSymbolList>` | 不调用 provider；返回 datasource 当前 `whole + singles` in-memory registry |
 
 TDX mutation 的 immediate native/HTTP payload 不直接成为公共 success value。
@@ -868,9 +858,9 @@ recordHash
   存在一个可验证的 old/new copy。任何 `.tmp/.rotating` 中断状态必须在 startup
   通过 hash chain/manifest 确定性完成或回滚，不能删除最后一个有效 copy。
 - compaction 只能处理所有 subId 都已有 durable confirmed-unsubscribe，或已有
-  durable terminal `operator_observation` 明确证明 context reload/rebuild，或
-  HIL-qualified repeated unsubscribe 已取得 durable accepted result 的
-  archive；普通 acknowledgement 不能解析 lifecycle。先写并 fsync immutable
+  durable terminal `operator_observation` 明确证明 context reload/rebuild 的
+  archive；重复已释放 ID 在当前 runtime 返回 bool `false`，不能解析
+  lifecycle。普通 acknowledgement 也不能解析 lifecycle。先写并 fsync immutable
   `compaction_checkpoint`，其中保留每个 resolved lifecycle 的 subId、bucket、
   first/last journal sequence、terminal record hash 与 archive SHA-256，再
   atomic publish checkpoint，最后才能删除源 archive。
@@ -1729,7 +1719,9 @@ baseline。当前 post-close proposal、design、tasks 与
   fixtures、
   source-specific converter unit tests 和双 source HIL 控制。
 - QMT whole callback map 可包含多个 code，单次对象大小必须有 hard limit。
-- unsubscribe 返回 contract 只有 HIL 证明数值语义后才能启用物理退订；失败时不删除 ID、不创建 replacement。
+- unsubscribe 返回 contract 已由当前 runtime HIL 固定为首次成功 exact bool
+  `true`、重复已释放 ID exact bool `false`；失败时不删除 ID、不创建
+  replacement。整数成功值仅来自显式配置且独立 HIL 证明的白名单。
 - 内部 control 方法当前没有 production caller，存在后续集成前被接口漂移破坏
   的风险；common interface guard、direct-method contract tests 与 Windows HIL
   harness 是本 change 的防漂移证据，不能用空 stub 代替。
@@ -1740,7 +1732,7 @@ baseline。当前 post-close proposal、design、tasks 与
 ## Open Questions / Runtime Gates
 
 - production runtime 中实际存在的 `*all*/*whole*` alias 清单；alias 只记录，不猜测调用。
-- `unsubscribe_quote` 当前版本成功数值。
+- 其他 QMT runtime 版本是否仍返回相同的 bool 语义，或需要独立证明的整数白名单值。
 - single/whole 最大订阅数、VIP权限和 whole exact-list规模。
 - callback 是否并发/重入及最大单次 code 数。
 - `time/stime/timetag` 的实际存在性、类型、单位、时区、精度与 backend 映射，以及 order book 层数和 JSON scalar 的实际类型。

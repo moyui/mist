@@ -87,7 +87,12 @@
   subscription list；目标已不在 list 时成功，仍在 list 时返回
   `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed`，list 无法取得或解析时返回
   `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`。失败不得把旧 desired 回滚回来。
-- QMT `unsubscribe_quote` 未取得 HIL 已确认的整数成功值时返回 `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown` 并保留原 ID；whole-owned symbol 返回 `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`。
+- 当前 QMT runtime 已由 Windows HIL 固定：对仍有效的 `subId` 成功调用
+  `unsubscribe_quote` 返回 exact bool `true`；对同一个已释放 `subId` 重复调用
+  返回 exact bool `false`。datasource 仅把 exact bool `true`（以及显式配置且
+  另有 HIL 证据的整数白名单值）视为成功；bool `false` 返回
+  `QMT_UNSUBSCRIBE_UNCONFIRMED/unknown` 并保留原 ID。whole-owned symbol 返回
+  `QMT_SYMBOL_OWNED_BY_WHOLE/subscribed`。
 - QMT journal intent 必须在 native call 暴露前完成 append+flush+fsync。若
   confirmed unsubscribe 后 result/registry transition 无法 durable，datasource
   返回 `QMT_JOURNAL_DURABILITY_FAILED/unknown`，把原 ID 保留并标记为
@@ -96,11 +101,10 @@
   再次 `unsubscribe_quote` 的行为必须由 Windows HIL 固定，官方文档未定义时
   不得猜测 idempotent 或 harmful。
 - journal storage 恢复本身不解除 `reconciliationRequired`；同一进程内只有
-  证明 context reload/rebuild 的 durable `operator_observation`，或
-  HIL-qualified repeated unsubscribe 的 durable accepted result 才可解锁。
+  证明 context reload/rebuild 的 durable `operator_observation` 才可解锁。
   当前 change 不为此增加 HTTP/WebSocket/CLI/diagnostic mutation endpoint；
-  未证明重复退订安全时，运维恢复固定为 reload/rebuild QMT context 后 restart
-  datasource。
+  当前 runtime 的重复退订返回 bool `false`，不得作为恢复成功证据；运维恢复
+  固定为 reload/rebuild QMT context 后 restart datasource。
 - QMT journal 由 datasource single writer 按 bounded active/archive byte
   threshold 执行 crash-safe rotation/compaction；archive 与 checkpoint 使用
   SHA-256，任何没有 durable confirmed-unsubscribe evidence 的 ID lifecycle

@@ -65,16 +65,19 @@ production desired-subscription integration is active.
 
 - **WHEN** the operator calls `unsubscribe_quote(subId)`
 - **THEN** evidence MUST capture the exact returned type/value or exception
-- **AND** the accepted integer success value MUST be fixed in the production contract
-- **AND** if exact bool `false` is evaluated as a success candidate, evidence MUST show a fresh target callback before cancellation, target callback silence after cancellation and continued callback progress from a different current subscription ID
-- **AND** callback silence alone, K-line history reads and bridge poll heartbeat MUST not be presented as proof
+- **AND** the production contract MUST fix the current runtime result as exact
+  bool `true` for a successful active-ID cancellation
+- **AND** exact bool `false`, callback silence, K-line history reads and bridge
+  poll heartbeat MUST not be presented as proof
 
 #### Scenario: Released subscription ID is cancelled again
 
-- **WHEN** the first `unsubscribe_quote(subId)` has returned the accepted success integer and no later subscription has been created
+- **WHEN** the first `unsubscribe_quote(subId)` has returned exact bool `true`
+  and no later subscription has been created
 - **THEN** HIL MUST call `unsubscribe_quote` once more with the exact same released `subId`
 - **AND** evidence MUST capture the second exact return type/value or exception, continued callback cessation, observable active-subscription or quota release when the runtime exposes it, and whether later subscriptions reuse that integer ID
-- **AND** release evidence MUST state whether repeated cancellation is proven safe for recovery, unsafe, or unknown
+- **AND** release evidence MUST record the current runtime's exact bool `false`
+  result and classify it as unconfirmed rather than recovery success
 - **AND** callback silence alone MUST NOT qualify repeated cancellation as safe
 
 #### Scenario: Callback shape is compared with tick structure
@@ -157,7 +160,10 @@ automatic crash recovery or a production mutation endpoint.
 #### Scenario: Full reset runs
 
 - **WHEN** harness explicitly calls `syncSubscriptions` again
-- **THEN** evidence MUST show sequential unsubscribe calls, durable result/registry-transition records and creation of one replacement whole only after all prior IDs return the accepted success integer and those transitions become durable
+- **THEN** evidence MUST show sequential unsubscribe calls, durable
+  result/registry-transition records and creation of one replacement whole only
+  after all prior IDs return exact bool `true` or an explicitly HIL-qualified
+  integer success value and those transitions become durable
 
 #### Scenario: Unsubscribe is unconfirmed
 
@@ -188,8 +194,11 @@ automatic crash recovery or a production mutation endpoint.
 
 - **WHEN** journal storage becomes healthy after a confirmed-unsubscribe durability failure
 - **THEN** storage health alone MUST NOT unlock mutation
-- **AND** a same-process unlock MUST require a durable explicit `operator_observation` proving context reload/rebuild, or a HIL-qualified repeated unsubscribe with a durable accepted result
-- **AND** if released-ID repeated cancellation is not proven safe by the current-runtime HIL, evidence MUST show QMT context reload or rebuild and datasource restart rather than another unsubscribe call
+- **AND** a same-process unlock MUST require a durable explicit
+  `operator_observation` proving context reload/rebuild
+- **AND** evidence MUST show QMT context reload or rebuild and datasource
+  restart rather than another unsubscribe call; the current runtime's repeated
+  cancellation returns bool `false`
 
 #### Scenario: Late control result is sequence fenced
 

@@ -264,7 +264,9 @@ append-only archives and the active hash chain.
 
 #### Scenario: Confirmed unsubscribe result cannot be journaled
 
-- **WHEN** native unsubscribe returns the HIL-confirmed success integer but its result or registry transition cannot be appended, flushed and `fsync`ed
+- **WHEN** native unsubscribe returns exact bool `true` or an explicitly
+  HIL-qualified integer success value but its result or registry transition
+  cannot be appended, flushed and `fsync`ed
 - **THEN** datasource MUST return
   `QMT_JOURNAL_DURABILITY_FAILED/subscriptionState=unknown`
 - **AND** it MUST retain the original ID in its original public bucket with private `retained-recovery` metadata
@@ -281,8 +283,11 @@ append-only archives and the active hash chain.
 
 - **WHEN** append, flush and `fsync` become available again after a result durability failure
 - **THEN** storage health alone MUST NOT clear `reconciliationRequired`
-- **AND** the same process MAY clear it only after an explicit recovery action produces a durable `operator_observation` proving QMT context reload/rebuild, or after a HIL-qualified repeated unsubscribe obtains a durable accepted result
-- **AND** repeated unsubscribe of a `retained-recovery` ID MUST require current-runtime HIL proof; without that proof the runbook MUST reload or rebuild the QMT context and restart datasource
+- **AND** the same process MAY clear it only after an explicit recovery action
+  produces a durable `operator_observation` proving QMT context reload/rebuild
+- **AND** repeated unsubscribe of a `retained-recovery` ID MUST NOT unlock
+  recovery; the current runtime returns exact bool `false`, so the runbook MUST
+  reload or rebuild the QMT context and restart datasource
 - **AND** this recovery rule MUST NOT create an HTTP, WebSocket, CLI, frontend or diagnostic subscription-mutation endpoint
 
 #### Scenario: Rotation or compaction is interrupted
