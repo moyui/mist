@@ -384,7 +384,6 @@ describe('CollectorService', () => {
           amount: 13560,
           period: Period.THREE_MIN,
           extensions: {
-            effectiveDividendType: 'front_ratio',
             nativePeriod: '3m',
           },
         },
@@ -411,7 +410,7 @@ describe('CollectorService', () => {
           expect.objectContaining({
             period: Period.THREE_MIN,
             extensions: expect.objectContaining({
-              effectiveDividendType: 'front_ratio',
+              nativePeriod: '3m',
             }),
           }),
         ]),

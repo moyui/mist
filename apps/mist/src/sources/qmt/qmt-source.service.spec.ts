@@ -187,7 +187,6 @@ describe('QmtSource', () => {
           openInterest: 22,
           suspendFlag: 0,
           settle: 11.2,
-          effectiveDividendType: 'front_ratio',
           nativePeriod: '3m',
         },
       },
@@ -433,7 +432,6 @@ describe('QmtSource', () => {
           openInterest: 22,
           suspendFlag: 0,
           settle: 11.2,
-          effectiveDividendType: 'front_ratio',
           nativePeriod: '3m',
         },
       },
@@ -478,19 +476,11 @@ describe('QmtSource', () => {
         openInterest: 22,
         suspendFlag: 0,
         settle: 11.2,
-        effectiveDividendType: 'front_ratio',
         nativePeriod: '3m',
       },
     ]);
     expect(extensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
-      [
-        'preClose',
-        'suspendFlag',
-        'openInterest',
-        'settle',
-        'effectiveDividendType',
-        'nativePeriod',
-      ],
+      ['preClose', 'suspendFlag', 'openInterest', 'settle', 'nativePeriod'],
       ['k_id'],
     );
   });

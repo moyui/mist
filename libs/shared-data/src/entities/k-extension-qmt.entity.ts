@@ -67,15 +67,6 @@ export class KExtensionQmt {
   settle: number | null = null;
 
   @Column({
-    name: 'effective_dividend_type',
-    type: 'varchar',
-    length: 32,
-    nullable: true,
-    comment: '实际复权口径',
-  })
-  effectiveDividendType: string | null = null;
-
-  @Column({
     name: 'native_period',
     type: 'varchar',
     length: 16,

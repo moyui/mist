@@ -33,7 +33,6 @@ describe('managed physical column naming metadata', () => {
     [KExtensionQmt, 'preClose', 'pre_close'],
     [KExtensionQmt, 'suspendFlag', 'suspend_flag'],
     [KExtensionQmt, 'openInterest', 'open_interest'],
-    [KExtensionQmt, 'effectiveDividendType', 'effective_dividend_type'],
     [KExtensionQmt, 'nativePeriod', 'native_period'],
   ])('%s.%s maps to %s', (target, propertyName, physicalColumnName) => {
     const column = storage.columns.find(

@@ -32,7 +32,6 @@ export interface QmtExtension {
   suspendFlag?: number;
   openInterest?: number;
   settle?: number;
-  effectiveDividendType?: string;
   nativePeriod?: string;
 }
 

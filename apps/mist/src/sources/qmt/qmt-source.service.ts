@@ -53,7 +53,6 @@ const QMT_EXTENSION_UPSERT_COLUMNS = [
   'suspendFlag',
   'openInterest',
   'settle',
-  'effectiveDividendType',
   'nativePeriod',
 ];
 
@@ -172,7 +171,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
         openInterest: extension.openInterest,
         suspendFlag: extension.suspendFlag,
         settle: extension.settle,
-        effectiveDividendType: extension.effectiveDividendType,
         nativePeriod: extension.nativePeriod,
       }));
 
@@ -266,7 +264,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     nativePeriod: string,
   ): QmtExtension {
     const extension: QmtExtension = {
-      effectiveDividendType: QMT_CANONICAL_DIVIDEND_TYPE,
       nativePeriod,
     };
     this.assignNumber(extension, 'preClose', symbolData, ['preClose'], rowKey);
@@ -414,8 +411,6 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
       suspendFlag: ext?.suspendFlag ?? null,
       openInterest: ext?.openInterest ?? null,
       settle: ext?.settle ?? null,
-      effectiveDividendType:
-        ext?.effectiveDividendType ?? QMT_CANONICAL_DIVIDEND_TYPE,
       nativePeriod: ext?.nativePeriod ?? null,
     };
   }

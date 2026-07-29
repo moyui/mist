@@ -59,6 +59,14 @@ describe('database schema safety', () => {
       '010_normalize_managed_column_names.sql',
       '8e90ae62370edf6796cf6e385e9d8dc12866933208e0f8f29ca560de6453132a',
     ],
+    [
+      '011_normalize_audit_timestamp_names.sql',
+      '0defd6fc436114bc6030bac7b4c84a9aebb9771ed93de53d328eab4daa81acf3',
+    ],
+    [
+      '012_remove_qmt_effective_dividend_type.sql',
+      '7753141113ed4330a6e9fb49b05c724264a93b1e1f8f863c3a810c38c1d9ac89',
+    ],
   ]);
 
   it.each(appModulePaths)(
@@ -290,5 +298,28 @@ describe('database schema safety', () => {
     expect(audit).toContain('post_migration_ready');
     expect(audit).toContain('invalid_mapping_count');
     expect(audit).toContain('invalid_attribute_count');
+  });
+
+  it('removes redundant QMT effective dividend request provenance', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/012_remove_qmt_effective_dividend_type.sql',
+    );
+    const audit = readRepoFile(
+      'deploy/database/audit-qmt-effective-dividend-type-removal.sql',
+    );
+    const entity = readRepoFile(
+      'libs/shared-data/src/entities/k-extension-qmt.entity.ts',
+    );
+    const source = readRepoFile(
+      'apps/mist/src/sources/qmt/qmt-source.service.ts',
+    );
+
+    expect(migration).toContain('DROP COLUMN `effective_dividend_type`');
+    expect(audit).toContain(
+      "AND BINARY `column_name` = BINARY 'effective_dividend_type'",
+    );
+    expect(entity).not.toContain('effectiveDividendType');
+    expect(source).not.toContain('effectiveDividendType');
+    expect(source).toContain('dividend_type: QMT_CANONICAL_DIVIDEND_TYPE');
   });
 });

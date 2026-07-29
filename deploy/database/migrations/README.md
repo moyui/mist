@@ -213,3 +213,23 @@ The renamed columns must retain `DATETIME(6) NOT NULL` and
 atomically because the HTTP property rename is intentionally breaking and has
 no compatibility aliases. Rollback requires the pre-011 database backup and
 both previous application SHAs.
+
+## QMT effective dividend request provenance removal
+
+Migration `012_remove_qmt_effective_dividend_type.sql` removes
+`k_extensions_qmt.effective_dividend_type`. The column repeated the backend's
+fixed `dividend_type='front_ratio'` request parameter for every K row; it was
+not populated from an independently verified provider response.
+
+Before and after migration 012, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-qmt-effective-dividend-type-removal.sql
+```
+
+The audit count must be `1` before migration and `0` afterward. Deploy migration
+012 and the application that no longer reads or writes the property together.
+Do not run the previous application against the post-012 schema. Take a
+database backup before migration; rollback requires that backup and the
+previous backend SHA.
