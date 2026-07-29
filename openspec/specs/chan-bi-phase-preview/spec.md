@@ -1,7 +1,9 @@
 # chan-bi-phase-preview Specification
 
 ## Purpose
-TBD - created by archiving change preview-chan-bi-phases. Update Purpose after archive.
+规定 Chan 测试快照和 `/chan-tests` 页面如何保存、加载、切换并展示 Bi Phase A
+与 Phase B 结果，同时维持旧快照的读取兼容性。
+
 ## Requirements
 ### Requirement: Chan test snapshots preserve both Bi phases
 The Chan test snapshot workflow SHALL represent Bi data as an object with
@@ -68,20 +70,28 @@ preserving legacy metadata compatibility.
 - **AND** it SHALL not hide the phase comparison controls
 
 ### Requirement: Snapshot generation records the current phase-aware result
-The Chan snapshot generator SHALL accept a legacy Bi array or a phase-aware
-Chan Bi API response and SHALL write canonical phase-aware Bi fixture data and
-compatible count metadata.
+The Chan snapshot generator SHALL accept legacy arrays or phase-aware Chan API
+responses for both Bi and channel data, and SHALL write canonical phase-aware
+fixture data with compatible count metadata.
 
 #### Scenario: Generator receives a phase-aware backend response
 - **WHEN** the configured Chan backend returns `{ phaseA, phaseB }` for a
   registered case
-- **THEN** the generator SHALL write those two arrays to that case's `bi.json`
-- **AND** it SHALL write `biCount` equal to the Phase B count
-- **AND** it SHALL record `phaseABiCount` and `phaseBBiCount`
+- **THEN** the generator SHALL write those two arrays to the corresponding Bi
+  or channel snapshot file
+- **AND** it SHALL write the compatible count equal to the Phase B count
+- **AND** it SHALL record the corresponding Phase A and Phase B counts
 
 #### Scenario: Shanghai regression snapshot is regenerated
 - **WHEN** the current algorithm regenerates the Shanghai-index test case
-- **THEN** its Phase A data SHALL include `2024-10-07 → 2024-10-15 down`
+- **THEN** its Bi Phase A data SHALL include `2024-10-07 → 2024-10-15 down`
   marked Invalid
-- **AND** its Phase B data SHALL include `2024-10-07 → 2025-01-12 down`
+- **AND** its Bi Phase B data SHALL include `2024-10-07 → 2025-01-12 down`
   marked Valid
+
+#### Scenario: Channel snapshot is regenerated from merged-K data
+- **WHEN** offline snapshot generation recalculates channels for a registered
+  case
+- **THEN** it SHALL replace the legacy channel array with a canonical
+  `{ phaseA, phaseB }` object
+- **AND** it SHALL preserve the existing K, merged-K, and fenxing snapshot files

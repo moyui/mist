@@ -18,7 +18,7 @@
 
 #### Scenario: 跨仓一致性验收
 - **WHEN** 执行跨仓 fixture 验收
-- **THEN** 四份 `realtime-native-frame-v1.json` 的字节和 SHA 完全一致
+- **THEN** 四仓当前版本的 canonical realtime golden fixture 字节和 SHA 完全一致
 - **AND** 四份 `.sha256` sidecar 固定同一个 SHA
 
 ### Requirement: Monitoring 稳定接口文档归入 docs

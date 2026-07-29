@@ -13,7 +13,7 @@ fixture data with compatible count metadata.
 - **AND** it SHALL write the compatible count equal to the Phase B count
 - **AND** it SHALL record the corresponding Phase A and Phase B counts
 
-#### Scenario: Shanghai Bi regression snapshot is regenerated
+#### Scenario: Shanghai regression snapshot is regenerated
 - **WHEN** the current algorithm regenerates the Shanghai-index test case
 - **THEN** its Bi Phase A data SHALL include `2024-10-07 → 2024-10-15 down`
   marked Invalid
