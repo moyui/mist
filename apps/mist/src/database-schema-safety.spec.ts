@@ -128,4 +128,23 @@ describe('database schema safety', () => {
     expect(audit).not.toMatch(/\bUPDATE\b/i);
     expect(audit).not.toContain('JSON_OBJECT');
   });
+
+  it('audits legacy Chan tables without adding destructive DDL', () => {
+    const audit = readRepoFile('deploy/database/audit-legacy-chan-tables.sql');
+
+    for (const table of [
+      'chan_bis',
+      'chan_fenxings',
+      'chan_index_periods',
+      'chan_states',
+    ]) {
+      expect(audit).toContain(`'${table}'`);
+    }
+    expect(audit).toContain('exact_count_sql');
+    expect(audit).toContain('capture_ddl_sql');
+    expect(audit).toContain('SHOW CREATE TABLE');
+    expect(audit).not.toMatch(
+      /\b(?:DROP|ALTER|TRUNCATE|DELETE|UPDATE)\s+TABLE\b/i,
+    );
+  });
 });

@@ -12,9 +12,7 @@ describe('Mist naming layout', () => {
     'sources/tdx/tdx-source.service.ts',
     'sources/qmt/qmt-source.service.ts',
     'sources/tdx/tdx-source-fetcher.interface.ts',
-    'chan/entities/chan-bi.entity.ts',
-    'chan/entities/chan-fenxing.entity.ts',
-    'chan/entities/chan-state.entity.ts',
+    'chan/types/chan-analysis.types.ts',
   ])('keeps the responsibility-aligned path %s', (relativePath) => {
     expect(existsSync(join(appRoot, relativePath))).toBe(true);
   });
@@ -30,21 +28,15 @@ describe('Mist naming layout', () => {
     'chan/entities/chan-bis.entity.ts',
     'chan/entities/chan-fenxings.entity.ts',
     'chan/entities/chan-states.entity.ts',
+    'chan/entities/chan-bi.entity.ts',
+    'chan/entities/chan-fenxing.entity.ts',
+    'chan/entities/chan-index-daily.entity.ts',
+    'chan/entities/chan-index-period.entity.ts',
+    'chan/entities/chan-state.entity.ts',
+    'chan/enums/table.enum.ts',
   ])('does not restore the retired path %s', (relativePath) => {
     expect(existsSync(join(appRoot, relativePath))).toBe(false);
   });
-
-  it.each([
-    ['chan/entities/chan-bi.entity.ts', "name: 'chan_bis'"],
-    ['chan/entities/chan-fenxing.entity.ts', "name: 'chan_fenxings'"],
-    ['chan/entities/chan-state.entity.ts', "name: 'chan_states'"],
-  ])(
-    'preserves the explicit table mapping in %s',
-    (relativePath, tableName) => {
-      const source = readFileSync(join(appRoot, relativePath), 'utf8');
-      expect(source).toContain(tableName);
-    },
-  );
 
   it('does not restore retired realtime diagnostic names', () => {
     const runtimeFiles = [

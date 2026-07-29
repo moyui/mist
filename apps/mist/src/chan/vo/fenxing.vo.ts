@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { FenxingType } from '../enums/fenxing.enum';
+import type { ChanFenxing } from '../types/chan-analysis.types';
 
-export class FenxingVo {
+export class FenxingVo implements ChanFenxing {
   // 这三个是实际的id，用于查询实际的数据
   @ApiProperty({ type: [Number] })
   leftIds!: number[];

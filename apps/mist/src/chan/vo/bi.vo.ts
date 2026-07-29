@@ -3,9 +3,13 @@ import { KVo } from '../../indicator/vo/k.vo';
 import { ApiResponseDto } from '../../dto/api-response.dto';
 import { BiType, BiStatus } from '../enums/bi.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
+import type {
+  ChanBi,
+  ChanBiTwoPhaseResult,
+} from '../types/chan-analysis.types';
 import { FenxingVo } from './fenxing.vo';
 
-export class BiVo {
+export class BiVo implements ChanBi {
   @ApiProperty({ type: String, format: 'date-time' })
   startTime!: Date;
   @ApiProperty({ type: String, format: 'date-time' })
@@ -32,7 +36,7 @@ export class BiVo {
   endFenxing: FenxingVo | null = null;
 }
 
-export class BiTwoPhaseVo {
+export class BiTwoPhaseVo implements ChanBiTwoPhaseResult {
   @ApiProperty({ type: () => [BiVo] })
   phaseA!: BiVo[];
 

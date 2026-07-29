@@ -130,3 +130,26 @@ product hard-delete API; normal lifecycle removal uses `archived`. For an
 explicit maintenance delete, first change the definition to a non-enabled
 status and set `current_version_id` to NULL, then delete it. The existing
 definition-owned cascades will remove versions and dependent rows.
+
+## Legacy Chan result-table inventory
+
+Chan fenxing, Bi, index-period, and state values are request-time derived data;
+the application does not register repositories or TypeORM entities for their
+legacy table names. No migration creates those tables, and removing the unused
+application models does not authorize deleting an unobserved production table.
+
+Run the read-only inventory:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-legacy-chan-tables.sql
+```
+
+For every table reported as present, execute and retain the generated exact
+`COUNT(*)` and `SHOW CREATE TABLE` statements. Also check external scripts,
+dashboards, and manual consumers that are outside this repository.
+
+There is intentionally no automatic `DROP TABLE` migration in this change. A
+physical cleanup requires a separate reviewed forward-only change with the
+captured production evidence, a verified backup, an explicit table list and
+drop order, and a database-restore rollback procedure.
