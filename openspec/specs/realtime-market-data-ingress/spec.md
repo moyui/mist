@@ -1,26 +1,44 @@
 # realtime-market-data-ingress Specification
 
 ## Purpose
-TBD - created by archiving change align-realtime-native-ingress-contracts. Update Purpose after archive.
+Define the strict schema-v2 TDX/QMT native-map transport, provider-specific
+canonical conversion, lifecycle readiness, bounded parsing, and side-effect
+boundary for realtime market-data ingress.
 ## Requirements
 ### Requirement: Realtime transport uses a stable native envelope
-TDX and QMT datasource services SHALL emit schema v1 `mist.realtime.native_snapshot` frames containing source identity, acquisition profile, stream epoch, per-symbol sequence, symbol, captured time, and the complete validated provider-native object.
+TDX and QMT datasource services SHALL emit only schema-v2
+`realtime.native_snapshot` frames. The outer object SHALL contain exactly
+`type`, `provider`, `timestamp`, and `data`; `data` SHALL contain exactly
+`schemaVersion`, `capturedAt`, and a provider-symbol-keyed `native` map.
+Schema-v1 formal epoch, sequence, acquisition-profile, and standalone-symbol
+fields SHALL NOT remain an active compatibility path.
 
 #### Scenario: TDX native snapshot is emitted
 - **WHEN** the TDX gateway accepts a converged official `get_market_snapshot` result
-- **THEN** it emits the complete TDX native object without datasource canonical projection
-- **AND** the frame identifies `source=tdx` and `sequenceScope=symbol`
+- **THEN** it emits `provider=tdx` with exactly one provider-symbol entry in
+  `data.native`
+- **AND** it preserves the complete TDX native object without datasource
+  canonical projection
 
 #### Scenario: QMT native snapshot is emitted
 - **WHEN** the QMT collector accepts a native `get_full_tick` result
-- **THEN** it emits the complete QMT native object
-- **AND** its sequence is monotonic for the same `(symbol, streamEpoch)`
+- **THEN** it emits `provider=qmt` with one or more bounded provider-symbol
+  entries in `data.native`
+- **AND** it preserves each complete QMT native object
+
+#### Scenario: Legacy formal frame arrives
+
+- **WHEN** a frame declares schema v1 or contains `streamEpoch`, `sequence`,
+  `sequenceScope`, `acquisitionProfile`, or standalone `symbol`
+- **THEN** strict decoding MUST reject it
+- **AND** runtime MUST NOT translate it into schema v2
 
 ### Requirement: Backend owns canonical realtime conversion
 The Mist backend SHALL validate source-native fields through source-specific adapters and SHALL produce one `CanonicalRealtimeSnapshot` shape before any product consumer is invoked.
 
 #### Scenario: Valid source frame reaches ingress
-- **WHEN** a TDX or QMT frame passes contract, identity, epoch and sequence fencing
+- **WHEN** a TDX or QMT frame passes schema-v2 envelope, provider, native-map,
+  and allowlist identity validation
 - **THEN** the source adapter preserves `native` and derives canonical prices, cumulative volume/amount, `eventTime`, `capturedAt` and quality
 
 #### Scenario: Native event time is unavailable
@@ -65,7 +83,9 @@ The formal contract MUST NOT become the production baseline until source-specifi
 
 #### Scenario: Trading-session HIL runs
 - **WHEN** TDX `600030.SH` and QMT `300502.SZ` are validated during supported sessions
-- **THEN** evidence includes fresh native event time, increasing per-symbol sequence, matching owner/epoch, backend canonical readback and monitoring convergence
+- **THEN** evidence includes fresh native event time, schema-v2 native-map
+  acceptance, matching bridge-owner readiness, backend canonical readback and
+  monitoring convergence
 
 #### Scenario: HIL runs outside a trading session
 - **WHEN** validation runs outside a supported exchange session
@@ -120,4 +140,3 @@ The TDX realtime datasource and backend converter SHALL accept only exact provid
 - **WHEN** a TDX realtime native snapshot supplies `PreClose` or `lastClose` without exact `LastClose`
 - **THEN** datasource validation rejects the frame
 - **AND** backend conversion does not use the retired alias
-

@@ -1,3 +1,6 @@
+> **延期状态**：本 delta 只保存未来评审候选，不授权当前实现。只有项目负责人重新明确授权并
+> 复核当时基线后，以下 requirement 才能进入实施。
+
 ## ADDED Requirements
 
 ### Requirement: Schedule synchronizes every enabled provider configuration independently

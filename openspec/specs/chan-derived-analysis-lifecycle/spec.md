@@ -1,7 +1,8 @@
 # chan-derived-analysis-lifecycle Specification
 
 ## Purpose
-TBD - created by archiving change remove-unused-chan-persistence-models. Update Purpose after archive.
+Define Chan outputs as deterministic request-time derived analysis and keep
+calculation contracts independent from MySQL entities or legacy result tables.
 ## Requirements
 ### Requirement: Chan analysis results are request-time derived data
 
@@ -49,4 +50,3 @@ response shapes or Phase A/Phase B algorithm behavior.
 - **WHEN** the Chan calculation and OpenAPI tests execute after removal
 - **THEN** existing merged-K, fenxing, Bi, channel, and two-phase expectations
   MUST continue to pass
-

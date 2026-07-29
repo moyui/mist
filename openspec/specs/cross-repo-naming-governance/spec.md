@@ -1,7 +1,9 @@
 # cross-repo-naming-governance Specification
 
 ## Purpose
-TBD - created by archiving change normalize-realtime-readiness-and-naming. Update Purpose after archive.
+Define evidence-based naming, lifecycle-state, identifier, file-layout, and
+cross-repository contract rules without mechanically renaming provider-native,
+database, or external compatibility boundaries.
 ## Requirements
 ### Requirement: Public state names identify their lifecycle layer
 Cross-repository runtime contracts SHALL distinguish service health, transport readiness, bridge-owner readiness, subscription readiness, and data freshness with qualified names or explicit object scope.
@@ -57,4 +59,3 @@ Naming audits SHALL classify each candidate as confirmed, partial, intentional, 
 - **WHEN** one name can trigger incorrect recovery while another only obscures a local file role
 - **THEN** the recovery-facing contract receives higher severity
 - **AND** the report does not treat both as equivalent style violations
-

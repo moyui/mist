@@ -711,7 +711,7 @@
   processing/current time 均不得补位，`eventTime=null` 不进入聚合。另行定义
   重复 latest-state 的累计量处理；本 focused change 只记录阻塞，不实现
   candle。
-- [ ] 11.6 `[mist]` 刷新 active `sync-post-close-provider-history` 的 proposal、
+- [x] 11.6 `[mist]` 刷新 active `sync-post-close-provider-history` 的 proposal、
   design、task 2.3 与 `datasource-provider-contract` delta：将 historical
   API/bridge“不变”明确为相对于依赖归档后已接受的 schema-v2 baseline，
   删除对 formal epoch/per-symbol sequence 的正面依赖并禁止重新引入旧 v1

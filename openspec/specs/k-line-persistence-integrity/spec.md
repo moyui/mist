@@ -1,7 +1,8 @@
 # k-line-persistence-integrity Specification
 
 ## Purpose
-TBD - created by archiving change fail-closed-uninitialized-k-prices. Update Purpose after archive.
+Define fail-closed K-line normalization and persistence rules so missing or
+non-finite required prices cannot be mistaken for valid market zero values.
 ## Requirements
 ### Requirement: Required K-line prices have an invalid uninitialized state
 
@@ -58,4 +59,3 @@ The backend QMT historical mapper MUST reject a nonempty provider result when an
 
 - **WHEN** a QMT historical response contains finite numeric zero for one or more required OHLC values
 - **THEN** the mapper preserves the zero and returns the row normally
-

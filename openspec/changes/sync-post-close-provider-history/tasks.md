@@ -1,12 +1,14 @@
-> **延期说明（2026-07-29）**：本 change 当前不授权实施。`apps/schedule` 包和现有行为暂时
-> 保留；未完成任务仅作为以后逐项讨论的候选清单。恢复前必须重新确认 owner、现有 cron/
-> `runScan()` 去留、TDX/QMT 范围、readback digest 和 Redis cleanup 契约。
+> **无限期延期说明（2026-07-29，最终复核）**：本 change 不属于当前交付计划，不授权实施。
+> `apps/schedule` 包和现有行为保持不变；所有未完成 checkbox 只是未来讨论候选，不是 agent
+> 待办队列。依赖完成或环境可用不会自动解除延期。只有项目负责人再次明确授权后，才能重新
+> 确认 owner、现有 cron/`runScan()` 去留、TDX/QMT 范围、readback digest、Redis cleanup、
+> 当时 migration 上限和生产发布边界。
 
 ## 1. 依赖与收盘同步基线
 
 - [ ] 1.1 确认 `productize-current-day-realtime-market-data` 已归档，并记录 Redis schema、partition manifest、query rollover 和 TTL 的 accepted evidence。
 - [ ] 1.2 先完成并归档 `remove-orphaned-data-collection-scheduler`；重新搜索证明未注册的通用调度抽象未被恢复或复用。
-- [ ] 1.3 从各仓库最新 `master` 创建全新对应分支，记录 dirty/worktree/remote 状态、生产 SHA、migration `006` checksum、protected-table baseline 和现有 schedule/EastMoney cron inventory。
+- [ ] 1.3 从各仓库最新 `master` 创建全新对应分支，记录 dirty/worktree/remote 状态、生产 SHA、`schema_migrations` 现状、所有已应用 migration checksum、protected-table baseline 和现有 schedule/EastMoney cron inventory。
 - [ ] 1.4 盘点 TDX/QMT `/v1/bars/query`、normalizer、canonical `k` 与 source extension upsert/unique key，确认不需要 migration 后再实现。
 
 ## 2. Provider 历史 contract
@@ -54,7 +56,7 @@
 
 - [ ] 6.1 Unit 覆盖 config/date/session、全部 enabled config 展开、market schedule、retry/cutoff、per-cycle advisory lock 获取/释放、bounded concurrency、provider/cycle timeout、max-item guard、成功空集合 no-op、任意条数合法非空结果、provider failure、malformed nonempty validation、stable digest 和 item-scoped cleanup。
 - [ ] 6.2 使用隔离 Redis 验证 manual dry-run 无写、非空成功与空集合成功均精确幂等清理、失败保留、并行 item 隔离、day rollover 与 72h TTL。
-- [ ] 6.3 使用 `MIST_TEST_MYSQL_URL` 验证空库与已有数据环境的 TDX/QMT upsert、失败 retry/manual rerun 修订覆盖、bounded 并发、source extension 和 count/digest round-trip；确认成功 item 不自动重复、未运行 migration 且 `006` 未变。
+- [ ] 6.3 使用 `MIST_TEST_MYSQL_URL` 验证空库与已有数据环境的 TDX/QMT upsert、失败 retry/manual rerun 修订覆盖、bounded 并发、source extension 和 count/digest round-trip；确认成功 item 不自动重复、本 change 未运行 migration，且重开时已经应用的 migration 历史保持 byte-identical。
 - [ ] 6.4 Integration 覆盖 schedule → TDX/QMT history → MySQL → next-day historical query → exact Redis cleanup，并覆盖成功空集合不写 MySQL 但照常清理 Redis，验证 schedule 不创建 signal/alert。
 - [ ] 6.5 运行受影响仓库 lint、typecheck、全量 tests、Node/Python/Go build、Docker build、Compose/health smoke、golden SHA、`git diff --check` 与 OpenSpec strict validation。
 

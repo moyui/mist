@@ -1,7 +1,8 @@
 # audit-timestamp-contract Specification
 
 ## Purpose
-TBD - created by archiving change normalize-audit-timestamps. Update Purpose after archive.
+Define one lifecycle vocabulary and physical schema for creation/update audit
+timestamps across MySQL, TypeScript, HTTP JSON, ORM writes, and raw upserts.
 ## Requirements
 ### Requirement: Managed audit timestamps use one vocabulary
 
@@ -82,4 +83,3 @@ writes, or fallback parsing for the retired names.
 - **WHEN** runtime code and current tests are searched for retired audit names
 - **THEN** no retired name MAY remain except immutable migration history and
   migration documentation
-

@@ -1,7 +1,9 @@
 # database-schema-safety Specification
 
 ## Purpose
-TBD - created by archiving change disable-typeorm-auto-sync. Update Purpose after archive.
+Define the forward-only MySQL migration, metadata-alignment, destructive-change
+audit, protected-data, and rollback rules required to keep Mist schemas
+rebuildable and production releases evidence-based.
 ## Requirements
 ### Requirement: TypeORM schema synchronization is disabled
 
@@ -18,9 +20,9 @@ synchronization explicitly and SHALL NOT derive `synchronize` from `NODE_ENV`.
 
 Database schema changes SHALL be represented by forward-only repository SQL
 migrations and SHALL NOT rely on runtime TypeORM synchronization. Applied
-migrations 001–010 SHALL remain byte-identical. Migration 011 SHALL rename
-exactly the ten legacy audit columns and SHALL include pre/post audit and
-MySQL 8.4 verification evidence.
+migrations 001–013 SHALL remain byte-identical. Later schema changes MUST use
+the next forward-only migration number and MUST preserve pre/post audit and
+MySQL 8.4 verification evidence appropriate to their risk.
 
 #### Scenario: A database schema fix is required
 
@@ -181,6 +183,14 @@ decision.
 - **AND** table removal MUST be delivered through a separately reviewed
   forward-only cleanup change
 
+#### Scenario: Production contains no legacy Chan table
+
+- **WHEN** the read-only inventory reports `chan_bis`, `chan_fenxings`,
+  `chan_index_periods`, and `chan_states` as absent
+- **THEN** no cleanup migration SHALL be created
+- **AND** the persistence-free Chan contract is considered physically aligned
+  without manufacturing empty legacy tables
+
 ### Requirement: Physical column normalization is forward-only and verified
 
 CamelCase-to-snake_case physical renames SHALL be delivered through a new
@@ -207,3 +217,22 @@ forward-only migration without modifying migrations 001–009.
   available
 - **AND** the matching application revisions MUST be released atomically
 
+### Requirement: Redundant QMT provenance columns remain retired
+
+The QMT historical extension SHALL NOT persist `effective_dividend_type` or
+`native_period`. The former has no reliable response producer and the latter
+duplicates the request period rather than recording independent provenance.
+
+#### Scenario: Current QMT extension schema is inspected
+
+- **WHEN** entity metadata, active writers, and information-schema columns are
+  audited after migrations 012 and 013
+- **THEN** neither retired property or physical column may exist
+- **AND** runtime code MUST NOT retain aliases, dual writes, or compatibility
+  reads for them
+
+#### Scenario: QMT historical period is requested
+
+- **WHEN** the QMT adapter converts Mist period into provider request format
+- **THEN** a local request variable MAY represent that provider period
+- **AND** it MUST NOT be persisted as `nativePeriod` provenance

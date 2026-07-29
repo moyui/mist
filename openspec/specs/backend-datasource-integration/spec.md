@@ -81,6 +81,23 @@ Mist K-line rows.
 - **THEN** the backend returns `QmtResponse[]` with base K fields
 - **AND** it maps QMT-specific extension fields into `KExtensionQmt`
 
+#### Scenario: QMT provider-specific extension fields are mapped
+
+- **WHEN** historical market data contains `preClose`, `suspendFlag`,
+  `openInterest`, or a verified settlement-price spelling
+- **THEN** the backend MAY preserve those nullable values in `KExtensionQmt`
+- **AND** it MUST map verified settlement aliases into the single internal
+  property `settle`
+- **AND** it MUST NOT treat those fields as provider-neutral canonical K
+  columns or require TDX to expose equivalent extensions
+
+#### Scenario: Retired QMT provenance values are available locally
+
+- **WHEN** the adapter computes a provider request period or sends an adjustment
+  request value
+- **THEN** it MUST NOT persist that request-local value as `nativePeriod` or
+  `effectiveDividendType`
+
 #### Scenario: QMT realtime remains memory-only
 
 - **WHEN** QMT historical bars are supported by backend collection

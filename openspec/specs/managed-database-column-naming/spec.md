@@ -1,7 +1,8 @@
 # managed-database-column-naming Specification
 
 ## Purpose
-TBD - created by archiving change normalize-managed-database-column-names. Update Purpose after archive.
+Define the boundary between camelCase TypeScript properties and snake_case
+Mist-managed MySQL columns, including one-version cutover and rollback rules.
 ## Requirements
 ### Requirement: Managed MySQL physical columns use snake_case
 
@@ -47,4 +48,3 @@ retired camelCase column names.
 - **THEN** the combination is unsupported
 - **AND** rollback MUST restore the matching database backup and application
   revision together
-

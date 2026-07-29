@@ -4,10 +4,12 @@ Redis candle 只代表当日实时产品状态，不能成为 MySQL 历史事实
 历史接口回填各自 source-specific 1 分钟 K，并在逐项验证成功后安全清理对应 Redis 分区，才能让
 次日查询稳定地只依赖 provider 权威历史。
 
-## 当前状态与授权边界（2026-07-29）
+## 当前状态与授权边界（2026-07-29，最终复核）
 
-本 change 当前是**延期草案**，不授权修改或部署 `apps/schedule`。恢复实施前必须重新逐项评审
-proposal、design、specs 和未完成 tasks，不能因为已有详细草案就推定方案已经确认。
+本 change 当前是**无限期延期草案**，不属于当前交付计划，不授权修改或部署
+`apps/schedule`。依赖 change 完成、代码条件成熟或 OpenSpec 中仍存在未完成任务，都不能自动
+解除延期。只有项目负责人再次明确授权后，才可重新逐项评审 proposal、design、specs 和未完成
+tasks；不能因为已有详细草案就推定方案已经确认。
 
 当前只确认以下边界：
 
@@ -19,8 +21,11 @@ proposal、design、specs 和未完成 tasks，不能因为已有详细草案就
   均未授权实施；具体 source、market、时间窗、空集合、重试、digest 和 cleanup 规则仍可修改。
 - 当前生产 Compose 继续不部署 `apps/schedule`。未来任何启用必须有独立 feature flag、dry-run、
   隔离验证和生产发布审批。
+- 当前数据库基线已经推进到 migration 013；migration 007～013 所定义的精度、约束、命名和
+  退休字段均是未来重开本 change 时必须继承的既有事实，不得回写或重新编号。
 
-下面的 “What Changes”、delta specs 和 tasks 记录的是后续讨论底稿，不表示当前生产承诺。
+下面的 “What Changes”、delta specs 和 tasks 记录的是后续讨论底稿，不表示当前生产承诺，
+也不得作为 agent 自动实施队列。
 
 ## What Changes
 

@@ -6,14 +6,15 @@ Compose，仍包含 EastMoney 多周期 cron，并在每次采集后调用 MySQL
 未注册的通用采集调度抽象由独立 cleanup change 删除。
 
 TDX/QMT backend source 已能通过 datasource historical HTTP API 拉取 `Period.ONE_MIN` 并沿用
-source-specific `K`/extension upsert。migration 006 是当前生产上限，本 change 不新增 schema。
+source-specific `K`/extension upsert。migration 013 是当前生产上限，本 change 不新增 schema。
 
 ### 当前决策状态（2026-07-29）
 
-本设计已暂停在讨论阶段。`apps/schedule` 作为可承载多类内部任务的应用包继续保留；当前
-EastMoney cron、采集后 `runScan()`、TDX/QMT post-close sync、readback digest 和 Redis cleanup
-均不在本轮修改。下面的具体实现选择只作为未来评审候选，恢复工作前允许重写，不得直接按
-现有 tasks 开始实现。
+本设计已无限期暂停在讨论阶段。`apps/schedule` 作为可承载多类内部任务的应用包继续保留；
+当前 EastMoney cron、采集后 `runScan()`、TDX/QMT post-close sync、readback digest 和 Redis
+cleanup 均不在本轮修改。依赖完成不会自动恢复本 change；只有项目负责人再次明确授权后，
+才能重开评审。下面的具体实现选择只作为未来候选，恢复工作前允许重写，不得直接按现有 tasks
+开始实现。
 
 ## Goals / Non-Goals
 
@@ -209,7 +210,8 @@ HIL 而不重跑；TDX/QMT target-day historical API regression、golden fixture
 
 ## Migration Plan
 
-1. 完成依赖 changes，使用隔离 `MIST_TEST_MYSQL_URL` 和 Redis 跑 dry-run/upsert/rollback tests。
+1. 获得新的明确实施授权，重新核对当时的 active changes、migration 上限和生产拓扑；随后才可
+   使用隔离 `MIST_TEST_MYSQL_URL` 和 Redis 跑 dry-run/upsert/rollback tests。
 2. 构建包含 schedule 的 image，部署 Redis/backend/schedule，保持
    `HISTORICAL_SYNC_ENABLED=false`。
 3. 对 TDX `600030.SH`、QMT `300502.SZ` 执行 manual dry-run，记录 provider count/digest。
