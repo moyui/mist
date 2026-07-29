@@ -1,5 +1,47 @@
 ## MODIFIED Requirements
 
+### Requirement: Realtime protocol and bridge readiness are distinct
+
+The datasource `realtime.ready` frame SHALL report only successful WebSocket
+protocol negotiation. Terminal bridge-owner readiness and identity SHALL remain
+authoritative only in datasource root/scoped HTTP health, and backend runtime
+status SHALL expose the accepted protocol state as `transportReady` without
+copying bridge-owner state.
+
+#### Scenario: Datasource emits realtime ready metadata
+
+- **WHEN** a TDX or QMT backend client completes WebSocket negotiation
+- **THEN** the datasource MUST emit a `realtime.ready` frame with `mode`,
+  `schemaVersion`, `source` and `quality`
+- **AND** QMT MAY additionally include its provider-local `leaderClientId` and
+  current subscription `active` view
+- **AND** the frame MUST NOT include `bridge`, `ownerId`, `ownerGeneration`,
+  `bridgeBuildId`, `tdxRealtimeBridgeReady`, `collectorReady`,
+  `datasourceBuildId` or a top-level ambiguous `ready`
+
+#### Scenario: Backend accepts a realtime ready frame
+
+- **WHEN** a source client validates the exact provider ready frame
+- **THEN** backend diagnostics MUST set `connected=true` and
+  `transportReady=true`
+- **AND** they MUST NOT retain or infer bridge-owner readiness, subscription
+  convergence or market-data freshness from that frame
+
+#### Scenario: Bridge owner readiness is inspected
+
+- **WHEN** deployment, monitoring or recovery needs current bridge readiness,
+  owner generation or build identity
+- **THEN** it MUST read datasource root `health.bridge` or the source-scoped
+  `/tdx/bridge/health` or `/qmt/bridge/health`
+- **AND** it MUST NOT use a backend-cached copy of bridge-owner state
+
+#### Scenario: Bridge owner generation changes
+
+- **WHEN** a terminal bridge owner is registered, replaced or becomes stale
+- **THEN** datasource health/control state MUST reflect that lifecycle
+- **AND** datasource MUST NOT emit `realtime.stream_started`
+- **AND** backend snapshot ordering MUST remain independent of owner generation
+
 ### Requirement: Realtime transport uses a stable native envelope
 
 Datasource SHALL send TDX and QMT realtime observations with the same exact
@@ -347,8 +389,10 @@ epoch/per-symbol sequence fences.
 #### Scenario: Runtime stores are inspected
 
 - **WHEN** TDX and QMT source runtime stores are compared
-- **THEN** both MAY retain connection, readiness, owner generation, build IDs,
-  last accepted/captured times, last error and bounded rejection counters
+- **THEN** both MAY retain connection, transport readiness, last
+  accepted/captured times, last error and bounded rejection counters
+- **AND** bridge owner generation and build identity MUST remain datasource
+  health/control state rather than a duplicated backend runtime-store field
 - **AND** neither may retain `lastSequence`, `currentStreamEpoch`, a
   per-symbol sequence fence or `epochMismatch|duplicate|outOfOrder` rejection
 - **AND** neither may keep another full native/canonical snapshot beside common ingress

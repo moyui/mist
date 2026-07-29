@@ -200,12 +200,6 @@ function ready(provider: 'qmt' | 'tdx') {
       ...(provider === 'qmt'
         ? { leaderClientId: 'backend-test', active: [] }
         : {}),
-      bridge: {
-        ready: true,
-        ownerId: 'owner-1',
-        ownerGeneration: 1,
-        bridgeBuildId: 'bridge-v2',
-      },
     },
   };
 }

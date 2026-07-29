@@ -73,8 +73,12 @@ host loopback bridge paths, gateway routing and internal datasource discovery.
 - **WHEN** either realtime source is configured as `builtin`
 - **THEN** deployment health MUST read that source's internal backend status
   through the running backend container
-- **AND** the status MUST report `connected=true` and `ready=true` over the
+- **AND** the status MUST report `connected=true` and `transportReady=true` over the
   current datasource WebSocket route
+- **AND** deployment MUST independently read current bridge
+  `ready/ownerId/ownerGeneration/bridgeBuildId` directly from datasource
+  root/scoped HTTP health
+- **AND** it MUST NOT require a backend-cached bridge object
 - **AND** a missing legacy route, HTTP/WebSocket rejection or incompatible
   backend image MUST fail deployment rather than passing on container and HTTP
   health alone

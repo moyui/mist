@@ -187,9 +187,11 @@
   coordinator、`effectiveSourceBySecurityId`、`Security.status` 动态观察或
   latest cleanup；这些都属于后续 subscription-lifecycle integration。
   source runtime store 只保存
-  connection/readiness、owner/build、accepted/captured time 与 bounded
+  connection/transport readiness、accepted/captured time 与 bounded
   rejection diagnostics，不再保存第二份 snapshot、sequence fence 或
-  duplicate/out-of-order state。本 change 不执行 runtime source switch。
+  duplicate/out-of-order state。bridge owner/build 只保留在 datasource
+  root/scoped HTTP health/control state，不复制到 backend runtime status；
+  `realtime.stream_started` 不属于维护协议。本 change 不执行 runtime source switch。
 - QMT callback transport 明确定义为有损 `latest-state native snapshot`：允许相同状态再次出现，也允许中间状态未被观察；不宣称 `tick-complete`，不在连接中断后补发。
 - TDX snapshot transport 同样明确为有损 `latest-state snapshot`：从
   `/tdx/bridge/snapshot` request 删除 `producerSequence`，删除 terminal bridge

@@ -1281,11 +1281,7 @@ TDX/QMT 各自保留一个同职责、provider-local runtime store，但只保�
 
 ```text
 connected
-ready
-ownerId
-generation
-datasourceBuildId
-bridgeBuildId
+transportReady
 lastAcceptedAt
 lastCapturedAt
 lastError
@@ -1294,9 +1290,11 @@ bounded reject counters
 
 source runtime store 不再保存另一份完整 native/canonical snapshot，也不保留
 `lastSequence`、`currentStreamEpoch`、per-symbol sequence fence 或
-`epochMismatch/duplicate/outOfOrder` rejection。owner generation 仍用于
-control/health，不能重新成为 backend snapshot ordering fence。断线时标记
-`connected=false/ready=false`，latest 暂时保留并由 `lastAcceptedAt` 显示
+`epochMismatch/duplicate/outOfOrder` rejection。owner generation/build 只由
+datasource root/scoped HTTP health/control state 持有，不复制进
+`realtime.ready` 或 backend runtime status；`realtime.stream_started` 删除。
+owner generation 不能重新成为 backend snapshot ordering fence。断线时标记
+`connected=false/transportReady=false`，latest 暂时保留并由 `lastAcceptedAt` 显示
 stale；backend restart 后内存自然清空。
 
 internal diagnostic endpoint 通过 provider allowlist 把

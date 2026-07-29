@@ -24,8 +24,10 @@
 - [x] 4.3 Add migration and recovery tests covering failed preflight, failed pre-removal acceptance, successful removal and post-removal repair-forward
 - [x] 4.4 Remove one-time WinSW cutover inputs from the routine deployment path after production removal evidence is frozen
 - [x] 4.5 Fail routine deployment when an enabled backend source cannot reach
-  the current datasource WebSocket contract; require internal
-  `connected=true,ready=true` and exclude only an explicitly `off` source
+  the current datasource WebSocket contract; require backend
+  `connected=true,transportReady=true`, independently require direct datasource
+  scoped bridge `ready=true` with owner identity, and exclude only an explicitly
+  `off` source. Do not use backend-cached bridge state as authority.
 
 ## 5. Verification
 

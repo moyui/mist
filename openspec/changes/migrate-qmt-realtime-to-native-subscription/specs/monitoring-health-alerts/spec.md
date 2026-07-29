@@ -7,7 +7,9 @@ subscription convergence, snapshot freshness and error state independently. An
 explicit source `off` mode MUST be represented as operator-controlled rollback
 rather than ordinary healthy readiness or transport failure. Provider silence
 outside trading hours MUST NOT be treated as proof of failed control or
-successful unsubscribe.
+successful unsubscribe. Bridge owner/control readiness MUST be consumed
+directly from datasource root/scoped HTTP health; backend connection and
+`transportReady` MUST remain a separate compatibility signal.
 
 #### Scenario: Production realtime source is enabled
 
@@ -15,6 +17,8 @@ successful unsubscribe.
 - **THEN** monitoring MUST probe that source's mode, owner/control readiness,
   subscription convergence, snapshot age and error state through source-labelled
   formal metrics
+- **AND** it MUST NOT use backend-cached bridge owner/build fields as the
+  bridge-readiness authority
 
 #### Scenario: Source is intentionally off
 

@@ -159,21 +159,13 @@ describe('formal realtime schema-v2 ingress contract', () => {
         'generation',
         'ownerId',
         'datasourceBuildId',
+        'bridge',
       ]) {
         const message = ready(provider);
         (message.data as Record<string, unknown>)[retired] =
           retired === 'ownerId' ? 'legacy-owner' : true;
         emit(client, message);
       }
-
-      const bridgeGeneration = ready(provider);
-      const legacyBridge = bridgeGeneration.data.bridge as Record<
-        string,
-        unknown
-      >;
-      delete legacyBridge.ownerGeneration;
-      legacyBridge.generation = 1;
-      emit(client, bridgeGeneration);
 
       expect(store.status().transportReady).toBe(false);
       expect(store.status().rejectCounts).toMatchObject({
@@ -202,12 +194,6 @@ function ready(provider: 'tdx' | 'qmt') {
       ...(provider === 'qmt'
         ? { leaderClientId: 'backend-test', active: [] }
         : {}),
-      bridge: {
-        ready: true,
-        ownerId: 'owner-1',
-        ownerGeneration: 1,
-        bridgeBuildId: 'bridge-v2',
-      },
     },
   };
 }

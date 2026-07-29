@@ -54,10 +54,12 @@ host hairpin URLs.
 Routine deployment also treats backend-to-datasource WebSocket readiness as an
 image-pair compatibility gate. For each source whose effective mode is
 `builtin`, the running backend's internal source status must exist and report
-`connected=true, ready=true`. Container health and datasource HTTP reachability
-alone are insufficient: an older backend can remain HTTP-healthy while retrying
-a removed WebSocket path indefinitely. A source explicitly set to `off` is
-excluded from this gate.
+`connected=true, transportReady=true`. Terminal bridge-owner readiness remains
+a separate gate read directly from datasource root/scoped HTTP health, including
+owner/build identity. Container health and datasource HTTP reachability alone
+are insufficient: an older backend can remain HTTP-healthy while retrying a
+removed WebSocket path indefinitely. Backend-cached bridge state is not an
+authority. A source explicitly set to `off` is excluded from both gates.
 
 Docker NAT presents Windows-originated loopback-published connections as the
 container's default gateway peer. Container mode explicitly trusts only that

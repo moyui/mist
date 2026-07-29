@@ -236,7 +236,6 @@ export class QmtRealtimeClient
 
   private handleReady(message: Record<string, unknown>): void {
     const data = message['data'];
-    const bridge = isRecord(data) ? data['bridge'] : null;
     if (
       message['provider'] !== 'qmt' ||
       !isRecord(data) ||
@@ -244,16 +243,7 @@ export class QmtRealtimeClient
       data['schemaVersion'] !== 2 ||
       data['source'] !== 'QMT' ||
       data['quality'] !== 'latest-state' ||
-      !hasExactKeys(data, QMT_READY_DATA_KEYS) ||
-      !isRecord(bridge) ||
-      !hasExactKeys(bridge, READY_BRIDGE_KEYS) ||
-      typeof bridge['ready'] !== 'boolean' ||
-      !(typeof bridge['ownerId'] === 'string' || bridge['ownerId'] === null) ||
-      typeof bridge['ownerGeneration'] !== 'number' ||
-      !(
-        typeof bridge['bridgeBuildId'] === 'string' ||
-        bridge['bridgeBuildId'] === null
-      )
+      !hasExactKeys(data, QMT_READY_DATA_KEYS)
     ) {
       this.store.recordReject(
         'contractMismatch',
@@ -263,12 +253,6 @@ export class QmtRealtimeClient
       return;
     }
     this.transportReady = true;
-    this.store.setBridge({
-      ready: bridge['ready'],
-      ownerId: bridge['ownerId'],
-      ownerGeneration: bridge['ownerGeneration'],
-      bridgeBuildId: bridge['bridgeBuildId'],
-    });
     this.store.markConnected();
     this.store.clearError();
   }
@@ -426,12 +410,6 @@ const CONTROL_RESPONSE_OUTER_KEYS = [
   'data',
   'timestamp',
 ] as const;
-const READY_BRIDGE_KEYS = [
-  'ready',
-  'ownerId',
-  'ownerGeneration',
-  'bridgeBuildId',
-] as const;
 const QMT_READY_DATA_KEYS = [
   'mode',
   'schemaVersion',
@@ -439,7 +417,6 @@ const QMT_READY_DATA_KEYS = [
   'quality',
   'leaderClientId',
   'active',
-  'bridge',
 ] as const;
 const RFC3339_PATTERN =
   /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;

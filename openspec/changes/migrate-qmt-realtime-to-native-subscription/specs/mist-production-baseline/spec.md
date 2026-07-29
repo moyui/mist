@@ -10,6 +10,9 @@ current modes and the exact installed application and terminal artifacts.
 
 - **WHEN** production evidence is refreshed
 - **THEN** it MUST record repository/image identities, `TDX_REALTIME_MODE`, `QMT_REALTIME_MODE`, datasource/backend frame schema, QMT owner/build identity and journal location/health
+- **AND** bridge readiness/owner/build evidence MUST come from datasource
+  root/scoped HTTP health, while backend compatibility evidence MUST record
+  only `connected` and `transportReady`
 - **AND** it MUST record that this transport-only change has no production
   subscription caller and MUST distinguish normal dormant state from
   test-harness-created QMT whole/single IDs

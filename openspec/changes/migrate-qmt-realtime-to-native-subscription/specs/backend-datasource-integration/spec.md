@@ -76,6 +76,37 @@ Docker. This change SHALL NOT automatically derive or send a desired set.
 - **WHEN** backend accepts a valid TDX ready frame
 - **THEN** it MUST send no subscription-control request until one of the
   in-process methods is explicitly called
+- **AND** it MUST expose only connection/protocol readiness and MUST NOT cache
+  datasource bridge owner/build state
+
+### Requirement: Interface test coverage
+
+The backend datasource integration SHALL include automated tests for supported
+request shapes, response mapping, error handling, WebSocket protocol behavior,
+deployment script URL resolution, and datasource WebSocket envelope behavior.
+
+#### Scenario: HTTP unit tests cover normalized contracts
+
+- **WHEN** backend unit tests run for `TdxSource`
+- **THEN** they verify `/v1/bars/query`, successful envelope mapping, failure
+  envelope handling, and invalid payload handling
+- **AND** they verify `TdxSource` does not expose an on-demand snapshot method
+
+#### Scenario: WebSocket unit tests cover datasource protocol
+
+- **WHEN** backend unit tests run for TDX and QMT realtime clients
+- **THEN** they verify exact bridge-free `realtime.ready`, explicit
+  subscription control, schema-v2 native snapshot, reconnect and error behavior
+- **AND** they verify `realtime.stream_started` is not part of the maintained
+  protocol
+
+#### Scenario: Deployment script tests cover configured URL
+
+- **WHEN** deployment script tests run
+- **THEN** they verify the Windows Docker health check covers both host
+  datasource health and container-to-datasource health
+- **AND** bridge-owner readiness is read directly from datasource HTTP while
+  backend compatibility is read as `connected=true,transportReady=true`
 
 ### Requirement: Formal realtime clients share one product ingress
 

@@ -13,10 +13,6 @@ export class TdxRealtimeStore {
   private readonly rejectCounts = new Map<TdxRealtimeRejectReason, number>();
   private connectedValue = false;
   private transportReadyValue = false;
-  private bridgeReadyValue = false;
-  private ownerIdValue: string | null = null;
-  private bridgeBuildIdValue: string | null = null;
-  private ownerGenerationValue: number | null = null;
   private lastAcceptedAtValue: number | null = null;
   private lastCapturedAtValue: string | null = null;
   private lastRejectValue: {
@@ -36,18 +32,6 @@ export class TdxRealtimeStore {
   markDisconnected(): void {
     this.connectedValue = false;
     this.transportReadyValue = false;
-  }
-
-  setBridge(value: {
-    ready: boolean;
-    ownerId: string | null;
-    ownerGeneration: number;
-    bridgeBuildId: string | null;
-  }): void {
-    this.bridgeReadyValue = value.ready;
-    this.ownerIdValue = value.ownerId;
-    this.ownerGenerationValue = value.ownerGeneration;
-    this.bridgeBuildIdValue = value.bridgeBuildId;
   }
 
   recordAccepted(capturedAt: string): void {
@@ -84,12 +68,6 @@ export class TdxRealtimeStore {
       quality: 'latest-state' as const,
       connected: this.connectedValue,
       transportReady: this.transportReadyValue,
-      bridge: {
-        ready: this.bridgeReadyValue,
-        ownerId: this.ownerIdValue,
-        ownerGeneration: this.ownerGenerationValue,
-        bridgeBuildId: this.bridgeBuildIdValue,
-      },
       lastAcceptedAt: this.lastAcceptedAtValue,
       lastCapturedAt: this.lastCapturedAtValue,
       rejectCounts: Object.fromEntries(this.rejectCounts),

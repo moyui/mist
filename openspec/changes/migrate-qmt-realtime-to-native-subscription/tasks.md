@@ -244,10 +244,13 @@
   `Security.status` 观察或 latest cleanup；latest 上界由 resolved startup
   allowlist union 与 process lifetime 限制。
 - [ ] 5.10 `[mist]` 精简 TDX/QMT provider runtime store：只保留
-  connection/readiness、owner/build、last accepted/captured、last error 与
+  connection/transport readiness、last accepted/captured、last error 与
   bounded reject counts；删除第二份 full snapshot、`lastSequence`、
   `currentStreamEpoch`、`RealtimeSymbolSequenceFence`、
   `epochMismatch/duplicate/outOfOrder` 及相关 client/diagnostic/tests。
+  bridge owner/build 只从 datasource root/scoped HTTP health 读取，不复制到
+  `realtime.ready` 或 backend runtime status；删除未形成运行链路的
+  `realtime.stream_started`。
   diagnostic 必须通过 `providerSymbol -> securityId` 读取公共 latest；
   disconnect 保留 latest 但标记 stale。
 - [ ] 5.11 `[mist/mist-datasource]` 两边都不新增 event identity、formal
@@ -268,6 +271,9 @@
   自动 control/cleanup、disconnect stale、无 sequence fence、diagnostic
   readback、common ingress 和 no-current-K-as-native guard；另覆盖四个 client
   method 的直接调用、exact response matching、busy、timeout、disconnect
+  以及 bridge-free exact `realtime.ready`；测试必须证明 backend 只设置
+  `connected/transportReady`，bridge owner/build 仍由 datasource HTTP health
+  单独取证，且 maintained protocol 不包含 `realtime.stream_started`
   unknown、late response reject、closed/not-ready 零 send、datasource
   non-leader typed failure/no retry、ready/reconnect 零 control send、无
   production caller 和无外部 mutation route。
@@ -368,6 +374,9 @@
   checkpoint、SHA-256/中断恢复、pinned-cap maintenance、
   unexpected restart、TDX/QMT 双 bridge manual install、source-scoped
   restart、mode off 和 rollback；明确 intentional `off` 不等于普通健康或
+  bridge-ready，明确 datasource HTTP root/scoped health 是 bridge
+  owner/build/readiness 唯一权威，backend status 只表示
+  `connected/transportReady`，不得等待 backend-cached `bridge.ready`；
   transport failure、该 source 不因 owner/snapshot absent 报警、另一 enabled
   source 仍受监控。不得把未来 `Security.status` scheduler 或不存在的 operator
   mutation endpoint 写成本期能力。
@@ -434,6 +443,8 @@
   `git diff --check` 与 clean-CI equivalent；`mist`、`mist-datasource`、
   `mist-deploy`、`mist-monitoring` 的本地 contract test 必须分别重算 formal
   v2 fixture sidecar SHA，并在跨仓 gate 比较四份字节与 SHA 一致。
+  deploy contract tests 还必须覆盖 datasource direct bridge readiness 与
+  backend `connected/transportReady` 两个独立门禁。
 - [ ] 8.7 **阶段门**：保存本地 evidence，未经确认不发布 candidate。
 
 ## 9. 兼容发布准备
@@ -458,6 +469,9 @@
   记录 intended full SHA、Compose `.env` resolved image 与 running container
   image ID；三者不一致时不得进入 HIL，也不得把“running container 暂时健康”
   当作下一次 `docker compose run/up` 会使用同一 image 的证明。
+  candidate health 必须直接从 datasource scoped route 取得 bridge owner/build/
+  readiness，并仅从 backend status 取得 `connected/transportReady`；不得要求
+  backend status 返回 bridge 副本。
   - 2026-07-29 requalification: a later full-stack deploy had drifted the
     datasource to `ddbbdd0a...`. Normal correction run `30439521072` resolved
     intended `c8b140b...` to
@@ -679,6 +693,8 @@
   未 recreate、QMT journal/checkpoint 连续、bridge 重新注册且 reconnect 不
   自动发 control；执行联合 container/bridge/journal/realtime soak。两个 change
   必须分别给出结论，不能互相借用不相关证据。
+  联合 manifest 必须分别保存 datasource scoped bridge health 与 backend
+  `connected/transportReady`，不得用 backend-cached bridge state 代替前者。
   - 2026-07-28 partial evidence: TDX source-scoped restart run `30323653971`
     recreated only `tdx-datasource`, preserved every unrelated container and
     the QMT journal checksum, and executed no native mutation; the later
