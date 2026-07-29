@@ -493,9 +493,16 @@
     capture and proved canonical `eventTime` from provider-native time.
     Run `30427618972` later captured exact bool `true` for successful
     cancellations and exact bool `false` for the same released ID; retained
-    artifact run `30427924763` preserves the native result sequence. Quota/ID
-    reuse and the remaining membership-negative scenario keep this task
-    unchecked.
+    artifact run `30427924763` preserves the native result sequence. After
+    deploying datasource `c8b140b07f9d053c547e1e696f5a1779d0368b12`,
+    post-close run `30430369735` accepted both overlay subId `3` and whole
+    subId `2` cancellations from exact bool `true`, durably recorded
+    `confirmedBy=hil_boolean_true`, and ended with an empty registry plus
+    `ready=true`. The overlay `600519.SH` also produced a fresh native fixture
+    and canonical readback; the run remained red only because the post-close
+    whole `300502.SZ` subscription produced no new callback within 90 seconds.
+    Quota/ID reuse and the remaining membership-negative scenario keep this
+    task unchecked.
   - [x] Unique Nest test-only leader, exact integer whole/single IDs, fresh
     whole/overlay callback and changed-symbol common-ingress readback.
   - [x] Unconfirmed unsubscribe returns
@@ -505,7 +512,8 @@
     unauthorized per-item backend rejection.
   - [x] Accepted unsubscribe returns exact bool `true`; the repeated released-ID
     call returns exact bool `false` and remains unconfirmed. Evidence:
-    `30427618972/30427924763`.
+    `30427618972/30427924763`; deployed acceptance and empty-registry cleanup:
+    `30430369735`.
   - [ ] Callback stop, quota release and later ID reuse classification.
   - [x] Canonical QMT `eventTime` readback traced to provider-native time:
     current candidate run `30332275918` captured whole
