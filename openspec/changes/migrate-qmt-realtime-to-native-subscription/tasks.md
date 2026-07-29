@@ -519,6 +519,40 @@
     current candidate run `30332275918` captured whole
     `2026-07-28T05:39:51.000Z` and overlay
     `2026-07-28T05:39:53.000Z`, with no measurement-time fallback.
+  - [ ] **下一个交易时段补验（阻塞 10.1 完成）**：
+    - 时间窗：选择下一个支持的 A 股连续竞价交易时段，优先
+      `09:35-11:25` 或 `13:05-14:55`（`Asia/Shanghai`），避开集合竞价、
+      午休和收盘后的无变化窗口；开始前记录实际日期、开始/结束时间和
+      terminal/runtime build。
+    - 前置条件：生产 `QMT_REALTIME_MODE=builtin`；datasource 根 `/health`
+      中 `subscriptions.ready=true`、`journalHealthy=true`、
+      `reconciliationRequired=false`；`/qmt/bridge/health` 有 current
+      `ownerId` 且 `ready=true`；记录运行中的 datasource image digest、
+      backend 40 位 SHA 和可用 recovery image。
+    - 执行：以 `300502.SZ` 为 whole symbol、`600519.SH` 为 single overlay，
+      运行 `run-windows-realtime-subscription-hil.yml` 的 `capture/qmt`
+      非 preflight 模式；`intended_backend_sha` 必须填写当时 Compose
+      实际解析的 backend 40 位 SHA，`snapshot_timeout_seconds=90`。
+    - whole 通过标准：`subscribe_whole_quote` 返回 exact integer subId，
+      90 秒内产生当次订阅后的 fresh native callback fixture；Mist canonical
+      readback 的 `source/securityId/providerSymbol/eventTime/quality` 与该
+      fixture 可追溯一致，`eventTime` 不得回退到 `capturedAt` 或本机时间。
+    - overlay 通过标准：`subscribe_quote` 返回不同的 exact integer subId，
+      90 秒内产生 `600519.SH` fresh native fixture 和 canonical readback；
+      registry 同时精确包含 one whole + one single，不能只证明其中一条。
+    - 清理通过标准：overlay 与 whole 的首次 `unsubscribe_quote(subId)`
+      都返回 exact bool `true`，journal 各自保存 native intent/result 和
+      `confirmedBy=hil_boolean_true` transition；最终
+      `whole=null`、`singles={}`、`ready=true` 且无 retained recovery。
+    - 恢复与证据：正常 backend 必须恢复健康；上传
+      `realtime-subscription-hil.json`、两份 raw fixture、
+      `qmt-unsubscribe-evidence.json`；工作流整体必须为 green。只有这些
+      条件同时成立，才能把 10.1 的 fresh whole/overlay trading-session
+      验证记为完成。
+    - 现有边界：`30430369735` 只证明已部署版本的 overlay callback、
+      canonical readback、两次 bool `true` 取消和空 registry 清理；由于运行
+      在收盘后且 whole `300502.SZ` 未在 90 秒内产生新 callback，它不能替代
+      本补验，也不得被改写为完整绿色 HIL。
 - [ ] 10.2 `[Windows QMT operator]` 验证 callback burst、queue bound、
   malformed-one-code isolation、old lease rejection、严格递增
   `callSequence` 及可控延迟下 A-timeout/B-poll/A-late reject 且 B 保持可完成；
