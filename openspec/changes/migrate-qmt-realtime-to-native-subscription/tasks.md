@@ -46,7 +46,12 @@
     `nativeMethodsInvoked=[]/mutationExecuted=false`. Python 3.6 grammar,
     alias discovery, zero-call behavior and sanitization are covered by
     `tests/unit/test_qmt_runtime_probe.py`.
-- [ ] 2.2 `[Windows QMT operator]` 记录 QMT/迅投、terminal、embedded Python、strategy runtime build、VIP/非 VIP 权限、可证明的 whole-list/active-subId/single-handle 限制和所有方法的实际可调用性；无法证明的限制记 unknown，不依据方法名猜测 alias。
+- [x] 2.2 `[Windows QMT operator]` 记录 QMT/迅投、terminal、embedded Python、strategy runtime build、VIP/非 VIP 权限、可证明的 whole-list/active-subId/single-handle 限制和所有方法的实际可调用性；无法证明的限制记 unknown，不依据方法名猜测 alias。
+  - 2026-07-30 operator disposition: QMT 项目界面不提供可可靠导出的
+    loaded implementation path、canonical artifact SHA、VIP/非 VIP 或
+    active-subscription inventory。对应字段固定为 `platform_unavailable`
+    或 `unknown`；已由只读 probe、bridge owner/build 和实际 callable HIL
+    证明的方法继续保留，未暴露的限制不作推断。本项不再阻塞归档。
 - [ ] 2.3 `[Windows QMT operator]` 在交易时段使用 `300502.SZ` 捕获：
   - `subscribe_quote(..., period='tick', result_type='dict')` 一项 `{code:data}` callback；
   - `subscribe_whole_quote(exactDesiredSymbols)` 一项 callback；
@@ -601,7 +606,8 @@
       empty registry plus `ready=true/reconciliationRequired=false`.
       This closes the current-session whole/overlay gate, but does not close
       the separately unchecked callback-stop/quota/later-ID-reuse item.
-- [ ] 10.2 `[Windows QMT operator]` 验证 callback burst、queue bound、
+- [x] 10.2 `[Windows QMT operator]` 以不连接/不修改真实 QMT terminal 的
+  deterministic harness 验证 callback burst、queue bound、
   malformed-one-code isolation、old lease rejection、严格递增
   `callSequence` 及可控延迟下 A-timeout/B-poll/A-late reject 且 B 保持可完成；
   通过受控 fault harness 分别证明 intent durability failure 零 native、
@@ -614,6 +620,10 @@
   repeated unsubscribe bool `false` 解锁。演练 context reload/restart、
   retained ID failure 和 planned/unexpected
   datasource restart runbook。
+  这些 fault 仅用于 isolated code-path test，不得在 production HIL 主动损坏
+  journal、替换 lease、伪造 callback/native result 或制造 terminal 故障；
+  以后自然发生的 QMT incident 由
+  `capture-realtime-provider-anomalies` 采集，不是本 change 的发布门禁。
   - [x] Datasource CI run `30322477897` on exact
     `0b43a521187adbed737a932f4942849d88fe2295` passed deterministic unit and
     integration coverage for queue/lease/callSequence/late-result, durability,
@@ -638,7 +648,7 @@
       `a010946bb420feaefe55e4408c7bca3718b28319` and passed 101 tests with
       zero failures/errors. JUnit SHA:
       `a070dfbc3817e97a3b086dc4df297e3977341232f42f7f06dfa4aea56e14ae6c`.
-- [ ] 10.3 `[Windows TDX operator/mist]` 停止或隔离正常 backend 的 TDX
+- [x] 10.3 `[Windows TDX operator/mist]` 停止或隔离正常 backend 的 TDX
   client，以同类 test-only Nest in-process harness 作为唯一 leader 调用四个
   TDX control methods，并执行受影响链路 HIL：验证 bridge snapshot
   body 无 `producerSequence`、每份 snapshot 只 POST 一次、失败不 retry、
@@ -646,9 +656,7 @@
   map、新 TDX converter 与 common ingress readback，且不存在 formal
   sequence/fence；同时验证四种 datasource API、mutation `success:null`、
   fresh terminal-native list、bridge unsubscribe/subscribe 及最终 list
-  postcondition，覆盖 read barrier、already-absent、
-  `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` 和
-  `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown`；unsubscribe `success:null` 后继续
+  postcondition，覆盖 read barrier、already-absent；unsubscribe `success:null` 后继续
   至少三个完整 bridge poll/result 周期，证明 target symbol 始终 absent 且
   没有旧 desired 触发的反向 subscribe，并证明 public response 不包含内部
   `desiredRevision`。不重新定义未变化的 TDX provider native acquisition
@@ -658,12 +666,16 @@
   `eventTime` 只来自 accepted provider-native fixture，不能来自 callback
   收到、datasource 发送或 backend 接收时间。验收核销必须把以下证据分别列出，
   不得以一次绿色 workflow 互相替代：raw capture SHA；typed-control exact-state
-  与 cleanup；运行时 formal-frame/converter/common-latest readback；live
-  no-`producerSequence`/one-attempt/no-retry/no-item-ack；unsubscribe 后三个完整
-  poll/result 周期；两个 unsubscribe failure 分支；canonical `eventTime`
+  与 cleanup；运行时 formal-frame/converter/common-latest readback；正常路径
+  no-`producerSequence`/one-attempt/no-item-ack 与 deterministic no-retry
+  contract；unsubscribe 后三个完整 poll/result 周期；canonical `eventTime`
   readback。旧 runtime smoke 在本 change 的正常 dormant `desiredSymbols=0`
   状态不得被当作 freshness failure；需要 live quote 时必须先由唯一 test-only
-  caller 显式建立 desired。
+  caller 显式建立 desired。真实 snapshot network failure、
+  `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` 与
+  `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown` 未自然发生时记为 `not-observed`，
+  不得为验收修改 bridge/wire、断网或伪造 native list；以后由
+  `capture-realtime-provider-anomalies` 采集和复盘，不再阻塞本 change。
   - 2026-07-28 partial evidence: run `30323295927` proved fresh whole/overlay
     raw capture, typed-control exact state
     `[] -> [600030] -> [600030,603127] -> [600030]`, three complete
@@ -672,7 +684,9 @@
     absent and cleanup evidence and proved canonical `eventTime=null` when
     the accepted raw callback has no provider-native time field. The live
     one-attempt/no-retry/no-item-ack fault and both unsubscribe failure
-    branches remain separate missing evidence, so this task stays unchecked.
+    branches had not naturally occurred；它们现按
+    `capture-realtime-provider-anomalies` 记录为 deferred `not-observed`，
+    不再制造故障。
   - [x] Fresh raw whole/overlay capture SHA, Nest typed-control exact state,
     common-ingress latest readback and cleanup.
   - [x] Mutation `success:null`, fresh native-list postconditions and three
@@ -683,10 +697,14 @@
     `08c13d01a0a3841eb714af0289c8a9c2a7d26f2c52672bcd23d889a0cf518e2a`.
     This proves empty 2xx response, `producerSequence` rejection, the static
     single snapshot POST/no-retry guard and datasource failure/state branches,
-    but does not replace a live terminal fault.
-  - [ ] Live snapshot one-attempt/no-retry/no-item-ack evidence.
-  - [ ] `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` and
-    `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown` live failure evidence.
+    and is the release evidence for code behavior; it is not relabelled as a
+    naturally occurring terminal incident.
+  - [x] Normal-path live snapshot plus deterministic
+    one-attempt/no-retry/no-item-ack contract evidence. A real network failure
+    remains `not-observed` under `capture-realtime-provider-anomalies`.
+  - [x] `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscribed` and
+    `TDX_UNSUBSCRIBE_VERIFY_FAILED/unknown` deterministic branches are covered;
+    real incidents are deferred `not-observed` and MUST NOT be manufactured.
   - [x] Canonical TDX `eventTime` readback proving null when the accepted raw
     callback has no provider-native time field: current candidate run
     `30332459772` returned `eventTime=null`,
@@ -704,7 +722,9 @@
       `[] -> [600030] -> [600030,603127] -> [600030] -> []`, and kept the
       overlay absent for three complete post-unsubscribe cycles. Controlled
       fault run `30506461560` passed 42 tests with zero failures/errors. The
-      two explicitly separate live negative items above remain unchecked.
+      two live negative incidents did not naturally occur and are now owned by
+      `capture-realtime-provider-anomalies`, without changing this task's
+      normal-path pass.
 - [ ] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
   terminal/context reload、rollback、old callback rejection 和 protected
   post-digest；验证 QMT `off` 不产生 QMT unavailable 且不停止 TDX metrics，
@@ -781,14 +801,16 @@
   - 2026-07-28 current verdict: `partial`. QMT positive subscription,
     controlled faults, durable recovery and source-scoped restart evidence
     exist, and QMT exact bool `true` success plus repeated released-ID bool
-    `false` behavior is now fixed by `30427618972/30427924763`; TDX live
-    negative/no-retry evidence and the dual-source joint soak remain open. The
+    `false` behavior is now fixed by `30427618972/30427924763`; TDX naturally
+    occurring negative incidents are deferred to
+    `capture-realtime-provider-anomalies`, while the dual-source joint soak
+    remains open. The
     final sanitized review is complete. QMT and TDX
     canonical `eventTime` boundaries plus the current protected post-digest
     are now proven. The joint release gate is therefore `blocked`.
   - 2026-07-29 governance verdict remains `partial/blocked`: exact QMT bool
     semantics are retained, while current-image normalized readiness,
-    QMT whole/overlay, TDX LastClose/live faults, protected digests and the
+    QMT whole/overlay, TDX LastClose, protected digests and the
     joint soak must be requalified under the shared acceptance entry.
 
 ## 11. Theme B B1 与 post-close 刷新

@@ -1610,6 +1610,15 @@ fallback。HIL evidence 必须分别记录 raw fixture SHA 与 formal schema-v2
 golden SHA，不得把 provider raw capture 称为 formal golden。无需重新定义
 未变化的 TDX dirty callback 或其他 provider native 字段 contract。
 
+TDX/QMT 未自然出现的 provider negative branch 不再通过 production HIL
+制造。one-attempt/no-retry、unsubscribe failure、journal/lease/callback
+failure 的 deterministic tests 继续作为代码门禁，但不能改写成 live terminal
+evidence。真实异常以后由独立
+`capture-realtime-provider-anomalies` change 按 `not-observed|observed|unknown`
+采集与复盘；没有真实 incident 不阻塞本 change 的 normal-path release。不得为
+命中分支增加 bridge fault plan、wire 字段、diagnostic mutation route、主动断网、
+native-list 伪造或 journal corruption。
+
 ### 17. 发布与回滚
 
 发布：

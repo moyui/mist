@@ -33,6 +33,12 @@ describe('test-only realtime subscription HIL harness', () => {
       'canonicalReadback: { native: snapshot.native',
     );
     expect(harness).toContain('validateSubscriptions.exactState');
+    expect(harness).toContain("MIST_HIL_PROFILE === 'dual-source-soak'");
+    expect(harness).toContain('tdx.client.syncSubscriptions([tdxSymbol])');
+    expect(harness).toContain('qmt.client.syncSubscriptions([qmtSymbol])');
+    expect(harness).toContain('tdx.client.syncSubscriptions([])');
+    expect(harness).toContain('qmt.client.syncSubscriptions([])');
+    expect(harness).toContain('fingerprintQmtJournal');
     expect(harness).toContain('MIST_HIL_EVIDENCE_PATH');
     expect(harness).not.toContain('@Controller');
     expect(harness).not.toContain('new WebSocket');

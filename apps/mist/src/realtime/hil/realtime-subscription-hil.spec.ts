@@ -194,6 +194,98 @@ describe('realtime subscription HIL operation sequence', () => {
     ]);
   });
 
+  it('classifies QMT callback cessation, replacement capacity and later ID reuse', async () => {
+    let state: 'before' | 'whole' | 'overlay' = 'before';
+    let nextOverlayId = 7;
+    let observation:
+      | {
+          callbackStoppedDuringWindow: boolean;
+          releasedSubscriptionId: number | null;
+          laterSubscriptionId: number | null;
+          laterIdReused: boolean | null;
+          replacementSubscriptionSucceeded: boolean;
+          quotaReleaseEvidence: string;
+          runtimeActiveSubscriptionObservation: string;
+        }
+      | undefined;
+    const client: RealtimeSubscriptionControl = {
+      getSubscriptions: async () => ({
+        success:
+          state === 'before'
+            ? { whole: null, singles: {} }
+            : {
+                whole: { subId: 6, symbols: ['300502.SZ'] },
+                singles:
+                  state === 'overlay' ? { '000001.SZ': nextOverlayId } : {},
+              },
+      }),
+      syncSubscriptions: async () => {
+        state = 'whole';
+        return { success: 6 };
+      },
+      subscribe: async () => {
+        state = 'overlay';
+        return { success: nextOverlayId };
+      },
+      unsubscribe: async () => {
+        state = 'whole';
+        nextOverlayId = 8;
+        return { success: null };
+      },
+    };
+
+    const evidence = await runControlSequence(
+      client,
+      'qmt',
+      '300502.SZ',
+      '000001.SZ',
+      undefined,
+      {
+        observationWindowMs: 1,
+        readCapturedAt: () => '2026-07-30T10:00:00+08:00',
+        onObservation: (value) => {
+          observation = value;
+        },
+      },
+    );
+
+    expect(observation).toEqual(
+      expect.objectContaining({
+        callbackStoppedDuringWindow: true,
+        releasedSubscriptionId: 7,
+        laterSubscriptionId: 8,
+        laterIdReused: false,
+        replacementSubscriptionSucceeded: true,
+        quotaReleaseEvidence: 'replacement_subscription_succeeded',
+        runtimeActiveSubscriptionObservation: 'platform_unavailable',
+      }),
+    );
+    expect(evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'observeCallbackCessation.overlay',
+          result: 'success',
+        }),
+        expect.objectContaining({
+          operation: 'subscribe.overlayReplacement',
+          success: 8,
+        }),
+        expect.objectContaining({
+          operation: 'classifyQmtQuotaAndIdReuse',
+          result: 'success',
+        }),
+        expect.objectContaining({
+          operation: 'unsubscribe.overlayReplacement',
+          result: 'success',
+        }),
+        expect.objectContaining({
+          operation: 'validateSubscriptions.exactState',
+          result: 'success',
+        }),
+      ]),
+    );
+  });
+
   it('records a bounded failure and continues the sequence', async () => {
     let getCalls = 0;
     const client: RealtimeSubscriptionControl = {
