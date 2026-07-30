@@ -553,7 +553,7 @@
     current candidate run `30332275918` captured whole
     `2026-07-28T05:39:51.000Z` and overlay
     `2026-07-28T05:39:53.000Z`, with no measurement-time fallback.
-  - [ ] **下一个交易时段补验（阻塞 10.1 完成）**：
+  - [x] **当前候选交易时段 whole/overlay 与清理补验**：
     - 时间窗：选择下一个支持的 A 股连续竞价交易时段，优先
       `09:35-11:25` 或 `13:05-14:55`（`Asia/Shanghai`），避开集合竞价、
       午休和收盘后的无变化窗口；开始前记录实际日期、开始/结束时间和
@@ -591,6 +591,16 @@
       transition 与清理证据继续有效；但它之后发生过 datasource image drift。
       下一次交易时段必须在运行中的 exact `c8b140b...` 镜像、normalized
       readiness 与新 pre-digest 下重新证明 fresh whole + overlay。
+    - 2026-07-30 current-candidate evidence: run `30506223225` on deployed
+      datasource `a010946bb420feaefe55e4408c7bca3718b28319` and backend
+      `6f1444f8669d95f9777f4938eb86e47d63467775` passed. Whole
+      `300502.SZ` returned integer ID `2`, overlay `600519.SH` returned
+      integer ID `3`, both produced fresh raw fixtures and canonical
+      provider-time readback, both first cancellations returned exact bool
+      `true`, journal transitions were durable, and cleanup ended with an
+      empty registry plus `ready=true/reconciliationRequired=false`.
+      This closes the current-session whole/overlay gate, but does not close
+      the separately unchecked callback-stop/quota/later-ID-reuse item.
 - [ ] 10.2 `[Windows QMT operator]` 验证 callback burst、queue bound、
   malformed-one-code isolation、old lease rejection、严格递增
   `callSequence` 及可控延迟下 A-timeout/B-poll/A-late reject 且 B 保持可完成；
@@ -619,11 +629,15 @@
     `bigqmt-24108 -> bigqmt-42196`, published durable observation sequence
     `40`, cleared retained handles, and post-smoke run `30330585275` proved
     `ready=true/reconciliationRequired=false`.
-  - [ ] Current-candidate requalification: datasource CI run `30428635434`
+  - [x] Current-candidate requalification: datasource CI run `30428635434`
     covers the `c8b140b...` code line, but exact-image Windows controlled
     faults must be rerun after the maintenance deployment is independently
     confirmed. Historical green runs remain retained and are not relabelled as
     current-image evidence.
+    - 2026-07-30 run `30506459135` checked out exact deployed datasource
+      `a010946bb420feaefe55e4408c7bca3718b28319` and passed 101 tests with
+      zero failures/errors. JUnit SHA:
+      `a070dfbc3817e97a3b086dc4df297e3977341232f42f7f06dfa4aea56e14ae6c`.
 - [ ] 10.3 `[Windows TDX operator/mist]` 停止或隔离正常 backend 的 TDX
   client，以同类 test-only Nest in-process harness 作为唯一 leader 调用四个
   TDX control methods，并执行受影响链路 HIL：验证 bridge snapshot
@@ -678,18 +692,35 @@
     `30332459772` returned `eventTime=null`,
     `eventTimeAvailable=false` and `aggregationEligible=false` for both
     `600030.SH` and `603127.SH`.
-  - [ ] Quality-governance requalification: prior TDX HIL is historical after
+  - [x] Quality-governance requalification: prior TDX HIL is historical after
     the exact `LastClose` converter and normalized readiness changes. Re-run
     raw `LastClose` -> formal v2 -> `prices.lastClose` -> common ingress,
     typed control and three absent cycles on the current candidate. Runs
     `30439521072/30439986842` additionally prove that the TDX terminal bridge
     owner is currently missing, so no current TDX HIL can be credited yet.
+    - 2026-07-30 run `30506328117` on the current deployed candidate captured
+      raw `600030.SH LastClose="28.50"` and overlay `603127.SH`, passed the
+      formal/converter/common readback, exact typed state
+      `[] -> [600030] -> [600030,603127] -> [600030] -> []`, and kept the
+      overlay absent for three complete post-unsubscribe cycles. Controlled
+      fault run `30506461560` passed 42 tests with zero failures/errors. The
+      two explicitly separate live negative items above remain unchecked.
 - [ ] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
   terminal/context reload、rollback、old callback rejection 和 protected
   post-digest；验证 QMT `off` 不产生 QMT unavailable 且不停止 TDX metrics，
   TDX `off` 或 TDX bridge rollback 不停止 QMT metrics，并覆盖 enabled source
   startup/session grace 与 closed-session freshness；restart/reconnect 只更新
   readiness，后续 read/mutation 必须由 harness 明确调用。
+  - 2026-07-30 evidence: initial run `30506733271` correctly exposed that the
+    deploy harness waited for an intentionally absent bridge route in `off`
+    mode. Deploy fix `2a98df062f5772726b018c5e377221111107071c` limits
+    `SkipBridgeReady` to the off transition. Re-run `30506994108` proved QMT
+    off leaves TDX enabled/container-stable, TDX off leaves QMT
+    enabled/container-stable, and both modes restore to builtin. QMT restart
+    then correctly failed closed with reconciliation required; recovery
+    `30507164201` published the durable context-rebuild observation, and final
+    QMT/TDX smokes `30507278796/30507113409` passed. The top-level task remains
+    unchecked until the remaining joint soak/rollback breadth is complete.
 - [ ] 10.4a `[operator/mist-deploy]` 与
   `containerize-tdx-qmt-datasources` task 5.4 共用同一窗口和 manifest：记录
   两个 datasource Compose container/image/digest、QMT bind mount、WinSW
@@ -728,6 +759,9 @@
   - [ ] Dual-source container/bridge/journal/realtime joint soak.
   - [x] Current protected pre/post digests
     `30331886288/30334690762` match for all six protected tables.
+  - [x] 2026-07-30 current-window protected pre/post digests
+    `30506090157/30506469715` again match row count and content digest for all
+    six protected tables.
 - [x] 10.5 `[mist]` 按
   `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
   收集非交易时段 evidence；只声明 owner/control/journal/restart/已有 fixture，
