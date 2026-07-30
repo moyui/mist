@@ -760,8 +760,9 @@
   - [x] Current protected pre/post digests
     `30331886288/30334690762` match for all six protected tables.
   - [x] 2026-07-30 current-window protected pre/post digests
-    `30506090157/30506469715` again match row count and content digest for all
-    six protected tables.
+    `30506090157/30507681699` again match row count and content digest for all
+    six protected tables after mode isolation, QMT recovery and final smokes;
+    `30506469715` remains the live-mutation checkpoint.
 - [x] 10.5 `[mist]` 按
   `mist-deploy/docs/runbooks/realtime-native-subscription-off-session-verification.md`
   收集非交易时段 evidence；只声明 owner/control/journal/restart/已有 fixture，
