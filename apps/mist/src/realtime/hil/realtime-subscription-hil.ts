@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 
 import {
@@ -46,17 +52,33 @@ interface HilEvidence {
   rawFixtureSha256: string | null;
   formalFixtureSha256: string;
   capturedRawFixtures: CapturedRawFixtureEvidence[];
+  qmtLifecycleObservation: QmtLifecycleObservation | null;
   operations: HilOperationEvidence[];
   cleanupAttempted: boolean;
 }
 
 interface CapturedRawFixtureEvidence {
-  phase: 'whole' | 'overlay';
+  phase: 'whole' | 'overlay' | 'replacement';
   symbol: string;
   capturedAt: string;
   fileName: string;
   sha256: string;
   canonicalReadback: CanonicalReadbackEvidence;
+}
+
+export interface QmtLifecycleObservation {
+  callbackObservationWindowMs: number;
+  callbackCapturedAtBefore: string | null;
+  callbackCapturedAtAfter: string | null;
+  callbackStoppedDuringWindow: boolean;
+  releasedSubscriptionId: number | null;
+  laterSubscriptionId: number | null;
+  laterIdReused: boolean | null;
+  replacementSubscriptionSucceeded: boolean;
+  quotaReleaseEvidence:
+    | 'replacement_subscription_succeeded'
+    | 'replacement_subscription_failed';
+  runtimeActiveSubscriptionObservation: 'platform_unavailable';
 }
 
 export interface CanonicalReadbackEvidence {
@@ -75,6 +97,29 @@ interface HilRunOptions {
   rawFixturePath?: string;
   rawCaptureDirectory?: string;
   snapshotTimeoutMs?: number;
+  qmtCallbackObservationMs?: number;
+}
+
+interface DualSourceSoakOptions {
+  tdxSymbol: string;
+  qmtSymbol: string;
+  durationMs: number;
+  intervalMs: number;
+  maxSnapshotAgeMs: number;
+  qmtStateDirectory?: string;
+  tdxBridgeHealthUrl: string;
+  qmtBridgeHealthUrl: string;
+}
+
+interface DualSourceSoakSample {
+  observedAt: string;
+  tdx: CanonicalReadbackEvidence;
+  qmt: CanonicalReadbackEvidence;
+  tdxSnapshotAgeMs: number;
+  qmtSnapshotAgeMs: number;
+  tdxBridge: Record<string, unknown>;
+  qmtBridge: Record<string, unknown>;
+  qmtJournalFingerprintSha256: string | null;
 }
 
 type CapturePhase = CapturedRawFixtureEvidence['phase'];
@@ -98,6 +143,7 @@ export async function runRealtimeSubscriptionHil({
   rawFixturePath,
   rawCaptureDirectory,
   snapshotTimeoutMs = 30_000,
+  qmtCallbackObservationMs = 10_000,
 }: HilRunOptions): Promise<HilEvidence> {
   const symbol = normalizeHilSymbol(requestedSymbol);
   const overlaySymbol = normalizeHilSymbol(requestedOverlaySymbol);
@@ -113,6 +159,7 @@ export async function runRealtimeSubscriptionHil({
   );
   const operations: HilEvidence['operations'] = [];
   const capturedRawFixtures: CapturedRawFixtureEvidence[] = [];
+  let qmtLifecycleObservation: QmtLifecycleObservation | null = null;
   let cleanupAttempted = false;
   try {
     const resolved = resolveClient(source, context);
@@ -137,6 +184,19 @@ export async function runRealtimeSubscriptionHil({
                   notBeforeMs,
                 ),
               );
+            }
+          : undefined,
+        source === 'qmt'
+          ? {
+              observationWindowMs: qmtCallbackObservationMs,
+              readCapturedAt: () => {
+                const securityId = resolved.resolveSecurityId(overlaySymbol);
+                if (securityId === null) return null;
+                return resolved.readLatest(securityId)?.capturedAt ?? null;
+              },
+              onObservation: (observation) => {
+                qmtLifecycleObservation = observation;
+              },
             }
           : undefined,
       )),
@@ -170,6 +230,7 @@ export async function runRealtimeSubscriptionHil({
     rawFixtureSha256: rawFixturePath ? sha256(rawFixturePath) : null,
     formalFixtureSha256: sha256(formalFixturePath),
     capturedRawFixtures,
+    qmtLifecycleObservation,
     operations,
     cleanupAttempted,
   };
@@ -240,6 +301,46 @@ function createHilModule(source: HilSource): DynamicModule {
   };
 }
 
+function createDualSourceHilModule(): DynamicModule {
+  return {
+    module: RealtimeSubscriptionHilModule,
+    imports: [
+      ConfigModule.forRoot({
+        isGlobal: true,
+        validationSchema: mistEnvSchema,
+        validationOptions: { allowUnknown: true, abortEarly: false },
+      }),
+      TypeOrmModule.forRootAsync({
+        useFactory(config: ConfigService) {
+          return {
+            type: 'mysql',
+            host: config.get('mysql_server_host'),
+            port: config.get('mysql_server_port'),
+            username: config.get('mysql_server_username'),
+            password: config.get('mysql_server_password'),
+            database: config.get('mysql_server_database'),
+            timezone: '+08:00',
+            synchronize: false,
+            logging: false,
+            entities: [...realtimeSubscriptionHilEntities],
+            connectorPackage: 'mysql2',
+          };
+        },
+        inject: [ConfigService],
+      }),
+      RealtimeIngressModule,
+    ],
+    providers: [
+      QmtRealtimeAllowlistResolver,
+      QmtRealtimeClient,
+      QmtRealtimeStore,
+      TdxRealtimeAllowlistResolver,
+      TdxRealtimeClient,
+      TdxRealtimeStore,
+    ],
+  };
+}
+
 function resolveClient(
   source: HilSource,
   context: {
@@ -294,6 +395,11 @@ export async function runControlSequence(
     symbol: string,
     notBeforeMs: number,
   ) => Promise<void>,
+  qmtLifecycle?: {
+    observationWindowMs: number;
+    readCapturedAt: () => string | null;
+    onObservation?: (observation: QmtLifecycleObservation) => void;
+  },
 ): Promise<HilOperationEvidence[]> {
   const operations: HilOperationEvidence[] = [];
   await recordOperation(operations, 'getSubscriptions.before', () =>
@@ -330,6 +436,10 @@ export async function runControlSequence(
   await recordOperation(operations, 'getSubscriptions.afterSubscribe', () =>
     client.getSubscriptions(),
   );
+  const releasedSubscriptionId = successfulInteger(
+    operations,
+    'subscribe.overlay',
+  );
   await recordOperation(operations, 'unsubscribe.overlay', () =>
     client.unsubscribe(overlaySymbol),
   );
@@ -345,6 +455,88 @@ export async function runControlSequence(
     await recordOperation(operations, 'getSubscriptions.afterUnsubscribe', () =>
       client.getSubscriptions(),
     );
+    if (qmtLifecycle) {
+      const callbackCapturedAtBefore = qmtLifecycle.readCapturedAt();
+      await delay(qmtLifecycle.observationWindowMs);
+      const callbackCapturedAtAfter = qmtLifecycle.readCapturedAt();
+      const callbackStoppedDuringWindow =
+        callbackCapturedAtBefore === callbackCapturedAtAfter;
+      operations.push({
+        operation: 'observeCallbackCessation.overlay',
+        result: callbackStoppedDuringWindow ? 'success' : 'failure',
+        reason: callbackStoppedDuringWindow
+          ? 'none'
+          : 'HIL_QMT_CALLBACK_CONTINUED_AFTER_UNSUBSCRIBE',
+      });
+
+      const replacementStartedAt = Date.now();
+      const replacementResult = await recordOperation(
+        operations,
+        'subscribe.overlayReplacement',
+        () => client.subscribe(overlaySymbol),
+      );
+      if (capture) {
+        await recordCapture(
+          operations,
+          'captureRawFixture.replacement',
+          replacementResult,
+          () => capture('replacement', overlaySymbol, replacementStartedAt),
+        );
+      }
+      await recordOperation(
+        operations,
+        'getSubscriptions.afterReplacementSubscribe',
+        () => client.getSubscriptions(),
+      );
+      const laterSubscriptionId = successfulInteger(
+        operations,
+        'subscribe.overlayReplacement',
+      );
+      const replacementSubscriptionSucceeded =
+        laterSubscriptionId !== null &&
+        successfulValue(
+          operations,
+          'getSubscriptions.afterReplacementSubscribe',
+        ) !== undefined;
+      const qmtLifecycleObservation: QmtLifecycleObservation = {
+        callbackObservationWindowMs: qmtLifecycle.observationWindowMs,
+        callbackCapturedAtBefore,
+        callbackCapturedAtAfter,
+        callbackStoppedDuringWindow,
+        releasedSubscriptionId,
+        laterSubscriptionId,
+        laterIdReused:
+          releasedSubscriptionId === null || laterSubscriptionId === null
+            ? null
+            : releasedSubscriptionId === laterSubscriptionId,
+        replacementSubscriptionSucceeded,
+        quotaReleaseEvidence: replacementSubscriptionSucceeded
+          ? 'replacement_subscription_succeeded'
+          : 'replacement_subscription_failed',
+        runtimeActiveSubscriptionObservation: 'platform_unavailable',
+      };
+      qmtLifecycle.onObservation?.(qmtLifecycleObservation);
+      operations.push({
+        operation: 'classifyQmtQuotaAndIdReuse',
+        result:
+          callbackStoppedDuringWindow && replacementSubscriptionSucceeded
+            ? 'success'
+            : 'failure',
+        reason:
+          callbackStoppedDuringWindow && replacementSubscriptionSucceeded
+            ? 'none'
+            : 'HIL_QMT_LIFECYCLE_CLASSIFICATION_FAILED',
+        success: qmtLifecycleObservation,
+      });
+      await recordOperation(operations, 'unsubscribe.overlayReplacement', () =>
+        client.unsubscribe(overlaySymbol),
+      );
+      await recordOperation(
+        operations,
+        'getSubscriptions.afterReplacementCleanup',
+        () => client.getSubscriptions(),
+      );
+    }
   }
   operations.push(
     validateSubscriptionState(source, symbol, overlaySymbol, operations),
@@ -440,11 +632,17 @@ function validateSubscriptionState(
           ),
         )
       : successfulValue(operations, 'getSubscriptions.afterUnsubscribe');
+  const afterReplacementCleanup = successfulValue(
+    operations,
+    'getSubscriptions.afterReplacementCleanup',
+  );
   const valid =
     source === 'qmt'
       ? isQmtState(afterSync, symbol, []) &&
         isQmtState(afterSubscribe, symbol, [overlaySymbol]) &&
-        isQmtState(afterUnsubscribe, symbol, [])
+        isQmtState(afterUnsubscribe, symbol, []) &&
+        (afterReplacementCleanup === undefined ||
+          isQmtState(afterReplacementCleanup, symbol, []))
       : isTdxState(afterSync, [symbol]) &&
         isTdxState(afterSubscribe, [symbol, overlaySymbol]) &&
         Array.isArray(afterUnsubscribe) &&
@@ -461,6 +659,20 @@ function validateSubscriptionState(
         result: 'failure',
         reason: 'HIL_SUBSCRIPTION_STATE_INVALID',
       };
+}
+
+function successfulInteger(
+  operations: HilOperationEvidence[],
+  operation: string,
+): number | null {
+  const value = successfulValue(operations, operation);
+  return Number.isInteger(value) ? (value as number) : null;
+}
+
+async function delay(milliseconds: number): Promise<void> {
+  await new Promise((resolvePromise) =>
+    setTimeout(resolvePromise, milliseconds),
+  );
 }
 
 function successfulValue(
@@ -606,7 +818,298 @@ function sha256(path: string): string {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+export async function runRealtimeDualSourceSoakHil({
+  tdxSymbol: requestedTdxSymbol,
+  qmtSymbol: requestedQmtSymbol,
+  durationMs,
+  intervalMs,
+  maxSnapshotAgeMs,
+  qmtStateDirectory,
+  tdxBridgeHealthUrl,
+  qmtBridgeHealthUrl,
+}: DualSourceSoakOptions): Promise<Record<string, unknown>> {
+  const tdxSymbol = normalizeHilSymbol(requestedTdxSymbol);
+  const qmtSymbol = normalizeHilSymbol(requestedQmtSymbol);
+  const context = await NestFactory.createApplicationContext(
+    createDualSourceHilModule(),
+    { logger: ['error', 'warn'] },
+  );
+  const operations: HilOperationEvidence[] = [];
+  const samples: DualSourceSoakSample[] = [];
+  let qmtJournalBaseline: string | null = null;
+  let cleanupAttempted = false;
+  const startedAt = new Date().toISOString();
+  try {
+    const tdx = resolveClient('tdx', context);
+    const qmt = resolveClient('qmt', context);
+    await Promise.all([
+      waitUntilReady(tdx.ready, 30_000),
+      waitUntilReady(qmt.ready, 30_000),
+    ]);
+    const setupStartedAt = Date.now();
+    await recordOperation(operations, 'tdx.syncSubscriptions.soakTarget', () =>
+      tdx.client.syncSubscriptions([tdxSymbol]),
+    );
+    await recordOperation(operations, 'qmt.syncSubscriptions.soakTarget', () =>
+      qmt.client.syncSubscriptions([qmtSymbol]),
+    );
+    await waitForFreshCanonicalSnapshot(
+      tdx,
+      'tdx',
+      tdxSymbol,
+      setupStartedAt,
+      90_000,
+    );
+    await waitForFreshCanonicalSnapshot(
+      qmt,
+      'qmt',
+      qmtSymbol,
+      setupStartedAt,
+      90_000,
+    );
+    qmtJournalBaseline = fingerprintQmtJournal(qmtStateDirectory);
+    const deadline = Date.now() + durationMs;
+    do {
+      const observedAtMs = Date.now();
+      const tdxSnapshot = requireCurrentSnapshot(tdx, 'tdx', tdxSymbol);
+      const qmtSnapshot = requireCurrentSnapshot(qmt, 'qmt', qmtSymbol);
+      const tdxSnapshotAgeMs =
+        observedAtMs - requireCapturedAtMs(tdxSnapshot.capturedAt);
+      const qmtSnapshotAgeMs =
+        observedAtMs - requireCapturedAtMs(qmtSnapshot.capturedAt);
+      if (
+        tdxSnapshotAgeMs < -5_000 ||
+        tdxSnapshotAgeMs > maxSnapshotAgeMs ||
+        qmtSnapshotAgeMs < -5_000 ||
+        qmtSnapshotAgeMs > maxSnapshotAgeMs
+      ) {
+        throw new Error('HIL dual-source snapshot freshness exceeded bound');
+      }
+      const currentJournal = fingerprintQmtJournal(qmtStateDirectory);
+      if (currentJournal !== qmtJournalBaseline) {
+        throw new Error(
+          'HIL QMT journal changed during mutation-free dual-source soak',
+        );
+      }
+      const tdxBridge = await readBridgeHealth(tdxBridgeHealthUrl, 'tdx');
+      const qmtBridge = await readBridgeHealth(qmtBridgeHealthUrl, 'qmt');
+      if (samples.length > 0) {
+        const baseline = samples[0];
+        if (
+          tdxBridge.ownerId !== baseline.tdxBridge.ownerId ||
+          tdxBridge.bridgeBuildId !== baseline.tdxBridge.bridgeBuildId ||
+          qmtBridge.ownerId !== baseline.qmtBridge.ownerId ||
+          qmtBridge.bridgeBuildId !== baseline.qmtBridge.bridgeBuildId
+        ) {
+          throw new Error('HIL bridge owner or build changed during soak');
+        }
+      }
+      if (
+        'desiredRevision' in tdxBridge &&
+        'convergedRevision' in tdxBridge &&
+        tdxBridge.desiredRevision !== tdxBridge.convergedRevision
+      ) {
+        throw new Error('HIL TDX desired/converged revision drifted');
+      }
+      samples.push({
+        observedAt: new Date(observedAtMs).toISOString(),
+        tdx: toCanonicalReadbackEvidence(tdxSnapshot),
+        qmt: toCanonicalReadbackEvidence(qmtSnapshot),
+        tdxSnapshotAgeMs,
+        qmtSnapshotAgeMs,
+        tdxBridge,
+        qmtBridge,
+        qmtJournalFingerprintSha256: currentJournal,
+      });
+      if (Date.now() < deadline) {
+        await delay(Math.min(intervalMs, Math.max(1, deadline - Date.now())));
+      }
+    } while (Date.now() < deadline);
+  } finally {
+    cleanupAttempted = true;
+    const tdx = resolveClient('tdx', context);
+    const qmt = resolveClient('qmt', context);
+    await recordOperation(operations, 'tdx.syncSubscriptions.cleanup', () =>
+      tdx.client.syncSubscriptions([]),
+    );
+    await recordOperation(operations, 'qmt.syncSubscriptions.cleanup', () =>
+      qmt.client.syncSubscriptions([]),
+    );
+    await context.close();
+  }
+  return {
+    profile: 'dual-source-soak',
+    sessionClass: 'trading-session',
+    freshnessProven: true,
+    tdxSymbol,
+    qmtSymbol,
+    startedAt,
+    completedAt: new Date().toISOString(),
+    durationMs,
+    intervalMs,
+    maxSnapshotAgeMs,
+    qmtJournalBaseline,
+    samples,
+    operations,
+    cleanupAttempted,
+  };
+}
+
+async function waitForFreshCanonicalSnapshot(
+  resolved: ReturnType<typeof resolveClient>,
+  source: HilSource,
+  symbol: string,
+  notBeforeMs: number,
+  timeoutMs: number,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const snapshot = readCurrentSnapshot(resolved, source, symbol);
+    if (snapshot && requireCapturedAtMs(snapshot.capturedAt) >= notBeforeMs) {
+      return;
+    }
+    await delay(100);
+  }
+  throw new Error(`HIL ${source} soak snapshot did not become fresh`);
+}
+
+function requireCurrentSnapshot(
+  resolved: ReturnType<typeof resolveClient>,
+  source: HilSource,
+  symbol: string,
+): CanonicalRealtimeSnapshot {
+  const snapshot = readCurrentSnapshot(resolved, source, symbol);
+  if (!snapshot) {
+    throw new Error(`HIL ${source} soak snapshot is unavailable`);
+  }
+  return snapshot;
+}
+
+function readCurrentSnapshot(
+  resolved: ReturnType<typeof resolveClient>,
+  source: HilSource,
+  symbol: string,
+): CanonicalRealtimeSnapshot | null {
+  const securityId = resolved.resolveSecurityId(symbol);
+  if (securityId === null) return null;
+  const snapshot = resolved.readLatest(securityId);
+  return snapshot?.source === source && snapshot.providerSymbol === symbol
+    ? snapshot
+    : null;
+}
+
+function requireCapturedAtMs(capturedAt: string): number {
+  const value = Date.parse(capturedAt);
+  if (!Number.isFinite(value)) {
+    throw new Error('HIL capturedAt is not RFC3339');
+  }
+  return value;
+}
+
+async function readBridgeHealth(
+  url: string,
+  source: HilSource,
+): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    method: 'GET',
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!response.ok) {
+    throw new Error(`HIL ${source} bridge health returned ${response.status}`);
+  }
+  const value = (await response.json()) as unknown;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`HIL ${source} bridge health is not an object`);
+  }
+  const health = value as Record<string, unknown>;
+  const ready =
+    health.ready === true ||
+    (source === 'tdx' && health.tdxRealtimeBridgeReady === true);
+  if (!ready || typeof health.ownerId !== 'string') {
+    throw new Error(`HIL ${source} bridge is not ready`);
+  }
+  return { ready: true, ...sanitizeBridgeHealth(health) };
+}
+
+function sanitizeBridgeHealth(
+  health: Record<string, unknown>,
+): Record<string, unknown> {
+  const allowedKeys = [
+    'ready',
+    'tdxRealtimeBridgeReady',
+    'ownerId',
+    'ownerStale',
+    'ownerAgeSeconds',
+    'bridgeBuildId',
+    'desiredRevision',
+    'convergedRevision',
+    'desiredSymbols',
+    'convergedSymbols',
+    'lastFailureCode',
+  ];
+  return Object.fromEntries(
+    allowedKeys.filter((key) => key in health).map((key) => [key, health[key]]),
+  );
+}
+
+function fingerprintQmtJournal(directory?: string): string | null {
+  if (!directory) return null;
+  const files = readdirSync(directory)
+    .filter(
+      (name) =>
+        name === 'subscription-journal.jsonl' ||
+        name.includes('manifest') ||
+        name.includes('compaction-checkpoint') ||
+        name.includes('sealed-range-checkpoint'),
+    )
+    .sort();
+  const digest = createHash('sha256');
+  for (const name of files) {
+    const path = join(directory, name);
+    if (!statSync(path).isFile()) continue;
+    digest.update(name);
+    digest.update('\0');
+    digest.update(readFileSync(path));
+    digest.update('\0');
+  }
+  return digest.digest('hex');
+}
+
 export async function runRealtimeSubscriptionHilFromEnvironment(): Promise<void> {
+  if (process.env.MIST_HIL_PROFILE === 'dual-source-soak') {
+    const durationMs = positiveIntegerEnvironment(
+      'MIST_HIL_SOAK_DURATION_MS',
+      35 * 60 * 1000,
+    );
+    const intervalMs = positiveIntegerEnvironment(
+      'MIST_HIL_SOAK_INTERVAL_MS',
+      60_000,
+    );
+    const maxSnapshotAgeMs = positiveIntegerEnvironment(
+      'MIST_HIL_SOAK_MAX_SNAPSHOT_AGE_MS',
+      180_000,
+    );
+    const evidence = await runRealtimeDualSourceSoakHil({
+      tdxSymbol: requireEnvironment('MIST_HIL_TDX_SYMBOL'),
+      qmtSymbol: requireEnvironment('MIST_HIL_QMT_SYMBOL'),
+      durationMs,
+      intervalMs,
+      maxSnapshotAgeMs,
+      qmtStateDirectory: process.env.MIST_HIL_QMT_STATE_DIRECTORY,
+      tdxBridgeHealthUrl:
+        process.env.MIST_HIL_TDX_BRIDGE_HEALTH_URL ??
+        'http://tdx-datasource:9001/tdx/bridge/health',
+      qmtBridgeHealthUrl:
+        process.env.MIST_HIL_QMT_BRIDGE_HEALTH_URL ??
+        'http://qmt-datasource:9002/qmt/bridge/health',
+    });
+    writeHilEvidence(evidence);
+    const operations = evidence.operations as HilOperationEvidence[];
+    if (operations.some((operation) => operation.result === 'failure')) {
+      process.exitCode = 1;
+    }
+    return;
+  }
   const source = process.env.MIST_HIL_SOURCE;
   const symbol = process.env.MIST_HIL_SYMBOL;
   const overlaySymbol = process.env.MIST_HIL_OVERLAY_SYMBOL;
@@ -631,6 +1134,17 @@ export async function runRealtimeSubscriptionHilFromEnvironment(): Promise<void>
   if (!Number.isSafeInteger(snapshotTimeoutMs) || snapshotTimeoutMs <= 0) {
     throw new Error('MIST_HIL_SNAPSHOT_TIMEOUT_MS must be a positive integer');
   }
+  const qmtCallbackObservationMs = Number(
+    process.env.MIST_HIL_QMT_CALLBACK_OBSERVATION_MS ?? '10000',
+  );
+  if (
+    !Number.isSafeInteger(qmtCallbackObservationMs) ||
+    qmtCallbackObservationMs <= 0
+  ) {
+    throw new Error(
+      'MIST_HIL_QMT_CALLBACK_OBSERVATION_MS must be a positive integer',
+    );
+  }
   const evidence = await runRealtimeSubscriptionHil({
     source,
     symbol,
@@ -638,14 +1152,36 @@ export async function runRealtimeSubscriptionHilFromEnvironment(): Promise<void>
     rawFixturePath: mode === 'verify' ? rawFixturePath : undefined,
     rawCaptureDirectory,
     snapshotTimeoutMs,
+    qmtCallbackObservationMs,
   });
+  writeHilEvidence(evidence);
+  if (evidence.operations.some((operation) => operation.result === 'failure')) {
+    process.exitCode = 1;
+  }
+}
+
+function writeHilEvidence(evidence: unknown): void {
   const serialized = JSON.stringify(evidence, null, 2) + '\n';
   const evidencePath = process.env.MIST_HIL_EVIDENCE_PATH;
   if (evidencePath) {
     writeFileSync(evidencePath, serialized, { encoding: 'utf8', mode: 0o600 });
   }
   process.stdout.write(serialized);
-  if (evidence.operations.some((operation) => operation.result === 'failure')) {
-    process.exitCode = 1;
+}
+
+function requireEnvironment(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required`);
   }
+  return value;
+}
+
+function positiveIntegerEnvironment(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const value = raw === undefined ? fallback : Number(raw);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return value;
 }

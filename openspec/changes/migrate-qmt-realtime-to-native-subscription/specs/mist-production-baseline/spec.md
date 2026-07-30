@@ -299,17 +299,23 @@ converter MUST be qualified from accepted raw fixtures.
 
 #### Scenario: TDX cancellation remains subscribed
 
-- **WHEN** the fresh post-operation terminal-native list still contains the target
+- **WHEN** a real terminal/runtime incident leaves the target in the fresh
+  post-operation terminal-native list
 - **THEN** evidence MUST show
   `TDX_UNSUBSCRIBE_NOT_CONVERGED/subscriptionState=subscribed`
 - **AND** monitoring MUST use the same common counter schema as QMT
+- **AND** absence of such an incident MUST remain `not-observed` under
+  `capture-realtime-provider-anomalies` rather than being manufactured for HIL
 
 #### Scenario: TDX cancellation state is unknown
 
-- **WHEN** HIL injects or observes list failure, timeout or invalid list data
+- **WHEN** a real terminal/runtime incident naturally produces list failure,
+  timeout or invalid list data
 - **THEN** evidence MUST show
   `TDX_UNSUBSCRIBE_VERIFY_FAILED/subscriptionState=unknown`
 - **AND** no raw provider payload may be required by the backend-facing response
+- **AND** absence of such an incident MUST remain `not-observed` under
+  `capture-realtime-provider-anomalies` rather than being manufactured for HIL
 
 ### Requirement: Release uses a maintenance window and manual bridge installation
 
