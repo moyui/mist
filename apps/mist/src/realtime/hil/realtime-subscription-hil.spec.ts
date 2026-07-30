@@ -6,6 +6,7 @@ import { DataSource as TypeOrmDataSource } from 'typeorm';
 
 import { RealtimeSubscriptionControl } from '../realtime-subscription-control';
 import {
+  extractBridgeHealth,
   realtimeSubscriptionHilEntities,
   requireMatchingRawFixtureSymbol,
   runControlSequence,
@@ -96,6 +97,48 @@ describe('realtime subscription HIL operation sequence', () => {
     });
     expect(JSON.stringify(evidence)).not.toContain('privateProviderField');
     expect(JSON.stringify(evidence)).not.toContain('must-not-enter');
+  });
+
+  it('reads bridge authority from datasource root health', () => {
+    expect(
+      extractBridgeHealth(
+        {
+          status: 'ok',
+          bridge: {
+            ready: true,
+            ownerId: 'tdx-bridge-pid-123',
+            bridgeBuildId: 'mist-tdx-realtime-bridge-v2.1',
+            desiredRevision: 7,
+            convergedRevision: 7,
+            privateField: 'must-not-enter-evidence',
+          },
+        },
+        'tdx',
+      ),
+    ).toEqual({
+      ready: true,
+      ownerId: 'tdx-bridge-pid-123',
+      bridgeBuildId: 'mist-tdx-realtime-bridge-v2.1',
+      desiredRevision: 7,
+      convergedRevision: 7,
+    });
+  });
+
+  it('accepts an explicitly supplied scoped bridge health object', () => {
+    expect(
+      extractBridgeHealth(
+        {
+          ready: true,
+          ownerId: 'qmt-owner-123',
+          bridgeBuildId: 'mist-qmt-realtime-bridge-v2.0',
+        },
+        'qmt',
+      ),
+    ).toEqual({
+      ready: true,
+      ownerId: 'qmt-owner-123',
+      bridgeBuildId: 'mist-qmt-realtime-bridge-v2.0',
+    });
   });
 
   it('uses all four typed methods in deterministic order', async () => {

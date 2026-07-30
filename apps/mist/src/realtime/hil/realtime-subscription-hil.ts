@@ -1017,15 +1017,23 @@ async function readBridgeHealth(
   if (!response.ok) {
     throw new Error(`HIL ${source} bridge health returned ${response.status}`);
   }
-  const value = (await response.json()) as unknown;
+  return extractBridgeHealth((await response.json()) as unknown, source);
+}
+
+export function extractBridgeHealth(
+  value: unknown,
+  source: HilSource,
+): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`HIL ${source} bridge health is not an object`);
   }
-  const health = value as Record<string, unknown>;
-  const ready =
-    health.ready === true ||
-    (source === 'tdx' && health.tdxRealtimeBridgeReady === true);
-  if (!ready || typeof health.ownerId !== 'string') {
+  const root = value as Record<string, unknown>;
+  const candidate = 'bridge' in root ? root.bridge : root;
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    throw new Error(`HIL ${source} datasource bridge health is not an object`);
+  }
+  const health = candidate as Record<string, unknown>;
+  if (health.ready !== true || typeof health.ownerId !== 'string') {
     throw new Error(`HIL ${source} bridge is not ready`);
   }
   return { ready: true, ...sanitizeBridgeHealth(health) };
@@ -1036,7 +1044,6 @@ function sanitizeBridgeHealth(
 ): Record<string, unknown> {
   const allowedKeys = [
     'ready',
-    'tdxRealtimeBridgeReady',
     'ownerId',
     'ownerStale',
     'ownerAgeSeconds',
@@ -1098,10 +1105,10 @@ export async function runRealtimeSubscriptionHilFromEnvironment(): Promise<void>
       qmtStateDirectory: process.env.MIST_HIL_QMT_STATE_DIRECTORY,
       tdxBridgeHealthUrl:
         process.env.MIST_HIL_TDX_BRIDGE_HEALTH_URL ??
-        'http://tdx-datasource:9001/tdx/bridge/health',
+        'http://tdx-datasource:9001/health',
       qmtBridgeHealthUrl:
         process.env.MIST_HIL_QMT_BRIDGE_HEALTH_URL ??
-        'http://qmt-datasource:9002/qmt/bridge/health',
+        'http://qmt-datasource:9002/health',
     });
     writeHilEvidence(evidence);
     const operations = evidence.operations as HilOperationEvidence[];

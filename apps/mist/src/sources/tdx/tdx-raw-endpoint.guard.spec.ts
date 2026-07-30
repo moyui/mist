@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
-import { isAbsolute, join, relative } from 'path';
+import { join, relative } from 'path';
 
 const RAW_TDX_ENDPOINT = '/v1/raw/tdx/call';
 const FORBIDDEN_QMT_PRODUCT_DEPENDENCIES = [
@@ -29,15 +29,6 @@ function collectProductionTsFiles(dir: string): string[] {
   return files;
 }
 
-function isWithinDirectory(file: string, directory: string): boolean {
-  const relativePath = relative(directory, file);
-  return (
-    relativePath !== '' &&
-    !relativePath.startsWith('..') &&
-    !isAbsolute(relativePath)
-  );
-}
-
 describe('TDX datasource raw endpoint guard', () => {
   it('keeps normal Mist source code off the raw TDX debug endpoint', () => {
     const sourceRoot = join(process.cwd(), 'apps', 'mist', 'src');
@@ -52,15 +43,12 @@ describe('TDX datasource raw endpoint guard', () => {
 describe('QMT datasource boundary guard', () => {
   it('keeps normal Mist source code off QMT bridge internals and native account APIs', () => {
     const sourceRoot = join(process.cwd(), 'apps', 'mist', 'src');
-    const testOnlyHilRoot = join(sourceRoot, 'realtime', 'hil');
-    const offenders = collectProductionTsFiles(sourceRoot)
-      .filter((file) => !isWithinDirectory(file, testOnlyHilRoot))
-      .flatMap((file) => {
-        const source = readFileSync(file, 'utf8');
-        return FORBIDDEN_QMT_PRODUCT_DEPENDENCIES.filter((token) =>
-          source.includes(token),
-        ).map((token) => `${relative(process.cwd(), file)}:${token}`);
-      });
+    const offenders = collectProductionTsFiles(sourceRoot).flatMap((file) => {
+      const source = readFileSync(file, 'utf8');
+      return FORBIDDEN_QMT_PRODUCT_DEPENDENCIES.filter((token) =>
+        source.includes(token),
+      ).map((token) => `${relative(process.cwd(), file)}:${token}`);
+    });
 
     expect(offenders).toEqual([]);
   });
