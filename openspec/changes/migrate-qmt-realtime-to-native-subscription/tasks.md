@@ -52,7 +52,7 @@
     active-subscription inventory。对应字段固定为 `platform_unavailable`
     或 `unknown`；已由只读 probe、bridge owner/build 和实际 callable HIL
     证明的方法继续保留，未暴露的限制不作推断。本项不再阻塞归档。
-- [ ] 2.3 `[Windows QMT operator]` 在交易时段使用 `300502.SZ` 捕获：
+- [x] 2.3 `[Windows QMT operator]` 在交易时段使用 `300502.SZ` 捕获：
   - `subscribe_quote(..., period='tick', result_type='dict')` 一项 `{code:data}` callback；
   - `subscribe_whole_quote(exactDesiredSymbols)` 一项 callback；
   - 可获得时的 whole 多项 changed-symbol callback；
@@ -501,7 +501,7 @@
 
 ## 10. Windows HIL
 
-- [ ] 10.1 `[Windows QMT operator/mist]` 停止或隔离正常 backend 的 QMT
+- [x] 10.1 `[Windows QMT operator/mist]` 停止或隔离正常 backend 的 QMT
   client，以 test-only Nest in-process harness 作为唯一 backend leader，直接
   调用 `syncSubscriptions/subscribe/unsubscribe/getSubscriptions`；不得使用裸
   WebSocket、HTTP/controller、CLI 或 diagnostic mutation endpoint。交易时段
@@ -553,7 +553,15 @@
     call returns exact bool `false` and remains unconfirmed. Evidence:
     `30427618972/30427924763`; deployed acceptance and empty-registry cleanup:
     `30430369735`.
-  - [ ] Callback stop, quota release and later ID reuse classification.
+  - [x] Callback stop, quota release and later ID reuse classification.
+    - 2026-07-30 run `30510143003` on backend
+      `bc3a273ef90de6c4bb8098e877423f64f711fc4b` observed the released
+      overlay callback `capturedAt` remain unchanged for the full 10-second
+      window, then successfully created a replacement subscription. The
+      released ID was `3`, the replacement ID was `4`, so quota release was
+      proven and this run classified later ID reuse as false. Replacement
+      cleanup and final `syncSubscriptions([])` both succeeded; final registry
+      was empty. Runtime active inventory remains `platform_unavailable`.
   - [x] Canonical QMT `eventTime` readback traced to provider-native time:
     current candidate run `30332275918` captured whole
     `2026-07-28T05:39:51.000Z` and overlay
