@@ -1,7 +1,9 @@
 # qmt-native-subscription-transport Specification
 
 ## Purpose
-TBD - created by archiving change migrate-qmt-realtime-to-native-subscription. Update Purpose after archive.
+规定 QMT realtime 使用官方 native subscription callback 时的帧结构、订阅控制、
+handle registry、durable journal、恢复边界、监控和交易时段验收契约。
+
 ## Requirements
 ### Requirement: QMT realtime uses official subscription callbacks
 
@@ -558,4 +560,3 @@ is integrated.
 - **AND** absent compatible evidence, production recovery MUST treat repeated cancellation as unknown and require QMT context reload rather than guessing idempotence or harm
 - **AND** evidence MUST record observed or documented whole-list size, active ID limits and VIP/non-VIP permission constraints, using unknown where runtime cannot prove them
 - **AND** any incompatible result MUST stop release review instead of silently falling back to periodic `get_full_tick`
-

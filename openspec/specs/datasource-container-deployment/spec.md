@@ -1,7 +1,9 @@
 # datasource-container-deployment Specification
 
 ## Purpose
-TBD - created by archiving change containerize-tdx-qmt-datasources. Update Purpose after archive.
+规定 TDX/QMT datasource 在 Windows Docker appliance 中的镜像、独立服务、网络、
+持久化状态、WinSW 退役、部署门禁和联合生产验收契约。
+
 ## Requirements
 ### Requirement: One immutable image runs independent datasource services
 The production appliance SHALL run TDX and QMT datasource gateways from the
@@ -122,4 +124,3 @@ Docker-native health, logs and diagnostics.
 - **THEN** it records both datasource container states, health, recent logs,
   image IDs/digests, configured state mount and bridge readiness summaries
 - **AND** it does not require WinSW service files or logs
-

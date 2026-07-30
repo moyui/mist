@@ -24,6 +24,8 @@ changes, but its status was not rebased after later work completed. The
 | `add-bigqmt-datasource-bridge` | completed and archived | G1 native-history evidence preserved; realtime ownership and HIL completed by `converge-theme-a-realtime-bridges` |
 | `experimental-tdx-realtime-slice` | completed and archived | TDX native snapshot transport accepted with Windows HIL evidence |
 | `converge-theme-a-realtime-bridges` | completed and archived | TDX and QMT realtime transport HIL accepted; Theme A gate released |
+| `containerize-tdx-qmt-datasources` | completed and archived | Docker datasource cutover, WinSW removal, restart isolation, joint soak and protected-table digest evidence accepted on 2026-07-30 |
+| `migrate-qmt-realtime-to-native-subscription` | completed and archived | QMT native callback, subscription control, durable journal, recovery and trading-session HIL accepted on 2026-07-30 |
 | `define-mist-production-roadmap` | gate-driven rebaseline in progress | Parent roadmap for the remaining G1-G4 work |
 
 ## Goals / Non-Goals
@@ -100,6 +102,8 @@ The current historical ledger is:
 | Post-close provider history sync | deferred | `sync-post-close-provider-history` remains an indefinitely deferred draft; only a new explicit owner authorization may reopen review |
 | Chan phase-preview review surface | completed | `preview-chan-bi-phases` archived with canonical phase-preview requirements synced |
 | Chan Bi overlap and zoom repair | completed | `repair-chan-bi-overlap-rendering` archived with backend, frontend, and browser evidence |
+| Datasource Docker containerization | completed | `containerize-tdx-qmt-datasources` archived after joint TDX/QMT soak, source-scoped restart isolation, WinSW-absence and protected-table digest acceptance |
+| QMT native subscription transport | completed | `migrate-qmt-realtime-to-native-subscription` archived after native callback, unsubscribe, journal/recovery and trading-session HIL acceptance |
 | Frontend operator console | pending | Remains G3 after G2 contracts stabilize |
 | Tooling/build repeatability | pending re-audit | Remains G4 only for failures that still reproduce |
 
@@ -146,6 +150,15 @@ Realtime transport remains memory-only; persistence and notification work stays
 under separately gated feature work and is not an unresolved G1 item.
 `sync-post-close-provider-history` is explicitly deferred and is not an
 executable G1, G2, G3, or G4 blocker.
+
+Two later follow-up changes strengthened this accepted data path without
+reopening G1: `containerize-tdx-qmt-datasources` moved both datasource services
+into the Windows Docker appliance, and
+`migrate-qmt-realtime-to-native-subscription` completed QMT native subscription
+control and recovery. Both were archived on 2026-07-30 after their shared
+trading-session and container acceptance evidence passed. They do not implement
+the G2 operator status/diagnosis/recovery control plane, the G3 frontend
+operator console, or the G4 repeatability re-audit.
 
 ### Decision 5: G2 consolidates the remaining operations control plane
 

@@ -44,6 +44,9 @@
       path verification, and Mac-side gateway probes.
 - [x] 1.7 Record the completed G1 disposition and evidence pointer in
       `evidence/2026-07-22-production-baseline-refresh.md`.
+- [x] 1.8 Record the 2026-07-30 completed and archived datasource
+      containerization and QMT native-subscription follow-ups without treating
+      them as substitutes for G2, G3 or G4.
 
 ## G2. Complete production operations readiness
 
