@@ -4,7 +4,7 @@
 
 The QMT datasource SHALL retain the existing native history and owner/command/result routes and SHALL expose separate subscription control and callback snapshot routes only when `QMT_REALTIME_MODE=builtin`.
 
-#### Scenario: QMT builtin route table is inspected
+#### Scenario: QMT service route table is inspected
 
 - **WHEN** the QMT datasource starts in `builtin`
 - **THEN** `GET /health`, `POST /v1/bars/query`, existing `/qmt/bridge/owner`, `/qmt/bridge/poll`, `/qmt/bridge/result` and history health routes MUST remain available
@@ -24,13 +24,13 @@ The QMT datasource SHALL retain the existing native history and owner/command/re
 
 The full-QMT production bridge SHALL remain QMT-initiated and use Python standard-library loopback HTTP for history command polling, subscription control polling/results and callback snapshot submission. Subscription callbacks SHALL be provider output, not a command-intake mechanism.
 
-#### Scenario: Bridge run_time executes
+#### Scenario: Bridge script polls for work
 
 - **WHEN** QMT invokes the strategy `run_time` callback
 - **THEN** bridge MUST poll and execute history/subscription native work serially and drain bounded callback snapshots
 - **AND** it MUST not open a listener, WebSocket or realtime-duplex connection
 
-#### Scenario: Bridge dependencies are inspected
+#### Scenario: Bridge script is inspected
 
 - **WHEN** static checks inspect the production bridge
 - **THEN** it MUST use standard-library HTTP

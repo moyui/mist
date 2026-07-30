@@ -39,6 +39,14 @@ authenticated internal realtime WebSocket envelope while normalized public
 `/v1` HTTP endpoints remain unchanged. TDX and QMT SHALL use one exact
 schema-v2 formal frame with provider-symbol-keyed `data.native`.
 
+#### Scenario: Internal realtime consumer receives a frame
+
+- **WHEN** the authorized backend leader receives a TDX or QMT realtime frame
+- **THEN** the frame MUST contain the complete validated provider-native object
+  under its provider-symbol key
+- **AND** it MUST use schema v2 without acquisition profile, formal epoch or
+  sequence fields
+
 #### Scenario: QMT callback enters datasource
 
 - **WHEN** datasource accepts a callback wrapper
@@ -58,6 +66,12 @@ schema-v2 formal frame with provider-symbol-keyed `data.native`.
 
 - **WHEN** a product caller uses an existing `/v1` history or snapshot query
 - **THEN** that endpoint's current response contract MUST remain unchanged
+
+#### Scenario: Removed snapshot endpoint is called
+
+- **WHEN** a caller requests `/v1/snapshots/query`
+- **THEN** the datasource MUST return HTTP 404
+- **AND** no provider-specific alias or compatibility route may be used
 
 ## ADDED Requirements
 

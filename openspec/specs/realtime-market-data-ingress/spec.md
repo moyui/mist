@@ -79,18 +79,37 @@ Production deployment SHALL configure TDX and QMT realtime as `builtin`, SHALL p
 - **THEN** that source changes to `off`, its realtime routes/client stop, monitoring reports the intentional mode, and the other source remains active
 
 ### Requirement: Windows HIL gates production activation
-The formal contract MUST NOT become the production baseline until source-specific Windows HIL verifies native frames, fencing, owner recovery, restart, rollback and protected-table digest invariance.
+
+The unified schema-v2 contract and both new converters MUST NOT become the
+production baseline until Windows HIL verifies both affected source paths,
+restart/rollback behavior and protected-table digest invariance.
 
 #### Scenario: Trading-session HIL runs
-- **WHEN** TDX `600030.SH` and QMT `300502.SZ` are validated during supported sessions
-- **THEN** evidence includes fresh native event time, schema-v2 native-map
-  acceptance, matching bridge-owner readiness, backend canonical readback and
-  monitoring convergence
+
+- **WHEN** TDX `600030.SH` and QMT `300502.SZ` are validated during supported
+  sessions
+- **THEN** evidence MUST include fresh schema-v2 native-map delivery,
+  datasource bridge readiness, backend canonical readback and monitoring
+  convergence for both sources
+
+#### Scenario: QMT trading-session HIL runs
+
+- **WHEN** QMT `300502.SZ` is validated during a supported session
+- **THEN** evidence MUST include fresh single/whole callback maps, exact integer subscription IDs, unsubscribe return semantics and QMT-converter canonical readback
+- **AND** it MUST not require a datasource-to-backend sequence
+
+#### Scenario: TDX trading-session HIL runs
+
+- **WHEN** TDX is validated after the formal-frame cutover
+- **THEN** evidence MUST cover
+  `get_market_snapshot -> one-entry schema-v2 map -> new TDX converter -> common ingress`
+- **AND** it MUST prove absence of `producerSequence`, formal sequence and epoch/sequence fencing
 
 #### Scenario: HIL runs outside a trading session
+
 - **WHEN** validation runs outside a supported exchange session
-- **THEN** owner, subscription, cached readback and recovery evidence may be retained
-- **AND** it MUST NOT be presented as realtime freshness evidence
+- **THEN** owner, control, restart and accepted fixture evidence MAY be retained
+- **AND** it MUST NOT be presented as fresh-provider-data evidence
 
 ### Requirement: Realtime protocol and bridge readiness are distinct
 The datasource realtime ready frame SHALL identify successful protocol negotiation separately from terminal bridge-owner readiness, and the backend SHALL expose the accepted protocol state as `transportReady`.
@@ -140,3 +159,26 @@ The TDX realtime datasource and backend converter SHALL accept only exact provid
 - **WHEN** a TDX realtime native snapshot supplies `PreClose` or `lastClose` without exact `LastClose`
 - **THEN** datasource validation rejects the frame
 - **AND** backend conversion does not use the retired alias
+
+### Requirement: QMT realtime quality is latest-state
+
+The QMT callback native object SHALL be classified as a `latest-state native
+snapshot`. Equality between callback fields and `get_full_tick` fields SHALL
+describe the snapshot schema only and MUST NOT prove tick-complete delivery.
+
+#### Scenario: Whole callback reports changed symbols
+
+- **WHEN** a whole callback contains only symbols whose cached latest values changed
+- **THEN** every accepted native entry MAY be forwarded
+- **AND** callback cardinality or field completeness MUST NOT be used as proof that every exchange tick was delivered
+
+### Requirement: Current-K records are not native tick snapshots
+
+Any future `get_market_data_ex(period='1m', count=1)` record SHALL be modeled
+separately from `realtime.native_snapshot`.
+
+#### Scenario: A current-minute record is evaluated
+
+- **WHEN** a provider current-K record lacks the callback tick native shape
+- **THEN** it MUST NOT be emitted in the unified schema-v2 native snapshot
+- **AND** this focused change MUST NOT add that current-K event

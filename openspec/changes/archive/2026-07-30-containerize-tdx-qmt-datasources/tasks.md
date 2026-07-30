@@ -35,7 +35,7 @@
 - [x] 5.2 Run Compose/workflow/PowerShell contract tests and strict OpenSpec validation
 - [x] 5.3 Capture Windows preflight, cutover, journal recovery and WinSW-absence evidence
   - Evidence: `mist-deploy` run `30264703822`; datasource image `2c78f03563df371c11c5e895025444dc14e11b35`, digest `sha256:e0b0f0ee96b7cfd05c2706424f60651bee4ab27ede5a73f0b289ee343619edfc`, repair-forward evidence `E:\quant\MistDocker\diagnostics\datasource-cutover-20260727-200932`
-- [ ] 5.4 Use the shared
+- [x] 5.4 Use the shared
   `mist-deploy/docs/runbooks/realtime-native-subscription-joint-acceptance.md`
   entry, its off-session checklist and the
   `migrate-qmt-realtime-to-native-subscription` trading-session runbook to
@@ -56,11 +56,10 @@
     `7278121a...85bc`. The current trading-session window used protected
     pre/post runs `30331886288/30334690762`; all six row counts and content
     digests matched. TDX owner soak run `30332675452` passed 35 samples but is
-    source-only and does not replace the required dual-source soak. The
-    Final repository/contract/sanitization review is recorded in
+    source-only and did not replace the required dual-source soak. The
+    final repository/contract/sanitization review is recorded in
     `off-session-final-review-2026-07-28.md/.json`. The containerization
-    verdict remains `partial` until the dual-source joint freshness soak is
-    complete.
+    historical verdict remained `partial` at that checkpoint.
   - 2026-07-29 quality-governance requalification: the one-time Docker
     cutover and WinSW-removal evidence remains accepted, but the current
     datasource candidate is now
@@ -71,9 +70,15 @@
     register. Recovery run `30439986842` restarted and logged into TDX but
     likewise observed no owner. Maintenance deploy `30440335811` may correct
     the running image identity with health checks explicitly skipped; it does
-    not complete this task. Current normalized readiness, a subsequent normal
-    health-gated deploy, current protected digests and the dual-source joint
-    soak remain required.
+    not complete this task.
+  - 2026-07-30 closure: normal deploy `30517455802` pinned backend
+    `b61dbc14...` and datasource `a010946...`; run `30517565814` completed the
+    35-minute dual-source freshness/bridge/journal observation with HIL exit
+    `0`, stable datasource identities and successful cleanup/recovery.
+    Evidence-basename fix `17e4b48` was requalified by green run
+    `30519530767`. Protected post-digest `30519822194` matches
+    `30507681699` for all six protected tables. The sanitized joint manifest
+    records this change as `pass`.
   - [x] Pinned datasource image/tag/digest, two healthy Compose containers,
     QMT bind, WinSW absence, Compose DNS and TDX
     `host.docker.internal:17709`.
@@ -83,7 +88,7 @@
     protected tables.
   - [x] QMT cleanup followed by source-scoped restart isolation with an empty
     registry.
-  - [ ] Dual-source container/bridge/journal/realtime joint soak.
+  - [x] Dual-source container/bridge/journal/realtime joint soak.
   - [x] Current protected pre/post digests
     `30331886288/30334690762` match for all six protected tables.
   - [x] Final sanitized manifest review with separate verdicts for both

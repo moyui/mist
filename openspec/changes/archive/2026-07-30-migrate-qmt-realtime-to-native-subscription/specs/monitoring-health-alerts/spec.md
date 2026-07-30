@@ -11,7 +11,7 @@ successful unsubscribe. Bridge owner/control readiness MUST be consumed
 directly from datasource root/scoped HTTP health; backend connection and
 `transportReady` MUST remain a separate compatibility signal.
 
-#### Scenario: Production realtime source is enabled
+#### Scenario: Production realtime is builtin
 
 - **WHEN** the verified production configuration enables TDX or QMT realtime
 - **THEN** monitoring MUST probe that source's mode, owner/control readiness,
@@ -27,6 +27,12 @@ directly from datasource root/scoped HTTP health; backend connection and
 - **AND** it MUST NOT emit control-unavailable or freshness alerts for that
   source solely because its owner, subscription or snapshot is absent
 - **AND** monitoring and metrics for the other enabled source MUST remain active
+
+#### Scenario: QMT realtime mode is disabled
+
+- **WHEN** QMT is configured as `off`
+- **THEN** monitoring MUST emit no QMT control-unavailable or freshness alert
+- **AND** TDX bridge health and source-labelled metrics MUST remain present
 
 #### Scenario: Enabled source is within startup or session grace
 
@@ -47,7 +53,7 @@ directly from datasource root/scoped HTTP health; backend connection and
 - **WHEN** the configured symbol set is active during a supported Beijing trading session and datasource-observed snapshot age exceeds its threshold
 - **THEN** monitoring MUST report a realtime freshness failure for that source
 
-#### Scenario: Enabled source exceeds startup or session grace
+#### Scenario: Enabled source has no fresh owner or snapshot
 
 - **WHEN** an enabled source remains without a ready owner/control, converged
   subscription or fresh snapshot beyond its applicable startup/session grace

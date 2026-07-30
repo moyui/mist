@@ -15,6 +15,21 @@ subscriptions automatically.
 - **THEN** it MUST update connection and readiness state without sending
   `get_subscriptions`, `sync_subscriptions`, `subscribe` or `unsubscribe`
 
+#### Scenario: Backend subscribes after connection
+
+- **WHEN** an authorized in-process caller explicitly calls `subscribe` while
+  the provider WebSocket is open and control-ready
+- **THEN** the client MUST send exactly one typed `subscribe` request
+- **AND** it MUST NOT create a locally inferred desired set or schedule a later
+  automatic resync
+
+#### Scenario: WebSocket reconnects
+
+- **WHEN** a provider WebSocket reconnects after disconnect
+- **THEN** the client MUST update connection and readiness state
+- **AND** it MUST NOT automatically send `sync_subscriptions`,
+  `get_subscriptions`, `subscribe` or `unsubscribe`
+
 #### Scenario: Backend reconnects after an ambiguous mutation
 
 - **WHEN** the provider WebSocket reconnects after a disconnect or lost response
@@ -108,6 +123,22 @@ deployment script URL resolution, and datasource WebSocket envelope behavior.
 - **AND** bridge-owner readiness is read directly from datasource HTTP while
   backend compatibility is read as `connected=true,transportReady=true`
 
+#### Scenario: Datasource tests cover canonical WebSocket envelopes
+
+- **WHEN** datasource tests run for WS protocol and quote routes
+- **THEN** they verify pong timestamps, canonical error payloads, exact typed
+  subscription responses and schema-v2 native-map snapshots
+- **AND** they reject schema-v1, retired formal sequence fields and unknown
+  envelope fields
+
+#### Scenario: Removed route tests cover the stable boundary
+
+- **WHEN** datasource route contract tests run
+- **THEN** they verify `/api/tdx/*`, `/ws/quote/*`, and
+  `/v1/snapshots/query` remain absent
+- **AND** they verify `/v1/bars/query` and the provider-specific builtin
+  realtime routes remain
+
 ### Requirement: Formal realtime clients share one product ingress
 
 The backend SHALL require the same schema-v2 native-map envelope from TDX and
@@ -125,6 +156,23 @@ the converters SHALL preserve that identity together with the explicit
 - **AND** provider prices, times, order-book and aliases MUST remain outside
   that common decoder
 - **AND** an invalid envelope MUST produce zero converter and ingress calls
+
+#### Scenario: Transport frame is rejected
+
+- **WHEN** schema-v2 contract or source business authorization rejects a whole
+  frame
+- **THEN** common ingress MUST NOT be invoked
+- **AND** backend MUST record a stable source-labelled rejection without
+  applying a retired epoch or sequence fence
+
+#### Scenario: Transport frame is accepted
+
+- **WHEN** a schema-v2 frame and at least one provider-native entry pass common
+  envelope, authorization and source conversion
+- **THEN** each accepted canonical observation MUST invoke the one common
+  ingress exactly once
+- **AND** the same readonly native object MUST remain attached to that
+  observation
 
 #### Scenario: QMT map contains multiple valid codes
 

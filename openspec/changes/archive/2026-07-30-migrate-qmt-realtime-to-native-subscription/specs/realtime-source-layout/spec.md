@@ -4,6 +4,15 @@
 
 The maintained backend and datasource source trees SHALL use matching provider-local paths for responsibilities shared by TDX and QMT. Guards SHALL validate real interfaces and behavior, not only matching filenames.
 
+#### Scenario: Shared responsibilities are compared
+
+- **WHEN** the repository layout guard inspects TDX and QMT source packages
+- **THEN** shared source service, realtime client, module, store, types,
+  runtime, contract, route and dependency responsibilities MUST use their
+  agreed provider-local paths
+- **AND** declared provider-only capabilities MUST NOT be treated as missing
+  counterparts
+
 #### Scenario: Backend provider directories are inspected
 
 - **WHEN** structure guards compare `sources/tdx` and `sources/qmt`
@@ -26,6 +35,13 @@ subscription control parity, while QMT history remains unchanged. TDX native
 acquisition remains unchanged, but its bridge→datasource snapshot request
 removes producer retry/dedup state and its datasource→backend frame moves to
 the unified schema.
+
+#### Scenario: Existing contract suites run after normalization
+
+- **WHEN** backend and datasource contract tests exercise TDX and QMT realtime
+  paths after normalization
+- **THEN** behavior outside the explicitly documented QMT subscription and
+  dual-source schema-v2 cutover MUST match the pre-normalization contract
 
 #### Scenario: TDX implementation is aligned
 

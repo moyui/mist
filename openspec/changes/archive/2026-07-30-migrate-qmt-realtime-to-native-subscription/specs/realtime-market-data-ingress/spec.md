@@ -27,6 +27,13 @@ copying bridge-owner state.
 - **AND** they MUST NOT retain or infer bridge-owner readiness, subscription
   convergence or market-data freshness from that frame
 
+#### Scenario: Backend receives a retired ready shape
+
+- **WHEN** a ready frame includes retired bridge-owner readiness or identity
+  fields instead of the exact provider protocol-ready shape
+- **THEN** the backend MUST reject the frame as a contract mismatch
+- **AND** it MUST NOT set `transportReady`
+
 #### Scenario: Bridge owner readiness is inspected
 
 - **WHEN** deployment, monitoring or recovery needs current bridge readiness,
@@ -49,7 +56,7 @@ schema-v2 envelope. Both sources SHALL preserve complete provider-native data
 without datasource canonical conversion. Schema v1 SHALL NOT remain an active
 runtime alternative after the maintenance-window cutover.
 
-#### Scenario: QMT callback frame is emitted
+#### Scenario: QMT native snapshot is emitted
 
 - **WHEN** datasource accepts a QMT callback snapshot map
 - **THEN** it MUST emit:
@@ -71,7 +78,7 @@ runtime alternative after the maintenance-window cutover.
 
 - **AND** `native` MUST remain structurally and value equivalent to the callback `{code: tickData}` map
 
-#### Scenario: TDX native frame is emitted
+#### Scenario: TDX native snapshot is emitted
 
 - **WHEN** datasource accepts a TDX `get_market_snapshot` result for `300502.SZ`
 - **THEN** it MUST emit:
@@ -111,7 +118,7 @@ runtime alternative after the maintenance-window cutover.
 - **AND** it MUST NOT contain `payloadType`, `source`, `acquisitionProfile`,
   `streamEpoch`, `sequence`, `sequenceScope` or a standalone `symbol`
 
-#### Scenario: Legacy frame arrives after cutover
+#### Scenario: Legacy formal frame arrives
 
 - **WHEN** backend receives a schema-v1 native frame or legacy formal-frame fields
 - **THEN** strict contract validation MUST reject it
@@ -186,6 +193,14 @@ nullable provider event time, captured time and quality without `symbol`,
   with the TDX converter
 - **AND** it MUST call the same common ingress service
 
+#### Scenario: Valid source frame reaches ingress
+
+- **WHEN** a TDX or QMT frame passes schema-v2 envelope, provider, native-map
+  and business-allowlist identity validation
+- **THEN** the source converter MUST preserve `native` and derive canonical
+  prices, cumulative volume/amount, nullable `eventTime`, `capturedAt` and
+  quality before invoking common ingress
+
 #### Scenario: TDX native map has the wrong cardinality
 
 - **WHEN** a TDX schema-v2 native map is empty or contains more than one entry
@@ -236,6 +251,14 @@ nullable provider event time, captured time and quality without `symbol`,
 - **AND** a price-valid observation MUST NOT be rejected for that reason alone
 - **AND** `quality.eventTimeAvailable` MUST be false
 
+#### Scenario: Native event time is unavailable
+
+- **WHEN** a provider frame has no trustworthy native event time
+- **THEN** canonical `eventTime` MUST be `null` and quality MUST mark native
+  time unavailable
+- **AND** the backend MUST NOT substitute its current clock as provider event
+  time
+
 #### Scenario: Official QMT time-field examples differ
 
 - **WHEN** documentation shows `time/stime` in the data structure and `timetag` in a `get_full_tick` example
@@ -244,6 +267,8 @@ nullable provider event time, captured time and quality without `symbol`,
   representations of one provider business time
 - **AND** the fixture MUST record candidate order, field spelling, value type,
   parser, unit, timezone, precision and consistency rule
+
+## ADDED Requirements
 
 ### Requirement: Provider business time is the only aggregation clock
 
@@ -420,11 +445,21 @@ epoch/per-symbol sequence fences.
 - **AND** owner generation MAY remain health/control metadata but MUST NOT
   become backend snapshot ordering metadata
 
+## MODIFIED Requirements
+
 ### Requirement: Windows HIL gates production activation
 
 The unified schema-v2 contract and both new converters MUST NOT become the
 production baseline until Windows HIL verifies both affected source paths,
 restart/rollback behavior and protected-table digest invariance.
+
+#### Scenario: Trading-session HIL runs
+
+- **WHEN** TDX `600030.SH` and QMT `300502.SZ` are validated during supported
+  sessions
+- **THEN** evidence MUST include fresh schema-v2 native-map delivery,
+  datasource bridge readiness, backend canonical readback and monitoring
+  convergence for both sources
 
 #### Scenario: QMT trading-session HIL runs
 

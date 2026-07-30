@@ -1,24 +1,24 @@
 ## 执行纪律
 
-- [ ] 每个阶段开始前确认前置 gate，结束后提交“修改文件、验证结果、未决风险、下一阶段”中文报告并停止等待确认。
-- [ ] callback fixture、subscription ID 或 unsubscribe 成功语义未通过 Windows HIL 时停止上线，不静默恢复周期 `get_full_tick`，也不把 current-K 冒充 native tick。
-- [ ] 不修改 migration `006`、生产业务数据库、Redis volume、candle、strategy、Signal、AlertEvent、BullMQ、notification 或 MySQL migration。
-- [ ] TDX native acquisition 仍只使用
+- [x] 每个阶段开始前确认前置 gate，结束后提交“修改文件、验证结果、未决风险、下一阶段”中文报告并停止等待确认。
+- [x] callback fixture、subscription ID 或 unsubscribe 成功语义未通过 Windows HIL 时停止上线，不静默恢复周期 `get_full_tick`，也不把 current-K 冒充 native tick。
+- [x] 不修改 migration `006`、生产业务数据库、Redis volume、candle、strategy、Signal、AlertEvent、BullMQ、notification 或 MySQL migration。
+- [x] TDX native acquisition 仍只使用
   `subscribe_hq -> dirty -> get_market_snapshot`，`/tdx/bridge/poll|result`
   不变；同时删除 `/tdx/bridge/snapshot` 的 `producerSequence`、自动 POST retry、
   datasource producer dedup 和 success item ack/sequence，并把
   datasource→backend 迁移到统一 schema v2。
-- [ ] TDX/QMT active formal frame 只允许 schema v2；不得保留 schema-v1
+- [x] TDX/QMT active formal frame 只允许 schema v2；不得保留 schema-v1
   runtime fallback、formal sequence 或 epoch/sequence fence。
-- [ ] TDX/QMT 分别新建简化 `native-snapshot.converter.ts`，只共享 canonical
+- [x] TDX/QMT 分别新建简化 `native-snapshot.converter.ts`，只共享 canonical
   类型、common envelope decoder 和 ingress；不得复用旧
   `realtime-native.adapter.ts` 或 generic provider-native mapping。
-- [ ] canonical identity 固定为 `securityId + providerSymbol`；formal frame
+- [x] canonical identity 固定为 `securityId + providerSymbol`；formal frame
   不恢复 standalone `symbol`，backend 不恢复 sequence/epoch ordering fence。
-- [ ] TDX/QMT bridge 都只由操作员手工覆盖；deploy 不得自动安装、替换或删除任一 bridge。
-- [ ] TDX/QMT Mist client 必须实现四个真实可调用的 Nest 内部 control 方法；
+- [x] TDX/QMT bridge 都只由操作员手工覆盖；deploy 不得自动安装、替换或删除任一 bridge。
+- [x] TDX/QMT Mist client 必须实现四个真实可调用的 Nest 内部 control 方法；
   不得保留空 stub，也不得在 `open/ready/reconnect` 自动调用。
-- [ ] 本 change 不增加 scheduler、`Security.status` watcher、
+- [x] 本 change 不增加 scheduler、`Security.status` watcher、
   desired/effective-source coordinator、HTTP/GraphQL/controller、frontend、CLI
   或 diagnostic mutation caller；Windows HIL 只能通过 test-only in-process
   client harness 调用。
@@ -29,13 +29,13 @@
   `realtime-source-layout` 必须存在并作为本 change 的 `MODIFIED`
   baseline；任一条件不满足时停止，不进入产品代码实现。
 
-- [ ] 1.1 `[mist]` 以 stable `realtime-source-layout` 为基线，复核本 focused change、其他 stable specs、相关未归档 changes 与 Theme B B1，消除冲突或明确依赖。
-- [ ] 1.2 `[all repositories]` 记录 `mist`、`mist-datasource`、`mist-deploy`、`mist-fe`、`mist-monitoring`、`mist-skills` 的 branch、HEAD、upstream、dirty status、目标远端分支和生产 image/runtime 基线。
-- [ ] 1.3 `[mist/mist-datasource]` 使用 rename-aware Git history 找出 QMT bridge 的当前及历史文件名，记录历史 command/result、当前 realtime polling、owner/lease 与 TDX realtime 的实际路径。
-- [ ] 1.4 `[mist]` 建立脱敏 evidence 模板：官方文档 URL/访问日期、QMT/TDX terminal/runtime build、TDX installed path/SHA-256/build ID、QMT import artifact path/SHA-256/project/build ID/runtime fingerprint（平台不暴露 installed file 时明确 `platform_unavailable`）、方法、返回值、callback fixture、权限、journal、HIL 时间窗及 protected digest。
-- [ ] 1.5 `[mist]` 记录通过 `pnpm` 安装的 OpenSpec CLI `1.6.0`，使用该固定
+- [x] 1.1 `[mist]` 以 stable `realtime-source-layout` 为基线，复核本 focused change、其他 stable specs、相关未归档 changes 与 Theme B B1，消除冲突或明确依赖。
+- [x] 1.2 `[all repositories]` 记录 `mist`、`mist-datasource`、`mist-deploy`、`mist-fe`、`mist-monitoring`、`mist-skills` 的 branch、HEAD、upstream、dirty status、目标远端分支和生产 image/runtime 基线。
+- [x] 1.3 `[mist/mist-datasource]` 使用 rename-aware Git history 找出 QMT bridge 的当前及历史文件名，记录历史 command/result、当前 realtime polling、owner/lease 与 TDX realtime 的实际路径。
+- [x] 1.4 `[mist]` 建立脱敏 evidence 模板：官方文档 URL/访问日期、QMT/TDX terminal/runtime build、TDX installed path/SHA-256/build ID、QMT import artifact path/SHA-256/project/build ID/runtime fingerprint（平台不暴露 installed file 时明确 `platform_unavailable`）、方法、返回值、callback fixture、权限、journal、HIL 时间窗及 protected digest。
+- [x] 1.5 `[mist]` 记录通过 `pnpm` 安装的 OpenSpec CLI `1.6.0`，使用该固定
   版本执行 strict validation，不使用未锁定 `@latest`。
-- [ ] 1.6 **阶段门**：确认 stable `realtime-source-layout` 与本 focused change 均通过 strict validation，提交只读基线与 OpenSpec review；未获确认不得修改产品代码。
+- [x] 1.6 **阶段门**：确认 stable `realtime-source-layout` 与本 focused change 均通过 strict validation，提交只读基线与 OpenSpec review；未获确认不得修改产品代码。
 
 ## 2. QMT runtime probe 与 raw fixtures
 
@@ -61,17 +61,17 @@
   - 首次成功后、创建任何新 subscription 前，对同一个已释放 `subId` 再调用
     一次 `unsubscribe_quote`，记录第二次的精确返回/异常、callback 持续停止、runtime 可观察时的
     active-subscription/quota 释放，以及后续 subscription 是否复用该整数 ID。
-- [ ] 2.4 `[mist-datasource/Windows QMT operator]` 将 accepted raw fixtures
+- [x] 2.4 `[mist-datasource/Windows QMT operator]` 将 accepted raw fixtures
   脱敏并锁定各自 raw SHA；保留完整 outer code map、inner tick 字段和原始
   类型。将 `time`（数值 timestamp）、`stime/timetag`（格式不同的 timestamp
   string）记录为同一个 provider business time 的候选表示，并记录实际存在性、
   候选顺序、parser、单位、时区、精度及同时出现时的一致性。
-- [ ] 2.5 `[mist]` 基于 accepted production fixture 固定 QMT converter 的
+- [x] 2.5 `[mist]` 基于 accepted production fixture 固定 QMT converter 的
   `eventTime` 有序候选、解析和一致性规则，并判定 callback 是否满足 QMT
   native contract；不得依据文档示例自行选择时间 alias。fixture 不满足时
   停止 change review，不实现 current-K 或 polling fallback。
-- [ ] 2.6 `[mist/mist-datasource]` 在 contract/evidence 中固定 `latest-state native snapshot` 质量等级：native 字段与 `get_full_tick` 相同不构成 tick-complete 证明，whole changed-symbol callback count 只用于测量。
-- [ ] 2.7 **阶段门**：操作员确认方法、exact integer subId（允许 `0`）、
+- [x] 2.6 `[mist/mist-datasource]` 在 contract/evidence 中固定 `latest-state native snapshot` 质量等级：native 字段与 `get_full_tick` 相同不构成 tick-complete 证明，whole changed-symbol callback count 只用于测量。
+- [x] 2.7 **阶段门**：操作员确认方法、exact integer subId（允许 `0`）、
   unsubscribe 精确成功返回类型和值、对已释放同一 subId 重复 unsubscribe 的
   `safe|unsafe|unknown` 分类、single/whole callback contract 及 production
   时间字段映射后再开发 runtime；未证明重复退订安全时 recovery 固定为
@@ -79,14 +79,14 @@
 
 ## 3. Datasource QMT control、registry 与 journal
 
-- [ ] 3.1 `[mist-datasource]` 实现 datasource 权威内存 registry，只有两个逻辑 bucket：nullable `whole{subId,symbols}` 与 `singles{providerSymbol:subId}`；`whole.subId/symbols` 必须成对存在，按 bucket 判断类型，不从 subId 数值或 symbol 数量推断。允许 datasource-private lifecycle metadata 标记 `retained-recovery`，但不得形成第三个 public bucket、改变 get response 或进入 backend-facing wire。
-- [ ] 3.2 `[mist-datasource]` 实现 backend-facing 四种精确 request 与 `subscriptions_synced|subscribed|unsubscribed|subscriptions` response；`data` 只能是 `success` 或 `failure`。普通 failure 恰好为 `{symbol,reason}`；unsubscribe 以及 sync 取消阶段的 failure 恰好为 `{symbol,reason,subscriptionState}`，其中 state 只允许 `subscribed|unknown`。固定 success 语义：QMT full/single subscribe 返回 exact integer ID（允许 `0`）、QMT cancel-all/unsubscribe 返回 null、QMT get 返回 `whole{subId,symbols}|null + singles{providerSymbol:subId}`；TDX mutation 返回 null、TDX get 返回 current terminal bridge 的 fresh normalized native list。backend-facing response 禁止 raw provider payload、`Error/ErrorId`、full list、operation ID 和 retry metadata。每个 provider WebSocket 最多一个 outstanding request，并使用 source-local 固定 bounded timeout（不进入 wire negotiation）。
-- [ ] 3.3 `[mist-datasource]` 实现 `sync_subscriptions` 顺序 best-effort reset：whole 在前、single 按 provider symbol 升序逐个取消；native 未确认时保留原 ID、继续剩余取消、阻止 replacement；只有 exact bool `true`（或显式配置且有独立 HIL 证据的整数白名单值）与 registry transition 都 durable 才删除 ID。exact bool `false` 固定为未确认，不允许通过 callback silence、live witness、K 线历史接口或 bridge poll heartbeat 提升为成功。confirmed unsubscribe 后 durability 失败时保留原 bucket entry 并私有标记 `retained-recovery`，立即停止剩余 mutation 和 replacement、设置 `reconciliationRequired`；全部 durable 成功后才创建 exact desired whole；多项 native 未确认时 backend-facing response 只取固定顺序第一项，journal 保存全部。
-- [ ] 3.4 `[mist-datasource]` 实现 single subscribe/unsubscribe、
+- [x] 3.1 `[mist-datasource]` 实现 datasource 权威内存 registry，只有两个逻辑 bucket：nullable `whole{subId,symbols}` 与 `singles{providerSymbol:subId}`；`whole.subId/symbols` 必须成对存在，按 bucket 判断类型，不从 subId 数值或 symbol 数量推断。允许 datasource-private lifecycle metadata 标记 `retained-recovery`，但不得形成第三个 public bucket、改变 get response 或进入 backend-facing wire。
+- [x] 3.2 `[mist-datasource]` 实现 backend-facing 四种精确 request 与 `subscriptions_synced|subscribed|unsubscribed|subscriptions` response；`data` 只能是 `success` 或 `failure`。普通 failure 恰好为 `{symbol,reason}`；unsubscribe 以及 sync 取消阶段的 failure 恰好为 `{symbol,reason,subscriptionState}`，其中 state 只允许 `subscribed|unknown`。固定 success 语义：QMT full/single subscribe 返回 exact integer ID（允许 `0`）、QMT cancel-all/unsubscribe 返回 null、QMT get 返回 `whole{subId,symbols}|null + singles{providerSymbol:subId}`；TDX mutation 返回 null、TDX get 返回 current terminal bridge 的 fresh normalized native list。backend-facing response 禁止 raw provider payload、`Error/ErrorId`、full list、operation ID 和 retry metadata。每个 provider WebSocket 最多一个 outstanding request，并使用 source-local 固定 bounded timeout（不进入 wire negotiation）。
+- [x] 3.3 `[mist-datasource]` 实现 `sync_subscriptions` 顺序 best-effort reset：whole 在前、single 按 provider symbol 升序逐个取消；native 未确认时保留原 ID、继续剩余取消、阻止 replacement；只有 exact bool `true`（或显式配置且有独立 HIL 证据的整数白名单值）与 registry transition 都 durable 才删除 ID。exact bool `false` 固定为未确认，不允许通过 callback silence、live witness、K 线历史接口或 bridge poll heartbeat 提升为成功。confirmed unsubscribe 后 durability 失败时保留原 bucket entry 并私有标记 `retained-recovery`，立即停止剩余 mutation 和 replacement、设置 `reconciliationRequired`；全部 durable 成功后才创建 exact desired whole；多项 native 未确认时 backend-facing response 只取固定顺序第一项，journal 保存全部。
+- [x] 3.4 `[mist-datasource]` 实现 single subscribe/unsubscribe、
   whole/single 去重和 whole member 的 individual unsubscribe 拒绝；
   datasource 只处理收到的明确 control request，不自行推断
   `Security.status`、盘中 desired churn 或定时 mutation。
-- [ ] 3.5 `[mist-datasource]` 新增：
+- [x] 3.5 `[mist-datasource]` 新增：
   - `POST /qmt/bridge/subscriptions/poll`
   - `POST /qmt/bridge/subscriptions/result`
   - `POST /qmt/bridge/subscriptions/snapshot`
@@ -98,7 +98,7 @@
   时分配 process-local、严格递增且不复用的正整数 `callSequence`；result
   request 顶层恰好为 owner lease identity、该 sequence 与一份
   `success|failure`。
-- [ ] 3.6 `[mist-datasource]` 为三条 subscription route 复用现有 QMT
+- [x] 3.6 `[mist-datasource]` 为三条 subscription route 复用现有 QMT
   `ownerId + leaseToken + generation` fence，constant-time 比较 token，
   lease identity 只位于 poll/result/snapshot request 顶层，不得在 command
   内重复；禁止 token 进入日志、journal、health 或 metrics，不得把 realtime
@@ -131,11 +131,11 @@
   checkpoint 后删除旧 detail；unresolved/
   `retained-recovery` 完整 records 必须 pinned，pinned bytes 达上界时在
   intent/native 前 fail closed。
-- [ ] 3.8 `[mist-datasource]` 明确本期不自动 replay journal/bridge log；
+- [x] 3.8 `[mist-datasource]` 明确本期不自动 replay journal/bridge log；
   unexpected datasource restart 后 fail closed 并要求操作员 reload context；
   后续 full sync 必须由 HIL harness 或未来 in-process caller 明确调用，不能假设
   operator endpoint。
-- [ ] 3.9 `[mist-datasource tests]` 覆盖 exact request/response、generic 与
+- [x] 3.9 `[mist-datasource tests]` 覆盖 exact request/response、generic 与
   unsubscribe failure 的字段排他性、`subscriptionState` enum、unknown
   fields，并逐一断言 poll request、`command=null`、三种 non-null command 和
   success/failure result 的 exact keys；command 中重复
@@ -162,16 +162,16 @@
   lease stale 和 restart reconciliation；snapshot route 还必须逐 code 覆盖
   provider-symbol syntax 与 current handle membership：non-member 在 datasource
   拒绝，member 不在 datasource 做 Mist business authorization。
-- [ ] 3.10 **阶段门**：datasource control/registry/journal unit 与 route contract 通过后停止 review。
+- [x] 3.10 **阶段门**：datasource control/registry/journal unit 与 route contract 通过后停止 review。
 
 ## 4. Python 3.6 QMT callback bridge
 
-- [ ] 4.1 `[mist-datasource]` 修改实际生产 QMT builtin bridge（含 rename 后当前文件），保留历史 polling，删除 realtime 周期 `get_full_tick`。
-- [ ] 4.2 `[mist-datasource]` 实现 `subscribe_quote`、`subscribe_whole_quote`、`unsubscribe_quote` 三种单 native-call dispatch；bridge 原样回传 datasource 分配的 `callSequence`，运行时不存在、异常、返回值不安全均变成一份带相同 sequence 的 bounded failure。
-- [ ] 4.3 `[mist-datasource]` callback 只验证 closure、按顶层 code entry 做 bounded/JSON-safe copy（单项失败只丢该项，不解析行情字段）、记录 `capturedAt/subscriptionId`、将剩余 `{code:data}` map non-blocking enqueue 并返回。
-- [ ] 4.4 `[mist-datasource]` 实现 thread-safe global/per-symbol/bytes/age hard limit；one callback = one queue item = one `/subscriptions/snapshot` POST；POST 失败/过期直接有界丢弃，不 retry/replay。
-- [ ] 4.5 `[mist-datasource]` 在 QMT captured log 输出含 `callSequence` 的 bounded control intent/result/build records；禁止 lease token 和 callback native 入日志，bridge 不直接写 datasource journal。
-- [ ] 4.6 `[mist-datasource]` 保留脚本加载时生成的
+- [x] 4.1 `[mist-datasource]` 修改实际生产 QMT builtin bridge（含 rename 后当前文件），保留历史 polling，删除 realtime 周期 `get_full_tick`。
+- [x] 4.2 `[mist-datasource]` 实现 `subscribe_quote`、`subscribe_whole_quote`、`unsubscribe_quote` 三种单 native-call dispatch；bridge 原样回传 datasource 分配的 `callSequence`，运行时不存在、异常、返回值不安全均变成一份带相同 sequence 的 bounded failure。
+- [x] 4.3 `[mist-datasource]` callback 只验证 closure、按顶层 code entry 做 bounded/JSON-safe copy（单项失败只丢该项，不解析行情字段）、记录 `capturedAt/subscriptionId`、将剩余 `{code:data}` map non-blocking enqueue 并返回。
+- [x] 4.4 `[mist-datasource]` 实现 thread-safe global/per-symbol/bytes/age hard limit；one callback = one queue item = one `/subscriptions/snapshot` POST；POST 失败/过期直接有界丢弃，不 retry/replay。
+- [x] 4.5 `[mist-datasource]` 在 QMT captured log 输出含 `callSequence` 的 bounded control intent/result/build records；禁止 lease token 和 callback native 入日志，bridge 不直接写 datasource journal。
+- [x] 4.6 `[mist-datasource]` 保留脚本加载时生成的
   `ownerId="bigqmt-"+pid`，调整 owner 注册为 init 或 lease loss 时注册，
   正常 poll 是 heartbeat，避免每秒轮换 lease/generation；同一 QMT 进程内
   context reload 不强制更换 ownerId。
@@ -180,7 +180,7 @@
   （`__file__` 不可用时为 `unavailable`）、loaded-function runtime
   fingerprint、Python/context metadata 与 required native method
   availability；不得执行 subscribe/unsubscribe mutation。
-- [ ] 4.7 `[mist-datasource tests]` 覆盖 Python 3.6 parse、无 `__file__`、
+- [x] 4.7 `[mist-datasource tests]` 覆盖 Python 3.6 parse、无 `__file__`、
   method missing、signature unknown、poll owner identity 只出现在 request
   顶层、三种 exact command dispatch、command 无 lease/`streamEpoch`、
   `callSequence` success/failure 原样回传、result POST timeout 后不重放
@@ -188,26 +188,26 @@
   并发/重入、queue overflow、snapshot failure、unsubscribe 异常、
   历史/realtime 并行和无后台线程；bridge 只做 bounded/JSON-safe copy，不读取
   Mist business allowlist 或解析 `securityId`。
-- [ ] 4.8 **阶段门**：生成 bridge artifact SHA；仍不自动覆盖 Windows QMT。
+- [x] 4.8 **阶段门**：生成 bridge artifact SHA；仍不自动覆盖 Windows QMT。
 
 ## 5. 统一 formal frame v2、两套 converter 与 Mist backend
 
-- [ ] 5.1 `[mist-datasource]` 让 TDX/QMT 都只输出：
+- [x] 5.1 `[mist-datasource]` 让 TDX/QMT 都只输出：
   `type/provider/timestamp + data{schemaVersion:2,capturedAt,native:{providerSymbol:nativeObject}}`。
   QMT 保留 callback one/multi-code map；TDX 使用 bridge request `symbol` 包装
   one-entry map，不修改 native value。
-- [ ] 5.2 `[mist/mist-datasource]` 从两边 active formal frame、types、ready
+- [x] 5.2 `[mist/mist-datasource]` 从两边 active formal frame、types、ready
   contract、health 和 tests 删除
   `payloadType/source/acquisitionProfile/streamEpoch/sequence/sequenceScope/symbol`；
   bridge→datasource 只保留 provider-local owner fence：TDX
   `leaseToken + streamEpoch`，QMT `ownerId + leaseToken + generation`。
-- [ ] 5.3 `[mist]` 新增
+- [x] 5.3 `[mist]` 新增
   `apps/mist/src/realtime/realtime-native-map-frame.ts` common schema-v2 exact
   decoder：验证 expected connection provider、outer/data exact keys、
   RFC3339、native map 类型/cardinality/bytes hard limit，但不解析任何
   provider price/time/order-book/alias。TDX map 必须恰好一项；QMT entry
   validation 必须逐项隔离。
-- [ ] 5.4 `[mist]` 对齐 TDX/QMT realtime source business allowlist
+- [x] 5.4 `[mist]` 对齐 TDX/QMT realtime source business allowlist
   `resolve(providerSymbol) -> securityId|null`；每个 entry 先完成
   provider-symbol、native object、business authorization/canonical identity
   校验，再进入
@@ -215,23 +215,23 @@
   唯一 owner；未授权 entry 不得进入 converter，一个 QMT entry
   malformed/throw 不得阻塞其他项。Datasource current handle membership 只证明
   provider allocation，不能替代此 resolve。
-- [ ] 5.5 `[mist]` 新建
+- [x] 5.5 `[mist]` 新建
   `sources/tdx/realtime/native-snapshot.converter.ts` 与
   `sources/qmt/realtime/native-snapshot.converter.ts`。二者入口都只接收
   `securityId/providerSymbol/capturedAt/native`，分别依据 accepted raw
   fixture 转换；不自行读取 allowlist，不互相 import，不使用 shared native
   alias table。TDX/QMT 的 `eventTime` 都只能由各自 provider-native fixture
   字段生成，不允许 receipt-time fallback。
-- [ ] 5.6 `[mist]` 将 `CanonicalRealtimeSnapshot` 固定为
+- [x] 5.6 `[mist]` 将 `CanonicalRealtimeSnapshot` 固定为
   `source/securityId/providerSymbol/eventTime/capturedAt/prices/cumulativeVolume/cumulativeAmount/quality/native`；
   删除模糊 `symbol` 与 `streamEpoch/sequence/sequenceScope`。`native` 必须
   readonly 完整保留；`acceptedAt` 只作为 runtime/freshness metadata，不能
   冒充 provider `eventTime`，也不能用于 candle 分桶、交易日归属或时间排序。
   `eventTime=null` 的 observation 可进入 latest，但必须不具备聚合资格。
-- [ ] 5.7 `[mist]` 删除 active client 对两份旧
+- [x] 5.7 `[mist]` 删除 active client 对两份旧
   `realtime-native.adapter.ts` 的依赖及旧 v1 adapter tests；不得包装、调用或
   先重建 v1 frame 再复用旧函数。
-- [ ] 5.8 `[mist]` 定义共同 `RealtimeSubscriptionControl` in-process
+- [x] 5.8 `[mist]` 定义共同 `RealtimeSubscriptionControl` in-process
   interface，并让 TDX/QMT realtime client 实现
   `syncSubscriptions/subscribe/unsubscribe/getSubscriptions`。每个方法必须
   发送 exact provider WebSocket request、匹配 exact response 并在 bounded
@@ -242,13 +242,13 @@
   outstanding，busy 立即失败且不排无界队列。删除现有 ready/open/
   reconnect 自动 sync/retry；不得自动 `getSubscriptions`，也不得增加 production
   caller 或外部 mutation endpoint。
-- [ ] 5.9 `[mist]` 将公共 `RealtimeSnapshotIngressService` latest 改为按
+- [x] 5.9 `[mist]` 将公共 `RealtimeSnapshotIngressService` latest 改为按
   canonical `securityId` 保存；source business allowlist 只做授权与 identity resolution，
   初始化时拒绝 TDX/QMT resolved `securityId` 重叠。当前不实现
   `effectiveSourceBySecurityId`、desired coordinator、运行期
   `Security.status` 观察或 latest cleanup；latest 上界由 resolved startup
   allowlist union 与 process lifetime 限制。
-- [ ] 5.10 `[mist]` 精简 TDX/QMT provider runtime store：只保留
+- [x] 5.10 `[mist]` 精简 TDX/QMT provider runtime store：只保留
   connection/transport readiness、last accepted/captured、last error 与
   bounded reject counts；删除第二份 full snapshot、`lastSequence`、
   `currentStreamEpoch`、`RealtimeSymbolSequenceFence`、
@@ -258,12 +258,12 @@
   `realtime.stream_started`。
   diagnostic 必须通过 `providerSymbol -> securityId` 读取公共 latest；
   disconnect 保留 latest 但标记 stale。
-- [ ] 5.11 `[mist/mist-datasource]` 两边都不新增 event identity、formal
+- [x] 5.11 `[mist/mist-datasource]` 两边都不新增 event identity、formal
   sequence、exactly-once、retry/dedup 假设；允许 provider 状态重复。术语与
   owner guard 必须区分 datasource `current handle membership` 和 Mist
   `source business allowlist`，不得在 datasource 建第二份 DB/env business
   authorization authority。
-- [ ] 5.12 `[mist/mist-datasource tests]` 覆盖 QMT one/multi map、TDX
+- [x] 5.12 `[mist/mist-datasource tests]` 覆盖 QMT one/multi map、TDX
   exact-one-entry、whole-frame envelope/cardinality failure、native 结构值
   透传、common decoder 不解析 provider 字段、`securityId/providerSymbol`
   identity、两套独立 converter、event-time fixture mapping、
@@ -282,13 +282,13 @@
   unknown、late response reject、closed/not-ready 零 send、datasource
   non-leader typed failure/no retry、ready/reconnect 零 control send、无
   production caller 和无外部 mutation route。
-- [ ] 5.13 **阶段门**：统一 schema-v2 contract、两套新 converter、内部
+- [x] 5.13 **阶段门**：统一 schema-v2 contract、两套新 converter、内部
   control methods 与 backend ingress tests 通过后停止 review。
 
 ## 6. TDX control 对齐与 snapshot producer 链路删除
 
-- [ ] 6.1 `[mist-datasource]` 保持 TDX `subscribe_hq -> dirty -> get_market_snapshot` 不变；修改实际 terminal bridge，删除 producer counter、`producerSequence` request 字段和 snapshot POST retry loop，每份 native snapshot 只尝试提交一次。
-- [ ] 6.2 `[mist-datasource]` 从 `/tdx/bridge/snapshot` request model、gateway
+- [x] 6.1 `[mist-datasource]` 保持 TDX `subscribe_hq -> dirty -> get_market_snapshot` 不变；修改实际 terminal bridge，删除 producer counter、`producerSequence` request 字段和 snapshot POST retry loop，每份 native snapshot 只尝试提交一次。
+- [x] 6.2 `[mist-datasource]` 从 `/tdx/bridge/snapshot` request model、gateway
   state 与校验、health/metrics/evidence 删除 `producerSequence`、
   duplicate/out-of-order producer rejection 及只服务该机制的代码；success
   只使用 HTTP 2xx，不返回 `accepted/sequence/retry` item response；datasource
@@ -329,24 +329,24 @@
   verify 之间插入 bridge poll 时不产生 stale subscribe、旧 revision result
   rejection、failure 不回滚 target，以及成功后至少三个 poll/result 周期仍
   absent。
-- [ ] 6.7 **阶段门**：确认 `mist_tdx_realtime_bridge.py` 只改变 snapshot
+- [x] 6.7 **阶段门**：确认 `mist_tdx_realtime_bridge.py` 只改变 snapshot
   producer-delivery 部分，`/tdx/bridge/poll|result` 与 native acquisition 无
   意外变化；formal schema 与 converter 的变化只发生在 datasource/Mist，并
   生成 TDX bridge artifact SHA。
 
 ## 7. 双仓布局、mode tooling 与 monitoring
 
-- [ ] 7.1 `[mist/mist-datasource]` 对齐 `sources/{tdx,qmt}` 与 datasource
+- [x] 7.1 `[mist/mist-datasource]` 对齐 `sources/{tdx,qmt}` 与 datasource
   provider 目录中 shared client/control/types/runtime/routes/health 责任；
   两边都具备同相对路径的 `native-snapshot.converter.ts`；provider-only
   manifest 明确 QMT journal/callback routes 与 TDX terminal-native
   list/unsubscribe/read barrier。
-- [ ] 7.2 `[mist/mist-datasource]` 增加结构/能力 guard，验证四种 datasource
+- [x] 7.2 `[mist/mist-datasource]` 增加结构/能力 guard，验证四种 datasource
   operation 与四个 Mist in-process method 都有真实 request/response execution
   和测试，不使用动态 `supportedOperations`；另验证 application runtime graph
   没有 production caller。
-- [ ] 7.3 `[mist-deploy]` 修复 source-scoped mode switch：`Source=qmt` 不重启 TDX datasource，`Source=tdx` 不重启 QMT datasource；backend 仅在其配置/contract 要求时 recreate。
-- [ ] 7.4 `[mist-monitoring]` 增加统一
+- [x] 7.3 `[mist-deploy]` 修复 source-scoped mode switch：`Source=qmt` 不重启 TDX datasource，`Source=tdx` 不重启 QMT datasource；backend 仅在其配置/contract 要求时 recreate。
+- [x] 7.4 `[mist-monitoring]` 增加统一
   `mist_realtime_subscription_control_total{source,operation,result,reason}`，
   `result` 只有 `success|failure`，所有成功样本固定 `reason="none"` 且保留四个
   labels，失败使用 documented bounded stable reason；`subscriptionState` 只供
@@ -360,14 +360,14 @@
   区分 intentional `off`、startup/session grace、closed-session freshness 与
   enabled-source control/subscription/freshness failure，任一 source `off` 不得
   停止另一 enabled source 的 metrics/alerts。
-- [ ] 7.5 `[mist-monitoring]` 不增加 bridge telemetry wire；bridge-only overflow
+- [x] 7.5 `[mist-monitoring]` 不增加 bridge telemetry wire；bridge-only overflow
   只写 bounded local log。metrics label 禁止
   symbol/subId/owner/lease/journal path/free-form error。增加 exact-label 与
   lifecycle contract tests：成功固定 `reason="none"`，失败固定 stable reason；
   QMT `off` 不发 QMT unavailable 且保留 TDX metrics，TDX `off` 对称保留 QMT
   metrics；enabled source 在 grace 内不报警、超过 grace 后按 control、
   subscription 或 freshness 分类报警，闭市不得仅因 freshness page。
-- [ ] 7.6 `[mist/mist-datasource/mist-deploy/mist-monitoring]` 更新简体中文运维
+- [x] 7.6 `[mist/mist-datasource/mist-deploy/mist-monitoring]` 更新简体中文运维
   文档：说明当前只有内部 methods 与 test-only HIL harness、正常
   ready/reconnect 不发 control、没有 operator/product mutation endpoint；同时
   区分 native 未确认 retained ID 与 confirmed-unsubscribe durability failure
@@ -385,37 +385,37 @@
   transport failure、该 source 不因 owner/snapshot absent 报警、另一 enabled
   source 仍受监控。不得把未来 `Security.status` scheduler 或不存在的 operator
   mutation endpoint 写成本期能力。
-- [ ] 7.7 **阶段门**：双仓能力/布局、mode isolation 和 monitoring tests 通过后停止 review。
+- [x] 7.7 **阶段门**：双仓能力/布局、mode isolation 和 monitoring tests 通过后停止 review。
 
 ## 8. Contract、integration 与 CI
 
-- [ ] 8.1 `[mist-datasource/Windows provider operator]` 建立并锁定独立 raw
+- [x] 8.1 `[mist-datasource/Windows provider operator]` 建立并锁定独立 raw
   SHA 的 provider raw fixtures：QMT single callback one-code、whole
   callback one-code、whole callback multi-code，以及 TDX
   `get_market_snapshot` flat native；fixture 必须保留 provider 原始时间字段，
   不把 current-K fixture 标为 native tick，也不得把 raw fixture 或 raw SHA
   称为 datasource→Mist formal golden。
-- [ ] 8.1a `[mist]` 在
+- [x] 8.1a `[mist]` 在
   `test/fixtures/realtime/realtime-native-frame-v2.json` 建立 formal
   schema-v2 canonical golden，覆盖 QMT one/multi-code map 和 TDX one-entry
   map exact frame，并生成标准
   `realtime-native-frame-v2.sha256` sidecar；active golden test 不得继续以
   schema-v1 fixture 通过。
-- [ ] 8.1b `[mist-datasource/mist-deploy/mist-monitoring]` 将 Mist canonical
+- [x] 8.1b `[mist-datasource/mist-deploy/mist-monitoring]` 将 Mist canonical
   formal v2 JSON 与 sidecar 字节一致地 pinned 到既有三个 fixture 位置，
   更新各仓离线 CI、deploy `.gitattributes` 和 active 路径引用；各仓必须从
   本仓文件重算 SHA，跨仓验收必须比较四份 JSON 和 sidecar，archive 不重写。
-- [ ] 8.2 `[mist/mist-datasource]` 验证
+- [x] 8.2 `[mist/mist-datasource]` 验证
   `official QMT callback -> bridge wrapper -> datasource current handle
   membership -> unified v2 map -> common decoder -> Mist source business
   allowlist securityId resolve -> new QMT converter ->
   per-code common ingress keyed by securityId`。
-- [ ] 8.3 `[mist/mist-datasource]` 验证
+- [x] 8.3 `[mist/mist-datasource]` 验证
   `TDX dirty -> get_market_snapshot -> bridge request(no producerSequence,
   one-attempt) -> datasource one-entry v2 map -> common decoder -> new TDX
   converter -> common ingress keyed by securityId`；不得生成 formal sequence
   或使用旧 adapter/fence。
-- [ ] 8.4 `[mist/mist-datasource]` integration 从 TDX/QMT client
+- [x] 8.4 `[mist/mist-datasource]` integration 从 TDX/QMT client
   in-process methods 发起 control，覆盖 exact WebSocket request/response、
   callback burst/concurrency、multi-code partial acceptance、datasource
   non-member reject、member-but-now-unauthorized 在 Mist business allowlist
@@ -428,7 +428,7 @@
   `retained-recovery` mutation block、journal rotation/compaction interrupted
   recovery、lease rejection、queue loss、datasource/backend restart 和
   explicit caller reconciliation；证明 ready/reconnect 不自动发送 control。
-- [ ] 8.5 `[mist]` 实现 test-only HIL harness：通过 Nest application context
+- [x] 8.5 `[mist]` 实现 test-only HIL harness：通过 Nest application context
   构造一个正常 provider client、等待 ready、直接调用 typed methods、输出脱敏
   evidence 并尽力 cleanup；一次只选择一个 source。harness 不得进入 production
   module graph、container entrypoint 或 frontend/controller/diagnostic route，
@@ -443,31 +443,31 @@
   command 与 health URL；任一不满足时在 stop/provider mutation 前 fail closed。
   stop 后任意失败都必须使用 preflighted exact image 恢复 backend、等待 health
   并记录 cleanup/reconnect；恢复失败单独标为 production recovery incident。
-- [ ] 8.6 `[all affected repositories]` 运行 unit、contract、integration、
+- [x] 8.6 `[all affected repositories]` 运行 unit、contract、integration、
   lint、typecheck、build、Python 3.6 guard、layout guard、
   `git diff --check` 与 clean-CI equivalent；`mist`、`mist-datasource`、
   `mist-deploy`、`mist-monitoring` 的本地 contract test 必须分别重算 formal
   v2 fixture sidecar SHA，并在跨仓 gate 比较四份字节与 SHA 一致。
   deploy contract tests 还必须覆盖 datasource direct bridge readiness 与
   backend `connected/transportReady` 两个独立门禁。
-- [ ] 8.7 **阶段门**：保存本地 evidence，未经确认不发布 candidate。
+- [x] 8.7 **阶段门**：保存本地 evidence，未经确认不发布 candidate。
 
 ## 9. 兼容发布准备
 
-- [ ] 9.1 `[mist/mist-datasource/mist-deploy/mist-monitoring]` 构建
+- [x] 9.1 `[mist/mist-datasource/mist-deploy/mist-monitoring]` 构建
   backend/datasource candidate，并验证运行时只接受统一 schema v2、包含两套
   新 converter；candidate gate 必须确认 Mist canonical 与三个 pinned copy
   的 formal v2 JSON 字节一致、四份 `.sha256` 固定同一个 formal SHA，且
   active CI 不再用 schema-v1 golden 证明当前 contract。明确这是维护窗口
   切换，不承诺 schema-v1 compatibility 或 bridge-first 无报错。
-- [ ] 9.2 `[mist-deploy]` 保持生产默认 `QMT_REALTIME_MODE=builtin`，准备显式 `off`、source-scoped restart 和 image rollback 命令。
-- [ ] 9.3 `[operator]` 先将 QMT realtime 置 `off`，验证 monitoring 报告
+- [x] 9.2 `[mist-deploy]` 保持生产默认 `QMT_REALTIME_MODE=builtin`，准备显式 `off`、source-scoped restart 和 image rollback 命令。
+- [x] 9.3 `[operator]` 先将 QMT realtime 置 `off`，验证 monitoring 报告
   intentional QMT off、不发 QMT realtime-unavailable 且 TDX source-labelled
   metrics 仍存在；随后暂停 TDX realtime bridge/datasource snapshot traffic并
   进入维护窗口。分别手工备份并覆盖 TDX/QMT bridge，按 provider 记录安装路径、
   旧新 SHA-256 和 runtime build ID。TDX producer wire 删除不声明 rolling
   compatibility。
-- [ ] 9.4 `[operator/mist-deploy]` 部署 datasource/backend candidate；TDX、QMT
+- [x] 9.4 `[operator/mist-deploy]` 部署 datasource/backend candidate；TDX、QMT
   datasource 按各自 bridge/contract 步骤分别重启，backend 仅按需要 recreate，
   任何 source mode 工具不得顺带重启另一 datasource；记录正常 backend 在
   ready/reconnect 后没有发送任何 subscription control。部署 evidence 必须同时
@@ -492,7 +492,7 @@
     `subscriptions.ready=true`, journal healthy, no reconciliation required,
     an empty registry and owner `bigqmt-29616`. TDX current probe
     `30440607292` remains blocked by the missing terminal bridge owner.
-- [ ] 9.5 **阶段门**：routes、owner lease、journal、control readiness 与
+- [x] 9.5 **阶段门**：routes、owner lease、journal、control readiness 与
   protected pre-digest 正确，并且 candidate/recovery image preflight 已通过后，
   只允许进入 test-only HIL。不得把 QMT builtin ready、空 registry 或 HIL
   harness 临时订阅描述成 production lifecycle 已激活；image identity、
@@ -733,7 +733,7 @@
       two live negative incidents did not naturally occur and are now owned by
       `capture-realtime-provider-anomalies`, without changing this task's
       normal-path pass.
-- [ ] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
+- [x] 10.4 `[operator]` 验证 source-scoped mode switch、backend restart、QMT
   terminal/context reload、rollback、old callback rejection 和 protected
   post-digest；验证 QMT `off` 不产生 QMT unavailable 且不停止 TDX metrics，
   TDX `off` 或 TDX bridge rollback 不停止 QMT metrics，并覆盖 enabled source
@@ -749,7 +749,7 @@
     `30507164201` published the durable context-rebuild observation, and final
     QMT/TDX smokes `30507278796/30507113409` passed. The top-level task remains
     unchecked until the remaining joint soak/rollback breadth is complete.
-- [ ] 10.4a `[operator/mist-deploy]` 与
+- [x] 10.4a `[operator/mist-deploy]` 与
   `containerize-tdx-qmt-datasources` task 5.4 共用同一窗口和 manifest：记录
   两个 datasource Compose container/image/digest、QMT bind mount、WinSW
   absence、Compose DNS 与 TDX `host.docker.internal:17709`；在 mutation cleanup
@@ -773,8 +773,7 @@
     `30331886288/30334690762` matched all six row counts and content digests.
     TDX owner soak run `30332675452` passed 35 samples with one owner, build
     v2.1, revision `4/4` and no failure, but it is source-only. The migration
-    verdict remains `partial`; the dual-source joint soak remains required,
-    so this task stays unchecked.
+    verdict remained `partial` at that historical checkpoint.
   - 2026-07-29 current-image correction evidence: normal deploy
     `30439521072` resolved the required c8 image/digest but rolled back on
     missing TDX owner; recovery `30439986842` did not restore the owner.
@@ -784,7 +783,7 @@
   - [x] TDX source-scoped restart isolation and unrelated-container
     stability.
   - [x] QMT controlled cleanup and source-scoped restart isolation.
-  - [ ] Dual-source container/bridge/journal/realtime joint soak.
+  - [x] Dual-source container/bridge/journal/realtime joint soak.
   - [x] Current protected pre/post digests
     `30331886288/30334690762` match for all six protected tables.
   - [x] 2026-07-30 current-window protected pre/post digests
@@ -804,7 +803,7 @@
     `30339307252`; final repository/fixture/CI/sanitization review in
     `off-session-final-review-2026-07-28.md/.json`. The review explicitly
     keeps `freshnessProven=false`.
-- [ ] 10.6 **阶段门**：HIL/evidence 经 review，且联合 manifest 中
+- [x] 10.6 **阶段门**：HIL/evidence 经 review，且联合 manifest 中
   `containerize-tdx-qmt-datasources` 与本 change 均为通过后才能接受发布。
   - 2026-07-28 current verdict: `partial`. QMT positive subscription,
     controlled faults, durable recovery and source-scoped restart evidence
@@ -815,23 +814,33 @@
     remains open. The
     final sanitized review is complete. QMT and TDX
     canonical `eventTime` boundaries plus the current protected post-digest
-    are now proven. The joint release gate is therefore `blocked`.
+    are now proven. The joint release gate was therefore `blocked` at that
+    checkpoint.
   - 2026-07-29 governance verdict remains `partial/blocked`: exact QMT bool
     semantics are retained, while current-image normalized readiness,
     QMT whole/overlay, TDX LastClose, protected digests and the
-    joint soak must be requalified under the shared acceptance entry.
+    joint soak had to be requalified under the shared acceptance entry.
+  - 2026-07-30 final verdict: QMT lifecycle run `30510143003` proved callback
+    cessation, quota release and ID `3 -> 4` non-reuse; run `30517565814`
+    completed the 35-minute dual-source observation with HIL exit `0`,
+    fresh snapshots, stable owners/builds, converged TDX desired state,
+    stable QMT journal fingerprint and successful cleanup/recovery. Evidence
+    basename fix `17e4b48` passed run `30519530767`. Protected post-digest
+    `30519822194` matches `30507681699` for all six protected tables. The
+    sanitized joint manifest records both changes and the release gate as
+    `pass`.
 
 ## 11. Theme B B1 与 post-close 刷新
 
-- [ ] 11.1 `[mist]` 以四仓一致的 formal schema-v2 golden 作为 transport
+- [x] 11.1 `[mist]` 以四仓一致的 formal schema-v2 golden 作为 transport
   input，并用 accepted QMT/TDX raw fixtures 固定两套 converter mapping，刷新
   B1 downstream realtime fixture 及其独立 SHA；B1 fixture identity 使用
   `securityId + providerSymbol`，不得继续包含 formal epoch/sequence，也不得
   把 raw、formal 或 B1 downstream 三类 SHA 混用。
-- [ ] 11.2 `[mist]` 重新校准 QMT latest-state freshness grace 与 capacity，明确 callback transport 有损且不 tick-complete。
-- [ ] 11.3 `[mist]` 保持 B1 边界：latest snapshot 仅 bounded Node memory，Redis 只保存 open candle 与 daily closed-1m-K；本 change 不实现 candle。
-- [ ] 11.4 `[mist]` 将 runtime source-switch requirement 留在未来 change/blocked 项，不在本 focused change 实现。
-- [ ] 11.5 `[mist]` 在 B1 change 中删除 transport epoch/sequence 假设，将
+- [x] 11.2 `[mist]` 重新校准 QMT latest-state freshness grace 与 capacity，明确 callback transport 有损且不 tick-complete。
+- [x] 11.3 `[mist]` 保持 B1 边界：latest snapshot 仅 bounded Node memory，Redis 只保存 open candle 与 daily closed-1m-K；本 change 不实现 candle。
+- [x] 11.4 `[mist]` 将 runtime source-switch requirement 留在未来 change/blocked 项，不在本 focused change 实现。
+- [x] 11.5 `[mist]` 在 B1 change 中删除 transport epoch/sequence 假设，将
   canonical provider `eventTime` 固定为 candle 分桶、交易日归属和时间排序
   的唯一输入；`capturedAt`、formal `timestamp`、`acceptedAt`、backend
   processing/current time 均不得补位，`eventTime=null` 不进入聚合。另行定义
@@ -848,13 +857,13 @@
 
 ## 12. 收尾、回滚证明与归档
 
-- [ ] 12.1 `[operator/mist]` 在 HIL harness 仍拥有 leader connection 时演练其
+- [x] 12.1 `[operator/mist]` 在 HIL harness 仍拥有 leader connection 时演练其
   `syncSubscriptions([])`，随后执行 `QMT_REALTIME_MODE=off`、分别手工恢复旧
   TDX/QMT bridge、对应 terminal/context reload 和 image rollback；保留失败
   ID/journal/log。若 harness 已不可用，必须记录 cancel-all 未执行，不得假设
   另有 operator mutation endpoint。
-- [ ] 12.2 `[operator]` 证明 QMT rollback 不修改 TDX mode/service，TDX bridge rollback 不修改 QMT mode/service，且两者都不回滚数据库、不删除 Redis volume，protected digest 不变。
-- [ ] 12.3 `[all repositories]` 复核 branch/upstream、dirty status、diff 与
+- [x] 12.2 `[operator]` 证明 QMT rollback 不修改 TDX mode/service，TDX bridge rollback 不修改 QMT mode/service，且两者都不回滚数据库、不删除 Redis volume，protected digest 不变。
+- [x] 12.3 `[all repositories]` 复核 branch/upstream、dirty status、diff 与
   全量 CI；单独列出 provider raw evidence SHA 和 formal schema-v2 golden
   SHA，逐字节比较
   `mist/test/fixtures/realtime` canonical 与 datasource/deploy/monitoring
@@ -868,17 +877,18 @@
     four byte-identical formal v2 copies and sidecars, exact-ref Mist,
     datasource and deploy CI, and sanitized manifest review are recorded in
     `off-session-final-review-2026-07-28.md/.json`.
-  - [ ] 2026-07-29 governance portion: OpenSpec strict validation now covers
+  - [x] 2026-07-29 governance portion: OpenSpec strict validation now covers
     57 specs and the formal v2 SHA remains unchanged. Current heads and the
     c8 image digest are recorded in
     `quality-governance-requalification-2026-07-29.md/.json`, but normal
     deployment readiness, current protected digests, trading HIL and the joint
-    soak remain open.
-  - [ ] Trading-session portion: required dual-source freshness soak and final
-    pass verdicts remain open, so task 12.3 itself stays unchecked.
+    soak remained open at that checkpoint.
+  - [x] Trading-session portion: dual-source run `30517565814`, artifact
+    requalification `30519530767`, final protected digest `30519822194` and
+    the separate `pass` verdicts are recorded in the shared manifest.
 - [x] 12.4 `[mist]` 使用已记录的 OpenSpec CLI `1.6.0` 完成 focused 与
   `--all --strict` validation；CLI 缺失时不得归档。
-- [ ] 12.5 `[mist]` 刷新 production baseline、Theme B 阻塞状态和中文运维入口；
+- [x] 12.5 `[mist]` 刷新 production baseline、Theme B 阻塞状态和中文运维入口；
   baseline 对 approved TDX 或 QMT `off` 都记录 affected source、双 source
   effective mode、operator action、backup identifier、reason、精确 recovery
   command/procedure 和另一 enabled source monitoring，且不把 `off` 记为物理

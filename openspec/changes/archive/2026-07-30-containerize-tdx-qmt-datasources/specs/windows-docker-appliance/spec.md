@@ -41,7 +41,7 @@ gateway, TDX datasource and QMT datasource services.
 The system SHALL keep Docker deployment assets under the Docker root while
 allowing durable datasource state to use a separately configured Windows path.
 
-#### Scenario: Docker and datasource state use different drives
+#### Scenario: Docker root and datasource root use different drives
 - **WHEN** the operator configures Docker root as `E:\quant\MistDocker`
 - **AND** datasource state root as `F:\quant\MistAPI\datasource\state`
 - **THEN** deployment scripts use the Docker root for Compose files, Docker
@@ -49,12 +49,12 @@ allowing durable datasource state to use a separately configured Windows path.
 - **AND** Compose bind-mounts the datasource state root without installing a
   host Python runtime or service definition there
 
-### Requirement: Hybrid health checks cover Docker and terminal components
+### Requirement: Hybrid health checks cover Docker and WinSW components
 The system SHALL verify all Docker-managed services, the nginx web gateway and
 the separately installed terminal bridge identities during deployment and
 operator health checks.
 
-#### Scenario: Health check validates the full stack
+#### Scenario: Health check validates full hybrid stack
 - **WHEN** the operator runs the production health check
 - **THEN** it checks Docker Compose service status for MySQL, `mist-backend`,
   `chan-api`, `mist-fe`, `web-gateway`, `tdx-datasource`, and `qmt-datasource`
@@ -85,7 +85,7 @@ The system SHALL provide a Windows-local Docker datasource operations command
 that can start, stop, restart and inspect each datasource without a GitHub
 Actions dispatch.
 
-#### Scenario: Operator restarts one datasource locally
+#### Scenario: Operator restarts datasource locally
 - **WHEN** the operator requests restart for TDX or QMT
 - **THEN** the script validates Docker root, rendered Compose configuration,
   image identity, required state mount and source-specific dependencies

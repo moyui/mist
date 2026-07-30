@@ -19,7 +19,7 @@ The QMT datasource SHALL enable subscription control, callback snapshot intake a
 - **AND** historical QMT queries MUST remain available
 - **AND** mode state alone MUST NOT be presented as proof that every physical QMT subscription was released
 
-#### Scenario: Unsupported mode is configured
+#### Scenario: Unknown QMT mode is configured
 
 - **WHEN** the value is neither `builtin` nor `off`
 - **THEN** QMT datasource startup MUST fail closed
@@ -27,6 +27,13 @@ The QMT datasource SHALL enable subscription control, callback snapshot intake a
 ### Requirement: QMT native collection is bounded
 
 QMT realtime callback handling SHALL use explicit global and per-symbol hard limits, item/byte limits and maximum age. It SHALL never wait for queue capacity or accumulate indefinitely while datasource is unavailable.
+
+#### Scenario: Previous command has not completed
+
+- **WHEN** a subscription control call is already outstanding
+- **THEN** datasource MUST NOT expose a second native control command
+- **AND** the additional request MUST fail with a bounded busy outcome rather
+  than entering an unbounded queue
 
 #### Scenario: Callback queue reaches a hard limit
 
@@ -55,7 +62,7 @@ The QMT datasource and bridge SHALL expose at most one subscription native call 
 - **WHEN** a second owner attempts to register while the current lease is active
 - **THEN** datasource MUST reject the second owner or mark owner conflict unhealthy
 
-#### Scenario: Multiple control requests arrive
+#### Scenario: External requests arrive concurrently
 
 - **WHEN** a native subscription call is already in flight
 - **THEN** datasource MUST not expose another call to bridge
@@ -77,7 +84,7 @@ The QMT datasource and bridge SHALL expose at most one subscription native call 
 
 The production bridge SHALL use only Python 3.6 standard-library HTTP and synchronization primitives needed for its bounded queue. It SHALL not add an unverified transport, dependency, worker or realtime data query.
 
-#### Scenario: Bridge imports are inspected
+#### Scenario: Bridge script is inspected
 
 - **WHEN** static checks inspect the production bridge
 - **THEN** it MUST not import realtime-duplex packages, third-party HTTP clients, process/subprocess APIs, listener frameworks, pandas as a callback dependency or background-thread frameworks
@@ -101,6 +108,14 @@ state and SHALL use constant-time comparison for the token.
 - **THEN** registration MUST behave as a heartbeat
 - **AND** lease and generation MUST not rotate every poll
 
+#### Scenario: QMT bridge registers
+
+- **WHEN** the builtin bridge becomes the current owner
+- **THEN** datasource root/scoped health MUST identify its owner, generation
+  and build identity without exposing the lease token
+- **AND** file-backed runtime digest or explicit `unavailable` disposition MUST
+  remain observable through the bounded introspection path
+
 #### Scenario: Datasource starts a new transport instance
 
 - **WHEN** bridge registers after datasource restart
@@ -120,11 +135,19 @@ state and SHALL use constant-time comparison for the token.
 - **WHEN** owner replacement occurs before a historical command result returns
 - **THEN** the old result MUST remain rejected under the existing history fence
 
+#### Scenario: Owner changes with a command in flight
+
+- **WHEN** owner replacement occurs before an exposed history or subscription
+  native call returns
+- **THEN** the retired-owner result MUST be rejected before registry mutation or
+  formal publication
+- **AND** the replacement owner MUST use its new transport generation
+
 ### Requirement: QMT builtin bridge remains Python 3.6 compatible
 
 All maintained QMT builtin strategy code SHALL parse and execute under embedded Python 3.6, tolerate missing `__file__`, avoid unverified dependencies and avoid background worker threads.
 
-#### Scenario: Static compatibility checks run
+#### Scenario: Compatibility guard runs
 
 - **WHEN** the bridge artifact is checked
 - **THEN** `dict[...]`, `list[...]`, `X | Y`, `match` and newer-runtime-only syntax or APIs MUST fail the check

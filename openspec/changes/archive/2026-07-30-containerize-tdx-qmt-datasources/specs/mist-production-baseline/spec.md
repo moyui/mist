@@ -4,17 +4,17 @@
 The production baseline SHALL record immutable inputs for every repository,
 image, workflow and runtime root used by the deployment.
 
-#### Scenario: Backend, frontend and datasource image refs are recorded
+#### Scenario: Backend and frontend image refs are recorded
 - **WHEN** baseline evidence is written
 - **THEN** it MUST record the `mist` commit SHA and backend image tag
 - **AND** it MUST record the `mist-fe` commit SHA and frontend image tag
-- **AND** it MUST record the `mist-datasource` commit SHA, datasource image tag
-  and resolved image digest
 - **AND** it MUST state whether any image tag was `latest`
 
-#### Scenario: Deploy and state refs are recorded
+#### Scenario: Datasource and deploy refs are recorded
 - **WHEN** baseline evidence is written
-- **THEN** it MUST record the `mist-deploy` commit SHA used for workflows and scripts
+- **THEN** it MUST record the `mist-datasource` commit SHA, datasource image tag
+  and resolved image digest
+- **AND** it MUST record the `mist-deploy` commit SHA used for workflows and scripts
 - **AND** it MUST record `docker_root` and `datasource_state_root`
 - **AND** it MUST record the TDX and QMT terminal bridge installed paths,
   SHA-256 values and runtime build identities
@@ -24,7 +24,7 @@ image, workflow and runtime root used by the deployment.
 - **THEN** it MUST record the `mist-monitoring` commit SHA
 - **AND** it MUST record the Windows exporter endpoint and Mac watchdog endpoint
 
-### Requirement: Deployment evidence proves the Docker datasource stack was deployed
+### Requirement: Deployment evidence proves the hybrid stack was deployed
 The production baseline SHALL include evidence from the Windows deployment path
 that starts the application and datasource Docker services and permanently
 removes the legacy WinSW services.
@@ -45,6 +45,12 @@ removes the legacy WinSW services.
 - **THEN** it MUST show `mist-tdx-datasource` and `mist-qmt-datasource` Windows
   services do not exist
 - **AND** it MUST show both datasource Compose services use the pinned image
+
+#### Scenario: Datasource service is not replaced by app deploy
+- **WHEN** a routine application deployment runs after the accepted cutover
+- **THEN** it MUST NOT install, remove, or operate a host WinSW datasource service
+- **AND** datasource replacement, when requested, MUST use the pinned
+  source-scoped Compose service path
 
 ### Requirement: Health evidence covers host, containers, gateway, and datasource
 The production baseline SHALL include health evidence for all Compose services,

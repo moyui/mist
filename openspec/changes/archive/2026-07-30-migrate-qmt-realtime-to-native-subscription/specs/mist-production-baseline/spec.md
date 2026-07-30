@@ -6,7 +6,7 @@ The production baseline SHALL identify QMT native callback acquisition, the
 unified TDX/QMT schema-v2 snapshot contract, both new source converters,
 current modes and the exact installed application and terminal artifacts.
 
-#### Scenario: Callback release is accepted
+#### Scenario: Final production baseline is captured
 
 - **WHEN** production evidence is refreshed
 - **THEN** it MUST record repository/image identities, `TDX_REALTIME_MODE`, `QMT_REALTIME_MODE`, datasource/backend frame schema, QMT owner/build identity and journal location/health
@@ -18,7 +18,7 @@ current modes and the exact installed application and terminal artifacts.
   test-harness-created QMT whole/single IDs
 - **AND** it MUST not describe periodic `get_full_tick` as maintained realtime acquisition
 
-#### Scenario: A realtime source is rolled back to off
+#### Scenario: A realtime source is temporarily rolled back
 
 - **WHEN** the baseline is captured while an approved rollback has set TDX or
   QMT to `off`
