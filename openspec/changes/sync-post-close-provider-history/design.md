@@ -1,7 +1,8 @@
 ## Context
 
-`productize-current-day-realtime-market-data` 定义 Node.js bounded latest snapshot、Redis 当日 candle 和自然日查询边界，
-但 Redis candle 永远不是 MySQL 历史来源。当前 `apps/schedule` 已存在却未进入 Docker image/
+`build-realtime-strategy-signal-pipeline` 的 candle foundation gate 定义 Node.js bounded
+latest snapshot、Redis sealed 1m、manifest 和 retention 边界，但 Redis candle 永远不是 MySQL
+历史来源。当前 `apps/schedule` 已存在却未进入 Docker image/
 Compose，仍包含 EastMoney 多周期 cron，并在每次采集后调用 MySQL-only `runScan()`。另有
 未注册的通用采集调度抽象由独立 cleanup change 删除。
 
@@ -39,8 +40,8 @@ cleanup 均不在本轮修改。依赖完成不会自动恢复本 change；只�
 
 实现前必须：
 
-1. 归档 `productize-current-day-realtime-market-data`，冻结 Redis
-   manifest/query contract；其 accepted baseline 必须已经消费
+1. 完成并归档 `build-realtime-strategy-signal-pipeline`，冻结 Redis
+   sealed-candle/manifest/retention contract；其 accepted candle baseline 必须已经消费
    `migrate-qmt-realtime-to-native-subscription` 的 schema-v2 formal frame、
    fixture/SHA 与 canonical identity；
 2. 完成 `remove-orphaned-data-collection-scheduler`，删除未注册旧 owner。

@@ -82,9 +82,10 @@ tasks；不能因为已有详细草案就推定方案已经确认。
 
 ## Impact
 
-- **依赖**：必须在 `productize-current-day-realtime-market-data` 和
-  `remove-orphaned-data-collection-scheduler` 完成后实施；不得越过前者的 Redis schema/query
-  contract。归档的 B1 baseline 必须已经消费
+- **依赖**：若未来获得重新授权，必须在
+  `build-realtime-strategy-signal-pipeline` 的 candle foundation gate 完成并归档，且
+  `remove-orphaned-data-collection-scheduler` 完成后实施；不得越过前者的 Redis
+  sealed-candle/manifest/retention contract。归档的 realtime candle baseline 必须已经消费
   `migrate-qmt-realtime-to-native-subscription` 的 schema-v2 contract；本 change
   只能以该 accepted baseline 判定 realtime 是否“不变”，不能要求更早的 v1
   epoch/per-symbol sequence。
@@ -96,4 +97,5 @@ tasks；不能因为已有详细草案就推定方案已经确认。
 - **`mist-datasource`**：预期只加强历史 API contract tests；相对于依赖归档后
   记录的 accepted schema-v2 baseline，不修改 realtime frame 或 bridge。
 - **数据库**：不新增或修改 migration；只允许目标交易日 `k` 与对应 source extension 改变。
-- **B2**：本 change 归档并刷新生产基线后，组合回测仍只读取 MySQL 历史日 K。
+- **未来 portfolio simulation**：不属于当前依赖链；若另建 focused change，仍只读取 MySQL
+  历史日 K，不读取盘中 Redis candle。

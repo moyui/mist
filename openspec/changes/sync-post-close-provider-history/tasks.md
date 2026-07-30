@@ -6,7 +6,9 @@
 
 ## 1. 依赖与收盘同步基线
 
-- [ ] 1.1 确认 `productize-current-day-realtime-market-data` 已归档，并记录 Redis schema、partition manifest、query rollover 和 TTL 的 accepted evidence。
+- [ ] 1.1 若本 change 获得重新授权，确认
+  `build-realtime-strategy-signal-pipeline` 已归档，并记录 Redis sealed-candle schema、
+  partition manifest、retention 和 TTL 的 accepted evidence。
 - [ ] 1.2 先完成并归档 `remove-orphaned-data-collection-scheduler`；重新搜索证明未注册的通用调度抽象未被恢复或复用。
 - [ ] 1.3 从各仓库最新 `master` 创建全新对应分支，记录 dirty/worktree/remote 状态、生产 SHA、`schema_migrations` 现状、所有已应用 migration checksum、protected-table baseline 和现有 schedule/EastMoney cron inventory。
 - [ ] 1.4 盘点 TDX/QMT `/v1/bars/query`、normalizer、canonical `k` 与 source extension upsert/unique key，确认不需要 migration 后再实现。
@@ -68,4 +70,5 @@
 - [ ] 7.4 启用自动 schedule，验证 A/HK 首次执行、失败 retry/cutoff、per-cycle advisory lock 获取/释放、bounded concurrency/provider timeout/max-item guard、restart recovery、多源独立完成与告警。
 - [ ] 7.5 演练 `HISTORICAL_SYNC_ENABLED=false` 与 whole-image rollback；不回滚数据库、不删除 Redis volume、不切换 TDX/QMT transport mode。
 - [ ] 7.6 刷新生产 baseline，记录 SHA/workflow/artifact、provider result/digest、cleanup manifest、protected digest 与 rollback evidence；所有仓库 clean/upstream/CI 后 strict validate 并归档。
-- [ ] 7.7 归档后重新审计 `add-strategy-portfolio-backtesting`：B2 仅日线且只读 MySQL，重新确定 migration 编号并只选择性移植已审计 checkpoint commits。
+- [ ] 7.7 若未来另建 portfolio simulation focused change，重新审计其日线/MySQL-only 边界，
+  重新确定 migration 编号，并只选择性移植已经审计的候选代码。
