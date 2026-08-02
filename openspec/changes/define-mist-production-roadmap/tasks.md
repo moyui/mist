@@ -17,9 +17,8 @@
       follow-up without modifying its existing artifacts.
 - [x] 0.7 Run strict OpenSpec validation for this roadmap rebaseline and review
       `openspec list --json` against the recorded snapshot.
-- [x] 0.8 Record `sync-post-close-provider-history` as indefinitely deferred:
-      its tasks are not executable until a new explicit owner authorization
-      reopens proposal/design/spec review.
+- [x] 0.8 Record post-close provider history sync as indefinitely deferred and remove its active draft;
+      only a new explicit owner authorization may recreate proposal/design/spec review.
 
 ## G1. Complete data and analysis path readiness
 

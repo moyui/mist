@@ -33,9 +33,8 @@ readiness.
   - G4 engineering repeatability and roadmap closure.
 - Add a disposition ledger that separates `completed`, `superseded`, `deferred`,
   and `dropped` work from the executable backlog.
-- Record `sync-post-close-provider-history` as indefinitely deferred by explicit
-  owner decision; its detailed tasks remain design inventory rather than an
-  executable production-readiness gate.
+- Record post-close provider history sync as indefinitely deferred with no active
+  implementation change; a future explicit owner must recreate and review it.
 - Record the completed Chan, QMT, and TDX realtime children as G1 evidence and
   leave only baseline refresh and final disposition as executable G1 work.
 - Re-scope monitoring, guard, and AstrBot work around the remaining production

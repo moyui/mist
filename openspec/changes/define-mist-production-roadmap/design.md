@@ -97,7 +97,7 @@ The current historical ledger is:
 | Monitoring health repair | completed | `repair-monitoring-health-alerts` archived; broader operations readiness remains G2 work |
 | Initial NapCat/AstrBot skill integration | completed | `integrate-napcat-astrbot-skills` archived; status, diagnosis, and recovery operations remain G2 work |
 | Strategy platform roadmap and children | completed, separate scope | Governed by `strategy-platform-roadmap`; not duplicated here |
-| Post-close provider history sync | deferred | `sync-post-close-provider-history` remains an indefinitely deferred draft; only a new explicit owner authorization may reopen review |
+| Post-close provider history sync | deferred | No active implementation change remains; only a new explicit owner authorization may recreate and reopen review |
 | Chan phase-preview review surface | completed | `preview-chan-bi-phases` archived with canonical phase-preview requirements synced |
 | Chan Bi overlap and zoom repair | completed | `repair-chan-bi-overlap-rendering` archived with backend, frontend, and browser evidence |
 | Frontend operator console | pending | Remains G3 after G2 contracts stabilize |
@@ -144,8 +144,8 @@ bridge identities, Windows deployment and restore runs, TDX/QMT runtime smoke,
 database protection digests, backend leader state, and Mac gateway probes.
 Realtime transport remains memory-only; persistence and notification work stays
 under separately gated feature work and is not an unresolved G1 item.
-`sync-post-close-provider-history` is explicitly deferred and is not an
-executable G1, G2, G3, or G4 blocker.
+Post-close provider history sync has no active implementation change and is not an executable G1, G2, G3, or
+G4 blocker.
 
 ### Decision 5: G2 consolidates the remaining operations control plane
 

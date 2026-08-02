@@ -289,12 +289,9 @@
   B1 必须另行删除 transport epoch/sequence 假设，并以 canonical
   `eventTime` 作为唯一 candle 分桶/交易日/时间排序输入；任何本机观测时间
   都不得补位。
-- `sync-post-close-provider-history` 明确等待 B1 归档后实施，因此也必须随本
-  change 刷新：其“不修改 realtime”边界只能相对于届时已接受的 schema-v2
-  baseline 表述，不能继续把已删除的 formal epoch/per-symbol sequence 写成
-  正面依赖。post-close 仍保持 historical API 与届时已接受的 bridge 行为
-  不变，不重新定义 realtime contract；若 realtime artifacts 未受影响，可引用
-  accepted schema-v2 baseline 的 transport HIL，不要求无依据地重跑。
+- 收盘后 provider history sync 已无限期延期，当前不存在 active implementation change。未来若由
+  新 owner 重新授权，其“不修改 realtime”边界只能相对于届时已接受的 schema-v2 baseline 表述，
+  不能恢复 formal epoch/per-symbol sequence；historical API 与 bridge 行为必须重新审计。
 
 ## Impact
 

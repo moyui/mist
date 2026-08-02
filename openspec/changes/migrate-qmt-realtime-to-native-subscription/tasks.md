@@ -829,14 +829,12 @@
   processing/current time 均不得补位，`eventTime=null` 不进入聚合。另行定义
   重复 latest-state 的累计量处理；本 focused change 只记录阻塞，不实现
   candle。
-- [x] 11.6 `[mist]` 刷新 active `sync-post-close-provider-history` 的 proposal、
-  design、task 2.3 与 `datasource-provider-contract` delta：将 historical
-  API/bridge“不变”明确为相对于依赖归档后已接受的 schema-v2 baseline，
-  删除对 formal epoch/per-symbol sequence 的正面依赖并禁止重新引入旧 v1
-  字段。只有 diff、formal fixture/SHA 与 installed bridge evidence 证明
-  realtime 未受影响时才可引用既有 schema-v2 transport HIL；仍须运行
-  TDX/QMT historical API regression，并 strict validate focused、B1 与
-  post-close 三个 active changes。
+- [x] 11.6 `[mist]` 记录收盘后 provider history sync 无限期延期并移除 active draft；未来只有新
+  owner 明确授权并基于 accepted schema-v2 baseline 重新建 change 后才能实施，不得恢复 formal
+  epoch/per-symbol sequence 或旧 v1 字段。只有 diff、formal fixture/SHA 与 installed bridge evidence
+  证明 realtime 未受影响时才可引用既有 schema-v2 transport HIL；仍须重新运行 TDX/QMT historical
+  API regression，并 strict validate focused 与 candle changes；未来 post-close change 需自行完成
+  独立 validation。
 
 ## 12. 收尾、回滚证明与归档
 

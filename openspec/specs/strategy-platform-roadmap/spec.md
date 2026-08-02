@@ -4,9 +4,7 @@ Strategy platform roadmap governs Mist product expansion for strategy
 registration, realtime signal alerts, signal-level backtesting, operator UX,
 scheduled scans, and alert delivery boundaries without directly implementing
 runtime code.
-
 ## Requirements
-
 ### Requirement: Strategy Platform Roadmap Shall Govern Product Expansion
 
 The strategy platform roadmap SHALL define the product-scope sequence for
@@ -71,21 +69,6 @@ make `apps/schedule` the public API owner.
   acknowledgement, or backtest request endpoints
 - **THEN** the endpoint controllers MUST belong to the Mist backend API surface
 - **AND** the schedule app MUST NOT expose those public strategy endpoints
-
-### Requirement: Schedule App Shall Only Run Strategy Jobs
-
-The schedule app SHALL only host periodic strategy jobs for the strategy
-platform and SHALL consume shared strategy core services rather than owning
-strategy API or rule semantics.
-
-#### Scenario: Periodic strategy scanning is planned
-
-- **WHEN** a child change adds live strategy scanning
-- **THEN** the scan job MAY be hosted in `apps/schedule`
-- **AND** it MUST call shared strategy core services used by Mist APIs and
-  backtesting
-- **AND** it MUST NOT duplicate strategy rule evaluation logic inside the
-  schedule app
 
 ### Requirement: Shared Strategy Definition Shall Come First
 
@@ -221,3 +204,38 @@ disposition.
 - **THEN** each child item MUST be marked completed, archived, superseded,
   deferred, or dropped
 - **AND** deferred or dropped items MUST include a reason
+
+### Requirement: Realtime Strategy Delivery Shall Use Focused Child Changes
+The roadmap SHALL deliver current-day candles, analysis kernels, strategy evaluation contracts, realtime
+evaluation and notification delivery through separately reviewable child changes.
+
+#### Scenario: Realtime strategy work is scheduled
+- **WHEN** implementation ordering is prepared
+- **THEN** candle, analysis, contract, evaluation and notification work MUST retain separate ownership and archive criteria
+- **AND** a downstream change MUST NOT begin before its declared prerequisite gates pass
+
+#### Scenario: Shared strategy contracts and runtime adapters are scheduled
+- **WHEN** Backtest and realtime Signal implementation are planned
+- **THEN** `evolve-strategy-evaluation-contract` MUST first establish the common StrategyBar, market-data port,
+  evaluator and context contracts
+- **AND** `extract-backtest-runtime` MAY then implement its replay adapter independently
+- **AND** `run-realtime-strategy-evaluation` MAY then implement its realtime adapters after the candle gate also passes
+- **AND** neither runtime change MUST be a prerequisite of the other
+
+### Requirement: Service Boundary Standardization Shall Precede Runtime RPC
+The roadmap SHALL complete `standardize-service-boundary-contracts` before connecting Backtest or Signal
+runtime RPC handlers.
+
+#### Scenario: A runtime child change reaches RPC implementation
+- **WHEN** `extract-backtest-runtime` or `run-realtime-strategy-evaluation` is ready to add product code
+- **THEN** the shared HTTP/RPC transport change MUST have passed its acceptance gates
+- **AND** the runtime change MUST define only its domain-specific pattern, payload and error codes
+
+### Requirement: Backtest Runtime Extraction Shall Remain Independently Scoped
+The roadmap SHALL use `extract-backtest-runtime` for moving historical replay into `apps/backtest`, separate
+from realtime evaluation and portfolio simulation.
+
+#### Scenario: Backtest execution is moved out of the public API process
+- **WHEN** the runtime extraction is implemented
+- **THEN** it MUST depend on the approved shared analysis and evaluation contracts
+- **AND** it MUST retain independent validation and archive criteria
