@@ -82,6 +82,28 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **THEN** Date values MUST be compared by exact millisecond values
 - **AND** identities MUST be compared as exact safe integers without distance arithmetic
 
+#### Scenario: A facade evaluates caller-owned input
+- **WHEN** any ChanCore operation receives an approved K sequence
+- **THEN** public inputs, outputs, properties and collections MUST use readonly value contracts
+- **AND** ChanCore MUST NOT mutate the caller's array, K objects or Date values
+- **AND** it MUST retain no mutable module state, previous-call data or result cache
+
+#### Scenario: Evidence is reused inside an output graph
+- **WHEN** merged K, Bi phases or Channels include the same raw K evidence
+- **THEN** ChanCore MAY share an immutable `ChanK` reference instead of deep-cloning it for every structure
+- **AND** it MUST NOT require runtime freeze, JSON cloning or recursive deep-copy isolation
+- **AND** consumers MUST NOT rely on object reference identity between inputs, phases or repeated calls
+
+#### Scenario: A persistence entity becomes ChanCore input
+- **WHEN** the application adapter maps a TypeORM K entity
+- **THEN** it MUST create a new complete `ChanK` value object
+- **AND** it MUST copy the entity timestamp into a new Date value
+
+#### Scenario: Core output becomes an HTTP response
+- **WHEN** the application adapter maps core output to retained HTTP VOs
+- **THEN** it MUST create new VO structures without mutating or re-sorting the core result
+- **AND** changing an adapter-owned VO MUST NOT change the core result
+
 ### Requirement: ChanCore Shall Publish A Minimal Algorithm Facade
 The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`, `findFenxings`,
 `createBi` and `createChannels`, plus only the algorithm-owned types, enums and approved

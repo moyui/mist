@@ -321,6 +321,24 @@ characterization 必须覆盖相等、相邻可表示 number、first-wins、Chan
 场景。同一输入重复执行必须得到完全相同的结构、枚举、顺序和数值。未来若价格切换定点整数或
 Decimal，必须另开 change 并重新建立 differential 基线。
 
+### 9. core 使用 readonly value contract，不承诺引用身份
+
+所有 public core interfaces 的属性和集合使用 TypeScript `readonly`，facade 接受
+`readonly ChanK[]`。ChanCore 不得修改调用方数组、K object 或 Date，也不保留模块级可变状态、上次
+调用数据或结果 cache。
+
+application adapter 从 TypeORM entity 建立新的 `ChanK` value object，并用
+`new Date(entity.timestamp.getTime())` 隔离 entity 的可变 Date。core 为 merged K、Fenxing、Bi、
+Channel 和各 phase 新建必要的结构/数组，但可以在一次结果图内共享同一个只读 `ChanK` evidence
+引用；不得为了引用隔离对每个 phase 深拷贝整套 K。
+
+`readonly` 是编译期 contract，不增加 `Object.freeze()`、JSON clone 或 runtime deep-freeze。Date
+虽然带 mutation method，所有 core/adapter consumer 都必须把它当不可变值，只读取或显式复制。
+
+HTTP adapter 必须新建 VO 并递归映射字段，禁止直接改名、赋值、sort/splice/push core 输出。公共
+contract 只保证结构、值、枚举和顺序，不保证 input/output、Phase A/Phase B 或重复调用之间的 `===`
+关系；characterization 也不得把引用共享方式写进 fingerprint。
+
 ## Risks / Trade-offs
 
 - [只移动算法但保留 app import] → route/adapter owner 先于 source move 审批，guard test 最终删除精确
@@ -333,6 +351,8 @@ Decimal，必须另开 change 并重新建立 differential 基线。
 - [自动修复无序或重复 K 掩盖调用方错误] → 单一 facade validator 与 fail-closed contract tests。
 - [DB fixed-scale decimal 被误判为非规范] → 覆盖 `0.00000000`、8 位小数和非法 exponent/number。
 - [抽取时“修复精度”改变边界结果] → 锁定 strict/non-strict、first-wins 和 equal-boundary fixtures。
+- [adapter 为改字段名直接 mutation core output] → readonly contracts、fresh VO mapping 与 frozen-input tests。
+- [深拷贝完整 evidence 放大内存] → 允许共享 immutable `ChanK`，不承诺引用身份、不 runtime freeze。
 
 ## Migration Plan
 
@@ -349,4 +369,4 @@ Decimal，必须另开 change 并重新建立 differential 基线。
 
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
 - 各 ChanCore 输出类型的最小现有字段集合，以及 HTTP adapter 如何恢复当前 VO。
-- mutation 和算法版本规则。
+- 算法版本规则。

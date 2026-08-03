@@ -33,7 +33,9 @@
     `ChanInputError/ChanInvariantError` 和 HTTP 内部错误传播边界。
   - [x] 1.10.3 确认 number strict/non-strict comparison、无 epsilon/rounding/Decimal、first-wins 与
     Date/identity 精确比较。
-  - [ ] 1.10.4 确认 mutation 和算法版本。
+  - [x] 1.10.4 确认 readonly value contract、输入不变、Date 隔离、fresh HTTP VO、允许共享只读
+    `ChanK` evidence，且引用身份不属于公共契约。
+  - [ ] 1.10.5 确认算法版本。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
 ## 2. Pure ChanCore
@@ -55,12 +57,16 @@
 - [ ] 2.6 用 full-output differential fixtures 证明结构、枚举、顺序、日期、数值与 mutation contract。
 - [ ] 2.6.1 覆盖相等中心、严格分型、同类/同极值 first-wins、Bi 非严格递进、`zg === zd` 和相邻
   可表示 number；证明未引入 epsilon、rounding、Decimal 或公式改写。
+- [ ] 2.6.2 以 frozen input 和 before/after fingerprint 证明四个 facade 不 mutation；允许嵌套输出共享
+  只读 `ChanK`，但 tests 不断言 public reference identity。
 
 ## 3. Application Adapters
 
 - [ ] 3.1 按已批准 owner 重接 Chan HTTP controller、TypeORM K read adapter、VO/OpenAPI 和错误映射。
 - [ ] 3.1.1 修正 `/v1/chan/channel` 空历史/不足数据行为：返回 HTTP 200 与空两阶段结果，不再抛出
   `BI_ARRAY_EMPTY`；其他 HTTP contract 保持不变。
+- [ ] 3.1.2 adapter 从 entity 新建完整 `ChanK` 并复制 Date，从 core 新建 VO；禁止为字段改名或排序
+  mutation core output。
 - [ ] 3.2 删除 `apps/chan → apps/mist` 业务源码 import 及 transport guard 中的精确 legacy allowlist。
 - [ ] 3.3 固定所有保留 `/v1/chan/*` 与 `/v1/indicators/k` 路由的 runtime owner 和 compatibility tests。
 - [ ] 3.4 证明 Strategy、Backtest 和 Realtime 不导入 ChanCore 或公共 Indicator HTTP 实现。

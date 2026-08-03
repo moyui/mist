@@ -73,6 +73,8 @@ mist-fe / mist-skills
   invariant 错误作为内部错误传播，不能改成空结果或用户 400。
 - OHLC 保持 finite number 和现有 strict/non-strict comparison；不加 epsilon/rounding/Decimal，
   相等中心不合并、相等分型不成立、相同极值 first-wins、`zg === zd` 不成立中枢。
+- core interfaces/collections 使用 readonly value contract；不 mutation input、不保留状态或 cache，
+  允许输出图共享只读 `ChanK`，不 runtime freeze/deep-clone，adapter 新建 VO 并复制 entity Date。
 - “现有 Chan 算法”以已归档宽笔修复后的行为为准：独立 K 数量按候选 `originData` 的序列位置差
   计算，不按数据库 K ID 差计算；端点缺失或重复继续作为 invariant failure。
 
@@ -88,6 +90,6 @@ mist-fe / mist-skills
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
 - full-output fingerprint 还需纳入非连续 K ID、唯一端点解析和宽笔 position-distance 回归场景；
 - `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
-- output、empty-result、invalid-input 与 numeric contract 已确认；mutation/version contract 未确认。
+- output、empty-result、invalid-input、numeric 与 mutation contract 已确认；version contract 未确认。
 
 以上门禁完成前不得移动 source files。
