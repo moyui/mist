@@ -4,6 +4,7 @@ import {
   SecurityType,
   SecurityStatus,
 } from '@app/shared-data';
+import { Logger } from '@nestjs/common';
 import { EastMoneyCollectionStrategy } from './east-money-collection.strategy';
 
 describe('EastMoneyCollectionStrategy', () => {
@@ -11,8 +12,10 @@ describe('EastMoneyCollectionStrategy', () => {
   let mockCollectorService: any;
   let mockSecurityRepository: any;
   let mockTimezoneService: any;
+  let loggerErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
     mockCollectorService = {
       collectKForSource: jest.fn().mockResolvedValue(undefined),
     };
@@ -30,6 +33,10 @@ describe('EastMoneyCollectionStrategy', () => {
       mockCollectorService,
       mockTimezoneService,
     );
+  });
+
+  afterEach(() => {
+    loggerErrorSpy.mockRestore();
   });
 
   describe('strategy properties', () => {
@@ -93,6 +100,7 @@ describe('EastMoneyCollectionStrategy', () => {
           endDate,
         ),
       ).rejects.toThrow('Network error');
+      expect(loggerErrorSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -213,6 +221,7 @@ describe('EastMoneyCollectionStrategy', () => {
       await strategy.collectForAllSecurities(Period.FIVE_MIN, triggerTime);
 
       expect(mockCollectorService.collectKForSource).toHaveBeenCalledTimes(2);
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -122,16 +122,6 @@ export class TdxCollectionStrategy implements IDataCollectionStrategy {
     this.logger.log(
       `Scheduled collection completed for ${period}: ${succeeded} succeeded, ${failed} failed`,
     );
-
-    if (failed > 0) {
-      results
-        .filter((r) => r.status === 'rejected')
-        .forEach((r) => {
-          this.logger.error(
-            `Collection failed: ${(r as PromiseRejectedResult).reason?.message || 'Unknown error'}`,
-          );
-        });
-    }
   }
 
   /**

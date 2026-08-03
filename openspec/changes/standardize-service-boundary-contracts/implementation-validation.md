@@ -22,6 +22,8 @@ The following checks passed on 2026-08-03:
 - service-boundary AST import guard suite: 9 tests passed, including side-effect import, dynamic import,
   CommonJS `require()` and TypeScript `import = require()` syntax, plus relative, `baseUrl` and absolute filesystem
   path resolution
+- collection-strategy logging suites: 2 suites and 13 tests passed; a failed scheduled security emits one
+  per-task error while the batch boundary retains only its aggregate success/failure summary
 - `openspec validate --all --strict --no-interactive --json`: 64/64 items passed, comprising 12 changes and 52
   stable specs
 - `git diff --check`
