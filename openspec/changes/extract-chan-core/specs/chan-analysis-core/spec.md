@@ -114,6 +114,25 @@ strings or `null` rather than JavaScript numbers.
 - **AND** it MUST map complete `ChanK` evidence to the retained public K VO shape
 - **AND** it MUST preserve `type`, `status`, nullable endpoint Fenxings and both phase arrays
 
+#### Scenario: A Channel is emitted
+- **WHEN** `createChannels` emits a `ChanChannel`
+- **THEN** it MUST contain the full contributing `bis`, `zg/zd/gg/dd`, `level`, `type`, `status`, `trend`,
+  boundary IDs and display IDs
+- **AND** `startId/endId/displayStartId/displayEndId` MUST identify raw K values rather than array positions
+- **AND** no algorithm or adapter MUST perform position arithmetic on those IDs
+
+#### Scenario: Current Channel scope is preserved
+- **WHEN** the current Channel algorithm runs after extraction
+- **THEN** it MUST continue to produce Bi-level complete Channels only
+- **AND** retaining the existing Duan-level and incomplete enum variants MUST NOT enable a new algorithm
+
+#### Scenario: Channel two-phase output is returned
+- **WHEN** `createChannels` completes its enumeration, extension, merge and filtering
+- **THEN** it MUST return both complete `phaseA` and `phaseB` arrays
+- **AND** Phase A MAY contain valid and invalid candidates
+- **AND** Phase B MUST contain the retained final valid Channels
+- **AND** the adapter MUST NOT recompute display IDs, flatten the result or omit either phase
+
 #### Scenario: A future Chan strength algorithm uses MACD or quantity
 - **WHEN** a future change defines Bi strength, divergence or volume-price analysis
 - **THEN** that change MAY derive a Chan-owned calculation from complete `ChanK` input

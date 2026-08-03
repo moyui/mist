@@ -17,14 +17,15 @@
   签名所需 types/enums；内部 services/helpers/Nest module 不导出，不新增 speculative `analyze()`。
 - [x] 1.8 确认 `ChanK` 完整输入为 `id/symbol/time/open/high/low/close/volume/amount`；量额是
   canonical decimal string/null，现有算法不启用 MACD/力度等新能力。
-- [ ] 1.9 向项目负责人评审各 ChanCore 输出类型和现有 HTTP VO 恢复规则。
+- [x] 1.9 向项目负责人评审各 ChanCore 输出类型和现有 HTTP VO 恢复规则。
   - [x] 1.9.1 确认 `ChanMergedK` 保留完整时间、算法 high/low、trend、count、IDs 和 `ChanK[]`；
     adapter 恢复现有 `highest/lowest` 与 K VO 外观。
   - [x] 1.9.2 确认 `ChanFenxing` 保留三组原始 K IDs、序列位置、极值 K identity、type 和
     `high/low`；adapter 恢复现有 `highest/lowest`。
   - [x] 1.9.3 确认 `ChanBi` 保留完整时间、范围、type/status、origin evidence、nullable Fenxing，
     并保留 Bi Phase A/Phase B。
-  - [ ] 1.9.4 确认 Channel 和 Channel Phase A/Phase B 输出。
+  - [x] 1.9.4 确认 `ChanChannel` 保留完整 bis、zone/extreme、enum/status/trend、真实 K 与 display
+    identities，并保留 Channel Phase A/Phase B；迁移时修正 ID 被误注释为索引的问题。
 - [ ] 1.10 向项目负责人逐项评审空输入、invalid-input、numeric comparison、mutation 和算法版本。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
@@ -35,6 +36,8 @@
 - [ ] 2.2 迁移 K merge、Trend、Fenxing、Bi Phase A/Phase B、Channel Phase A/Phase B 与纯 helpers，
   保持已批准的输入输出和算法语义，且不得把宽笔距离恢复为数据库 K ID 算术。
 - [ ] 2.3 用 library-owned types 替代 DTO/VO/Entity 输入，adapter 显式完成双向映射。
+- [ ] 2.3.1 修正 Channel core/HTTP 类型中 `startId/endId` 的注释：二者是原始 K identity，不是索引；
+  保持字段名和 HTTP wire contract 不变。
 - [ ] 2.4 建立最小 public barrel；contract test 拒绝导出内部算法实现、helpers、Nest module 或
   `analyze()`。
 - [ ] 2.5 为完整 `ChanK` 建立 adapter mapping 与 decimal-string/null preservation tests；证明当前算法

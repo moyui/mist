@@ -55,6 +55,8 @@ mist-fe / mist-skills
   `middleOriginId`、type 和标准 `high/low`；不复制完整 K，不新增 time，HTTP 恢复 `highest/lowest`。
 - `ChanBi` 保留首尾时间、算法 high/low、trend、独立 type/status、origin IDs、完整 `ChanK[]` 和
   nullable 首尾分型；完整/未完成的 null 语义保持现状，Bi Phase A/Phase B 均对外保留。
+- `ChanChannel` 保留完整 bis、`zg/zd/gg/dd`、level/type/status/trend、首尾与 display K identity；
+  Channel Phase A/Phase B 均保留，现有 `startId/endId` 的“索引”错误注释在迁移时修正。
 - 完整行情输入只为后续 Chan 演进留出边界；本 change 不增加笔力度、背驰、量价或 MACD 算法，
   也不导入公共 IndicatorService/Strategy evaluator。
 - Backtest/Realtime 通过 StrategyMarketDataPort + shared evaluator 计算 KDJ/MACD，不依赖 ChanCore 或
@@ -77,6 +79,6 @@ mist-fe / mist-skills
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
 - full-output fingerprint 还需纳入非连续 K ID、唯一端点解析和宽笔 position-distance 回归场景；
 - `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
-- output 字段与 error/numeric/mutation/version contract 未确认。
+- output 字段已确认；error/numeric/mutation/version contract 未确认。
 
 以上门禁完成前不得移动 source files。

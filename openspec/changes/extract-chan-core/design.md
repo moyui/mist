@@ -175,6 +175,43 @@ identity，不能改成序号或要求 adapter 临时重建。`independentCount`
 adapter 不得压扁、合并或只返回其中一阶段；Channel 计算固定消费 Bi Phase B。HTTP adapter 递归映射
 `high/low → highest/lowest`，并把完整 `ChanK` 映射成当前 `KVo` 外观。
 
+`createChannels` 的 library-owned 输出固定为：
+
+```ts
+interface ChanChannel {
+  bis: ChanBi[];
+  zg: number;
+  zd: number;
+  gg: number;
+  dd: number;
+  level: ChannelLevel;
+  type: ChannelType;
+  status: ChannelStatus;
+  trend: TrendDirection;
+  startId: number;
+  endId: number;
+  displayStartId: number;
+  displayEndId: number;
+}
+
+interface ChanChannelTwoPhaseResult {
+  phaseA: ChanChannel[];
+  phaseB: ChanChannel[];
+}
+```
+
+`bis` 保留构成中枢的完整笔序列；`zg/zd` 是重叠区间上下沿，`gg/dd` 是整个中枢覆盖范围极值。
+这些名称是 Chan domain contract，不改写成 `high/low`。当前算法只生成 `level=bi`、
+`type=complete`，但保留现有 `bi|duan` 和 `complete|uncomplete` 枚举，不在抽取时增加段级或未完成
+中枢算法。Phase A 可以包含 `Valid/Invalid`，Phase B 只保留最终 `Valid` 中枢。
+
+当前 `ChannelVo` 把 `startId/endId` 注释为 K 线索引，但实现写入的是中枢首尾原始 K 的真实 identity；
+`displayStartId/displayEndId` 同样是为绘制选择的原始 K identity。core 和 HTTP V1 保留现有字段名，
+但必须修正注释并禁止对这些 ID 做位置差计算。display identity 仍由算法生成，adapter 不重新计算。
+
+`phaseA` 保留枚举出的基础中枢，`phaseB` 保留延伸、合并和过滤后的最终中枢。adapter 必须保留两个
+完整数组，不得压扁结果或只返回 Phase B。
+
 adapter 负责 HTTP DTO、日期解析、source 选择、TypeORM K/Security 查询、升序与有限值校验、
 library input mapping、HTTP VO/OpenAPI 和错误映射。ChanCore 不访问数据库、Redis、HTTP、环境变量
 或 Nest controller，不写入 Chan persistence。
