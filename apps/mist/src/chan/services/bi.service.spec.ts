@@ -10,10 +10,15 @@ import { BiVo } from '../vo/bi.vo';
 import { FenxingVo } from '../vo/fenxing.vo';
 import { MergedKVo } from '../vo/merged-k.vo';
 
-const createK = (id: number, highest: number, lowest: number): KVo => ({
+const createK = (
+  id: number,
+  highest: number,
+  lowest: number,
+  timeIndex: number = id,
+): KVo => ({
   id,
   symbol: 'TEST',
-  time: new Date(Date.UTC(2026, 0, id)),
+  time: new Date(Date.UTC(2026, 0, timeIndex)),
   amount: String(id * 100),
   open: lowest + 1,
   close: highest - 1,
@@ -95,6 +100,64 @@ const publicBiFields = (bi: BiVo) => ({
   highest: bi.highest,
   lowest: bi.lowest,
   originIds: bi.originIds,
+  independentCount: bi.independentCount,
+  startFenxingType: bi.startFenxing?.type ?? null,
+  endFenxingType: bi.endFenxing?.type ?? null,
+});
+
+const createWidthBi = (
+  ids: number[],
+  startPosition: number = 0,
+  endPosition: number = ids.length - 1,
+): BiVo => {
+  const originData = ids.map((id, position) =>
+    createK(id, 20 + position, 10 + position, position + 1),
+  );
+  const startId = ids[startPosition];
+  const endId = ids[endPosition];
+  const startFenxing: FenxingVo = {
+    type: FenxingType.Bottom,
+    highest: 12,
+    lowest: 8,
+    leftIds: [-101],
+    middleIds: [startId],
+    rightIds: [-102],
+    middleIndex: startPosition,
+    middleOriginId: startId,
+  };
+  const endFenxing: FenxingVo = {
+    type: FenxingType.Top,
+    highest: 24,
+    lowest: 20,
+    leftIds: [-201],
+    middleIds: [endId],
+    rightIds: [-202],
+    middleIndex: endPosition,
+    middleOriginId: endId,
+  };
+
+  return {
+    startTime: originData[startPosition].time,
+    endTime: originData[endPosition].time,
+    highest: 24,
+    lowest: 8,
+    trend: TrendDirection.Up,
+    type: BiType.Complete,
+    status: BiStatus.Unknown,
+    independentCount: originData.length,
+    originIds: [...ids],
+    originData,
+    startFenxing,
+    endFenxing,
+  };
+};
+
+const nonIdentityWidthFields = (bi: BiVo) => ({
+  trend: bi.trend,
+  type: bi.type,
+  status: bi.status,
+  highest: bi.highest,
+  lowest: bi.lowest,
   independentCount: bi.independentCount,
   startFenxingType: bi.startFenxing?.type ?? null,
   endFenxingType: bi.endFenxing?.type ?? null,
@@ -211,6 +274,59 @@ describe('BiService', () => {
       independentCount: 8,
       startFenxing: null,
       endFenxing: null,
+    });
+  });
+
+  describe('wide Bi distance', () => {
+    it('rejects adjacent raw K values even when their database IDs are far apart', () => {
+      const bi = createWidthBi([10, 1000]);
+
+      expect(service['isBiWideEnough'](bi)).toBe(false);
+    });
+
+    it('uses exactly three intervening raw K values as the width boundary', () => {
+      const exactlyThree = createWidthBi([10, 700, 30, 900, 50]);
+      const onlyTwo = createWidthBi([10, 700, 30, 900]);
+
+      expect(service['isBiWideEnough'](exactlyThree)).toBe(true);
+      expect(service['isBiWideEnough'](onlyTwo)).toBe(false);
+    });
+
+    it('keeps validity independent from database ID spacing while preserving identities', () => {
+      const consecutive = createWidthBi([1, 2, 3, 4]);
+      const interleaved = createWidthBi([101, 9000, 305, 70000]);
+
+      consecutive.status = service['isCandidateBiValid'](consecutive)
+        ? BiStatus.Valid
+        : BiStatus.Invalid;
+      interleaved.status = service['isCandidateBiValid'](interleaved)
+        ? BiStatus.Valid
+        : BiStatus.Invalid;
+
+      expect(nonIdentityWidthFields(interleaved)).toEqual(
+        nonIdentityWidthFields(consecutive),
+      );
+      expect(consecutive.originIds).toEqual([1, 2, 3, 4]);
+      expect(interleaved.originIds).toEqual([101, 9000, 305, 70000]);
+      expect(interleaved.startFenxing?.middleOriginId).toBe(101);
+      expect(interleaved.endFenxing?.middleOriginId).toBe(70000);
+    });
+
+    it('rejects a missing Fenxing endpoint identity as an invariant failure', () => {
+      const bi = createWidthBi([10, 20, 30, 40, 50]);
+      bi.endFenxing!.middleOriginId = 999;
+
+      expect(() => service['isBiWideEnough'](bi)).toThrow(
+        'Wide Bi invariant failed',
+      );
+    });
+
+    it('rejects a duplicated Fenxing endpoint identity as an invariant failure', () => {
+      const bi = createWidthBi([10, 20, 30, 20, 50], 1, 4);
+
+      expect(() => service['isBiWideEnough'](bi)).toThrow(
+        'Wide Bi invariant failed',
+      );
     });
   });
 
