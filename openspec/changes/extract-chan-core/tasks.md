@@ -1,8 +1,8 @@
 ## 1. 范围与契约门禁
 
 - [x] 1.1 盘点当前 Trend、K merge、Fenxing、Bi、Channel、pure helpers/enums/types 和 tests。
-- [x] 1.2 确认本 change 只交付 `libs/chancore`；现有 API、K reader、IndicatorModule、route owner、gateway
-  与跨 app import 清理均不属于本 change。
+- [x] 1.2 确认本 change 交付 `libs/chancore`，并按后续批准同步 K/Chan HTTP `high/low` 输出；K reader、
+  IndicatorModule、route owner、gateway 与跨 app import 清理均不属于本 change。
 - [x] 1.3 确认 pure library 为 `libs/chancore`、Nest project `chancore`、import `@app/chancore`。
 - [x] 1.4 确认 public facade 只含 `mergeK/findFenxings/createBi/createChannels`、签名 types/enums、
   `ChanInputError/ChanInvariantError` 和 `algorithmVersion=1`，不含 internal helpers/Nest module/analyze。
@@ -13,8 +13,8 @@
   core，不修改相关 runtime/spec prerequisite。
 - [x] 1.8 建立完整 raw K → merged K → Fenxing/Bi/Channel characterization fixture 与 full-output
   fingerprint；纳入已归档 `fix-chan-wide-bi-distance` 的非连续 K ID、唯一端点和 position-distance。
-- [x] 1.9 在 source move 前复核全部接受的 contract 已写入 design/specs，且不存在 API/K-reader/deploy
-  实施项。
+- [x] 1.9 在 source move 前复核全部 core contract 已写入 design/specs；后续批准的 HTTP 字段迁移单独
+  进入 3.5–3.8，仍不存在 K-reader/deploy 实施项。
 
 ## 2. Pure ChanCore
 
@@ -39,19 +39,27 @@
 
 - [x] 3.1 现有 Chan algorithm services 改为调用 `@app/chancore` 的薄 wrapper，或由现有调用点直接调用
   library；不得复制核心算法。
-- [x] 3.2 wrapper 只做现有调用形状所需的输入/输出映射，不能 mutation core output 或改变既有 API
-  response；原 API 的 Controller/DTO/VO/OpenAPI/K reader/module/route ownership 保持原样。
-- [x] 3.3 证明 `apps/chan`、`apps/mist`、`/v1/chan/*`、`/v1/indicators/*`、gateway、frontend 和 skills
-  contract 没有因本 change 发生变化。
+- [x] 3.2 wrapper 只做现有调用形状所需的输入/输出映射，不能 mutation core output；该阶段先保持原
+  API response，后续批准的 breaking field migration 由 3.5–3.8 持有。
+- [x] 3.3 证明 core source move 本身没有改变 `apps/chan`、`apps/mist`、gateway、frontend 和 skills；
+  后续 HTTP field migration 的消费者影响按 3.8 单独记录。
 - [x] 3.4 证明当前 Backtest、Realtime、Signal/Alert 和 Strategy evaluator 没有被增加 ChanCore
   prerequisite；未来 adoption 由独立 owning change 负责。
+- [ ] 3.5 将 `/v1/indicators/k` 与四个 `/v1/chan/*` response VO、mapper 和递归嵌套输出统一为
+  `high/low`，删除 `highest/lowest` 且不保留 alias。
+- [ ] 3.6 修正 merge-k/fenxing/bi/channel 的 OpenAPI response type，并增加字段存在与旧字段缺失的
+  contract tests。
+- [ ] 3.7 证明数据库 entity/column、migration、K reader、Chan algorithm output value 与
+  `algorithmVersion` 均未改变。
+- [ ] 3.8 盘点 `mist-fe`、`mist-skills` 消费者并记录 matching-version 发布门禁；本批不修改其代码，
+  消费者迁移完成前不得部署 breaking backend contract。
 
 ## 4. 验证与交付
 
-- [x] 4.1 运行 Chan 定向、full-output differential、public barrel、pure-boundary 和 legacy API regression
-  tests。
+- [x] 4.1 运行 Chan 定向、full-output differential、public barrel、pure-boundary 和 source-move API
+  regression tests；HTTP 字段迁移后按 3.6/4.2 重跑 canonical contract regression。
 - [x] 4.2 运行全量 lint、typecheck、test、build 和 `ci:contracts`。
 - [x] 4.3 检索 `libs/chancore` 的 TypeORM/Redis/HTTP/Nest/env/persistence imports 和旧算法重复实现。
-- [x] 4.4 执行 strict OpenSpec、`git diff --check`，记录未来 Chan strategy adoption、现有 API cleanup、
-  公共 Indicator/K API 重构为 residual work。
+- [x] 4.4 执行首次 strict OpenSpec、`git diff --check`，记录未来 Chan strategy adoption、route/app
+  cleanup、公共 Indicator/K API 重构为 residual work；HTTP 字段迁移后必须再次执行。
 - [ ] 4.5 向项目负责人审阅 differential 与 validation evidence 后才归档。

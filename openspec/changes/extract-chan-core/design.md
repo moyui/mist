@@ -1,8 +1,9 @@
 ## Context
 
 当前 Trend、K merge、Fenxing、Bi 和 Channel 算法依赖 Nest service、HTTP DTO/VO 与应用目录，无法被
-Backtest、Realtime、Signal/Alert 或其他计算单元作为 pure library 复用。本 change 只解决这一计算
-边界，不处理当前 `chan-api`/`mist-backend` 的 HTTP、K reader 或 module owner。
+Backtest、Realtime、Signal/Alert 或其他计算单元作为 pure library 复用。本 change 解决这一计算
+边界，并按项目负责人后续确认将现有 K/Chan HTTP 输出中的 `highest/lowest` 一并收敛为 `high/low`；
+K reader、module owner 和 route ownership 不变。
 
 Strategy runtime 已有另一条边界：Backtest/Signal 通过 `StrategyMarketDataPort` 获取 canonical
 `StrategyBar`，共享 Strategy evaluator 按 field catalog 计算 KDJ/MACD。当前 active V1 不开放
@@ -17,6 +18,7 @@ Strategy runtime 已有另一条边界：Backtest/Signal 通过 `StrategyMarketD
 - 为后续 Backtest、Realtime、Signal/Alert 等 owning change 提供直接 library 调用边界。
 - 保持当前 Chan 算法，并在 source move 前固定 input/output、错误、mutation、版本和 differential
   contracts。
+- 让 Mist-owned database、ChanCore 与当前 K/Chan HTTP 输出使用同一组 `high/low` 价格字段词汇。
 
 **Non-Goals:**
 
@@ -24,8 +26,9 @@ Strategy runtime 已有另一条边界：Backtest/Signal 通过 `StrategyMarketD
 - 不修改 Strategy KDJ/MACD、field catalog、窗口或 evaluator；这些由
   `evolve-strategy-evaluation-contract` 持有。
 - 不新增公共统一 K API，不让 Chan 使用 `StrategyMarketDataPort`。
-- 不修改现有 `chan-api`/`mist-backend` Controller、DTO/VO、OpenAPI、K reader、module、route owner、
-  `/v1/indicators/*`、gateway、frontend、skills、deploy 或跨 app import。
+- 不修改 K reader、module、route owner、gateway、deploy 或跨 app import；除 `/v1/indicators/k` 外不改
+  其他 Indicator API。
+- 不在本批修改 frontend 或 skills；它们必须在匹配消费者批次中迁移后，backend breaking contract 才能部署。
 - 不修订 Chan 算法、不新增买卖点、不写 Chan 表。
 
 ## Decisions
@@ -88,7 +91,7 @@ Bi 和 Channel 的判断行为保持不变；`open/close/volume/amount` 为未�
 `number`。`source/period/securityId/type` 仍由 application request/query context 持有，不重复塞进每根
 `ChanK`。Backtest/realtime 的 caller 必须使用共享 `KPriceProjector` 准备 finite-number OHLC 后再做
 薄映射；ChanCore 不读取 MySQL/Redis、不解析 fixed-scale database string，也不拥有存储迁移。现有
-Chan HTTP API 的旧读取路径不属于本 change。
+Chan HTTP 读取路径继续由 application 持有，只有其输出字段名在本 change 中同步为 `high/low`。
 
 `mergeK` 的 library-owned 输出固定为：
 
@@ -111,8 +114,8 @@ interface ChanMergedK {
 V1 继续显式保留。`mergedData` 保留完整 `ChanK`，使后续 focused strength change 不需要从不完整输出
 重新补行情字段。
 
-core 使用标准 `high/low`；需要保留 `highest/lowest` 的现有调用可以在自己的薄 wrapper 中显式映射，
-本 change 不修改其 HTTP VO。以后若 Chan 用 MACD 判断笔力度，focused change 应从 `close` 派生
+core 与 HTTP VO 统一使用标准 `high/low`；薄 wrapper 不再恢复 `highest/lowest`，也不提供双字段 alias。
+以后若 Chan 用 MACD 判断笔力度，focused change 应从 `close` 派生
 Chan-owned calculation 并固定参数、版本和输出；它不能直接导入公共 IndicatorService 或 Strategy
 evaluator，也不能在本次 source move 中顺手加入。wrapper 的窄输出不得反向导致 ChanCore 从
 `mergedData` 删除完整 `ChanK` 字段。
@@ -138,8 +141,8 @@ interface ChanFenxing {
 范围；底分型的 `low` 来自中间最低点、`high` 来自左右范围。
 
 V1 不向 `ChanFenxing` 复制三组完整 K 或新增 `time`；算法可使用同一轮上游 `ChanMergedK` 和这些
-identity 找到原始行情。现有调用若需要 `highest/lowest`，由其薄 wrapper 映射。极值相等时
-`middleOriginId` 的选择按后述 numeric/tie-breaking contract 固定。
+identity 找到原始行情。HTTP 输出直接使用 core 的 `high/low`。极值相等时 `middleOriginId` 的选择按
+后述 numeric/tie-breaking contract 固定。
 
 `createBi` 的 library-owned 输出固定为：
 
@@ -238,15 +241,20 @@ Bi characterization 必须固定以下语义：宽笔起止端点在当前候选
 先盘点每个现有字段究竟由算法还是 HTTP 输出消费，再以行为保持为目标定义 library-owned types。
 未来 Realtime Chan 若需要临时 ordinal，必须在对应 focused change 中重新评审。
 
-### 5. 现有 API 与应用装配不属于本 change
+### 5. API 只收敛价格字段，不改变应用装配
 
-本 change 不决定 `chan-api`、`mist-backend`、`/v1/chan/*`、`/v1/indicators/*`、K reader、Controller、
-DTO/VO、OpenAPI、Nest module、gateway 或跨 app import 的 owner 和迁移方式。所有现有公共接口保持
-原样；本 change 也不修正其已有空结果、错误或重复 route 行为。
+本 change 保持 `chan-api`、`mist-backend`、K reader、Nest module、gateway、route owner、请求 DTO、
+时间/identity、phase、错误和空结果语义不变。唯一批准的公共 breaking change 是：
 
-旧 Chan algorithm service 在避免保留第二份算法的前提下，可以成为调用 `@app/chancore` 的薄 wrapper。
-该 wrapper 只做当前调用形状所需的输入/输出映射，不扩展为新的共享 adapter framework。任何 API
-重构、route cleanup、统一 K query 或 app ownership 调整都必须由后续 focused change 负责。
+- `/v1/indicators/k` 的 K item 使用 `high/low`；
+- `/v1/chan/merge-k`、`fenxing`、`bi`、`channel` 的所有价格区间字段使用 `high/low`；
+- `mergedData`、`originData`、`startFenxing/endFenxing` 和 Channel `bis` 内的嵌套结构递归遵循同一规则；
+- OpenAPI 必须声明真实 response VO，且不得继续暴露 `highest/lowest`；
+- 不接受或返回兼容 alias，不修改 `zg/zd/gg/dd` 等 Chan 领域名。
+
+Chan service 在避免保留第二份算法的前提下继续作为调用 `@app/chancore` 的薄 HTTP wrapper，只负责
+fresh-object/Date 映射。API route cleanup、统一 K query 或 app ownership 调整仍由后续 focused change
+负责。`mist-fe` 和 `mist-skills` 由独立批次迁移；它们未完成前不得部署本 backend breaking contract。
 
 ### 6. 空 K 是合法零结果，不是 invalid input
 
@@ -260,8 +268,8 @@ createChannels([])  // { phaseA: [], phaseB: [] }
 ```
 
 非空但不足以形成某级 Chan 图形时同样返回算法自然产生的空数组或未完成笔，不抛出“数据不足”异常。
-这是 pure core contract，不授权修改现有 HTTP API 的空结果或错误映射；旧 wrapper 必须继续保持其
-已有外部行为，未来 API correction 另开 change。
+这是 pure core contract；HTTP wrapper 除批准的 `high/low` 字段迁移外，必须继续保持已有空结果和
+错误行为。
 
 ### 7. facade 统一验证输入，不纠正调用方数据
 
@@ -353,11 +361,13 @@ characterization evidence 固定记录 `algorithmVersion + input fixture + expec
 - [DTO/VO/HttpException 泄漏入 core] → library-owned contract 与 pure-boundary tests。
 - [抽取改变 Phase B 或对象引用行为] → 完整 fingerprint、mutation test 和 differential evidence。
 - [重新把 Strategy indicators 并入 Chan base] → active Strategy changes 明确改为 evaluator-owned calculation。
-- [顺手重构原 API 扩大范围] → tasks/contract 明确排除 route、K reader、module、gateway 和 app ownership。
+- [字段迁移扩大为 route/app 重构] → tasks/contract 只批准输出字段和 OpenAPI，继续排除 route、K reader、
+  module、gateway 和 app ownership。
 - [自动修复无序或重复 K 掩盖调用方错误] → 单一 facade validator 与 fail-closed contract tests。
 - [DB fixed-scale decimal 被误判为非规范] → 覆盖 `0.00000000`、8 位小数和非法 exponent/number。
 - [抽取时“修复精度”改变边界结果] → 锁定 strict/non-strict、first-wins 和 equal-boundary fixtures。
-- [wrapper 为改字段名直接 mutation core output] → readonly contracts、fresh mapping 与 frozen-input tests。
+- [wrapper 为输出 VO 直接 mutation core output] → readonly contracts、fresh mapping 与 frozen-input tests。
+- [backend 先于消费者部署] → OpenSpec 记录 matching-version gate，frontend/skills 未迁移前不部署。
 - [深拷贝完整 evidence 放大内存] → 允许共享 immutable `ChanK`，不承诺引用身份、不 runtime freeze。
 - [算法变化仍沿用同一版本] → version/fingerprint 同 change 门禁和 explicit bump tests。
 
@@ -367,10 +377,12 @@ characterization evidence 固定记录 `algorithmVersion + input fixture + expec
 2. 逐项确认 library、types、error/numeric/mutation/version contracts。
 3. 建立完整 pre-move fingerprint。
 4. 将 K merge、Fenxing、Bi、Channel 算法移动到 pure ChanCore，不保留第二份算法。
-5. 现有调用点直接调用 library 或保留薄 wrapper，公共 API 与 app 装配不变。
-6. 运行 differential、pure-boundary、legacy regression、build 与 strict OpenSpec gates。
-7. Strategy adoption、API/app ownership、公共 Indicator/K 重构作为 residual changes，不混入本次抽取。
+5. 现有调用点直接调用 library 或保留薄 wrapper；将 K/Chan HTTP VO、mapper 与 OpenAPI 统一成
+   `high/low`，删除 `highest/lowest` 且不保留 alias。
+6. 运行 differential、pure-boundary、HTTP contract regression、build 与 strict OpenSpec gates。
+7. 记录 frontend/skills matching-version 发布门禁；Strategy adoption、API/app ownership、公共
+   Indicator/K 重构继续作为 residual changes。
 
 ## Open Questions
 
-无。现有 API 与应用装配已明确排除；剩余工作是 characterization 和实施。
+无。`high/low` breaking contract 已由项目负责人确认；frontend/skills 仍按独立批次迁移。

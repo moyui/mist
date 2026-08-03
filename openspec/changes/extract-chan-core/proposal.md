@@ -24,8 +24,10 @@ Nest service、HTTP DTO/VO 与应用代码中，Backtest、Realtime、Signal/Ale
   数据库 K ID 差值。
 - 固定已逐项批准的 output、empty result、invalid input、number comparison、readonly mutation 和
   algorithm-version contract，并以 full-output differential fingerprint 防止纯抽取改变行为。
-- 现有 Chan service 若需要继续承载旧 API，只能作为调用 `@app/chancore` 的薄兼容 wrapper；wrapper
-  可以完成现有 `highest/lowest` 等形状映射，但不得复制算法实现。
+- 现有 Chan service 作为调用 `@app/chancore` 的薄 HTTP wrapper，不得复制算法实现；Mist-owned K 与
+  Chan HTTP 输出统一使用 `high/low`，删除 `highest/lowest` 旧字段且不提供双字段兼容。
+- 同步修正 `/v1/indicators/k`、`/v1/chan/merge-k`、`/v1/chan/fenxing`、`/v1/chan/bi` 和
+  `/v1/chan/channel` 的 VO、OpenAPI 与递归嵌套输出；数据库 `k.high/k.low`、算法语义和 route 不变。
 - Backtest、Realtime、Signal/Alert 或其他计算单元未来可直接调用 `@app/chancore`，也可在自己的
   bounded context 增加薄 wrapper；只有对应 owning change 明确采用时才形成依赖。
 - 当前 active Backtest/Realtime V1 仍不开放 `chan.*`，因此本 change 不把 ChanCore 反向加入它们的
@@ -36,6 +38,7 @@ Nest service、HTTP DTO/VO 与应用代码中，Backtest、Realtime、Signal/Ale
 ### New Capabilities
 
 - `chan-analysis-core`: 定义可被同仓计算单元直接复用的 pure ChanCore 边界。
+- `chan-analysis-http-contract`: 统一现有 K/Chan HTTP 价格区间字段及 OpenAPI 契约。
 
 ### Modified Capabilities
 
@@ -43,15 +46,20 @@ Nest service、HTTP DTO/VO 与应用代码中，Backtest、Realtime、Signal/Ale
   未来 runtime 只有显式采用 Chan field 时才依赖 ChanCore。
 - `strategy-platform-roadmap`: 删除当前 Backtest/Realtime V1 对 ChanCore 的伪前置依赖，同时保留未来
   focused adoption change 的入口。
+- `chan-derived-analysis-lifecycle`: 允许经批准的 `highest/lowest → high/low` HTTP 字段迁移，同时保持
+  请求时派生、无 Chan persistence 和算法结果不变。
+- `chan-bi-algorithm-hygiene`: 区分算法值稳定与经批准的公共字段命名调整。
 
 ## Impact
 
-- **`mist`**：新增 `libs/chancore`、`@app/chancore` 和 pure tests；现有 Chan 算法 service 可改成薄
-  wrapper，但不能保留第二份算法。
+- **`mist`**：新增 `libs/chancore`、`@app/chancore` 和 pure tests；现有 Chan 算法 service 改成薄
+  wrapper，并将 K/Chan HTTP 输出统一为 `high/low`，不能保留第二份算法或旧字段 alias。
 - **Backtest/Realtime/Signal/Alert**：获得可直接调用的 pure library；本 change 不修改当前 active V1
   specs、runtime 或部署依赖。
 - **算法基线**：依赖已归档 `fix-chan-wide-bi-distance`；differential fixture 覆盖非连续 K ID 与序列
   位置计数。
-- **明确不包含**：现有 `chan-api`/`mist-backend` route ownership、Controller/DTO/VO/OpenAPI、TypeORM
-  K reader、`/v1/indicators/*`、gateway/frontend/skills、跨 app import 清理、统一 K API、数据库 migration、
-  Chan persistence、买卖点、力度/MACD 新算法及部署拓扑。
+- **消费者发布门禁**：`mist-fe` 与 `mist-skills` 的字段迁移由各自后续批次完成；匹配版本完成前不得部署
+  本 breaking backend contract，也不增加 `highest/lowest` 兼容字段。
+- **明确不包含**：现有 route ownership、TypeORM K reader、除 `/v1/indicators/k` 外的 Indicator API、
+  gateway/frontend/skills 实现、跨 app import 清理、统一 K API、数据库 migration、Chan persistence、
+  买卖点、力度/MACD 新算法及部署拓扑。
