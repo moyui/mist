@@ -45,8 +45,8 @@ mist-fe / mist-skills
 - Trend、K merge、Fenxing、Bi、Channel 和纯 helpers/enums/types 进入 ChanCore；Controller、HTTP
   DTO/VO、OpenAPI、日期/source 解析与 TypeORM K read 留在 application adapter。
 - public barrel 只导出无状态 `ChanCore.mergeK/findFenxings/createBi/createChannels` 和签名所需
-  algorithm-owned types/enums；内部 services/helpers/Nest module 不导出，不增加 speculative
-  `analyze()`。
+  algorithm-owned types/enums 及已批准的 `ChanInputError/ChanInvariantError`；内部
+  services/helpers/Nest module 不导出，不增加 speculative `analyze()`。
 - `ChanK` 固定为完整 `id/symbol/time/open/high/low/close/volume/amount`；量额保持 canonical decimal
   string/null，core 使用 `high/low`，adapter 保持现有 HTTP `highest/lowest`。
 - `ChanMergedK` 保留 `startTime/endTime/high/low/trend/mergedCount/mergedIds/mergedData`；
@@ -67,6 +67,10 @@ mist-fe / mist-skills
   是明确批准的 HTTP 行为修正。
 - pure core 的四个 facade 对空 K 分别返回 `[]`、`[]`、空 Bi 两阶段和空 Channel 两阶段；HTTP
   `/v1/chan/channel` 不再把内部空 Bi 暴露为 400。
+- facade 使用同一个 private validator 拒绝重复 identity、跨 symbol、非严格递增/非法时间、非有限
+  OHLC、`high < low` 和非法 decimal/null；不排序、转换或补值。MySQL fixed-scale 尾随零合法。
+- `ChanInputError/ChanInvariantError` 不携带 HTTP 语义；query DTO 仍可为 400，DB-derived input 或算法
+  invariant 错误作为内部错误传播，不能改成空结果或用户 400。
 - “现有 Chan 算法”以已归档宽笔修复后的行为为准：独立 K 数量按候选 `originData` 的序列位置差
   计算，不按数据库 K ID 差计算；端点缺失或重复继续作为 invariant failure。
 
@@ -82,6 +86,6 @@ mist-fe / mist-skills
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
 - full-output fingerprint 还需纳入非连续 K ID、唯一端点解析和宽笔 position-distance 回归场景；
 - `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
-- output 与 empty-result contract 已确认；invalid-input/numeric/mutation/version contract 未确认。
+- output、empty-result 与 invalid-input contract 已确认；numeric/mutation/version contract 未确认。
 
 以上门禁完成前不得移动 source files。

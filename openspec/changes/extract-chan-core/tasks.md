@@ -29,7 +29,9 @@
 - [ ] 1.10 向项目负责人逐项评审空输入、invalid-input、numeric comparison、mutation 和算法版本。
   - [x] 1.10.1 确认四个 core facade 对空 K 返回合法零结果；不足数据返回自然空结果或未完成笔；
     `/v1/chan/channel` 不再把内部空 Bi 暴露成 400。
-  - [ ] 1.10.2 确认 invalid-input、numeric comparison、mutation 和算法版本。
+  - [x] 1.10.2 确认 facade 单一 validator、序列/identity/OHLC/decimal contract、无自动修复、纯
+    `ChanInputError/ChanInvariantError` 和 HTTP 内部错误传播边界。
+  - [ ] 1.10.3 确认 numeric comparison、mutation 和算法版本。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
 ## 2. Pure ChanCore
@@ -43,6 +45,9 @@
   保持字段名和 HTTP wire contract 不变。
 - [ ] 2.4 建立最小 public barrel；contract test 拒绝导出内部算法实现、helpers、Nest module 或
   `analyze()`。
+- [ ] 2.4.1 实现 facade-private `assertChanKSeries()` 和 public `ChanInputError/ChanInvariantError`；
+  覆盖 duplicate ID/time、跨 symbol、invalid Date、NaN/Infinity、`high < low`、MySQL fixed-scale
+  decimal、非法 exponent/number/scale，并证明不排序、不转换、不补值。
 - [ ] 2.5 为完整 `ChanK` 建立 adapter mapping 与 decimal-string/null preservation tests；证明当前算法
   不因新增可用字段改变结果。
 - [ ] 2.6 用 full-output differential fixtures 证明结构、枚举、顺序、日期、数值与 mutation contract。

@@ -57,7 +57,8 @@ library contract。
 - `ChanCore.findFenxings(orderedK)`；
 - `ChanCore.createBi(orderedK)`；
 - `ChanCore.createChannels(orderedK)`；
-- 上述签名实际需要的 algorithm-owned input/output types 和 enums。
+- 上述签名实际需要的 algorithm-owned input/output types、enums，以及已批准的
+  `ChanInputError/ChanInvariantError`。
 
 四个方法都从同一份原始有序 `ChanK[]` 开始；`findFenxings` 和 `createBi` 在内部完成 K merge，
 `createChannels` 在内部完成 K merge、Bi 计算并固定消费 Bi Phase B。public barrel 不导出 Trend、
@@ -273,6 +274,33 @@ createChannels([])  // { phaseA: [], phaseB: [] }
 这是本 change 唯一批准的 HTTP 行为修正；其他响应、错误、URL 和 OpenAPI contract 仍按行为保持
 门禁执行。
 
+### 7. facade 统一验证输入，不纠正调用方数据
+
+每个 public facade 在进入内部算法前复用同一个 private `assertChanKSeries()`；组合操作只验证一次，
+内部方法不得层层重复验证。validator/helper 本身不从 public barrel 导出。
+
+非空序列必须满足：
+
+- 每个 `id` 是正 safe integer，并在本序列内唯一；不要求 ID 连续或递增；
+- 每个 `symbol` 是非空字符串，且整批数据属于同一 symbol；
+- 每个 `time` 是有效 `Date`，相邻 K 的时间严格递增；
+- OHLC 都是 finite number，且 `high >= low`，允许一字 K；
+- `volume/amount` 是 `null` 或 `DECIMAL(36,8)` 可表示的精确十进制字符串：最多 28 位整数和 8 位
+  小数，不接受 whitespace、科学计数法或 JavaScript number；
+- MySQL DECIMAL materialization 的固定 scale 尾随零合法，例如 `"0.00000000"`，不能用“必须等于
+  `normalizeKDecimal()` 输出”作为 lexical validator。
+
+本 change 不增加 `open/close` 必须落在 `[low, high]`、价格必须大于零、量额必须非负等 provider
+plausibility 规则；当前持久化链路没有建立这些更强契约，抽取不能据此拒绝存量数据。
+
+validator 禁止自动 `Number()`/`String()`、排序、去重、过滤或 forward-fill。调用方契约错误抛出纯
+`ChanInputError`，通过验证后出现算法不可能状态抛出纯 `ChanInvariantError`。两种类型作为 throw
+contract 从 `@app/chancore` 导出，但不得包含 HTTP status、Nest 类型或任意 persistence error。
+
+当前 Chan HTTP 只接受 query DTO 而不直接接受 K。query DTO 错误仍由 adapter 映射为真实 400；
+DB 映射后的 K 若触发 `ChanInputError`，或者算法触发 `ChanInvariantError`，都属于内部数据/程序错误，
+必须按原始分类向上层传播并记录，不能捕获成 400、空结果或 business rejection。
+
 ## Risks / Trade-offs
 
 - [只移动算法但保留 app import] → route/adapter owner 先于 source move 审批，guard test 最终删除精确
@@ -282,6 +310,8 @@ createChannels([])  // { phaseA: [], phaseB: [] }
 - [抽取改变 Phase B 或对象引用行为] → 完整 fingerprint、mutation test 和 differential evidence。
 - [重新把 Strategy indicators 并入 Chan base] → active Strategy changes 明确改为 evaluator-owned calculation。
 - [把空历史误判为非法请求] → core/HTTP 空结果 fixtures 与 error-governance contract test。
+- [自动修复无序或重复 K 掩盖调用方错误] → 单一 facade validator 与 fail-closed contract tests。
+- [DB fixed-scale decimal 被误判为非规范] → 覆盖 `0.00000000`、8 位小数和非法 exponent/number。
 
 ## Migration Plan
 
@@ -298,4 +328,4 @@ createChannels([])  // { phaseA: [], phaseB: [] }
 
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
 - 各 ChanCore 输出类型的最小现有字段集合，以及 HTTP adapter 如何恢复当前 VO。
-- 非法有限值、mutation、算法版本和 numeric comparison 规则。
+- mutation、算法版本和 numeric comparison 规则。

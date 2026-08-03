@@ -40,9 +40,33 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **THEN** ChanCore MUST return the naturally derived empty collection or incomplete Bi
 - **AND** it MUST NOT throw merely because the requested derived structure has not formed
 
+#### Scenario: A non-empty K sequence enters a public facade
+- **WHEN** ChanCore validates the sequence
+- **THEN** every ID MUST be a unique positive safe integer
+- **AND** every symbol MUST be non-empty and equal within the sequence
+- **AND** every time MUST be a valid Date and times MUST be strictly increasing
+- **AND** OHLC values MUST be finite numbers with `high >= low`
+- **AND** IDs MUST NOT be required to be continuous or increasing
+
+#### Scenario: A K quantity is validated
+- **WHEN** `volume` or `amount` is non-null
+- **THEN** it MUST be an exact non-exponent decimal string representable by `DECIMAL(36,8)`
+- **AND** a MySQL fixed-scale value such as `"0.00000000"` MUST be accepted
+- **AND** a JavaScript number, whitespace-padded value, exponent notation or excess precision MUST be rejected
+
+#### Scenario: Input violates the ChanCore precondition
+- **WHEN** identity, symbol, time, OHLC or quantity validation fails
+- **THEN** the facade MUST throw `ChanInputError` without sorting, coercing, filtering, deduplicating or filling input
+
+#### Scenario: Validated input reaches an impossible algorithm state
+- **WHEN** an internal Chan invariant cannot be satisfied
+- **THEN** ChanCore MUST throw `ChanInvariantError`
+- **AND** it MUST NOT return a partial or empty result as recovery
+
 ### Requirement: ChanCore Shall Publish A Minimal Algorithm Facade
 The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`, `findFenxings`,
-`createBi` and `createChannels`, plus only the algorithm-owned types and enums required by those method signatures.
+`createBi` and `createChannels`, plus only the algorithm-owned types, enums and approved
+`ChanInputError/ChanInvariantError` required by its call and throw contracts.
 
 #### Scenario: An adapter invokes an existing Chan operation
 - **WHEN** an adapter requests merged K, Fenxing, Bi or Channel output from ordered raw `ChanK` input
@@ -58,6 +82,11 @@ The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade w
 - **WHEN** the extraction is implemented
 - **THEN** ChanCore MUST NOT add a speculative `analyze` public method
 - **AND** any future combined operation MUST be reviewed as a separate contract change
+
+#### Scenario: Internal validation or algorithm helpers are implemented
+- **WHEN** the facade validates a K series or executes a calculation
+- **THEN** private validators and algorithm helpers MUST NOT be exported from the public barrel
+- **AND** the approved error types MUST contain no HTTP status, Nest dependency or persistence error object
 
 ### Requirement: ChanCore Shall Accept Complete Raw Market Bars
 `ChanK` SHALL require `id`, `symbol`, `time`, `open`, `high`, `low`, `close`, `volume` and `amount`.

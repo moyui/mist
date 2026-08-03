@@ -9,6 +9,12 @@ contracts, invoke the shared pure ChanCore, and map results to the existing publ
 - **THEN** it MUST invoke ChanCore without passing TypeORM entities, HTTP DTOs or Swagger VOs into the core
 - **AND** no Chan entity or persistence path MUST be introduced
 
+#### Scenario: DB-derived K violates the core input contract
+- **WHEN** a valid HTTP query resolves K data that triggers `ChanInputError`, or calculation triggers
+  `ChanInvariantError`
+- **THEN** the adapter MUST preserve it as an internal data or program failure
+- **AND** it MUST NOT map the failure to a user-input 400, an empty success or an expected business rejection
+
 ### Requirement: Chan Extraction Shall Preserve Existing Public Behavior
 This change SHALL preserve existing `/v1/chan/*` URLs, envelope/OpenAPI shapes and K merge, Fenxing, Bi Phase
 A/Phase B and Channel Phase A/Phase B semantics, except for the explicitly approved empty-history correction.
