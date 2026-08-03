@@ -13,7 +13,7 @@
   core，不修改相关 runtime/spec prerequisite。
 - [x] 1.8 建立完整 raw K → merged K → Fenxing/Bi/Channel characterization fixture 与 full-output
   fingerprint；纳入已归档 `fix-chan-wide-bi-distance` 的非连续 K ID、唯一端点和 position-distance。
-- [ ] 1.9 在 source move 前复核全部接受的 contract 已写入 design/specs，且不存在 API/K-reader/deploy
+- [x] 1.9 在 source move 前复核全部接受的 contract 已写入 design/specs，且不存在 API/K-reader/deploy
   实施项。
 
 ## 2. Pure ChanCore

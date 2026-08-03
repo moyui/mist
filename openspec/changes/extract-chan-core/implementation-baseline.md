@@ -81,3 +81,21 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
 - 旧算法尚未移动，现有 wrapper 尚未接入 `@app/chancore`。
 
 以上门禁完成前不得宣称 extraction 完成。
+
+### Source move 前契约复核
+
+任务 1.9 已逐项对照 `design.md` 与 `specs/chan-analysis-core/spec.md`：
+
+| 契约 | 已固定内容 |
+|---|---|
+| library/public boundary | `libs/chancore`、`@app/chancore`、四个 facade、最小 public barrel |
+| input/output | 完整 readonly `ChanK` 与 MergedK/Fenxing/Bi/Channel 两阶段结果 |
+| validation/error | 单一 validator、`ChanInputError`、`ChanInvariantError`、不自动纠错 |
+| numeric/mutation | 现有 number 比较、量额只透传、readonly、不承诺引用 identity |
+| algorithm identity | `algorithmVersion=1`、full-output fingerprint、宽笔 position distance |
+| empty/insufficient | 合法零结果或未完成笔，不升级为错误 |
+
+pending tasks 的范围检索结果只包含 pure core source move、caller-owned 薄 wrapper 和“不改变现有接口”的
+回归证明；不存在 Controller、DTO/VO、OpenAPI、K reader、Indicator API、gateway、frontend、skills、
+deploy、Redis/MySQL persistence 或 migration 的实施项。任务 2.1 可以开始，后续若出现上述范围必须停止
+并回到 OpenSpec 评审。
