@@ -112,7 +112,9 @@
 - [ ] 5.2 完成 candle/Redis/grace/discard/capacity/recovery monitoring 与低基数 tests。
 - [ ] 5.3 运行受影响仓库完整基线、strict OpenSpec、fixture SHA 和 `git diff --check`。
 - [ ] 5.4 以 shadow 完成 TDX/QMT 支持交易时段、restart/AOF、capacity 和 protected-table 零写入 HIL；
-  固定 terminal/bridge identity，连续记录 snapshot，用规范化后的 `amountDelta/volumeDelta` 与同期
-  price range、收盘同源 historical K 对照，证明唯一 quantity profile、股/元结果和 provider-float
-  provenance。任一 source 未证明前不得切 `on`。
+  不新增 snapshot collector，直接复用 datasource/backend 已有实时输出并固定 terminal/bridge identity，
+  用规范化后的 `amountDelta/volumeDelta` 与同期 price range 对照；收盘同源 historical K 由验收脚本直接
+  调用 datasource 既有只读接口，不写 MySQL。真实异常未出现时保持 `not-observed` 并链接
+  `capture-realtime-provider-anomalies`，不主动制造。证明唯一 quantity profile、股/元结果和
+  provider-float provenance；任一 source 未证明前不得切 `on`。
 - [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。

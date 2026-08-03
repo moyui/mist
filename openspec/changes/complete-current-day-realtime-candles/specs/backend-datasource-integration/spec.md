@@ -58,3 +58,19 @@ unit SHALL be shares for volume and CNY yuan for amount.
 - **THEN** deterministic negative tests MUST prove fail-closed adapter behavior
 - **AND** the absent incident MUST remain `not-observed` under `capture-realtime-provider-anomalies`
 - **AND** lack of a manufactured anomaly MUST NOT block implementation or normal-path release
+
+### Requirement: Candle HIL Shall Reuse Existing Datasource and Backend Read Boundaries
+Realtime candle acceptance SHALL reuse existing datasource/backend outputs rather than add a parallel snapshot
+collector. A closing comparison MAY call the existing datasource historical read boundary directly for evidence;
+that read SHALL NOT become a production history dependency or write MySQL.
+
+#### Scenario: Normal trading-time evidence is collected
+- **WHEN** shadow HIL validates accepted TDX or QMT realtime quantities and candle output
+- **THEN** it MUST read existing typed datasource/backend frames, health, bounded diagnostics or product output
+- **AND** it MUST NOT add another provider callback, subscription or snapshot collection path
+
+#### Scenario: A closing historical comparison is required
+- **WHEN** HIL compares realtime price and quantity results with a same-source closing bar
+- **THEN** the harness MAY call the existing datasource historical endpoint read-only
+- **AND** the result MUST remain validation evidence without a MySQL write
+- **AND** production next-day consumers MUST continue to use the owning MySQL provider-history boundary

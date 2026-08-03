@@ -226,6 +226,13 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
 `off` 保持 memory-only；`shadow` 写入隔离 Redis 以校准 grace/capacity；`on` 仅在自动化、双 source
 交易时段 HIL、restart/AOF recovery 和 rollback evidence 全部通过后启用。
 
+交易时段 HIL 不增加第三套 snapshot 采集器，也不要求为了验收重新实现 datasource 能力。正常 realtime
+证据直接读取 datasource/backend 已有的 typed frame、health、bounded diagnostics 和 candle 输出。收盘后的
+同源 K 对照可以由验收脚本直接调用 datasource 既有只读 historical endpoint；该调用只生成 HIL evidence，
+不写 MySQL，也不改变产品运行时“跨日历史从 MySQL provider-history boundary 读取”的所有权。缺字段、
+非法值、counter 跳变或 profile drift 没有自然出现时继续标记 `not-observed`，统一链接
+`capture-realtime-provider-anomalies`，不得为完成本 change 主动制造异常。
+
 ## Risks / Trade-offs
 
 - [grace 过短丢弃迟到数据] → 先 shadow 采样并经用户确认具体值。
@@ -246,7 +253,9 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
 1. 逐项评审 exact-decimal、identity、bucket、grace、discard 和 capacity。
 2. 以 mode off 完成代码与跨仓契约。
 3. 部署 market Redis，保持 mode off。
-4. shadow 复核双 source quantity profile、股/元换算、真实缺失分布及 historical seam 证据。
+4. shadow 复用 datasource/backend 现有实时输出复核双 source quantity profile 与股/元换算，并通过
+   datasource 只读 historical endpoint 获取收盘同源 K 对照；真实异常未出现时链接
+   `capture-realtime-provider-anomalies` 并保持 `not-observed`。
 5. 用户审核 evidence 后决定是否切 on。
 6. 回滚优先切 off，保留 Redis volume 和诊断证据。
 
