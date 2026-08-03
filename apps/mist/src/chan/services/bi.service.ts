@@ -626,7 +626,50 @@ export class BiService {
    * @param endFenxing 结束分型（底分型或顶分型）
    * @returns 是否满足宽笔要求
    */
-  private isWideBi(startFenxing: FenxingVo, endFenxing: FenxingVo): boolean {
+  private resolveUniqueOriginPosition(
+    originData: readonly KVo[],
+    middleOriginId: number,
+    label: 'start' | 'end',
+  ): number {
+    let resolvedPosition = -1;
+
+    for (let position = 0; position < originData.length; position++) {
+      if (originData[position].id !== middleOriginId) {
+        continue;
+      }
+      if (resolvedPosition !== -1) {
+        throw new Error(
+          `Wide Bi invariant failed: ${label} middleOriginId ${middleOriginId} occurs more than once in originData`,
+        );
+      }
+      resolvedPosition = position;
+    }
+
+    if (resolvedPosition === -1) {
+      throw new Error(
+        `Wide Bi invariant failed: ${label} middleOriginId ${middleOriginId} is missing from originData`,
+      );
+    }
+
+    return resolvedPosition;
+  }
+
+  private isWideBi(
+    startFenxing: FenxingVo,
+    endFenxing: FenxingVo,
+    originData: readonly KVo[],
+  ): boolean {
+    const startPosition = this.resolveUniqueOriginPosition(
+      originData,
+      startFenxing.middleOriginId,
+      'start',
+    );
+    const endPosition = this.resolveUniqueOriginPosition(
+      originData,
+      endFenxing.middleOriginId,
+      'end',
+    );
+
     // 条件1：检查是否有共用K线
     const startFenxingIds = new Set([
       ...startFenxing.leftIds,
@@ -646,17 +689,8 @@ export class BiService {
       }
     }
 
-    // 条件2：顶分型最高K线和底分型最低K线之间（不包括这两根），
-    // 至少有3根原始K线（不考虑包含关系，直接用ID差值计算）
-    const startId = startFenxing.middleOriginId;
-    const endId = endFenxing.middleOriginId;
-
-    // 确保起始ID小于结束ID
-    const minId = Math.min(startId, endId);
-    const maxId = Math.max(startId, endId);
-
-    // 计算两个K线之间的原始K线数量（不包括这两根）
-    const betweenCount = maxId - minId - 1;
+    // 条件2：按当前候选笔的有序原始K位置计算，不把数据库主键当作连续序号。
+    const betweenCount = Math.abs(endPosition - startPosition) - 1;
 
     return betweenCount >= 3;
   }
@@ -760,7 +794,7 @@ export class BiService {
       return false;
     }
 
-    return this.isWideBi(bi.startFenxing, bi.endFenxing);
+    return this.isWideBi(bi.startFenxing, bi.endFenxing, bi.originData);
   }
 
   /**
