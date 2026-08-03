@@ -105,7 +105,7 @@ describe('service boundary import graph', () => {
     expect(violations).toEqual([]);
   });
 
-  it('detects alias and relative-path attempts to bypass owned barrels', () => {
+  it('detects alias and filesystem-path attempts to bypass owned barrels', () => {
     const appFile = join(root, 'apps', 'mist', 'src', 'adapter.ts');
     const transportInternal = join(
       root,
@@ -143,6 +143,13 @@ describe('service boundary import graph', () => {
         relativeImport(appFile, strategyInternal),
       ),
     ).toBe(true);
+    expect(
+      isExternalOwnedLibraryImport(
+        appFile,
+        'libs/transport/src/rpc/rpc-envelope',
+      ),
+    ).toBe(true);
+    expect(isExternalOwnedLibraryImport(appFile, strategyInternal)).toBe(true);
     expect(
       isExternalOwnedLibraryImport(appFile, '@app/backtest/internal'),
     ).toBe(true);
@@ -332,8 +339,9 @@ function isExternalOwnedLibraryImport(file: string, source: string): boolean {
     return !aliasOwner.publicAliases.has(source);
   }
 
-  if (!source.startsWith('.')) return false;
-  const target = resolve(dirname(file), source);
+  const target = source.startsWith('.')
+    ? resolve(dirname(file), source)
+    : resolve(root, source);
   const targetOwner = ownedLibraries.find((owner) =>
     isWithinOrEqual(target, owner.sourceRoot),
   );
