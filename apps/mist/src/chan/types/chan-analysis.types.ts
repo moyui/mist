@@ -6,8 +6,8 @@ import type { TrendDirection } from '../enums/trend-direction.enum';
 export interface ChanMergedK {
   startTime: Date;
   endTime: Date;
-  highest: number;
-  lowest: number;
+  high: number;
+  low: number;
   trend: TrendDirection;
   mergedCount: number;
   mergedIds: number[];
@@ -21,15 +21,15 @@ export interface ChanFenxing {
   middleIndex: number;
   middleOriginId: number;
   type: FenxingType;
-  highest: number;
-  lowest: number;
+  high: number;
+  low: number;
 }
 
 export interface ChanBi {
   startTime: Date;
   endTime: Date;
-  highest: number;
-  lowest: number;
+  high: number;
+  low: number;
   trend: TrendDirection;
   type: BiType;
   status: BiStatus;

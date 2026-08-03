@@ -14,7 +14,7 @@ export class KVo {
   @ApiProperty()
   close!: number;
   @ApiProperty()
-  highest!: number;
+  high!: number;
   @ApiProperty()
-  lowest!: number;
+  low!: number;
 }

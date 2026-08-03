@@ -21,7 +21,7 @@ export class FenxingVo implements ChanFenxing {
   @ApiProperty({ enum: FenxingType })
   type!: FenxingType;
   @ApiProperty()
-  highest!: number;
+  high!: number;
   @ApiProperty()
-  lowest!: number;
+  low!: number;
 }

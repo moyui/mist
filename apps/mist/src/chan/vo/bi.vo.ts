@@ -14,9 +14,9 @@ export class BiVo implements ChanBi {
   @ApiProperty({ type: String, format: 'date-time' })
   endTime!: Date;
   @ApiProperty()
-  highest!: number;
+  high!: number;
   @ApiProperty()
-  lowest!: number;
+  low!: number;
   @ApiProperty({ enum: TrendDirection })
   trend!: TrendDirection;
   @ApiProperty({ enum: BiType })

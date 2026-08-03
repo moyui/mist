@@ -14,14 +14,14 @@ import type {
   ChanMergedK,
 } from '@app/chancore';
 import {
+  toBiVo,
   toChanK,
-  toLegacyBi,
-  toLegacyChannel,
-  toLegacyFenxing,
-  toLegacyMergedK,
+  toChannelVo,
+  toFenxingVo,
+  toMergedKVo,
 } from './chan-core.mapper';
 
-describe('ChanCore legacy mapper', () => {
+describe('ChanCore HTTP mapper', () => {
   it('maps complete OHLCVA into a new core value object', () => {
     const time = new Date('2026-07-01T01:31:00.000Z');
     const coreK = toChanK({
@@ -29,8 +29,8 @@ describe('ChanCore legacy mapper', () => {
       symbol: '600519',
       time,
       open: 10,
-      highest: 12,
-      lowest: 9,
+      high: 12,
+      low: 9,
       close: 11,
       volume: '100.00000000',
       amount: '1100.00000000',
@@ -50,14 +50,14 @@ describe('ChanCore legacy mapper', () => {
     expect(coreK.time).not.toBe(time);
   });
 
-  it('maps merged K into isolated legacy highest/lowest output', () => {
+  it('maps merged K into isolated canonical high/low output', () => {
     const coreK = toChanK({
       id: 7,
       symbol: '600519',
       time: new Date('2026-07-01T01:31:00.000Z'),
       open: 10,
-      highest: 12,
-      lowest: 9,
+      high: 12,
+      low: 9,
       close: 11,
       amount: '1100',
     });
@@ -72,11 +72,14 @@ describe('ChanCore legacy mapper', () => {
       mergedData: [coreK],
     };
 
-    const legacy = toLegacyMergedK(mergedK);
-    legacy.mergedIds.push(8);
-    legacy.mergedData[0].time.setTime(0);
+    const response = toMergedKVo(mergedK);
+    response.mergedIds.push(8);
+    response.mergedData[0].time.setTime(0);
 
-    expect(legacy).toMatchObject({ highest: 12, lowest: 9 });
+    expect(response).toMatchObject({ high: 12, low: 9 });
+    expect(response).not.toHaveProperty('highest');
+    expect(response).not.toHaveProperty('lowest');
+    expect(response.mergedData[0]).toMatchObject({ high: 12, low: 9 });
     expect(mergedK.mergedIds).toEqual([7]);
     expect(mergedK.mergedData[0].time.getTime()).not.toBe(0);
   });
@@ -114,15 +117,18 @@ describe('ChanCore legacy mapper', () => {
       displayEndId: 2,
     };
 
-    const legacyBi = toLegacyBi(bi);
-    const legacyChannel = toLegacyChannel(channel);
-    legacyBi.originIds.push(3);
-    legacyChannel.bis[0].originIds.push(4);
+    const biVo = toBiVo(bi);
+    const channelVo = toChannelVo(channel);
+    biVo.originIds.push(3);
+    channelVo.bis[0].originIds.push(4);
 
-    expect(legacyBi).toMatchObject({ highest: 15, lowest: 5 });
-    expect(legacyChannel.bis[0]).toMatchObject({ highest: 15, lowest: 5 });
+    expect(biVo).toMatchObject({ high: 15, low: 5 });
+    expect(biVo.startFenxing).toMatchObject({ high: 10, low: 5 });
+    expect(channelVo.bis[0]).toMatchObject({ high: 15, low: 5 });
+    expect(biVo).not.toHaveProperty('highest');
+    expect(biVo).not.toHaveProperty('lowest');
     expect(bi.originIds).toEqual([1, 2]);
-    expect(toLegacyFenxing(null)).toBeNull();
+    expect(toFenxingVo(null)).toBeNull();
   });
 });
 

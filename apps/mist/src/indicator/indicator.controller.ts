@@ -199,8 +199,8 @@ export class IndicatorController {
 
     return data.map((item) => ({
       id: item.id,
-      highest: item.high,
-      lowest: item.low,
+      high: item.high,
+      low: item.low,
       open: item.open,
       close: item.close,
       symbol: item.security.code,

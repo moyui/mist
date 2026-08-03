@@ -3,33 +3,33 @@ import { ChanCore } from '@app/chancore';
 import { ERROR_MESSAGES } from '@app/constants';
 import { CreateBiDto } from './dto/create-bi.dto';
 import {
+  toBiVo,
   toChanK,
-  toLegacyBi,
-  toLegacyChannel,
-  toLegacyFenxing,
-  toLegacyMergedK,
-  type LegacyChanKInput,
+  toChannelVo,
+  toFenxingVo,
+  toMergedKVo,
+  type ChanKSource,
 } from './chan-core.mapper';
 
 @Injectable()
 export class ChanService {
-  mergeK(data: readonly LegacyChanKInput[]) {
-    return ChanCore.mergeK(data.map(toChanK)).map(toLegacyMergedK);
+  mergeK(data: readonly ChanKSource[]) {
+    return ChanCore.mergeK(data.map(toChanK)).map(toMergedKVo);
   }
 
   // 画笔
   createBi(createBiDto: CreateBiDto) {
     const result = ChanCore.createBi(createBiDto.k.map(toChanK));
     return {
-      phaseA: result.phaseA.map(toLegacyBi),
-      phaseB: result.phaseB.map(toLegacyBi),
+      phaseA: result.phaseA.map(toBiVo),
+      phaseB: result.phaseB.map(toBiVo),
     };
   }
 
   // 获取分型数据
   getFenxings(createBiDto: CreateBiDto) {
     return ChanCore.findFenxings(createBiDto.k.map(toChanK)).map(
-      (fenxing) => toLegacyFenxing(fenxing)!,
+      (fenxing) => toFenxingVo(fenxing)!,
     );
   }
 
@@ -43,8 +43,8 @@ export class ChanService {
 
     const result = ChanCore.createChannels(createBiDto.k.map(toChanK));
     return {
-      phaseA: result.phaseA.map(toLegacyChannel),
-      phaseB: result.phaseB.map(toLegacyChannel),
+      phaseA: result.phaseA.map(toChannelVo),
+      phaseB: result.phaseB.map(toChannelVo),
     };
   }
 

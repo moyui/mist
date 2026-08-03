@@ -2,7 +2,7 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { ERROR_MESSAGES } from '@app/constants';
 import { ChanService } from './chan.service';
 
-describe('ChanService compatibility boundary', () => {
+describe('ChanService HTTP boundary', () => {
   const service = new ChanService();
 
   it('preserves the existing empty-channel HTTP rejection', () => {

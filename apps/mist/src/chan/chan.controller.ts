@@ -6,7 +6,8 @@ import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { ChannelTwoPhaseVo } from './vo/channel.vo';
 import { BiTwoPhaseVo } from './vo/bi.vo';
-import { MergeKDto } from './dto/merge-k.dto';
+import { MergedKVo } from './vo/merged-k.vo';
+import { FenxingVo } from './vo/fenxing.vo';
 import { IndicatorQueryDto } from '../indicator/dto/query/indicator-query.dto';
 import { TimezoneService } from '@app/timezone';
 import { IndicatorService } from '../indicator/indicator.service';
@@ -40,7 +41,7 @@ export class ChanController {
   @ApiEnvelopeResponse({
     status: 200,
     description: 'Returns merged K-line data',
-    type: MergeKDto,
+    type: MergedKVo,
     isArray: true,
   })
   async postMergeK(@Body() queryDto: IndicatorQueryDto) {
@@ -58,10 +59,9 @@ export class ChanController {
       id: k.id,
       symbol: k.security.code,
       time: k.timestamp,
-      timestamp: k.timestamp.getTime(),
       open: k.open,
-      highest: k.high,
-      lowest: k.low,
+      high: k.high,
+      low: k.low,
       close: k.close,
       volume: k.volume,
       amount: k.amount,
@@ -98,10 +98,9 @@ export class ChanController {
       id: k.id,
       symbol: k.security.code,
       time: k.timestamp,
-      timestamp: k.timestamp.getTime(),
       open: k.open,
-      highest: k.high,
-      lowest: k.low,
+      high: k.high,
+      low: k.low,
       close: k.close,
       volume: k.volume,
       amount: k.amount,
@@ -121,6 +120,8 @@ export class ChanController {
   @ApiEnvelopeResponse({
     status: 200,
     description: 'Returns array of fenxing data',
+    type: FenxingVo,
+    isArray: true,
   })
   async postFenxing(@Body() queryDto: IndicatorQueryDto) {
     const { startDate, endDate } = this.parseQueryDateRange(queryDto);
@@ -137,10 +138,9 @@ export class ChanController {
       id: k.id,
       symbol: k.security.code,
       time: k.timestamp,
-      timestamp: k.timestamp.getTime(),
       open: k.open,
-      highest: k.high,
-      lowest: k.low,
+      high: k.high,
+      low: k.low,
       close: k.close,
       volume: k.volume,
       amount: k.amount,
@@ -178,10 +178,9 @@ export class ChanController {
       id: k.id,
       symbol: k.security.code,
       time: k.timestamp,
-      timestamp: k.timestamp.getTime(),
       open: k.open,
-      highest: k.high,
-      lowest: k.low,
+      high: k.high,
+      low: k.low,
       close: k.close,
       volume: k.volume,
       amount: k.amount,

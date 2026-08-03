@@ -45,21 +45,21 @@
   后续 HTTP field migration 的消费者影响按 3.8 单独记录。
 - [x] 3.4 证明当前 Backtest、Realtime、Signal/Alert 和 Strategy evaluator 没有被增加 ChanCore
   prerequisite；未来 adoption 由独立 owning change 负责。
-- [ ] 3.5 将 `/v1/indicators/k` 与四个 `/v1/chan/*` response VO、mapper 和递归嵌套输出统一为
+- [x] 3.5 将 `/v1/indicators/k` 与四个 `/v1/chan/*` response VO、mapper 和递归嵌套输出统一为
   `high/low`，删除 `highest/lowest` 且不保留 alias。
-- [ ] 3.6 修正 merge-k/fenxing/bi/channel 的 OpenAPI response type，并增加字段存在与旧字段缺失的
+- [x] 3.6 修正 merge-k/fenxing/bi/channel 的 OpenAPI response type，并增加字段存在与旧字段缺失的
   contract tests。
-- [ ] 3.7 证明数据库 entity/column、migration、K reader、Chan algorithm output value 与
+- [x] 3.7 证明数据库 entity/column、migration、K reader、Chan algorithm output value 与
   `algorithmVersion` 均未改变。
-- [ ] 3.8 盘点 `mist-fe`、`mist-skills` 消费者并记录 matching-version 发布门禁；本批不修改其代码，
+- [x] 3.8 盘点 `mist-fe`、`mist-skills` 消费者并记录 matching-version 发布门禁；本批不修改其代码，
   消费者迁移完成前不得部署 breaking backend contract。
 
 ## 4. 验证与交付
 
 - [x] 4.1 运行 Chan 定向、full-output differential、public barrel、pure-boundary 和 source-move API
   regression tests；HTTP 字段迁移后按 3.6/4.2 重跑 canonical contract regression。
-- [x] 4.2 运行全量 lint、typecheck、test、build 和 `ci:contracts`。
+- [ ] 4.2 在 HTTP 字段迁移后重跑全量 lint、typecheck、test、build 和 `ci:contracts`。
 - [x] 4.3 检索 `libs/chancore` 的 TypeORM/Redis/HTTP/Nest/env/persistence imports 和旧算法重复实现。
-- [x] 4.4 执行首次 strict OpenSpec、`git diff --check`，记录未来 Chan strategy adoption、route/app
-  cleanup、公共 Indicator/K API 重构为 residual work；HTTP 字段迁移后必须再次执行。
+- [ ] 4.4 在 HTTP 字段迁移后重跑 strict OpenSpec、`git diff --check`，记录未来 Chan strategy
+  adoption、route/app cleanup、公共 Indicator/K API 重构为 residual work。
 - [ ] 4.5 向项目负责人审阅 differential 与 validation evidence 后才归档。

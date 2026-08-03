@@ -4,12 +4,14 @@
 
 ### 最终范围
 
-本 change 取代尚未实施的 `extract-market-analysis-kernels`，只交付 pure `libs/chancore`：
+本 change 取代尚未实施的 `extract-market-analysis-kernels`，交付 pure `libs/chancore`，并按后续批准
+统一现有 K/Chan HTTP 价格字段：
 
 - 不把 Chan 与 Indicator/Strategy calculation 合并成通用 analysis base；
-- 不重构现有 `chan-api`、`mist-backend`、Controller、DTO/VO、OpenAPI、K reader 或 route ownership；
-- 不处理 `/v1/indicators/*`、gateway、frontend、skills、deploy 或跨 app import；
-- 现有调用若接入新 core，只保留不改变公共行为的薄 wrapper；
+- 不重构 K reader、module、route ownership、gateway、deploy 或跨 app import；
+- `/v1/indicators/k` 与四个 `/v1/chan/*` response 统一使用 `high/low`，不保留 `highest/lowest` alias；
+- frontend/skills 由独立消费者批次迁移，匹配版本完成前不得部署本 backend breaking contract；
+- 现有调用接入新 core，只保留 fresh-object/Date 映射的薄 HTTP wrapper；
 - 为 Backtest、Realtime、Signal/Alert 等后续 owning change 提供直接 library 调用边界，但当前 V1 不
   开放 `chan.*`，不新增 prerequisite。
 
@@ -21,7 +23,7 @@
 - 初始审计基线：`master@fe56c6863cc498acbad0a6803da16c2615bb6997`
 - 当前实施基线：`master@3a07d4b725dec2c288058505c82959224281d2a3`
 - 已同步前置：归档 change `2026-08-03-fix-chan-wide-bi-distance`
-- 当前状态：pure source move 与现有 Chan wrapper 已完成；未新增 migration
+- 当前状态：pure source move、Chan wrapper 与 backend HTTP `high/low` 字段迁移已完成；未新增 migration
 
 ### pure calculation 影响链
 
@@ -45,8 +47,8 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
   `algorithmVersion=1`；不导出 internals 或 Nest module。
 - input：完整 readonly `ChanK(id/symbol/time/open/high/low/close/volume/amount)`；量额为 exact decimal
   string/null。
-- outputs：完整 MergedK、Fenxing、Bi/Phase A/Phase B、Channel/Phase A/Phase B；使用标准
-  `high/low`，现有 wrapper 若需要可恢复 `highest/lowest`。
+- outputs：完整 MergedK、Fenxing、Bi/Phase A/Phase B、Channel/Phase A/Phase B；core 与 HTTP VO 均使用
+  标准 `high/low`，wrapper 不恢复 `highest/lowest`。
 - empty：四个 facade 对空 K 返回自然零结果；不足数据返回自然空集合或未完成笔。
 - validation：单 symbol、time 严格递增、identity 唯一、finite OHLC、`high >= low`、合法
   DECIMAL(36,8) string/null；不排序、转换、过滤、去重或填充。
@@ -83,10 +85,23 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
   保持 `7a24563a1d419c87cc151cfcd83ce42732fe59b6fc535de2d818699994964312`。
 - equal-center、strict Fenxing、first-wins、Bi non-strict progression、`zg === zd`、相邻 representable
   number、exact Date/identity、frozen input 和四 facade before/after fingerprint 均有定向测试。
-- `ChanService` 是 caller-owned 薄边界：显式映射 `highest/lowest` 与 `high/low`、复制 Date/数组、保留完整
-  OHLCVA 输入，并保留旧 channel 空数据 HTTP 400；core 自身仍按契约返回合法空结果。
+- `ChanService` 是 caller-owned 薄边界：core 与 HTTP 均使用 `high/low`，wrapper 复制 Date/数组、保留
+  完整 OHLCVA 输入，并保留旧 channel 空数据 HTTP 400；core 自身仍按契约返回合法空结果。
 - `@app/chancore` 的生产 import 只存在于现有 Chan wrapper/legacy enum 出口；Backtest、Realtime、
   Signal/Alert、Strategy evaluator 未增加 ChanCore prerequisite。
+
+### HTTP 字段迁移证据
+
+- `KVo`、`MergedKVo`、`FenxingVo`、`BiVo` 与 application Chan contracts 已统一为 `high/low`。
+- `/v1/indicators/k` 与 `/v1/chan/merge-k|fenxing|bi|channel` 的实际 mapper 不再生成
+  `highest/lowest`；嵌套 `mergedData/originData/startFenxing/endFenxing/bis` 复用相同 VO 映射。
+- merge-K OpenAPI 已从错误的 request `MergeKDto` 改为 `MergedKVo[]`；Fenxing OpenAPI 补为
+  `FenxingVo[]`；contract test 同时断言 `high/low` metadata 存在且旧字段缺失。
+- 删除已无职责的 `merge-k.dto.ts`；实际 HTTP request 仍为 `IndicatorQueryDto`，route 和请求字段不变。
+- `git diff` 未触及 `libs/shared-data/src/entities/k.entity.ts`、migration 或 ChanCore algorithm source；
+  MySQL 仍使用既有 `high/low` 列，`ChanCore.algorithmVersion` 仍为 1。
+- 消费者审计确认 `mist-fe/app/api/types.ts`、KPanel 与 Chan fixtures，以及 `mist-skills` 的 data-query/
+  chan-theory 文档和测试仍使用旧字段；这些仓库本批未修改，构成本 backend 的发布门禁。
 
 ### 验证记录
 
@@ -102,8 +117,9 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
 ### Residual work
 
 - Backtest/Realtime/Signal/Alert 对 ChanCore 的采用由各自 focused owning change 决定。
-- 现有 Chan API cleanup、DTO/VO/OpenAPI 调整或 app ownership 变更另开 change。
+- 除本次价格字段与 OpenAPI 修正外，现有 Chan route/app ownership cleanup 另开 change。
 - 公共 Indicator/K API 与 lookback 重构继续由既有独立 change 持有，本 change 不处理。
+- `mist-fe` 与 `mist-skills` 必须在独立匹配版本批次改为 `high/low` 后才能部署本 backend commit。
 - 归档门禁 4.5 等待项目负责人审阅本节 differential 与 validation evidence。
 
 ### Source move 前契约复核
@@ -119,7 +135,7 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
 | algorithm identity | `algorithmVersion=1`、full-output fingerprint、宽笔 position distance |
 | empty/insufficient | 合法零结果或未完成笔，不升级为错误 |
 
-pending tasks 的范围检索结果只包含 pure core source move、caller-owned 薄 wrapper 和“不改变现有接口”的
-回归证明；不存在 Controller、DTO/VO、OpenAPI、K reader、Indicator API、gateway、frontend、skills、
-deploy、Redis/MySQL persistence 或 migration 的实施项。任务 2.1 可以开始，后续若出现上述范围必须停止
-并回到 OpenSpec 评审。
+source move 开始前的 pending tasks 只包含 pure core 与不改变 API 的 wrapper；随后项目负责人明确批准
+把 K/Chan HTTP `highest/lowest` 收敛为 `high/low`。该 breaking change 已先回写 proposal/design/delta
+specs/tasks，再修改 Controller/VO/OpenAPI；K reader、route owner、gateway、frontend、skills、deploy、
+Redis/MySQL persistence 与 migration 仍未进入实施范围。
