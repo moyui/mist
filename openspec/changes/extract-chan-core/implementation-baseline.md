@@ -71,6 +71,8 @@ mist-fe / mist-skills
   OHLC、`high < low` 和非法 decimal/null；不排序、转换或补值。MySQL fixed-scale 尾随零合法。
 - `ChanInputError/ChanInvariantError` 不携带 HTTP 语义；query DTO 仍可为 400，DB-derived input 或算法
   invariant 错误作为内部错误传播，不能改成空结果或用户 400。
+- OHLC 保持 finite number 和现有 strict/non-strict comparison；不加 epsilon/rounding/Decimal，
+  相等中心不合并、相等分型不成立、相同极值 first-wins、`zg === zd` 不成立中枢。
 - “现有 Chan 算法”以已归档宽笔修复后的行为为准：独立 K 数量按候选 `originData` 的序列位置差
   计算，不按数据库 K ID 差计算；端点缺失或重复继续作为 invariant failure。
 
@@ -86,6 +88,6 @@ mist-fe / mist-skills
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
 - full-output fingerprint 还需纳入非连续 K ID、唯一端点解析和宽笔 position-distance 回归场景；
 - `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
-- output、empty-result 与 invalid-input contract 已确认；numeric/mutation/version contract 未确认。
+- output、empty-result、invalid-input 与 numeric contract 已确认；mutation/version contract 未确认。
 
 以上门禁完成前不得移动 source files。

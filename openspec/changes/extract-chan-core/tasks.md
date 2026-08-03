@@ -31,7 +31,9 @@
     `/v1/chan/channel` 不再把内部空 Bi 暴露成 400。
   - [x] 1.10.2 确认 facade 单一 validator、序列/identity/OHLC/decimal contract、无自动修复、纯
     `ChanInputError/ChanInvariantError` 和 HTTP 内部错误传播边界。
-  - [ ] 1.10.3 确认 numeric comparison、mutation 和算法版本。
+  - [x] 1.10.3 确认 number strict/non-strict comparison、无 epsilon/rounding/Decimal、first-wins 与
+    Date/identity 精确比较。
+  - [ ] 1.10.4 确认 mutation 和算法版本。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
 ## 2. Pure ChanCore
@@ -51,6 +53,8 @@
 - [ ] 2.5 为完整 `ChanK` 建立 adapter mapping 与 decimal-string/null preservation tests；证明当前算法
   不因新增可用字段改变结果。
 - [ ] 2.6 用 full-output differential fixtures 证明结构、枚举、顺序、日期、数值与 mutation contract。
+- [ ] 2.6.1 覆盖相等中心、严格分型、同类/同极值 first-wins、Bi 非严格递进、`zg === zd` 和相邻
+  可表示 number；证明未引入 epsilon、rounding、Decimal 或公式改写。
 
 ## 3. Application Adapters
 

@@ -63,6 +63,25 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **THEN** ChanCore MUST throw `ChanInvariantError`
 - **AND** it MUST NOT return a partial or empty result as recovery
 
+#### Scenario: Price values are compared after extraction
+- **WHEN** ChanCore evaluates containment, trend, Fenxing, Bi or Channel geometry
+- **THEN** it MUST preserve the existing strict and non-strict JavaScript number comparisons
+- **AND** it MUST NOT introduce epsilon equality, rounding, tick normalization, Decimal conversion or a rewritten
+  midpoint formula
+- **AND** `volume/amount` MUST NOT participate in current Chan numeric decisions
+
+#### Scenario: Equal-price boundaries are evaluated
+- **WHEN** compared values are exactly equal
+- **THEN** equal containment centers MUST remain unmerged and strict Fenxing extrema MUST remain unformed
+- **AND** equal same-type Fenxing or raw-K extremes MUST retain the earliest input occurrence
+- **AND** Bi's approved non-strict progression comparisons MUST remain non-strict
+- **AND** a Channel with `zg === zd` MUST remain invalid
+
+#### Scenario: Time and identity values are compared
+- **WHEN** ChanCore resolves temporal order or raw K identity
+- **THEN** Date values MUST be compared by exact millisecond values
+- **AND** identities MUST be compared as exact safe integers without distance arithmetic
+
 ### Requirement: ChanCore Shall Publish A Minimal Algorithm Facade
 The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`, `findFenxings`,
 `createBi` and `createChannels`, plus only the algorithm-owned types, enums and approved

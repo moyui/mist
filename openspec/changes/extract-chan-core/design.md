@@ -301,6 +301,26 @@ contract 从 `@app/chancore` 导出，但不得包含 HTTP status、Nest 类型�
 DB 映射后的 K 若触发 `ChanInputError`，或者算法触发 `ChanInvariantError`，都属于内部数据/程序错误，
 必须按原始分类向上层传播并记录，不能捕获成 400、空结果或 business rejection。
 
+### 8. 数值比较保持现有 number 边界
+
+当前 OHLC contract 继续使用 finite JavaScript number。source move 必须逐个保留现有 `<`、`>`、`<=`、
+`>=`、`Math.min/max` 和 `(high + low) / 2` 行为，不增加全局 epsilon、`toFixed()`、价格 tick 对齐、
+Decimal library 或公式改写。`volume/amount` 在当前算法中只透传精确字符串，不参与数值比较。
+
+相等边界固定为：
+
+- 初始趋势下两个包含 K 的中心点完全相等时不合并；
+- 分型使用严格极值，相等价格不形成对应分型；
+- 连续同类型分型价格相等时保留较早的分型；
+- 合并 K 内多根原始 K 达到同一极值时，`middleOriginId` 选择输入顺序中的第一根；
+- Bi 归约继续保留当前刻意混用的严格/非严格边界，不统一替换；
+- Channel 要求严格 `zg > zd`，`zg === zd` 的接触边界不是有效中枢；
+- Date 以毫秒整数精确比较，identity 以 safe integer 精确比较。
+
+characterization 必须覆盖相等、相邻可表示 number、first-wins、Channel 接触边界和 Bi 非严格递进
+场景。同一输入重复执行必须得到完全相同的结构、枚举、顺序和数值。未来若价格切换定点整数或
+Decimal，必须另开 change 并重新建立 differential 基线。
+
 ## Risks / Trade-offs
 
 - [只移动算法但保留 app import] → route/adapter owner 先于 source move 审批，guard test 最终删除精确
@@ -312,6 +332,7 @@ DB 映射后的 K 若触发 `ChanInputError`，或者算法触发 `ChanInvariant
 - [把空历史误判为非法请求] → core/HTTP 空结果 fixtures 与 error-governance contract test。
 - [自动修复无序或重复 K 掩盖调用方错误] → 单一 facade validator 与 fail-closed contract tests。
 - [DB fixed-scale decimal 被误判为非规范] → 覆盖 `0.00000000`、8 位小数和非法 exponent/number。
+- [抽取时“修复精度”改变边界结果] → 锁定 strict/non-strict、first-wins 和 equal-boundary fixtures。
 
 ## Migration Plan
 
@@ -328,4 +349,4 @@ DB 映射后的 K 若触发 `ChanInputError`，或者算法触发 `ChanInvariant
 
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
 - 各 ChanCore 输出类型的最小现有字段集合，以及 HTTP adapter 如何恢复当前 VO。
-- mutation、算法版本和 numeric comparison 规则。
+- mutation 和算法版本规则。

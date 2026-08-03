@@ -27,6 +27,8 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
 - 在移动代码前继续逐项确认输出字段、空值/非法输入、数值比较、mutation 和算法版本语义。
 - facade 边界只接受单 symbol、时间严格递增、identity 唯一、有限 OHLC、`high >= low` 和合法
   exact-decimal/null 量额；不得自动排序、强制转换、过滤或补值。
+- 价格比较保留现有 JavaScript number 的严格/非严格边界与 first-wins tie-breaking；不引入 epsilon、
+  Decimal、tick rounding 或公式改写。
 - `/v1/chan/*` 的长期唯一 runtime owner 固定为独立部署的 `chan-api`；当前 change 不顺手删除
   `mist-backend` 中的兼容路由，后续通过独立 route migration 清理双入口。
 - 在移动 controller/module 前确认现有双入口兼容范围，以及 `chan-api` 的 TypeORM K read adapter 和
