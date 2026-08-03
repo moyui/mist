@@ -21,7 +21,7 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
   criteria/result types、共享纯函数 `KPriceProjector` 和 import-boundary tests；覆盖 MySQL fixed-scale
   OHLC string、Redis finite number、invalid/non-finite value，并证明不改存储、不舍入、不触碰量额；不得导入
   TypeORM、Redis、HTTP/RPC、Nest adapter 或 `apps/*` 源码。
-- [ ] 2.2 实现共享 field catalog、exact node-shape validator、depth/condition limits、
+- [x] 2.2 实现共享 field catalog、exact node-shape validator、depth/condition limits、
   `calculationBarCount` 和 compiled `requiredBarCount`。
 - [ ] 2.3 复用共享 `Decimal8` 实现 decimal create normalization、stored canonical validation、非负
   quantity 约束和 exact comparison；删除策略侧 number coercion 与重复 decimal parser。

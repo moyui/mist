@@ -27,3 +27,30 @@ export type {
   StrategyReplayPageCriteria,
   StrategyTrigger,
 } from './market-data/strategy-market-data.port';
+export {
+  STRATEGY_FIELD_CATALOG,
+  STRATEGY_FIELD_PATHS,
+} from './rules/strategy-field.catalog';
+export type {
+  StrategyFieldCatalogEntry,
+  StrategyFieldPath,
+  StrategyFieldValueType,
+} from './rules/strategy-field.catalog';
+export {
+  MAX_STRATEGY_RULE_CONDITIONS,
+  MAX_STRATEGY_RULE_DEPTH,
+  compileStrategyRuleForCreate,
+  compileStoredStrategyRule,
+} from './rules/strategy-rule.compiler';
+export type {
+  CompiledStrategyCondition,
+  CompiledStrategyExecutionPlan,
+  CompiledStrategyExpression,
+  CompiledStrategyGroup,
+  StrategyRuleCompilation,
+  StrategyRuleCondition,
+  StrategyRuleExpression,
+  StrategyRuleGroup,
+  StrategyRuleOperator,
+  StrategySignalKind,
+} from './rules/strategy-rule.types';
