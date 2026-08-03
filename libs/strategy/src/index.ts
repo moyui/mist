@@ -60,3 +60,17 @@ export type {
   ProjectedStrategyQuantity,
   StrategyQuantityResolution,
 } from './projection/quantity-forward-fill.projector';
+export { buildStrategyEvaluationContext } from './evaluation/strategy-context.builder';
+export type { StrategyContextBuildResult } from './evaluation/strategy-context.builder';
+export { serializeStrategyContextSnapshot } from './evaluation/strategy-context-snapshot.serializer';
+export { evaluateStrategyPlan } from './evaluation/strategy-rule.evaluator';
+export type {
+  StrategyEvaluationContext,
+  StrategyEvaluationOutcome,
+  StrategyEvaluationResult,
+  StrategyFieldObservation,
+  StrategyQuantityEvidence,
+  StrategyQuantityEvidenceItem,
+  StrategyQuantityEvidenceObservation,
+  StrategyUnavailableReason,
+} from './evaluation/strategy-evaluation.types';

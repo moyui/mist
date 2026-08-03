@@ -102,6 +102,7 @@ describe('Strategy domain boundary', () => {
             forbiddenPackagePrefixes.some(
               (prefix) => source === prefix || source.startsWith(`${prefix}/`),
             ) ||
+            (source.startsWith('@app/') && source !== '@app/decimal') ||
             source.startsWith('apps/') ||
             source.includes('/apps/') ||
             relativeImportEscapesStrategy(file, source),

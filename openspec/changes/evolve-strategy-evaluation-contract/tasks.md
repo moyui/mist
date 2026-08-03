@@ -23,13 +23,13 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
   TypeORM、Redis、HTTP/RPC、Nest adapter 或 `apps/*` 源码。
 - [x] 2.2 实现共享 field catalog、exact node-shape validator、depth/condition limits、
   `calculationBarCount` 和 compiled `requiredBarCount`。
-- [ ] 2.3 复用共享 `Decimal8` 实现 decimal create normalization、stored canonical validation、非负
+- [x] 2.3 复用共享 `Decimal8` 实现 decimal create normalization、stored canonical validation、非负
   quantity 约束和 exact comparison；删除策略侧 number coercion 与重复 decimal parser。
-- [ ] 2.4 实现两阶段 `unavailable | evaluated(matched)` pure evaluator、current/prior crossover 和
+- [x] 2.4 实现两阶段 `unavailable | evaluated(matched)` pure evaluator、current/prior crossover 和
   bounded immutable context builder。
-- [ ] 2.5 实现共享 `QuantityForwardFillProjector` 与 contextSnapshot serializer，覆盖同日
+- [x] 2.5 实现共享 `QuantityForwardFillProjector` 与 contextSnapshot serializer，覆盖同日
   forward-fill、日切、current/previous evidence、short-circuit 稳定性和 unavailable 不持久化。
-- [ ] 2.6 在共享 Strategy library 中实现 evaluator-owned KDJ(9,3,3) 与 MACD(12,26,9) fixed-window
+- [x] 2.6 在共享 Strategy library 中实现 evaluator-owned KDJ(9,3,3) 与 MACD(12,26,9) fixed-window
   calculation，并用共同 fixtures 固定 13/14、130/131、普通比较和 crossover 的
   Backtest/realtime parity；V1 不开放或依赖 `chan.*`。
 
