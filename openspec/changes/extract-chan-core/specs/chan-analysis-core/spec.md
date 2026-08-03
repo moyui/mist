@@ -77,6 +77,19 @@ strings or `null` rather than JavaScript numbers.
 - **AND** it MUST retain the existing public K VO shape without requiring `volume` to be newly exposed
 - **AND** the narrower HTTP shape MUST NOT cause ChanCore to discard `volume` from `mergedData`
 
+#### Scenario: A Fenxing is emitted
+- **WHEN** `findFenxings` emits a `ChanFenxing`
+- **THEN** it MUST contain the raw K IDs of the left, middle and right merged-K groups
+- **AND** `middleIndex` MUST identify the middle merged K position in the current ordered merged-K sequence
+- **AND** `middleOriginId` MUST identify the raw K that produced the middle extreme
+- **AND** it MUST contain `type` and algorithm-derived `high/low`
+- **AND** it MUST NOT require copied raw K groups or a newly invented time field
+
+#### Scenario: A Fenxing is returned through the existing HTTP route
+- **WHEN** the application adapter maps `ChanFenxing` to the retained HTTP contract
+- **THEN** it MUST preserve all three ID groups, `middleIndex`, `middleOriginId` and `type`
+- **AND** it MUST map core `high/low` to HTTP `highest/lowest`
+
 #### Scenario: A future Chan strength algorithm uses MACD or quantity
 - **WHEN** a future change defines Bi strength, divergence or volume-price analysis
 - **THEN** that change MAY derive a Chan-owned calculation from complete `ChanK` input

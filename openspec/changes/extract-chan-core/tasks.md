@@ -20,7 +20,9 @@
 - [ ] 1.9 向项目负责人评审各 ChanCore 输出类型和现有 HTTP VO 恢复规则。
   - [x] 1.9.1 确认 `ChanMergedK` 保留完整时间、算法 high/low、trend、count、IDs 和 `ChanK[]`；
     adapter 恢复现有 `highest/lowest` 与 K VO 外观。
-  - [ ] 1.9.2 确认 Fenxing、Bi、Channel 和 Phase A/Phase B 输出。
+  - [x] 1.9.2 确认 `ChanFenxing` 保留三组原始 K IDs、序列位置、极值 K identity、type 和
+    `high/low`；adapter 恢复现有 `highest/lowest`。
+  - [ ] 1.9.3 确认 Bi、Channel 和 Phase A/Phase B 输出。
 - [ ] 1.10 向项目负责人逐项评审空输入、invalid-input、numeric comparison、mutation 和算法版本。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 

@@ -113,6 +113,30 @@ MACD 判断笔力度，focused change 应从 `close` 派生 Chan-owned calculati
 当前 HTTP `KVo` 没有 `volume`；本 change 不扩展公共 HTTP 输出。adapter 将完整 `ChanK` 映射成现有
 `KVo` 外观时可以不暴露该字段，但不得因此从 ChanCore 的 `mergedData` 中删除它。
 
+`findFenxings` 的 library-owned item 固定为：
+
+```ts
+interface ChanFenxing {
+  leftIds: number[];
+  middleIds: number[];
+  rightIds: number[];
+  middleIndex: number;
+  middleOriginId: number;
+  type: FenxingType;
+  high: number;
+  low: number;
+}
+```
+
+三组 IDs 分别保留左、中、右三个合并 K 所包含的全部原始 K identity；`middleIndex` 是中间合并 K 在
+本次 `ChanMergedK[]` 中的位置，`middleOriginId` 是中间合并 K 内实际产生顶/底极值的原始 K identity。
+两者不能互换，也不得把 `middleIndex` 当数据库 ID。顶分型的 `high` 来自中间最高点、`low` 来自左右
+范围；底分型的 `low` 来自中间最低点、`high` 来自左右范围。
+
+V1 不向 `ChanFenxing` 复制三组完整 K 或新增 `time`；算法可使用同一轮上游 `ChanMergedK` 和这些
+identity 找到原始行情。HTTP adapter 继续把 core `high/low` 映射成现有 `highest/lowest`。极值相等时
+`middleOriginId` 的选择属于后续 numeric/tie-breaking 评审，不在输出字段确认中提前改变。
+
 adapter 负责 HTTP DTO、日期解析、source 选择、TypeORM K/Security 查询、升序与有限值校验、
 library input mapping、HTTP VO/OpenAPI 和错误映射。ChanCore 不访问数据库、Redis、HTTP、环境变量
 或 Nest controller，不写入 Chan persistence。
