@@ -28,7 +28,7 @@ The following checks passed on 2026-08-03:
   stable specs
 - `git diff --check`
 
-The complete `pnpm test:ci` baseline is green: 87 suites passed and 2 were skipped; 665 tests passed and 3 were
+The complete `pnpm test:ci` baseline is green: 87 suites passed and 2 were skipped; 666 tests passed and 3 were
 skipped. The prior QMT boundary-guard baseline failure was removed by selectively applying the test-only HIL
 exemption from the known-good `bc3a273` commit. No other `master` changes were merged into this worktree.
 
