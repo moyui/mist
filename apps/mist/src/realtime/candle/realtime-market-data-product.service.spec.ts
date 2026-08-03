@@ -4,14 +4,18 @@ import { OpenCandleAggregator } from './open-candle-aggregator';
 import { RealtimeMarketDataProductService } from './realtime-market-data-product.service';
 import type { CanonicalRealtimeSnapshot } from '../realtime.types';
 
-function makeConfig(mode: string): ConfigService {
+function makeConfig(
+  mode: string,
+  overrides: Record<string, number> = {},
+): ConfigService {
   return {
     get: (key: string) =>
-      key === 'REALTIME_PRODUCTIZATION_MODE'
+      overrides[key] ??
+      (key === 'REALTIME_PRODUCTIZATION_MODE'
         ? mode
         : key === 'REALTIME_CANDLE_GRACE_MS'
           ? 5000
-          : undefined,
+          : undefined),
   } as any;
 }
 
@@ -161,10 +165,51 @@ describe('RealtimeMarketDataProductService', () => {
     };
 
     service.handleSnapshot(makeSnapshot({ eventTime: sh(9, 30) }));
+    expect(
+      (service as unknown as { queue: { enqueue: jest.Mock } }).queue.enqueue,
+    ).toHaveBeenCalledWith('1:tdx', expect.any(Function));
     expect(aggregator.markInvalid).toHaveBeenCalledWith(
       1,
       'tdx',
       'queue_overflow',
     );
+  });
+
+  it('loads queue limits from config and rejects contradictory values', () => {
+    const clock = new Clock();
+    const redis = { isAvailable: () => false } as any;
+    const aggregator = {} as any;
+    const finalizer = {} as any;
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('off', {
+        REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES: 4,
+        REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL: 16,
+      }),
+      clock,
+      redis,
+      aggregator,
+      finalizer,
+    );
+    expect(
+      (
+        service as unknown as {
+          queue: { options: Record<string, number> };
+        }
+      ).queue.options,
+    ).toEqual({ maxPendingPerSeries: 4, maxPendingGlobal: 16 });
+
+    expect(
+      () =>
+        new RealtimeMarketDataProductService(
+          makeConfig('off', {
+            REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES: 32,
+            REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL: 16,
+          }),
+          clock,
+          redis,
+          aggregator,
+          finalizer,
+        ),
+    ).toThrow('maxPendingGlobal must be greater than or equal');
   });
 });

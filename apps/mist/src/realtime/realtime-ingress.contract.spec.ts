@@ -4,10 +4,24 @@ import { QmtRealtimeStore } from '../sources/qmt/realtime/realtime.store';
 import { TdxRealtimeClient } from '../sources/tdx/realtime/realtime.client';
 import { TdxRealtimeStore } from '../sources/tdx/realtime/realtime.store';
 import { RealtimeSnapshotIngressService } from './realtime-snapshot-ingress.service';
+import type { CanonicalRealtimeSnapshot } from './realtime.types';
 
 const capturedAt = new Date().toISOString();
 
 describe('formal realtime schema-v2 ingress contract', () => {
+  it('retains independent latest state for the same security across sources', () => {
+    const ingress = new RealtimeSnapshotIngressService();
+    const tdx = canonicalSnapshot('tdx', 7);
+    const qmt = canonicalSnapshot('qmt', 7);
+
+    ingress.handleSnapshot(tdx);
+    ingress.handleSnapshot(qmt);
+
+    expect(ingress.readSeries(7, 'tdx')).toBe(tdx);
+    expect(ingress.readSeries(7, 'qmt')).toBe(qmt);
+    expect(ingress.read(7)).toBe(qmt);
+  });
+
   it('funnels a TDX one-entry native map through the common ingress', () => {
     const store = new TdxRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
@@ -237,5 +251,28 @@ function qmtNative(lastPrice: number) {
     lastClose: 12,
     volume: 10,
     amount: 100,
+  };
+}
+
+function canonicalSnapshot(
+  source: 'tdx' | 'qmt',
+  securityId: number,
+): CanonicalRealtimeSnapshot {
+  return {
+    source,
+    securityId,
+    providerSymbol: source === 'tdx' ? '600030.SH' : '600030.SZ',
+    eventTime: capturedAt,
+    capturedAt,
+    prices: { last: 10, open: 10, high: 10, low: 10, lastClose: 9 },
+    cumulativeVolume: '100',
+    cumulativeAmount: '1000',
+    quality: {
+      level: 'latest-state',
+      eventTimeAvailable: true,
+      aggregationEligible: true,
+      partialPrices: false,
+    },
+    native: {},
   };
 }

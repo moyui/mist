@@ -1,10 +1,19 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { CanonicalRealtimeSnapshot } from './realtime.types';
+import type { RealtimeSource } from './realtime.types';
 import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
+import { marketSeriesKey } from './candle/market-series-key';
 
 @Injectable()
 export class RealtimeSnapshotIngressService {
-  private readonly latest = new Map<string, CanonicalRealtimeSnapshot>();
+  private readonly latestBySeries = new Map<
+    string,
+    CanonicalRealtimeSnapshot
+  >();
+  private readonly latestBySecurity = new Map<
+    number,
+    CanonicalRealtimeSnapshot
+  >();
 
   constructor(
     @Optional()
@@ -14,12 +23,20 @@ export class RealtimeSnapshotIngressService {
   handleSnapshot(
     snapshot: CanonicalRealtimeSnapshot,
   ): CanonicalRealtimeSnapshot {
-    this.latest.set(String(snapshot.securityId), snapshot);
+    this.latestBySeries.set(
+      marketSeriesKey(snapshot.securityId, snapshot.source),
+      snapshot,
+    );
+    this.latestBySecurity.set(snapshot.securityId, snapshot);
     this.product?.handleSnapshot(snapshot);
     return snapshot;
   }
 
   read(securityId: number) {
-    return this.latest.get(String(securityId)) ?? null;
+    return this.latestBySecurity.get(securityId) ?? null;
+  }
+
+  readSeries(securityId: number, source: RealtimeSource) {
+    return this.latestBySeries.get(marketSeriesKey(securityId, source)) ?? null;
   }
 }

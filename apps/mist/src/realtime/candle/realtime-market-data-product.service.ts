@@ -5,6 +5,10 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  REALTIME_CANDLE_GRACE_LIMITS,
+  REALTIME_CANDLE_QUEUE_LIMITS,
+} from '@app/config';
 import { toZonedTime } from 'date-fns-tz';
 import type Redis from 'ioredis';
 import { Clock } from '../clock.service';
@@ -15,6 +19,7 @@ import { CandleFinalizer } from './candle-finalizer';
 import { KeyedQueue } from './keyed-queue';
 import { resolveCandleBucket } from './candle-bucket.util';
 import type { ApplySnapshotOutcome } from './candle.types';
+import { marketSeriesKey } from './market-series-key';
 import {
   dueKey,
   encodeDueMember,
@@ -25,8 +30,6 @@ import {
   RETENTION_AFTER_DAY_END_HOURS,
 } from '../realtime-redis.constants';
 
-/** Default grace (ms) before a bucket is due for finalization. Design: "5s candidate". */
-const DEFAULT_GRACE_MS = 5_000;
 /** Due scanner interval. Design: "每秒扫描". */
 const DUE_SCAN_INTERVAL_MS = 1_000;
 
@@ -34,7 +37,7 @@ const DUE_SCAN_INTERVAL_MS = 1_000;
  * Product-layer orchestrator for the current-day realtime candle product (B1).
  *
  * Wires together the candle state machine ({@link OpenCandleAggregator}), the
- * Redis sealer ({@link CandleFinalizer}), the per-symbol {@link KeyedQueue},
+ * Redis sealer ({@link CandleFinalizer}), the per-market-series {@link KeyedQueue},
  * and a due-scanner that finalizes buckets after their grace window.
  *
  * When `REALTIME_PRODUCTIZATION_MODE=off` (default), every method is a no-op —
@@ -68,10 +71,16 @@ export class RealtimeMarketDataProductService
     }
     this.mode = rawMode;
     this.graceMs =
-      this.config.get<number>('REALTIME_CANDLE_GRACE_MS') ?? DEFAULT_GRACE_MS;
+      this.config.get<number>('REALTIME_CANDLE_GRACE_MS') ??
+      REALTIME_CANDLE_GRACE_LIMITS.default;
     this.queue = new KeyedQueue({
-      maxPendingPerKey: 8,
-      maxPendingGlobal: 256,
+      maxPendingPerSeries:
+        this.config.get<number>(
+          'REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES',
+        ) ?? REALTIME_CANDLE_QUEUE_LIMITS.perSeries.default,
+      maxPendingGlobal:
+        this.config.get<number>('REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL') ??
+        REALTIME_CANDLE_QUEUE_LIMITS.global.default,
     });
   }
 
@@ -99,13 +108,13 @@ export class RealtimeMarketDataProductService
   /**
    * Entry point from {@link RealtimeSnapshotIngressService.handleSnapshot}.
    * Records `acceptedAt` synchronously (design line 245), then submits the
-   * snapshot to the per-symbol queue for ordered aggregation + Redis writes.
+   * snapshot to the per-market-series queue for ordered aggregation + Redis writes.
    */
   handleSnapshot(snapshot: CanonicalRealtimeSnapshot): void {
     if (this.mode === 'off' || !this.redis.isAvailable()) return;
 
     const acceptedAt = this.clock.now();
-    const key = String(snapshot.securityId);
+    const key = marketSeriesKey(snapshot.securityId, snapshot.source);
 
     const accepted = this.queue.enqueue(key, () =>
       this.processSnapshot(snapshot, acceptedAt),
@@ -263,7 +272,7 @@ export class RealtimeMarketDataProductService
 
     for (const member of members) {
       const decoded = decodeDueMember(member);
-      const queueKey = String(decoded.securityId);
+      const queueKey = marketSeriesKey(decoded.securityId, decoded.source);
 
       this.queue.enqueue(queueKey, async () => {
         // A4 (design 283): read Redis watermark before finalizing.

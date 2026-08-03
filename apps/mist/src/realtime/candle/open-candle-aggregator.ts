@@ -1,6 +1,9 @@
 import { Decimal8 } from '@app/decimal';
 import { Injectable } from '@nestjs/common';
-import type { CanonicalRealtimeSnapshot } from '../realtime.types';
+import type {
+  CanonicalRealtimeSnapshot,
+  RealtimeSource,
+} from '../realtime.types';
 import { resolveCandleBucket } from './candle-bucket.util';
 import type {
   ApplySnapshotOutcome,
@@ -10,6 +13,7 @@ import type {
   OpenCandleState,
   SealedCandle,
 } from './candle.types';
+import { marketSeriesKey } from './market-series-key';
 
 /**
  * Per-`(securityId + source)` key for the open-bucket map.
@@ -19,10 +23,6 @@ import type {
  * realtime source, so keying on securityId+source is safe; different sources
  * for the same security are non-effective and rejected upstream.
  */
-function aggregationKey(securityId: number, source: string): string {
-  return `${source}:${securityId}`;
-}
-
 /**
  * Cumulative totals carried from a sealed bucket into the next one.
  *
@@ -49,7 +49,7 @@ export interface SealResult {
  * Pure-logic, synchronous aggregator for current-day 1-minute candles.
  *
  * Owns a `Map<key, OpenCandleState>` of in-progress buckets keyed by
- * `source:securityId`. Does NOT touch Redis, async I/O, or the Node Clock —
+ * `securityId:source`. Does NOT touch Redis, async I/O, or the Node Clock —
  * all of those are layered above by the product service. This isolation makes
  * the entire candle state machine table-driven testable.
  *
@@ -107,7 +107,7 @@ export class OpenCandleAggregator {
       return { kind: 'skipped', reason: 'not_aggregation_eligible' };
     }
 
-    const key = aggregationKey(snapshot.securityId, snapshot.source);
+    const key = marketSeriesKey(snapshot.securityId, snapshot.source);
     const existing = this.open.get(key);
 
     // Detect trading-day rollover: a new day must not inherit baseline.
@@ -136,8 +136,8 @@ export class OpenCandleAggregator {
    * Seal and remove the current open bucket for a key (used by the due
    * finalizer and shutdown drain). Returns null if there is nothing open.
    */
-  sealCurrent(securityId: number, source: string): SealedCandle | null {
-    const key = aggregationKey(securityId, source);
+  sealCurrent(securityId: number, source: RealtimeSource): SealedCandle | null {
+    const key = marketSeriesKey(securityId, source);
     const state = this.open.get(key);
     if (!state) return null;
     const sealed = this.toSealed(state);
@@ -147,8 +147,8 @@ export class OpenCandleAggregator {
   }
 
   /** Read-only peek at the open state (for diagnostics / finalizer cutoff). */
-  peekOpen(securityId: number, source: string): OpenCandleState | null {
-    return this.open.get(aggregationKey(securityId, source)) ?? null;
+  peekOpen(securityId: number, source: RealtimeSource): OpenCandleState | null {
+    return this.open.get(marketSeriesKey(securityId, source)) ?? null;
   }
 
   // ---- internal helpers ------------------------------------------------
@@ -345,8 +345,12 @@ export class OpenCandleAggregator {
    * Mark the open bucket for a key as invalid with a given reason (used by the
    * future Redis-due-registration-failed / queue-overflow layers).
    */
-  markInvalid(securityId: number, source: string, reason: InvalidReason): void {
-    const key = aggregationKey(securityId, source);
+  markInvalid(
+    securityId: number,
+    source: RealtimeSource,
+    reason: InvalidReason,
+  ): void {
+    const key = marketSeriesKey(securityId, source);
     const state = this.open.get(key);
     if (state && state.validity === 'valid') {
       state.validity = 'invalid';

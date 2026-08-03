@@ -45,7 +45,8 @@ accepted realtime snapshot 目前没有形成可恢复、可审计的当日 K �
 
 - `realtime-market-data-ingress`: accepted snapshot 后增加可失败隔离的 candle sink，并收紧 canonical 量额契约。
 - `backend-datasource-integration`: 明确 TDX/QMT native 量额验证、规范化和 precision provenance。
-- `windows-docker-appliance`: 部署物理独立的 market-data Redis，并保持产品模式默认关闭。
+- `windows-docker-appliance`: 复用单机持久化 realtime Redis endpoint，以独立 market key prefix、client
+  owner 和容量观测隔离 candle state，并保持产品模式默认关闭。
 - `monitoring-health-alerts`: 增加 candle、Redis、grace、discard、capacity 和 recovery 观测。
 
 ## Impact
