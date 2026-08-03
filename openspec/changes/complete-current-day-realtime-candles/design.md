@@ -191,9 +191,11 @@ cumulative counter 必须先 compare：当前值小于 baseline 时走 reset 分
 
 V1 除上述精确非负整数单位缩放外，不提供任意 multiplication、division、average、ratio 或 rounding，
 因此不引入 decimal third-party dependency。未来 VWAP、比例或其他需要舍入策略的计算必须由 focused
-change 定义 scale/rounding 后再评估 `big.js` 等库。当前 app-local `k-decimal.util.ts` 只是待提取/
-替换的实现候选，不能作为其他 app 的共享 API；最终共享 library 的目录和命名在实现 preflight 中
-单独确认，market、strategy 和 realtime period builder 不得各自复制 parser/comparator。
+change 定义 scale/rounding 后再评估 `big.js` 等库。当前 app-local `k-decimal.util.ts` 只是待替换的
+实现候选，不能作为其他 app 的共享 API。实现 preflight 已确认共享 primitive 位于 pure
+`libs/decimal`、Nest project `decimal`，且只通过精确 alias `@app/decimal` 导入；该 library 不提供 Nest
+module，不导入 TypeORM、Redis、HTTP、env 或其他 Mist application/library。market、strategy 和 realtime
+period builder 不得各自复制 parser/comparator。
 
 ### 4. Redis commit 与下游完全隔离
 

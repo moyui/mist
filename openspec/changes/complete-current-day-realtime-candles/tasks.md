@@ -63,7 +63,8 @@
 
 ## 3. Exact Decimal 与 Canonical Contract
 
-- [ ] 3.1 在待确认目录的共享 library 中实现 `Decimal8`：以原生 `bigint` 保存 scale=8 定点值，提供
+- [x] 3.1 在 pure `libs/decimal`（project `decimal`、import `@app/decimal`）中实现 `Decimal8`：以原生
+  `bigint` 保存 scale=8 定点值，提供
   parse/format/compare/add/subtract 和受限非负整数单位缩放，强制 `DECIMAL(36,8)` 输入与结果范围；
   只允许 provider profile 的 `×100/×10000`，不提供任意乘除/舍入，不新增
   third-party decimal dependency。实现独立 external-text normalize 与 strict canonical parse；原始
