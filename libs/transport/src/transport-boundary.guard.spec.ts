@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import ts from 'typescript';
 
 const root = process.cwd();
 type OwnedLibrary = {
@@ -157,6 +158,26 @@ describe('service boundary import graph', () => {
     );
   });
 
+  it('extracts static, side-effect, dynamic, and CommonJS module references', () => {
+    expect(
+      importsFromSource(`
+        import '@app/transport/rpc/internal';
+        import { value } from '@app/backtest/internal';
+        export * from '@app/signal/internal';
+        const strategy = import('@app/strategy/internal');
+        const transport = require('@app/transport/http/internal');
+        import legacy = require('@app/backtest/legacy');
+      `),
+    ).toEqual([
+      '@app/transport/rpc/internal',
+      '@app/backtest/internal',
+      '@app/signal/internal',
+      '@app/strategy/internal',
+      '@app/transport/http/internal',
+      '@app/backtest/legacy',
+    ]);
+  });
+
   it('blocks app-to-app source imports beyond the exact legacy allowlist', () => {
     const legacyAllowlist = new Set([
       'apps/chan/src/chan-app.module.ts -> apps/mist/src/chan/chan.module',
@@ -258,10 +279,49 @@ describe('service boundary import graph', () => {
 });
 
 function importsOf(file: string): string[] {
-  const content = readFileSync(file, 'utf8');
-  return [...content.matchAll(/(?:from\s+|import\s*\()['"]([^'"]+)['"]/g)].map(
-    (match) => match[1],
+  return importsFromSource(readFileSync(file, 'utf8'), file);
+}
+
+function importsFromSource(content: string, file = 'module.ts'): string[] {
+  const sourceFile = ts.createSourceFile(
+    file,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
   );
+  const imports: string[] = [];
+
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+    ) {
+      imports.push(node.moduleSpecifier.text);
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression &&
+      ts.isStringLiteralLike(node.moduleReference.expression)
+    ) {
+      imports.push(node.moduleReference.expression.text);
+    } else if (
+      ts.isCallExpression(node) &&
+      node.arguments.length === 1 &&
+      ts.isStringLiteralLike(node.arguments[0]) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === 'require'))
+    ) {
+      imports.push(node.arguments[0].text);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  return imports;
 }
 
 function isExternalOwnedLibraryImport(file: string, source: string): boolean {

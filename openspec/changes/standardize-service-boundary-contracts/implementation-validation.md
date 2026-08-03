@@ -19,6 +19,8 @@ The following checks passed on 2026-08-03:
 - `pnpm build:docker` (`mist`, `chan` and `realtime-subscription-hil`)
 - review-remediation focused suites: 8 suites and 95 tests passed
 - HTTP boundary integration suites: 2 suites and 10 tests passed
+- service-boundary AST import guard suite: 9 tests passed, including side-effect import, dynamic import,
+  CommonJS `require()` and TypeScript `import = require()` syntax
 - `openspec validate --all --strict --no-interactive --json`: 64/64 items passed, comprising 12 changes and 52
   stable specs
 - `git diff --check`
