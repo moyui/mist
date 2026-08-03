@@ -17,6 +17,16 @@ import type { RealtimeSource } from './realtime.types';
 
 const NAMESPACE = 'mist:realtime:v1';
 
+/** Approved UTF-8 record limits from the candle capacity review. */
+export const REALTIME_REDIS_RECORD_LIMITS = {
+  sealed: 2_048,
+  dueMember: 128,
+  manifest: 1_024,
+} as const;
+
+/** Fixed bound for due scans and startup replay commands. */
+export const REALTIME_REDIS_RANGE_BATCH_SIZE = 64;
+
 /**
  * Per-symbol closed-candle Hash. Field = `bucketStartMs`; value = compact
  * candle JSON. Written once per bucket via a finalizer `MULTI/EXEC`.
@@ -80,7 +90,13 @@ export function encodeDueMember(
   providerSymbol: string,
   bucketStartMs: number,
 ): string {
-  return `${securityId}:${source}:${providerSymbol}:${bucketStartMs}`;
+  const member = `${securityId}:${source}:${providerSymbol}:${bucketStartMs}`;
+  assertRealtimeRedisBytes(
+    'due member',
+    member,
+    REALTIME_REDIS_RECORD_LIMITS.dueMember,
+  );
+  return member;
 }
 
 /** Inverse of {@link encodeDueMember}. */
@@ -90,11 +106,51 @@ export function decodeDueMember(member: string): {
   providerSymbol: string;
   bucketStartMs: number;
 } {
-  const [securityId, source, providerSymbol, ms] = member.split(':');
+  assertRealtimeRedisBytes(
+    'due member',
+    member,
+    REALTIME_REDIS_RECORD_LIMITS.dueMember,
+  );
+  const parts = member.split(':');
+  if (parts.length !== 4) {
+    throw new RangeError('due member must contain exactly four fields');
+  }
+  const [securityIdText, source, providerSymbol, ms] = parts;
+  const securityId = Number(securityIdText);
+  const bucketStartMs = Number(ms);
+  if (!Number.isSafeInteger(securityId) || securityId <= 0) {
+    throw new RangeError(
+      'due member securityId must be a positive safe integer',
+    );
+  }
+  if (source !== 'tdx' && source !== 'qmt') {
+    throw new RangeError('due member source must be tdx or qmt');
+  }
+  if (!providerSymbol) {
+    throw new RangeError('due member providerSymbol must be non-empty');
+  }
+  if (!Number.isSafeInteger(bucketStartMs) || bucketStartMs <= 0) {
+    throw new RangeError(
+      'due member bucketStartMs must be a positive safe integer',
+    );
+  }
   return {
-    securityId: Number(securityId),
-    source: source as RealtimeSource,
+    securityId,
+    source,
     providerSymbol,
-    bucketStartMs: Number(ms),
+    bucketStartMs,
   };
+}
+
+export function assertRealtimeRedisBytes(
+  label: string,
+  value: string,
+  maximum: number,
+): void {
+  const bytes = Buffer.byteLength(value, 'utf8');
+  if (bytes > maximum) {
+    throw new RangeError(
+      `${label} is ${bytes} UTF-8 bytes; maximum is ${maximum}`,
+    );
+  }
 }

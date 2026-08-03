@@ -10,6 +10,8 @@ import {
   dueKey,
   encodeDueMember,
   RETENTION_AFTER_DAY_END_HOURS,
+  REALTIME_REDIS_RECORD_LIMITS,
+  assertRealtimeRedisBytes,
 } from '../realtime-redis.constants';
 
 /**
@@ -84,20 +86,49 @@ export class CandleFinalizer {
       candle.providerSymbol,
     );
     const dueK_ = dueKey(tradingDay);
-    const member = encodeDueMember(
-      candle.securityId,
-      candle.source,
-      candle.providerSymbol,
-      candle.bucketStartMs,
-    );
+    const manifest = {
+      closed: closedK,
+      watermark: wmK,
+      due: dueK_,
+    };
+
+    let member: string;
+    let compactRecord: string | null = null;
+    try {
+      member = encodeDueMember(
+        candle.securityId,
+        candle.source,
+        candle.providerSymbol,
+        candle.bucketStartMs,
+      );
+      if (candle.validity === 'valid') {
+        compactRecord = JSON.stringify(this.toCompactRecord(candle));
+        assertRealtimeRedisBytes(
+          'sealed candle record',
+          compactRecord,
+          REALTIME_REDIS_RECORD_LIMITS.sealed,
+        );
+      }
+      assertRealtimeRedisBytes(
+        'candle manifest record',
+        JSON.stringify(manifest),
+        REALTIME_REDIS_RECORD_LIMITS.manifest,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Candle seal bounds failed for securityId=${candle.securityId} source=${candle.source} bucket ${candle.bucketStartMs}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
 
     const ttlSeconds = this.computeTtlSeconds(candle.bucketEndMs, nowMs);
 
     const multi = redis.multi();
 
     if (candle.validity === 'valid') {
-      const record = this.toCompactRecord(candle);
-      multi.hset(closedK, String(candle.bucketStartMs), JSON.stringify(record));
+      multi.hset(closedK, String(candle.bucketStartMs), compactRecord!);
     }
 
     // Watermark: always advance, recording outcome + reason.
@@ -123,11 +154,7 @@ export class CandleFinalizer {
     multi.zrem(dueK_, member);
 
     // Record the partition manifest (idempotent key list for cleanup).
-    multi.hset(manifestK, {
-      closed: closedK,
-      watermark: wmK,
-      due: dueK_,
-    });
+    multi.hset(manifestK, manifest);
 
     // Relative TTL on all keys.
     multi.expire(closedK, ttlSeconds);
@@ -178,12 +205,33 @@ export class CandleFinalizer {
       decoded.providerSymbol,
     );
     const dueK_ = dueKey(tradingDay);
-    const member = encodeDueMember(
-      decoded.securityId,
+    const manifestK = manifestKey(
+      tradingDay,
       decoded.source,
       decoded.providerSymbol,
-      decoded.bucketStartMs,
     );
+    const manifest = { watermark: wmK, due: dueK_ };
+    let member: string;
+    try {
+      member = encodeDueMember(
+        decoded.securityId,
+        decoded.source,
+        decoded.providerSymbol,
+        decoded.bucketStartMs,
+      );
+      assertRealtimeRedisBytes(
+        'candle manifest record',
+        JSON.stringify(manifest),
+        REALTIME_REDIS_RECORD_LIMITS.manifest,
+      );
+    } catch (error) {
+      this.logger.error(
+        `discardDue bounds failed for securityId=${decoded.securityId} source=${decoded.source} bucket ${decoded.bucketStartMs}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
     const ttlSeconds = Math.max(
       Math.ceil(
         (decoded.bucketStartMs +
@@ -202,11 +250,12 @@ export class CandleFinalizer {
       invalidReason: reason,
     });
     multi.zrem(dueK_, member);
+    multi.hset(manifestK, manifest);
     multi.expire(wmK, ttlSeconds);
+    multi.expire(manifestK, ttlSeconds);
 
     try {
-      await multi.exec();
-      return true;
+      return (await multi.exec()) !== null;
     } catch (error) {
       this.logger.error(
         `discardDue failed for ${decoded.providerSymbol} bucket ${decoded.bucketStartMs}: ${

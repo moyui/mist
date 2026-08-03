@@ -241,4 +241,77 @@ describe('CandleFinalizer', () => {
       expect(e.args[1]).toBeGreaterThanOrEqual(1);
     }
   });
+
+  it('rejects an oversized sealed record before opening a Redis transaction', async () => {
+    const fake = makeFakeRedis();
+    const candle = makeSealed({
+      closingSnapshot: {
+        securityId: 1,
+        providerSymbol: '600030.SH',
+        source: 'tdx',
+        eventTime: '2026-07-28T09:30:59+08:00',
+        capturedAt: 'x'.repeat(3_000),
+        price: 11,
+        cumulativeVolume: '5000',
+        cumulativeAmount: '55000',
+        quality: {
+          level: 'latest-state',
+          eventTimeAvailable: true,
+          aggregationEligible: true,
+          partialPrices: false,
+        },
+      },
+    });
+
+    await expect(
+      new CandleFinalizer().seal(fake as any, candle, candle.bucketEndMs),
+    ).resolves.toBe(false);
+    expect(fake.multi).not.toHaveBeenCalled();
+  });
+
+  it('commits a no-snapshot discard with manifest and no closed record', async () => {
+    const fake = makeFakeRedis();
+    fake.chain.exec.mockResolvedValue([]);
+    fake.multi.mockReturnValue(fake.chain);
+    const bucketStartMs = Date.parse('2026-07-28T01:30:00.000Z');
+
+    await expect(
+      new CandleFinalizer().discardDue(
+        fake as any,
+        {
+          securityId: 1,
+          source: 'tdx',
+          providerSymbol: '600030.SH',
+          bucketStartMs,
+        },
+        'no_snapshot',
+        bucketStartMs + 65_000,
+      ),
+    ).resolves.toBe(true);
+
+    expect(
+      fake.commands.find(
+        (command) =>
+          command.cmd === 'hset' &&
+          String(command.args[0]).includes(':candle:1m:closed'),
+      ),
+    ).toBeUndefined();
+    expect(
+      fake.commands.find(
+        (command) =>
+          command.cmd === 'hset' &&
+          String(command.args[0]).includes(':candle:1m:watermark'),
+      )?.args[1],
+    ).toMatchObject({
+      outcome: 'discarded',
+      invalidReason: 'no_snapshot',
+    });
+    expect(
+      fake.commands.find(
+        (command) =>
+          command.cmd === 'hset' &&
+          String(command.args[0]).includes(':manifest'),
+      ),
+    ).toBeDefined();
+  });
 });

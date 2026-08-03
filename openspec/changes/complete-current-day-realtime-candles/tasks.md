@@ -91,7 +91,7 @@
   无 baseline 的 sealed null、乱序和 capacity fail-closed；覆盖 candle owner 不得跨日继承 cumulative
   baseline，也不得在 sealing 时用前一根 K 覆盖 raw null；rollover 不提交 prior bucket，跨 bucket
   late frame 不得回滚 current bucket。
-- [ ] 4.3 实现 snapshot-driven 与 active-listener expected-bucket due registration/scanner、valid/discarded
+- [x] 4.3 实现 snapshot-driven 与 active-listener expected-bucket due registration/scanner、valid/discarded
   finalizer 和 atomic Redis state transition；覆盖完全无 snapshot、listener 中途增删与 restart gap；
   finalizer 必须精确匹配 due bucket，commit 失败保留 immutable candidate 并按秒重试，hard horizon 到期
   只记录基础设施 gap，不写 discarded 或 post-commit trigger；due/replay Redis command 固定 batch 64，

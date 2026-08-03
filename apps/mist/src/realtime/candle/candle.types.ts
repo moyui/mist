@@ -40,6 +40,7 @@ export type InvalidReason =
   | 'baseline_unavailable'
   | 'counter_reset'
   | 'queue_overflow'
+  | 'no_snapshot'
   | 'backend_restart_open_state_lost'
   | 'redis_due_registration_failed'
   | 'redis_finalization_failed'
@@ -97,8 +98,8 @@ export interface OpenCandleState {
   amountDelta: string | null;
 
   // Effective preceding counters used to calculate this interval. When no
-  // preceding counter exists, the first non-null observation establishes the
-  // bucket-local zero point.
+  // preceding counter exists, observations are retained for the next bucket
+  // but this bucket's interval quantity remains unavailable.
   baselineCumulativeVolume: string | null;
   baselineCumulativeAmount: string | null;
   firstCumulativeVolume: string | null;
