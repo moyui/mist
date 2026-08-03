@@ -101,7 +101,14 @@ TypeORM K read adapter，必须在 source move 前单独确认。
 
 现有 K merge、Fenxing、Bi Phase A/Phase B 和 Channel Phase A/Phase B fixtures 是初始基线。
 实施前还需增加完整 raw K → merged K → Fenxing/Bi/Channel fingerprint，明确结构/枚举/顺序/日期
-精确比较和浮点规则。任何算法修复必须另开 change。
+精确比较和浮点规则。
+
+已归档的 `fix-chan-wide-bi-distance` 是本 change 的前置算法修复，不再属于待移动的旧行为。抽取前后的
+Bi characterization 必须固定以下语义：宽笔起止端点在当前候选 `originData` 中各自唯一出现；两端之间
+的独立 K 数量按该有序数组的位置差计算，与 MySQL 全局自增 K ID 是否连续无关。端点缺失或重复属于
+算法不变量破坏，必须继续失败，不能回退到 ID 算术或静默猜测。
+
+后续发现的其他算法修复仍必须另开 change，不能夹带进 source move。
 
 ### 4. 不预先发明新的 Chan identity 或时间字段
 
@@ -133,7 +140,8 @@ adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体�
 
 ## Migration Plan
 
-1. 固定 current routes、consumers、full-output fixtures 和 app import baseline。
+1. 同步已归档的 `fix-chan-wide-bi-distance`，固定 current routes、consumers、full-output fixtures 和
+   app import baseline。
 2. 逐项确认 library、types、error/numeric/mutation/version contracts。
 3. 按已确认的 `chan-api` route owner，确认 K read adapter 和现有 Indicator K compatibility。
 4. 将 K merge、Fenxing、Bi、Channel 算法移动到 pure ChanCore。

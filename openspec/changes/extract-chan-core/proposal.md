@@ -14,6 +14,8 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
   ChanCore 抽取；Nest project key 固定为 `chancore`，import path 固定为 `@app/chancore`。
 - 从当前 K merge、Fenxing、Bi Phase A/Phase B 和 Channel Phase A/Phase B 代码中分离无 I/O、
   无 persistence、无 Nest/HTTP/TypeORM 依赖的 Chan 计算核心。
+- 以已归档的 `fix-chan-wide-bi-distance` 作为算法抽取前置基线：宽笔距离按候选 K 序列位置计算，
+  禁止在移动代码时恢复为全局数据库 K ID 差值。
 - 迁移当前 Trend、K merge、Fenxing、Bi、Channel 和纯 helpers/enums/types；Controller、HTTP DTO/VO、
   OpenAPI、日期/source 解析和 K 数据库读取继续属于 application adapter。
 - public API 只暴露无状态 `ChanCore` 的 `mergeK`、`findFenxings`、`createBi`、`createChannels`，以及
@@ -59,5 +61,7 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
   继续独立持有数据库连接与 HTTP 进程。
 - **Strategy changes**：`evolve-strategy-evaluation-contract` 单一持有 Strategy KDJ/MACD；
   `extract-backtest-runtime` 与 `run-realtime-strategy-evaluation` 不依赖本 change。
+- **算法基线**：依赖已归档的 `fix-chan-wide-bi-distance`；完整 differential fixture 必须覆盖 K ID
+  非连续但序列位置连续的宽笔场景。
 - **不包含**：公共 Indicator 重构、公共统一 K API、Strategy field 扩展、数据库 migration、
   Chan persistence、买卖点算法、前端修改、部署拓扑修改和路由删除。

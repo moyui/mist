@@ -18,6 +18,12 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **AND** it MUST NOT import application controllers, HTTP DTO/VO, TypeORM entities or Nest dependency-injection
   decorators
 
+#### Scenario: Bi width is evaluated after extraction
+- **WHEN** a candidate Bi resolves its start and end middle-origin IDs in the ordered candidate K sequence
+- **THEN** ChanCore MUST count independent K bars by the endpoint position distance in that sequence
+- **AND** the result MUST NOT depend on gaps in global persisted K IDs
+- **AND** a missing or duplicate endpoint occurrence MUST remain an invariant failure
+
 #### Scenario: A Chan request needs application behavior
 - **WHEN** a request requires K retrieval, date or source parsing, OpenAPI metadata, HTTP envelope or VO mapping
 - **THEN** that behavior MUST remain in an application adapter outside `libs/chancore`

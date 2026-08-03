@@ -16,7 +16,9 @@
 - 仓库：`mist`
 - 分支：`feat/extract-chan-core`
 - worktree：`mist/.worktrees/extract-chan-core`
-- 基线：`master@fe56c6863cc498acbad0a6803da16c2615bb6997`
+- 初始审计基线：`master@fe56c6863cc498acbad0a6803da16c2615bb6997`
+- 当前实施基线：`master@3a07d4b725dec2c288058505c82959224281d2a3`
+- 已同步前置：归档 change `2026-08-03-fix-chan-wide-bi-distance`
 - 初始实现状态：未移动应用源码、未新增 migration
 
 ### 当前真实链路
@@ -54,6 +56,8 @@ mist-fe / mist-skills
 - 不创建 `@app/analysis/indicator`，不预先发明 `reference/timestampMs/ordinal` 等 Chan 字段。
 - ChanCore 不查询 K、不写 persistence、不访问 HTTP/TypeORM/Redis/env。
 - 现有 URL、HTTP contract 和 Chan 算法在本 change 内保持不变。
+- “现有 Chan 算法”以已归档宽笔修复后的行为为准：独立 K 数量按候选 `originData` 的序列位置差
+  计算，不按数据库 K ID 差计算；端点缺失或重复继续作为 invariant failure。
 
 ### 已完成审计
 
@@ -65,6 +69,7 @@ mist-fe / mist-skills
 ### 尚未满足的实施门禁
 
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
+- full-output fingerprint 还需纳入非连续 K ID、唯一端点解析和宽笔 position-distance 回归场景；
 - `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
 - output 字段与 error/numeric/mutation/version contract 未确认。
 

@@ -4,7 +4,8 @@
 - [x] 1.2 盘点 `chan-api`、`mist-backend`、gateway、frontend、skills、deploy 和 monitoring 的现有
   route/consumer 拓扑。
 - [ ] 1.3 建立完整 raw K → merged K → Fenxing/Bi/Channel characterization fixture 与 full-output
-  fingerprint；现有局部 Phase A/Phase B tests 继续保留。
+  fingerprint；现有局部 Phase A/Phase B tests 继续保留，并纳入已归档
+  `fix-chan-wide-bi-distance` 的非连续 K ID、唯一端点解析和 position-distance 行为。
 - [x] 1.4 确认独立部署的 `chan-api` 是 `/v1/chan/*` 长期唯一 owner；本 change 保留
   `mist-backend` 当前兼容路由，后续独立 route migration 负责 consumer audit 与删除。
 - [ ] 1.5 向项目负责人评审 `chan-api` TypeORM K read adapter、`/v1/indicators/k` 兼容链路和
@@ -25,7 +26,7 @@
 - [ ] 2.1 建立 `libs/chancore`、Nest project `chancore`、`@app/chancore` alias 和无
   TypeORM/Redis/HTTP/Nest/env/persistence contract tests。
 - [ ] 2.2 迁移 K merge、Trend、Fenxing、Bi Phase A/Phase B、Channel Phase A/Phase B 与纯 helpers，
-  保持已批准的输入输出和算法语义。
+  保持已批准的输入输出和算法语义，且不得把宽笔距离恢复为数据库 K ID 算术。
 - [ ] 2.3 用 library-owned types 替代 DTO/VO/Entity 输入，adapter 显式完成双向映射。
 - [ ] 2.4 建立最小 public barrel；contract test 拒绝导出内部算法实现、helpers、Nest module 或
   `analyze()`。
