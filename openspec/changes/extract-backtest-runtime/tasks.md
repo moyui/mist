@@ -6,8 +6,8 @@
 
 ## 1. 前置与基线
 
-- [ ] 1.1 确认 `standardize-service-boundary-contracts`、`extract-market-analysis-kernels` 和
-  `evolve-strategy-evaluation-contract` 已通过验收。
+- [ ] 1.1 确认 `standardize-service-boundary-contracts` 和 `evolve-strategy-evaluation-contract` 已通过
+  验收；`extract-chan-core` 不属于 Backtest 前置依赖。
 - [ ] 1.2 记录 `mist`、`mist-deploy`、`mist-monitoring` 的 branch、HEAD、dirty/worktree、Compose、
   active changes 和现有同步 Backtest 影响链。
 - [ ] 1.3 运行现有 Backtest controller/service、schema integrity 和完整 backend 基线，区分自动化通过

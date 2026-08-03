@@ -253,8 +253,8 @@ realtime evaluation。
 ## Impact
 
 - **前置依赖**：`standardize-service-boundary-contracts`、
-  `complete-current-day-realtime-candles`、`extract-market-analysis-kernels` 和
-  `evolve-strategy-evaluation-contract` 必须先通过各自验收门禁。
+  `complete-current-day-realtime-candles` 和 `evolve-strategy-evaluation-contract` 必须先通过各自验收
+  门禁；`extract-chan-core` 不属于 Realtime Strategy 前置依赖。
 - **`mist`**：internal context port、NestJS BullMQ queue adapter、`apps/signal`、
   registry/window/evaluation、legacy strategy-scan route removal、realtime job deadline config 和 tests。
 - **`mist-fe`**：独立 frontend 项目删除 manual-scan client/type/button/tests；本 change 不直接修改其

@@ -178,6 +178,10 @@ MACD。realtime 与 backtest 必须在同一 anchor 使用相同窗口定义，�
 raw-K 上限，任意固定窗口都只能定义新的 window-local Chan 产品语义。后续接入必须由独立 change 重新
 评审，不得从 kernel output 自动暴露。
 
+KDJ/MACD calculation 由共享 Strategy library 和 evaluator 单一持有，供 Backtest/Realtime 复用；
+它不调用当前公共 Indicator HTTP API，也不依赖 `extract-chan-core`。公共 Indicator service 与 ChanCore
+属于独立产品边界，不能重新合并成 Strategy 的通用 analysis base。
+
 `k.volume/k.amount` 的普通当前值比较仍使用 `calculationBarCount=1`。该值指的是 projector 生成的
 effective current value；同日 day-start replay 是 missing policy 的投影准备，不是用户 lookback，也不改写 plan 的
 `requiredBarCount`。projector 只维护进程内当日最近值，新交易日清空；当日首段连续 null 在首个非 null 出现前

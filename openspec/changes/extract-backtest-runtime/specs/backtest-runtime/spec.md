@@ -1164,7 +1164,7 @@ automatically retry or resume interrupted runs.
 - **AND** this decision MUST NOT add or modify a database migration
 
 ### Requirement: Backtest Applications Shall Share Libraries Without Importing Applications
-Backtest contracts, strategy evaluation, analysis kernels and persistence entities SHALL be provided by
+Backtest contracts, Strategy-owned Indicator calculations, strategy evaluation and persistence entities SHALL be provided by
 responsibility-specific `libs/*` modules.
 
 #### Scenario: Runtime dependencies are inspected

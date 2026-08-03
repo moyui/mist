@@ -6,8 +6,8 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
 
 ## 1. 前置与生产审计
 
-- [ ] 1.1 确认 `complete-current-day-realtime-candles` 的共享 `Decimal8` 和
-  `extract-market-analysis-kernels` 已通过验收。
+- [ ] 1.1 确认 `complete-current-day-realtime-candles` 的共享 `Decimal8` 已通过验收；ChanCore 不作为
+  本 change 的前置依赖。
 - [ ] 1.2 记录 strategy entities、migrations、stable specs、API/FE consumers、legacy manual scan、
   signal-level backtest 和 portfolio worktree 的当前边界。
 - [ ] 1.3 只读审计真实 `schema_migrations`、column/index/constraint inventory，以及 strategy
@@ -28,8 +28,9 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
   bounded immutable context builder。
 - [ ] 2.5 实现共享 `QuantityForwardFillProjector` 与 contextSnapshot serializer，覆盖同日
   forward-fill、日切、current/previous evidence、short-circuit 稳定性和 unavailable 不持久化。
-- [ ] 2.6 接入已验收 Indicator kernels，并用共同 fixtures 固定 KDJ 13/14、MACD 130/131、普通比较和
-  crossover 的 Backtest/realtime parity；V1 不开放 `chan.*`。
+- [ ] 2.6 在共享 Strategy library 中实现 evaluator-owned KDJ(9,3,3) 与 MACD(12,26,9) fixed-window
+  calculation，并用共同 fixtures 固定 13/14、130/131、普通比较和 crossover 的
+  Backtest/realtime parity；V1 不开放或依赖 `chan.*`。
 
 ## 3. Registry、Schema 与 API
 

@@ -1,6 +1,6 @@
 ## Context
 
-realtime candle、analysis kernels 和 strategy contract 分别由前置 changes 提供。该 change 只负责
+realtime candle 与 Strategy-owned Indicator/evaluation contract 分别由前置 changes 提供。该 change 只负责
 把市场变化可靠地转换成有界 evaluation，并把候选持久化为 Signal/PENDING AlertEvent。当前一体化
 design 的“只重放 72h Redis、绝不读 MySQL”会让较长 lookback 在重启后长期不可用，因此改为内部
 有界历史/实时 context port。
@@ -950,7 +950,7 @@ V1 继续选择 best-effort 和减少重复，而不是 BullMQ 默认的 stalled
 - producer 必须显式设置 `attempts: 1`，不配置 fixed/exponential backoff；
 - worker 必须显式设置 `maxStalledCount: 0`。首次 worker crash、event-loop starvation 或 lock loss
   造成 stalled 时，job 直接进入 failed，不重新回到 waiting 执行；
-- Redis/MySQL adapter、analysis kernel、evaluator 或 persistence 抛出的非目标异常继续按后端错误
+- Redis/MySQL adapter、Strategy-owned Indicator calculation、evaluator 或 persistence 抛出的非目标异常继续按后端错误
   治理传播到 processor 边界，由 BullMQ 将 job 标记 failed；worker 不 catch-and-success，也不包装
   成 evaluation unavailable；
 - failed job 按当日 compensation retention 保留。startup compensation 使用相同 jobId，不能把它

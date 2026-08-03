@@ -698,8 +698,9 @@ Backtest 变成全局启动依赖；Backtest 不可用时其他公共 API、mark
 ### 8. 共享代码留在 libraries
 
 公共 HTTP 和 RPC envelope 位于 `libs/transport/http|rpc`；Backtest pattern/command/error-code/decoder
-位于 `libs/backtest`；strategy evaluator、validator、bounded context contract、Indicator kernels、
-`QuantityForwardFillProjector` 和 TypeORM entities 放在各自职责明确的 `libs/*`。Chan kernels 可继续
+位于 `libs/backtest`；strategy evaluator、validator、bounded context contract、Strategy-owned
+Indicator calculations、`QuantityForwardFillProjector` 和 TypeORM entities 放在各自职责明确的
+`libs/*`。ChanCore 可继续
 服务现有 Chan API，但不进入 V1 strategy field catalog 或 backtest hot path。`apps/mist`、
 `apps/backtest` 与 `apps/signal` 不得互相导入 application source。
 
@@ -849,9 +850,9 @@ source、time range 和有序 historical K，在相同算法版本下产生相�
 ### 11. 与 realtime change 共享前置但不互相阻塞
 
 `extract-backtest-runtime` 与 `run-realtime-strategy-evaluation` 都依赖
-`standardize-service-boundary-contracts`、`extract-market-analysis-kernels` 和
-`evolve-strategy-evaluation-contract`。realtime change 还依赖 current-day candle。两个 runtime
-change 在共同 transport/domain/analysis contract 稳定后可独立推进，不互相导入 app 源码，也不
+`standardize-service-boundary-contracts` 和 `evolve-strategy-evaluation-contract`。realtime change
+还依赖 current-day candle。`extract-chan-core` 不阻塞这两个 Strategy runtime。两个 runtime
+change 在共同 transport/domain/evaluation contract 稳定后可独立推进，不互相导入 app 源码，也不
 共享未隔离的工作队列。
 
 ## Risks / Trade-offs

@@ -138,7 +138,7 @@
 - 公共 `202/429/503/504/500` 响应复用 `libs/transport/http`：成功返回真实 body statusCode、显式
   `BACKTEST_ACCEPTED` message；已创建 run 的错误 identity 放在 typed `ApiErrorDto.data`，HTTP
   requestId 传播为 RPC correlationId。
-- evaluator、validator、Indicator kernels、quantity projector、Backtest command type 和 backtest entities 保持在
+- evaluator、validator、Strategy-owned Indicator calculations、quantity projector、Backtest command type 和 backtest entities 保持在
   职责明确的 `libs/*`；contextSnapshot serializer 同样由共享 strategy library 持有，`apps/mist` 与
   `apps/backtest` 不互相导入应用源码。
 - V1 明确不支持用户取消回测：不增加 cancel HTTP/RPC、DTO/VO、状态、字段、migration、前端操作或
@@ -204,9 +204,9 @@
 
 ## Impact
 
-- **前置依赖**：`define-strategy-runtime-architecture`、`standardize-service-boundary-contracts`、
-  `extract-market-analysis-kernels` 和 `evolve-strategy-evaluation-contract` 必须先通过公共边界与
-  共享计算语义门禁。
+- **前置依赖**：`define-strategy-runtime-architecture`、`standardize-service-boundary-contracts` 和
+  `evolve-strategy-evaluation-contract` 必须先通过公共边界与共享计算语义门禁；`extract-chan-core`
+  不属于 Backtest 前置依赖。
 - **`mist`**：新增 `apps/backtest`，拆分 controller、command contract、executor、persistence
   orchestration 和 tests，建立 shared market-data replay capability，并增加与 NestJS 10 对齐的
   `@nestjs/microservices` 直接依赖。

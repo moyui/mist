@@ -125,7 +125,7 @@ approved missing-value resolution.
 
 #### Scenario: A strategy does not filter by bar completeness
 - **WHEN** a valid canonical bar has `type='incomplete'` and the execution plan does not reference `k.type`
-- **THEN** the bar MUST remain consumable by the context builder, analysis kernels and evaluator
+- **THEN** the bar MUST remain consumable by the context builder, Strategy-owned Indicator calculations and evaluator
 - **AND** it MUST NOT be filtered or made unavailable solely because of its type
 
 ### Requirement: Evaluation Shall Separate Evaluability From Match
@@ -187,7 +187,7 @@ The shared evaluation contract SHALL return either `status='unavailable'` with a
 - **AND** constituent 1m null values MUST NOT be forward-filled before the derived sum is calculated
 
 #### Scenario: Canonical input or calculation violates its contract
-- **WHEN** a non-null canonical field is malformed or the context builder, analysis kernel or evaluator throws
+- **WHEN** a non-null canonical field is malformed or the context builder, Strategy-owned Indicator calculation or evaluator throws
 - **THEN** the exception MUST propagate to the owning HTTP, RPC or task boundary
 - **AND** it MUST NOT be converted to unavailable
 

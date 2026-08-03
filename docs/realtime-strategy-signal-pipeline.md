@@ -14,7 +14,7 @@ TDX / QMT native data
   → realtime decoder / historical MySQL K
   → current-day sealed 1m candle or replay page
   → canonical StrategyBar / StrategyMarketDataPort
-  → Indicator kernels + bounded strategy context
+  → Strategy-owned Indicator calculation + bounded strategy context
   → shared validator / evaluator
   ├─ BacktestSignalResult                 (apps/backtest)
   └─ StrategySignal + PENDING AlertEvent  (apps/signal)
@@ -31,8 +31,8 @@ TDX / QMT native data
 |---|---|
 | 公共 HTTP 与内部 RPC envelope | `standardize-service-boundary-contracts` / `libs/transport` |
 | realtime snapshot、open/sealed candle、market Redis、Decimal8 | `complete-current-day-realtime-candles` |
-| Indicator / Chan 纯计算 | `extract-market-analysis-kernels` |
-| StrategyBar、StrategyMarketDataPort、field catalog、validator/evaluator/context | `evolve-strategy-evaluation-contract` |
+| Chan 纯计算（不进入 V1 Strategy） | `extract-chan-core` |
+| StrategyBar、StrategyMarketDataPort、KDJ/MACD、field catalog、validator/evaluator/context | `evolve-strategy-evaluation-contract` |
 | MySQL replay adapter 与 Backtest lifecycle | `extract-backtest-runtime` / `apps/backtest` |
 | realtime adapters、window、episode、Signal/AlertEvent transaction | `run-realtime-strategy-evaluation` / `apps/signal` |
 | PENDING AlertEvent 外部投递 | `deliver-strategy-notifications` / notification worker |
