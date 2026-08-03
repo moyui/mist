@@ -53,6 +53,8 @@ mist-fe / mist-skills
   `mergedData` 是完整 `ChanK[]`，三个计数视图必须一致，HTTP adapter 继续恢复现有字段和 K VO 外观。
 - `ChanFenxing` 保留左中右三组原始 K IDs、合并 K 序列位置 `middleIndex`、真实极值 K identity
   `middleOriginId`、type 和标准 `high/low`；不复制完整 K，不新增 time，HTTP 恢复 `highest/lowest`。
+- `ChanBi` 保留首尾时间、算法 high/low、trend、独立 type/status、origin IDs、完整 `ChanK[]` 和
+  nullable 首尾分型；完整/未完成的 null 语义保持现状，Bi Phase A/Phase B 均对外保留。
 - 完整行情输入只为后续 Chan 演进留出边界；本 change 不增加笔力度、背驰、量价或 MACD 算法，
   也不导入公共 IndicatorService/Strategy evaluator。
 - Backtest/Realtime 通过 StrategyMarketDataPort + shared evaluator 计算 KDJ/MACD，不依赖 ChanCore 或

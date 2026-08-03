@@ -90,6 +90,30 @@ strings or `null` rather than JavaScript numbers.
 - **THEN** it MUST preserve all three ID groups, `middleIndex`, `middleOriginId` and `type`
 - **AND** it MUST map core `high/low` to HTTP `highest/lowest`
 
+#### Scenario: A complete Bi is emitted
+- **WHEN** `createBi` emits a complete `ChanBi`
+- **THEN** it MUST contain extreme-origin `startTime/endTime`, algorithm-derived `high/low`, `trend`, `type`,
+  `status`, `independentCount`, ordered identity-deduplicated `originIds/originData` and both endpoint Fenxings
+- **AND** `originData` MUST retain the complete contributing `ChanK` values
+- **AND** `startFenxing` and `endFenxing` MUST both be non-null
+
+#### Scenario: An incomplete tail Bi is emitted
+- **WHEN** the ordered K input ends before a complete endpoint Fenxing is formed
+- **THEN** the tail Bi MUST use `type=uncomplete`, `status=unknown` and `endFenxing=null`
+- **AND** `startFenxing` MAY be the preceding complete Bi endpoint or `null` when no Fenxing has formed
+
+#### Scenario: Bi two-phase output is returned
+- **WHEN** `createBi` completes its Phase A and Phase B reductions
+- **THEN** it MUST return both `phaseA` and `phaseB` as full `ChanBi[]` values
+- **AND** the adapter MUST NOT flatten, merge or omit either phase
+- **AND** Channel derivation MUST consume Bi Phase B
+
+#### Scenario: A Bi is returned through the existing HTTP route
+- **WHEN** the application adapter maps `ChanBi` to the retained HTTP contract
+- **THEN** it MUST recursively map core `high/low` to HTTP `highest/lowest`
+- **AND** it MUST map complete `ChanK` evidence to the retained public K VO shape
+- **AND** it MUST preserve `type`, `status`, nullable endpoint Fenxings and both phase arrays
+
 #### Scenario: A future Chan strength algorithm uses MACD or quantity
 - **WHEN** a future change defines Bi strength, divergence or volume-price analysis
 - **THEN** that change MAY derive a Chan-owned calculation from complete `ChanK` input

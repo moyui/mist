@@ -137,6 +137,44 @@ V1 不向 `ChanFenxing` 复制三组完整 K 或新增 `time`；算法可使用�
 identity 找到原始行情。HTTP adapter 继续把 core `high/low` 映射成现有 `highest/lowest`。极值相等时
 `middleOriginId` 的选择属于后续 numeric/tie-breaking 评审，不在输出字段确认中提前改变。
 
+`createBi` 的 library-owned 输出固定为：
+
+```ts
+interface ChanBi {
+  startTime: Date;
+  endTime: Date;
+  high: number;
+  low: number;
+  trend: TrendDirection;
+  type: BiType;
+  status: BiStatus;
+  independentCount: number;
+  originIds: number[];
+  originData: ChanK[];
+  startFenxing: ChanFenxing | null;
+  endFenxing: ChanFenxing | null;
+}
+
+interface ChanBiTwoPhaseResult {
+  phaseA: ChanBi[];
+  phaseB: ChanBi[];
+}
+```
+
+`startTime/endTime` 是首尾分型实际极值原始 K 的时间，`high/low` 是整笔覆盖范围的算法极值。
+`originData` 保留完整、按输入顺序排列并按 identity 去重的 `ChanK[]`；`originIds` 继续显式保留真实 K
+identity，不能改成序号或要求 adapter 临时重建。`independentCount` 表示该笔包含的独立原始 K 数量；
+它与两个 origin 数组的强一致性规则留给 invariant 评审确认。
+
+`type` 表示结构是否完成，`status` 表示算法有效性，二者不得合并成一个枚举。完整笔必须同时具有
+`startFenxing/endFenxing`；未完成笔必须有 `endFenxing=null`，其 `startFenxing` 可以是上一完整笔的
+终点，也可以在整段数据尚无分型时为 `null`。未完成笔使用 `Unknown`；完整笔保留现有
+`Valid/Invalid` 判定。
+
+`phaseA` 保留局部归约后的预览结果及 invalid 残留，`phaseB` 保留进一步消化 invalid 区间后的结果。
+adapter 不得压扁、合并或只返回其中一阶段；Channel 计算固定消费 Bi Phase B。HTTP adapter 递归映射
+`high/low → highest/lowest`，并把完整 `ChanK` 映射成当前 `KVo` 外观。
+
 adapter 负责 HTTP DTO、日期解析、source 选择、TypeORM K/Security 查询、升序与有限值校验、
 library input mapping、HTTP VO/OpenAPI 和错误映射。ChanCore 不访问数据库、Redis、HTTP、环境变量
 或 Nest controller，不写入 Chan persistence。
