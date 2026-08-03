@@ -71,6 +71,10 @@ describe('database schema safety', () => {
       '013_remove_qmt_native_period.sql',
       '7db3d388d8a01ac45031ed43c384f3acfa5fdd1ffc48e83636e9475b398c2d47',
     ],
+    [
+      '014_evolve_strategy_evaluation_contract.sql',
+      '57380491705224069516a32efcd8b7a9079d40fd0a6fe6cd0c34d18ab602e2af',
+    ],
   ]);
 
   it.each(appModulePaths)(

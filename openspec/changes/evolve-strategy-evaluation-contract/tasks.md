@@ -35,9 +35,9 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
 
 ## 3. Registry、Schema 与 API
 
-- [ ] 3.1 根据真实生产 preflight 提交最终 forward-only migration 编号、DDL、pre/postflight、readback
+- [x] 3.1 根据真实生产 preflight 提交最终 forward-only migration 编号、DDL、pre/postflight、readback
   和 repair-forward，未经确认不得修改 entity 或数据库。
-- [ ] 3.2 同步 ORM metadata、raw SQL、schema audit 和 named-constraint tests；不得增加旧 rule rewrite、
+- [x] 3.2 同步 ORM metadata、raw SQL、schema audit 和 named-constraint tests；不得增加旧 rule rewrite、
   nullable/default 兼容或 Signal composite unique。
 - [ ] 3.3 更新 strategy create/load/enable/realtime-registration 与 signal-level backtest，使其共用
   validator/compiler/evaluator/context serializer。
