@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CanonicalRealtimeSnapshot } from './realtime.types';
 import type { RealtimeSource } from './realtime.types';
 import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
@@ -7,6 +7,7 @@ import { resolveCandleBucket } from './candle/candle-bucket.util';
 
 @Injectable()
 export class RealtimeSnapshotIngressService {
+  private readonly logger = new Logger(RealtimeSnapshotIngressService.name);
   private readonly latestBySeries = new Map<
     string,
     CanonicalRealtimeSnapshot
@@ -50,7 +51,15 @@ export class RealtimeSnapshotIngressService {
       snapshot,
     );
     this.latestBySecurity.set(snapshot.securityId, snapshot);
-    this.product?.handleSnapshot(snapshot);
+    try {
+      this.product?.handleSnapshot(snapshot);
+    } catch (error) {
+      this.logger.error(
+        `Realtime candle sink failed after latest acceptance for securityId=${snapshot.securityId} source=${snapshot.source}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
     return snapshot;
   }
 

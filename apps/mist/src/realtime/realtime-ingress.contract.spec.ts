@@ -37,6 +37,35 @@ describe('formal realtime schema-v2 ingress contract', () => {
     expect(ingress.read(7)).toBe(current);
   });
 
+  it('publishes latest-memory state before invoking the optional candle sink', () => {
+    const product = {
+      handleSnapshot: jest.fn((snapshot: CanonicalRealtimeSnapshot) => {
+        expect(ingress.readSeries(snapshot.securityId, snapshot.source)).toBe(
+          snapshot,
+        );
+      }),
+    };
+    const ingress = new RealtimeSnapshotIngressService(product as never);
+    const snapshot = canonicalSnapshot('tdx', 7);
+
+    expect(ingress.handleSnapshot(snapshot)).toBe(snapshot);
+    expect(product.handleSnapshot).toHaveBeenCalledWith(snapshot);
+  });
+
+  it('keeps latest-memory acceptance when the optional candle sink fails', () => {
+    const product = {
+      handleSnapshot: jest.fn(() => {
+        throw new Error('REDIS_UNAVAILABLE');
+      }),
+    };
+    const ingress = new RealtimeSnapshotIngressService(product as never);
+    const snapshot = canonicalSnapshot('tdx', 7);
+
+    expect(() => ingress.handleSnapshot(snapshot)).not.toThrow();
+    expect(ingress.readSeries(7, 'tdx')).toBe(snapshot);
+    expect(ingress.read(7)).toBe(snapshot);
+  });
+
   it('funnels a TDX one-entry native map through the common ingress', () => {
     const store = new TdxRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
