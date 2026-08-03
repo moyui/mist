@@ -1,5 +1,1 @@
-export enum FenxingType {
-  Top = 'top',
-  Bottom = 'bottom',
-  None = 'none',
-}
+export { FenxingType } from '@app/chancore';
