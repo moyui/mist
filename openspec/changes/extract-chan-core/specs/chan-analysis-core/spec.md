@@ -104,6 +104,24 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **THEN** it MUST create new VO structures without mutating or re-sorting the core result
 - **AND** changing an adapter-owned VO MUST NOT change the core result
 
+#### Scenario: A caller identifies current Chan semantics
+- **WHEN** it reads the stateless facade contract
+- **THEN** `ChanCore.algorithmVersion` MUST be the readonly positive integer `1` for this extraction baseline
+- **AND** callers MUST NOT pass or negotiate an algorithm version
+- **AND** the version MUST NOT be duplicated into each result, HTTP response, database schema or environment config
+
+#### Scenario: Existing algorithm semantics change in a future change
+- **WHEN** a formation rule, comparison boundary, tie-breaker, reduction order, phase rule, output semantic or new
+  calculation changes an existing facade result
+- **THEN** that owning change MUST increment `algorithmVersion`
+- **AND** it MUST update and explain the full-output fingerprint in the same change
+
+#### Scenario: Algorithm semantics do not change
+- **WHEN** source is moved, internals are renamed, adapters change or a performance refactor remains fully
+  differential-equivalent
+- **THEN** `algorithmVersion` MUST remain unchanged
+- **AND** a Git build SHA MUST remain separate from the semantic algorithm version
+
 ### Requirement: ChanCore Shall Publish A Minimal Algorithm Facade
 The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`, `findFenxings`,
 `createBi` and `createChannels`, plus only the algorithm-owned types, enums and approved

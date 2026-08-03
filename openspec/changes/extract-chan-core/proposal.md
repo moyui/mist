@@ -31,6 +31,8 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
   Decimal、tick rounding 或公式改写。
 - core inputs/outputs 使用 readonly value contract，算法不修改调用方数据；允许内部输出共享只读
   `ChanK` evidence，不做 runtime freeze 或逐阶段深拷贝，adapter 必须新建 HTTP VO。
+- facade 暴露只读 `algorithmVersion=1` 作为 Chan 语义版本；不写入每个结果、HTTP、数据库或配置，
+  算法语义变化必须在 owning change 中递增版本并更新 full-output fingerprint。
 - `/v1/chan/*` 的长期唯一 runtime owner 固定为独立部署的 `chan-api`；当前 change 不顺手删除
   `mist-backend` 中的兼容路由，后续通过独立 route migration 清理双入口。
 - 在移动 controller/module 前确认现有双入口兼容范围，以及 `chan-api` 的 TypeORM K read adapter 和

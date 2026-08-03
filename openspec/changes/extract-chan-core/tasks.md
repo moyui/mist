@@ -26,7 +26,7 @@
     并保留 Bi Phase A/Phase B。
   - [x] 1.9.4 确认 `ChanChannel` 保留完整 bis、zone/extreme、enum/status/trend、真实 K 与 display
     identities，并保留 Channel Phase A/Phase B；迁移时修正 ID 被误注释为索引的问题。
-- [ ] 1.10 向项目负责人逐项评审空输入、invalid-input、numeric comparison、mutation 和算法版本。
+- [x] 1.10 向项目负责人逐项评审空输入、invalid-input、numeric comparison、mutation 和算法版本。
   - [x] 1.10.1 确认四个 core facade 对空 K 返回合法零结果；不足数据返回自然空结果或未完成笔；
     `/v1/chan/channel` 不再把内部空 Bi 暴露成 400。
   - [x] 1.10.2 确认 facade 单一 validator、序列/identity/OHLC/decimal contract、无自动修复、纯
@@ -35,7 +35,8 @@
     Date/identity 精确比较。
   - [x] 1.10.4 确认 readonly value contract、输入不变、Date 隔离、fresh HTTP VO、允许共享只读
     `ChanK` evidence，且引用身份不属于公共契约。
-  - [ ] 1.10.5 确认算法版本。
+  - [x] 1.10.5 确认 `ChanCore.algorithmVersion=1`；只标识算法语义，不进入 HTTP/DB/config，算法
+    change 必须 bump + full-output fingerprint，纯 source move/refactor 不 bump。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
 ## 2. Pure ChanCore
@@ -52,6 +53,8 @@
 - [ ] 2.4.1 实现 facade-private `assertChanKSeries()` 和 public `ChanInputError/ChanInvariantError`；
   覆盖 duplicate ID/time、跨 symbol、invalid Date、NaN/Infinity、`high < low`、MySQL fixed-scale
   decimal、非法 exponent/number/scale，并证明不排序、不转换、不补值。
+- [ ] 2.4.2 实现 readonly `ChanCore.algorithmVersion=1`；public contract test 固定其存在且禁止结果、
+  HTTP、DB/config 重复 version 字段。
 - [ ] 2.5 为完整 `ChanK` 建立 adapter mapping 与 decimal-string/null preservation tests；证明当前算法
   不因新增可用字段改变结果。
 - [ ] 2.6 用 full-output differential fixtures 证明结构、枚举、顺序、日期、数值与 mutation contract。
@@ -59,6 +62,8 @@
   可表示 number；证明未引入 epsilon、rounding、Decimal 或公式改写。
 - [ ] 2.6.2 以 frozen input 和 before/after fingerprint 证明四个 facade 不 mutation；允许嵌套输出共享
   只读 `ChanK`，但 tests 不断言 public reference identity。
+- [ ] 2.6.3 fingerprint 同时记录 `algorithmVersion`；本次 source move 必须保持 version 1，未来算法
+  semantic change 必须在同一 change 中 bump version、解释差异并更新 fixtures。
 
 ## 3. Application Adapters
 

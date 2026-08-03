@@ -339,6 +339,27 @@ HTTP adapter 必须新建 VO 并递归映射字段，禁止直接改名、赋值
 contract 只保证结构、值、枚举和顺序，不保证 input/output、Phase A/Phase B 或重复调用之间的 `===`
 关系；characterization 也不得把引用共享方式写进 fingerprint。
 
+### 10. `algorithmVersion` 只标识 Chan 算法语义
+
+无状态 facade 暴露 `ChanCore.algorithmVersion = 1` 这个 readonly positive integer。调用方不传算法
+版本，V1 不同时运行或协商多套 Chan 算法。版本不重复进入每个 merged K/Fenxing/Bi/Channel，不新增
+HTTP 字段、数据库列、migration、环境变量或版本路由。
+
+下列变化必须在其 owning change 中递增版本并同时更新 full-output fingerprint：
+
+- 分型、笔或中枢成立条件；
+- strict/non-strict comparison、tie-breaking 或归约顺序；
+- Phase A/Phase B 选择、合并、过滤语义；
+- 结果值、枚举、顺序、null 语义；
+- 新力度/MACD calculation 开始参与现有结果判定。
+
+纯 source move、differential 完全一致的性能优化、adapter/HTTP/OpenAPI/deploy 调整、tests/comments/internal
+rename，以及不影响现有四个 facade 结果的新独立能力不递增版本。
+
+characterization evidence 固定记录 `algorithmVersion + input fixture + expected full output`。Git SHA 标识
+具体 build，`algorithmVersion` 标识算法语义，两者不能互相替代。未来若 Signal 或其他 persistence
+需要保存 Chan 版本，由其 owning change 明确增加字段；本 change 不预建存储。
+
 ## Risks / Trade-offs
 
 - [只移动算法但保留 app import] → route/adapter owner 先于 source move 审批，guard test 最终删除精确
@@ -353,6 +374,7 @@ contract 只保证结构、值、枚举和顺序，不保证 input/output、Phas
 - [抽取时“修复精度”改变边界结果] → 锁定 strict/non-strict、first-wins 和 equal-boundary fixtures。
 - [adapter 为改字段名直接 mutation core output] → readonly contracts、fresh VO mapping 与 frozen-input tests。
 - [深拷贝完整 evidence 放大内存] → 允许共享 immutable `ChanK`，不承诺引用身份、不 runtime freeze。
+- [算法变化仍沿用同一版本] → version/fingerprint 同 change 门禁和 explicit bump tests。
 
 ## Migration Plan
 
@@ -368,5 +390,3 @@ contract 只保证结构、值、枚举和顺序，不保证 input/output、Phas
 ## Open Questions
 
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
-- 各 ChanCore 输出类型的最小现有字段集合，以及 HTTP adapter 如何恢复当前 VO。
-- 算法版本规则。
