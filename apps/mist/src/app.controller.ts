@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiEnvelopeResponse } from '@app/transport/http';
 import { Throttle } from '@nestjs/throttler';
 import { AppService } from './app.service';
 
@@ -14,7 +15,11 @@ export class AppController {
     summary: 'Health check endpoint',
     description: 'Returns a greeting to verify the service is running',
   })
-  @ApiResponse({ status: 200, description: 'Service is healthy', type: String })
+  @ApiEnvelopeResponse({
+    status: 200,
+    description: 'Service is healthy',
+    type: String,
+  })
   getHello(): string {
     return this.appService.getHello();
   }

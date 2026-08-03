@@ -1,22 +1,37 @@
 import 'reflect-metadata';
 import { DECORATORS } from '@nestjs/swagger/dist/constants';
+import { getSchemaPath } from '@nestjs/swagger';
 import { ChanController } from './chan.controller';
-import { ChannelTwoPhaseResponseVo, ChannelVo } from './vo/channel.vo';
-import { BiTwoPhaseResponseVo } from './vo/bi.vo';
+import { ChannelTwoPhaseVo, ChannelVo } from './vo/channel.vo';
+import { BiTwoPhaseVo } from './vo/bi.vo';
 
 describe('ChanController OpenAPI contract', () => {
-  function responseType(method: 'postIndexBi' | 'postChannel') {
+  function responseSchema(method: 'postIndexBi' | 'postChannel') {
     const responses = Reflect.getMetadata(
       DECORATORS.API_RESPONSE,
       ChanController.prototype[method],
-    ) as Record<string, { type?: unknown }>;
+    ) as Record<string, { schema?: unknown }>;
 
-    return (responses['200'].type as { name?: string }).name;
+    return responses['200'].schema as {
+      allOf: Array<{ $ref?: string; properties?: object }>;
+    };
   }
 
   it('documents Bi and Channel responses as two-phase envelopes', () => {
-    expect(responseType('postIndexBi')).toBe('BiTwoPhaseResponseVo');
-    expect(responseType('postChannel')).toBe('ChannelTwoPhaseResponseVo');
+    expect(responseSchema('postIndexBi').allOf[1]).toEqual({
+      properties: {
+        success: { type: 'boolean', enum: [true] },
+        statusCode: { type: 'integer', enum: [200] },
+        data: { $ref: getSchemaPath(BiTwoPhaseVo) },
+      },
+    });
+    expect(responseSchema('postChannel').allOf[1]).toEqual({
+      properties: {
+        success: { type: 'boolean', enum: [true] },
+        statusCode: { type: 'integer', enum: [200] },
+        data: { $ref: getSchemaPath(ChannelTwoPhaseVo) },
+      },
+    });
   });
 
   it('documents the Channel item fields used by generated clients', () => {
@@ -32,18 +47,12 @@ describe('ChanController OpenAPI contract', () => {
     expect(documented.every(Boolean)).toBe(true);
   });
 
-  it('marks two-phase data as required in success envelopes', () => {
-    for (const responseType of [
-      BiTwoPhaseResponseVo,
-      ChannelTwoPhaseResponseVo,
-    ]) {
-      const metadata = Reflect.getMetadata(
-        DECORATORS.API_MODEL_PROPERTIES,
-        responseType.prototype,
-        'data',
-      ) as { required?: boolean };
-
-      expect(metadata.required).toBe(true);
-    }
+  it('uses the shared response envelope instead of duplicate response VOs', () => {
+    expect(responseSchema('postIndexBi').allOf[0].$ref).toBe(
+      '#/components/schemas/ApiResponseDto',
+    );
+    expect(responseSchema('postChannel').allOf[0].$ref).toBe(
+      '#/components/schemas/ApiResponseDto',
+    );
   });
 });

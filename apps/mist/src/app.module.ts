@@ -27,9 +27,11 @@ import { IndicatorModule } from './indicator/indicator.module';
 import { SecurityModule } from './security/security.module';
 import { mistEnvSchema } from '@app/config';
 import { StrategyModule } from './strategy/strategy.module';
+import { HttpTransportModule } from '@app/transport/http';
 
 @Module({
   imports: [
+    HttpTransportModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [

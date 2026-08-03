@@ -49,6 +49,7 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/mapped-types": "*",
+    "@nestjs/microservices": "10.4.15",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^5.0.1",
     "@nestjs/swagger": "^11.2.6",
@@ -130,6 +131,11 @@
       "^@app/timezone(|/.*)$": "<rootDir>/libs/timezone/src/$1",
       "^@app/shared-data(|/.*)$": "<rootDir>/libs/shared-data/src/$1",
       "^@app/constants(|/.*)$": "<rootDir>/libs/constants/src/$1",
+      "^@app/transport/http$": "<rootDir>/libs/transport/src/http/index.ts",
+      "^@app/transport/rpc$": "<rootDir>/libs/transport/src/rpc/index.ts",
+      "^@app/backtest$": "<rootDir>/libs/backtest/src/index.ts",
+      "^@app/signal$": "<rootDir>/libs/signal/src/index.ts",
+      "^@app/strategy$": "<rootDir>/libs/strategy/src/index.ts",
       "^@app/data-collector(|/.*)$": "<rootDir>/apps/mist/src/data-collector/$1"
     }
   },

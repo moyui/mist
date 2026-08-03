@@ -1,6 +1,7 @@
 import { TimezoneService } from '@app/timezone';
-import { Body, Controller, Post, UseFilters } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Post } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiEnvelopeResponse } from '@app/transport/http';
 import { Throttle } from '@nestjs/throttler';
 import { IndicatorQueryDto } from './dto/query/indicator-query.dto';
 import { IndicatorService } from './indicator.service';
@@ -8,7 +9,6 @@ import { KDJVo } from './vo/kdj.vo';
 import { MACDVo } from './vo/macd.vo';
 import { RSIVo } from './vo/rsi.vo';
 import { KVo } from './vo/k.vo';
-import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 
 // Internal interface for KDJ calculation
 interface RunKDJDto {
@@ -31,7 +31,6 @@ export function formatIndicator(
 
 @ApiTags('indicator')
 @Controller('v1/indicators')
-@UseFilters(AllExceptionsFilter)
 export class IndicatorController {
   constructor(
     private readonly indicatorService: IndicatorService,
@@ -45,11 +44,12 @@ export class IndicatorController {
     description:
       'Computes MACD (Moving Average Convergence Divergence) with default parameters: fast=12, slow=26, signal=9',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description:
       'Returns array of MACD values with MACD line, signal line, and histogram',
-    type: [MACDVo],
+    type: MACDVo,
+    isArray: true,
   })
   async macd(@Body() queryDto: IndicatorQueryDto): Promise<MACDVo[]> {
     const startDate = this.timezoneService.parseDateString(queryDto.startDate);
@@ -88,10 +88,11 @@ export class IndicatorController {
     description:
       'Computes KDJ (Stochastic) indicator with default parameters: period=9, kSmoothing=3, dSmoothing=3',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'Returns array of KDJ values with K, D, and J lines',
-    type: [KDJVo],
+    type: KDJVo,
+    isArray: true,
   })
   async kdj(@Body() queryDto: IndicatorQueryDto): Promise<KDJVo[]> {
     const startDate = this.timezoneService.parseDateString(queryDto.startDate);
@@ -140,10 +141,11 @@ export class IndicatorController {
     description:
       'Computes RSI (Relative Strength Index) with default period of 14',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'Returns array of RSI values (0-100 range)',
-    type: [RSIVo],
+    type: RSIVo,
+    isArray: true,
   })
   async rsi(@Body() queryDto: IndicatorQueryDto): Promise<RSIVo[]> {
     const startDate = this.timezoneService.parseDateString(queryDto.startDate);
@@ -176,11 +178,12 @@ export class IndicatorController {
     description:
       'Retrieves K-line (candlestick) data for the specified symbol and time range',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description:
       'Returns array of K-line data with open, high, low, close, and volume',
-    type: [KVo],
+    type: KVo,
+    isArray: true,
   })
   async k(@Body() queryDto: IndicatorQueryDto): Promise<KVo[]> {
     const startDate = this.timezoneService.parseDateString(queryDto.startDate);
