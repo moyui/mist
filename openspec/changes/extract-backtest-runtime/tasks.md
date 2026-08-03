@@ -19,12 +19,20 @@
 
 - [ ] 2.1 新建 Nest project `backtest`、`apps/backtest`、`BacktestAppModule` 和独立 bootstrap/build，
   不注册公共策略 API或导入 `apps/mist`/`apps/signal` 源码。
-- [ ] 2.2 从 approved domain/transport libraries 装配 Backtest command pattern、payload、result/error
-  codes、correlation 和 exception boundary。
+- [ ] 2.2 新建单词命名的 `libs/backtest` domain library，在 `src/contracts` 单一持有 Backtest
+  pattern/command/error code/decoder；caller/handler 从 `@app/backtest` 导入，并与 approved
+  `@app/transport/rpc` envelope、correlation 和 exception boundary 装配。不得把 contract 放入
+  `libs/strategy`、`libs/transport` 或任一 app source；仅提供 exact root barrel alias，禁止 wildcard、
+  external deep import、domain contract 导入 transport/Nest/TypeORM/Redis 或 caller/handler 重复 raw
+  pattern。
 - [ ] 2.3 在 `libs/config` 实现并注入已批准的 Backtest ports、capacity、concurrency、command/run
   deadline 和 bar-limit 配置；业务代码不得直接读取 `process.env`。
 - [ ] 2.4 实现单实例 PENDING 原子领取、active/waiting admission、幂等重复 command、bounded queue 和
-  queue-full/error mapping。
+  queue-full/error mapping；同一 run 使用自动清理的 keyed admission chain，dedupe 早于 capacity，
+  capacity/reservation 间无 await，active/waiting state 与 admission chain 分离，且不同 correlation
+  的重复请求分别构造 result。memory acceptance 不新增持久化状态；runner 以 PENDING 条件 claim，
+  affected=0 无 readback 丢弃，claim/cleanup/schedule 的所有出口 finally exactly-once release slot 并
+  admit 至多一个 oldest waiting identity。
 - [ ] 2.5 实现 Backtest 自身启动 reconciliation、遗留 RUNNING failure、cutoff/FIFO 恢复与 scoped
   readiness；实现 `apps/mist` 一次性 3 秒 health compensation，不等待、轮询或阻塞其他 API。
 
@@ -48,13 +56,16 @@
 - [ ] 4.1 只有真实 preflight 通过后才新增最终 forward-only migration；分别处理 `target_issues` 与
   result pagination index，并同步 ORM/raw SQL/audit/repair-forward。
 - [ ] 4.2 保留 `/v1/strategy-backtests` owner 在 `apps/mist`，把 POST 改为 durable register + TCP
-  accepted 后返回真实 202、runId、PENDING 和 Location。
+  accepted 后返回真实 202、`BacktestRunReceiptVo{runId,initialStatus=PENDING}` 和 Location；receipt 不为
+  刷新当前状态增加 DB readback，当前状态只从 run GET 读取。
 - [ ] 4.3 实现 run GET 与 signals GET 的 approved DTO/VO、business/not-found/error envelope、opaque
-  keyset cursor、1–100 limit、targetIssues 和 partial-result visibility。
+  keyset cursor、1–100 limit、targetIssues 和 partial-result visibility；cursor 使用不签名、不加密的
+  内部 Base64URL contract，并执行 512 字符、严格字段、时间与 run scope 校验。
 - [ ] 4.4 用 negative contract tests 证明 V1 无 cancel API/RPC、无自动 retry、无 EF create、无公开
   Backtest runtime route，且 frontend 不在本 change 修改。
-- [ ] 4.5 删除 `apps/mist` 同步 historical executor 和失效 providers/imports/tests；检索并证明没有
-  fallback、双跑或跨 app source import。
+- [ ] 4.5 将旧混合 service 拆为 `BacktestRunCommandService` 与 `BacktestRunQueryService`，删除
+  `StrategyBacktestService.executeRun()`、API 进程 K/evaluator/context 依赖和失效测试；检索并证明没有
+  replay facade、feature flag、fallback、双跑或跨 app source import。
 
 ## 5. 部署、监控与验收
 
@@ -68,4 +79,5 @@
   SQL shape、`SHOW INDEX` 和 representative `EXPLAIN`/大范围 replay 门禁。
 - [ ] 5.5 完成 Windows appliance restart/isolation 与 TDX/QMT 1m/日线 historical quantity HIL；未证明
   profile 时 quantity plan 保持 ineligible。
-- [ ] 5.6 经项目负责人审核数据库、API、runtime、deployment 和 HIL evidence 后 cutover 并归档。
+- [ ] 5.6 经项目负责人审核数据库、API、runtime、deployment 和 HIL evidence 后，先部署并验收尚未接
+  command 的 `backtest`，再部署 RPC-only `mist-backend` 完成 cutover；V1 不新增专用 rollback protocol。

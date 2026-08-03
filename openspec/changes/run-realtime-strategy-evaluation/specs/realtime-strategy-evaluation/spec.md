@@ -4,34 +4,42 @@
 Realtime market changes SHALL wake strategy evaluation through a versioned trigger that excludes full history,
 strategy rules, native provider payload and notification data.
 
-#### Scenario: A sealed bar becomes available
+#### Scenario: A candle bucket reaches a terminal outcome
 - **WHEN** the approved handoff is enabled
 - **THEN** it MUST offer a bounded wake-up reference
 - **AND** market sealing MUST NOT wait for evaluation
 
-### Requirement: Sealed-Bar Trigger Contracts Shall Be Minimal And Self-Describing
-The V1 `sealed_bar` job SHALL identify the exact market observation and expose its business time and trigger
-price without copying a complete candle or provider payload into BullMQ.
+### Requirement: Candle-Finalization Trigger Contracts Shall Be Minimal And Self-Describing
+The V1 `candle_finalized` job SHALL identify the exact 1m market terminal outcome and expose its business time
+without copying a complete candle or provider payload into BullMQ.
 
-#### Scenario: A sealed bar job is produced
+#### Scenario: A sealed candle finalization is produced
 - **WHEN** a valid realtime 1m candle has been committed
-- **THEN** the job name MUST be `sealed_bar`
+- **THEN** the job name MUST be `candle_finalized`
 - **AND** its data MUST contain exactly `contractVersion=1`, `securityId`, the exact TDX/QMT `source`,
-  `period='1m'`, RFC3339 `triggerTime` and finite `triggerPrice`
+  `period='1m'`, RFC3339 `triggerTime`, `outcome='sealed'` and finite `triggerPrice`
 - **AND** `triggerTime` MUST represent the same canonical instant as the candle `bucketStartMs`
 - **AND** `triggerPrice` MUST represent the sealed candle close
 - **AND** it MUST NOT contain a complete candle, history, strategy rule, native snapshot, notification payload,
   `securityCode`, `providerSymbol` or a redundant `tradingDay`
 
+#### Scenario: A discarded candle finalization is produced
+- **WHEN** the candle foundation commits a discarded terminal outcome for a realtime 1m bucket
+- **THEN** the job name MUST be `candle_finalized`
+- **AND** its data MUST contain exactly `contractVersion=1`, `securityId`, the exact TDX/QMT `source`,
+  `period='1m'`, RFC3339 `triggerTime`, `outcome='discarded'` and `triggerPrice=null`
+- **AND** it MUST NOT contain a discard reason or invent OHLC, quantity or trigger-price evidence
+
 #### Scenario: A deterministic job identity is created
-- **WHEN** the producer adds the `sealed_bar` job
+- **WHEN** the producer adds the `candle_finalized` job
 - **THEN** jobId MUST be
-  `sealedbar-v1-{source}-{securityId}-{period}-{Date.parse(triggerTime)}`
+  `candlefinal-v1-{source}-{securityId}-{period}-{Date.parse(triggerTime)}`
 - **AND** it MUST use a BullMQ-safe separator other than `:`
 - **AND** `source` MUST participate in the identity
+- **AND** outcome MUST NOT participate because one bucket can commit only one terminal outcome
 
-#### Scenario: The signal worker consumes the trigger
-- **WHEN** `apps/signal` receives a valid `sealed_bar` job
+#### Scenario: The signal worker consumes a sealed trigger
+- **WHEN** `apps/signal` receives a valid sealed `candle_finalized` job
 - **THEN** it MUST resolve only the identified Redis sealed candle on the normal path
 - **AND** it MUST map that sealed 1m candle to a canonical bar with `type='complete'` and append it to the
   shared market window before evaluation
@@ -39,14 +47,20 @@ price without copying a complete candle or provider payload into BullMQ.
 - **AND** a resulting persisted Signal context MUST retain `triggerTime` and `triggerPrice` so downstream
   notification consumers do not query BullMQ or market Redis
 
+#### Scenario: The signal worker consumes a discarded trigger
+- **WHEN** `apps/signal` receives a valid discarded `candle_finalized` job
+- **THEN** it MUST NOT resolve or construct a 1m StrategyBar or run the 1m evaluator
+- **AND** it MUST advance the finalization cursor and period builder for that missing constituent slot
+- **AND** any derived Signal MUST use the emitted derived bar time and close as its trigger evidence
+
 #### Scenario: A retained job is added again
 - **WHEN** BullMQ still contains the same deterministic jobId
 - **THEN** queue-level duplicate suppression MAY ignore the second add
 - **AND** worker canonical identity/content deduplication MUST remain authoritative after job retention expires
 
-### Requirement: Sealed-Bar Triggers Shall Use NestJS BullMQ Integration
-V1 sealed-bar triggers SHALL use `@nestjs/bullmq` and `bullmq` as the durable asynchronous handoff between the
-market candle producer and `apps/signal`.
+### Requirement: Candle-Finalization Triggers Shall Use NestJS BullMQ Integration
+V1 candle-finalization triggers SHALL use `@nestjs/bullmq` and `bullmq` as the durable asynchronous handoff
+between the market candle producer and `apps/signal`.
 
 #### Scenario: Trigger transport is wired
 - **WHEN** realtime trigger implementation begins
@@ -72,16 +86,16 @@ V1 SHALL limit automatic handoff recovery to one bounded startup pass for the cu
 SHALL NOT claim transactional consistency between committed candles and BullMQ jobs.
 
 #### Scenario: Post-commit enqueue fails
-- **WHEN** a valid candle commit succeeds but its single `queue.add()` attempt fails
-- **THEN** the committed candle MUST remain committed
+- **WHEN** a sealed or discarded market commit succeeds but its single `queue.add()` attempt fails
+- **THEN** the committed market terminal outcome MUST remain committed
 - **AND** the producer MUST record the enqueue failure
 - **AND** it MUST NOT retry in the market-sealing hot path
 
 #### Scenario: The market producer starts during an enabled trading day
 - **WHEN** realtime strategy mode is `shadow` or `on` and Redis plus the BullMQ producer are ready
 - **THEN** `apps/mist` MUST run one bounded startup-compensation pass
-- **AND** it MUST consider only valid closed candles for the current Shanghai trading day and current listener
-  inventory
+- **AND** it MUST consider only manifest-reachable sealed and discarded outcomes for the current Shanghai
+  trading day and current listener inventory
 - **AND** it MUST submit them with the same contract and deterministic jobId
 - **AND** it MUST NOT scan previous trading days or schedule a continuous reconciler
 
@@ -104,18 +118,18 @@ SHALL NOT claim transactional consistency between committed candles and BullMQ j
 - **AND** it MUST NOT add an enqueued marker, Redis/MySQL outbox or two-phase candle/queue commit in V1
 
 ### Requirement: V1 Shall Permit Natural Queue Backlog
-V1 SHALL retain one independent job per sealed K and SHALL defer backlog admission limits and batching until
-runtime evidence justifies a separate change.
+V1 SHALL retain one independent job per 1m finalization and SHALL defer backlog admission limits and batching
+until runtime evidence justifies a separate change.
 
 #### Scenario: The worker is slower than the producer
 - **WHEN** waiting jobs accumulate
-- **THEN** the producer MUST continue submitting individual `sealed_bar` jobs
+- **THEN** the producer MUST continue submitting individual `candle_finalized` jobs
 - **AND** it MUST NOT apply a backlog-count admission check, queue rate limit or threshold-based drop
 - **AND** it MUST NOT group multiple candles into one batch job
 
 #### Scenario: Startup compensation finds multiple candles
 - **WHEN** the single current-day compensation pass submits them
-- **THEN** it MUST retain one deterministic job per candle
+- **THEN** it MUST retain one deterministic job per sealed or discarded 1m finalization
 - **AND** it MUST submit them in stable `triggerTime`, `source`, then `securityId` order
 - **AND** it MUST NOT use `Queue.addBulk()` in V1
 
@@ -132,7 +146,7 @@ A queued realtime trigger SHALL be eligible only on the same Asia/Shanghai calen
 
 #### Scenario: A delayed job is consumed later on the same Shanghai day
 - **WHEN** its `triggerTime` and the injected worker clock resolve to the same Asia/Shanghai calendar day
-- **THEN** the worker MUST continue normal sealed-bar resolution and evaluation
+- **THEN** the worker MUST continue normal candle-finalization processing
 - **AND** post-close processing on that same day MUST NOT be expired solely because the session ended
 
 #### Scenario: A delayed job is consumed on a later Shanghai day
@@ -177,7 +191,7 @@ automatic retry or stalled recovery.
 - **AND** failed and stalled outcomes MUST remain separately observable
 
 ### Requirement: Realtime Jobs Shall Use Real Dependency Timeouts
-Each `sealed_bar` job SHALL use one shared-configured overall deadline, and every blocking dependency operation
+Each `candle_finalized` job SHALL use one shared-configured overall deadline, and every blocking dependency operation
 SHALL use timeout behavior that its client or server can actually enforce. The overall deadline SHALL be
 `REALTIME_STRATEGY_JOB_TIMEOUT_MS=30000`; Redis connect and command ceilings SHALL be 5000ms and 3000ms,
 MySQL connect and historical SELECT ceilings SHALL each be 5000ms, and the InnoDB lock-wait ceiling SHALL be
@@ -224,7 +238,7 @@ same-day startup-compensation window without adding runtime retention configurat
 - **WHEN** the producer Queue and signal Worker are constructed
 - **THEN** both MUST use prefix `mist-bullmq`
 - **AND** both MUST use queue name `strategy-trigger`
-- **AND** sealed K jobs MUST use job name `sealed_bar`
+- **AND** 1m finalization jobs MUST use job name `candle_finalized`
 - **AND** these names MUST be shared code constants rather than environment variables
 
 #### Scenario: Queue and market Redis clients are constructed
@@ -261,16 +275,16 @@ same-day startup-compensation window without adding runtime retention configurat
 - **THEN** result retention MUST NOT remove it
 - **AND** the worker MUST consume it under the approved `expired_trading_day` rule
 
-### Requirement: V1 Realtime Evaluation Shall Accept Only Sealed Bars
-V1 SHALL evaluate deterministic `sealed_bar` triggers and SHALL exclude snapshot-update evaluation from its
-trigger, queue and evaluator contracts.
+### Requirement: V1 Realtime Evaluation Shall Accept Only Finalized Candle Outcomes
+V1 SHALL process deterministic `candle_finalized` triggers for sealed or discarded 1m terminal outcomes and
+SHALL exclude snapshot-update evaluation from its trigger, queue and evaluator contracts.
 
 #### Scenario: A raw snapshot changes
 - **WHEN** the market ingress updates its latest in-memory snapshot
 - **THEN** it MUST NOT enqueue a strategy job or create a realtime strategy candidate directly
 
 #### Scenario: An unsupported trigger reaches the worker
-- **WHEN** a job name or trigger kind is not the V1 `sealed_bar` contract
+- **WHEN** a job name or trigger kind is not the V1 `candle_finalized` contract
 - **THEN** contract validation MUST reject it before market-data resolution
 - **AND** it MUST NOT enter a window, episode, Signal or AlertEvent persistence
 
@@ -365,6 +379,19 @@ responsibility objects report registry, market-data, queue and evaluation state.
 - **AND** it MUST expose non-negative process-local `windowGroupCount`, `rawBarCount` and `derivedBarCount`
 - **AND** it MUST expose only a nullable bounded `lastFailureCode`, not raw exception details
 
+#### Scenario: A finalization advances market state
+- **WHEN** an accepted sealed or discarded finalization advances a `(securityId,source)` last-finalized cursor
+- **THEN** `marketData.lastTriggerTime` MUST become the maximum accepted market time without regressing
+- **AND** `marketData.lastAcceptedAt` MUST record the Signal service time of that cursor advance
+- **AND** sealed MUST increment `rawBarCount` while discarded MUST NOT
+- **AND** discarded MUST increment `derivedBarCount` only when it closes a period that emits a derived bar
+
+#### Scenario: A finalization does not advance market state
+- **WHEN** a job is expired, out of order, an identical duplicate, a contract/content conflict, or fails before
+  canonical finalization acceptance
+- **THEN** it MUST NOT update `marketData.lastTriggerTime`, `lastAcceptedAt`, `rawBarCount` or `derivedBarCount`
+- **AND** reaching the queue terminal boundary MUST still update `queue.lastProcessedAt`
+
 #### Scenario: Queue health is reported
 - **WHEN** Signal reads its process-local Worker state
 - **THEN** `queue.state` MUST be `off|ready|reconnecting|error`
@@ -372,8 +399,16 @@ responsibility objects report registry, market-data, queue and evaluation state.
   `processedCount` and `failedCount`
 - **AND** `activeCount` MUST be at most one and `failedCount` MUST be a subset of `processedCount`
 - **AND** it MUST expose nullable RFC3339 `lastProcessedAt`, nullable
-  `completed|failed|expired_trading_day` `lastOutcome` and nullable bounded `lastFailureCode`
+  `completed|failed|expired_trading_day|out_of_order_trigger_discarded` `lastOutcome` and nullable bounded
+  `lastFailureCode`
 - **AND** these counters MUST NOT be described as BullMQ waiting or retained-result depth
+
+#### Scenario: A job terminates without evaluation
+- **WHEN** a job completes as `expired_trading_day` or `out_of_order_trigger_discarded`
+- **THEN** queue health MUST increment `processedCount` without incrementing `failedCount`
+- **AND** it MUST record the corresponding bounded queue `lastOutcome`
+- **AND** it MUST NOT update `evaluation.lastEvaluatedAt`
+- **AND** an identical-content duplicate no-op and an ordinary successful job MUST use queue outcome `completed`
 
 #### Scenario: Evaluation health is reported
 - **WHEN** Signal reads its process-local evaluation state
@@ -432,6 +467,8 @@ only the affected definition after an owning database transaction commits.
 - **AND** the command MUST contain only a positive safe-integer `strategyDefinitionId`
 - **AND** it MUST use `RpcRequestV1<RefreshSignalRegistryCommandV1>` and return
   `RpcResultV1<SignalRegistryRefreshV1, never>`
+- **AND** the pattern, command, result and decoder MUST be owned by `libs/signal` and imported by both caller
+  and handler from the same domain barrel
 - **AND** the response MUST report the id, resulting positive `registryGeneration`, and
   `action=upserted|removed`
 - **AND** the RPC wait MUST NOT execute inside the MySQL transaction
@@ -481,17 +518,17 @@ configurable concurrency surface.
 - **THEN** its code-defined BullMQ concurrency MUST be exactly `1`
 - **AND** the runtime MUST NOT add a concurrency environment variable, per-symbol keyed queue, worker-thread
   pool, or second consumer for the same queue
-- **AND** at most one `sealed_bar` job MAY be active in this Signal process
+- **AND** at most one `candle_finalized` job MAY be active in this Signal process
 
 #### Scenario: Queue delivery is not chronological
 - **WHEN** live enqueue or startup compensation delivers jobs in an order different from canonical K time
 - **THEN** single-worker delivery order MUST NOT redefine market timestamp order
-- **AND** a trigger older than the last accepted 1m trigger for the same `(securityId,source)` MUST complete with
+- **AND** a trigger older than the last finalized 1m trigger for the same `(securityId,source)` MUST complete with
   bounded outcome `out_of_order_trigger_discarded`
-- **AND** that outcome MUST NOT read or insert the older bar, run analysis/evaluation, mutate projector/episode, or
-  create Signal/AlertEvent
-- **AND** an equal canonical identity and content MUST remain a duplicate no-op while conflicting content MUST
-  fail at the worker boundary
+- **AND** that outcome MUST NOT read or insert the older bar, advance the period builder, run analysis/evaluation,
+  mutate projector/episode, or create Signal/AlertEvent
+- **AND** an equal canonical identity, outcome and content MUST remain a duplicate no-op while a
+  sealed/discarded outcome conflict or sealed canonical-content conflict MUST fail at the worker boundary
 
 #### Scenario: Hydration prepares one current trigger
 - **WHEN** an empty or expanded window is hydrated at `triggerTime=t`
@@ -499,9 +536,9 @@ configurable concurrency surface.
 - **AND** the observation at `t` MUST be resolved and processed exactly once after hydration
 - **AND** no later Redis bar MAY influence the evaluation at `t`
 
-#### Scenario: Evaluation fails after the current observation is accepted
-- **WHEN** the canonical current bar has entered shared market state and a later plan stage fails
-- **THEN** the job MUST fail while the accepted bar and last-accepted trigger cursor remain advanced
+#### Scenario: Evaluation fails after the current finalization is accepted
+- **WHEN** the current finalization has advanced shared market state and a later plan stage fails
+- **THEN** the job MUST fail while the accepted bar or discarded slot and last-finalized trigger cursor remain advanced
 - **AND** the runtime MUST NOT rewind in-memory market state, automatically retry the failed trigger or describe
   the state transition as a database rollback
 - **AND** a subsequent newer trigger MAY continue under the ordinary worker error-isolation contract

@@ -28,8 +28,8 @@ context。
 - 不让 `apps/backtest` 消费 realtime trigger 或写入 live Signal/PENDING AlertEvent。
 - 不恢复 `apps/schedule`，不拆独立仓库，不恢复 Chan persistence。
 - 不接入、修复或重新解释 EF historical K，也不为 EF 新增 quantity profile、查询路径或 migration。
-- 不在评审前决定 HTTP breaking change、已确认 `target_issues` 与 pagination index 以外的 schema
-  migration，或兼容/双跑策略。
+- 不增加已确认 `target_issues` 与 pagination index 以外的 schema migration，不设计 feature flag、
+  兼容双跑、本地执行 fallback 或专用 rollback 协议。
 
 ## Decisions
 
@@ -43,6 +43,24 @@ Nest project 名为 `backtest`，目录为 `apps/backtest`，根模块为 `Backt
 `apps/mist` 继续持有 `/v1/strategy-backtests` controller、鉴权、请求校验和查询入口。
 `apps/backtest` 持有 historical K reading、bounded context、execution、run lifecycle progression
 和 `BacktestSignalResult` persistence。
+
+当前 `StrategyBacktestService` 把 create、同步 replay 和 GET query 混在一个 class 中，cutover 时不得
+整体原样保留，也不能因为 GET 仍需要 MySQL 而留下旧 executor。`apps/mist` 固定拆成两个 application
+service：
+
+- `BacktestRunCommandService` 只负责 StrategyVersion/request 校验、创建 PENDING run、提交 Backtest
+  RPC、构造 `BacktestRunReceiptVo` 和执行已确认的提交失败映射；
+- `BacktestRunQueryService` 只负责 run/signals 的 MySQL read、状态发布门和 HTTP VO mapping，不发送
+  Backtest RPC。
+
+旧 `StrategyBacktestService.executeRun()`、全量 K repository query、逐行 evaluator/result persistence、
+为同步回测注入的 `K` repository、`StrategyRuleEvaluator` 和 context builder，以及只验证这些退役行为的
+测试必须删除。controller 可以直接注入上述两个 service；不得保留能够在 `apps/mist` 执行 historical
+replay 的 facade、未注册 provider 或隐藏 fallback。
+
+发布顺序固定为先部署尚未接收 command 的 `backtest` service 并验证 health/readiness，再部署只通过
+RPC 提交的新 `mist-backend`。切换不增加 feature flag、shadow/double-run 或 RPC 失败后的本地执行；
+Backtest 不可用时按本 design 的稳定 503/失败收口处理。V1 不为此另建 rollback contract。
 
 Backtest V1 的公共 create contract 只允许 `DataSource.TDX | DataSource.QMT`。HTTP DTO/OpenAPI 必须把
 `source` 收窄为 `tdx|qmt`；`ef` 或其他值由 `CreateBacktestRunDto` 在任何 StrategyVersion/MySQL 查询和
@@ -70,21 +88,28 @@ V1 不新增 Redis/BullMQ backtest queue。`apps/mist` 将合法请求登记为 
 `BacktestRun`；该记录同时是权威任务 identity 和查询入口。领取后的状态推进和结果写入由
 `apps/backtest` 持有。
 
-内部 RPC envelope、Backtest pattern/payload/result、非目标数据库错误、run query、V1
-不支持用户取消、partial-result visibility 和 result unique conflict 已经确认；signals 分页的剩余
-细节仍须逐项确认。在剩余细节写回本 change 前，不移动 controller 或实现数据库 worker。
+内部 RPC envelope、Backtest pattern/payload/result、非目标数据库错误、run query、V1 不支持用户
+取消、partial-result visibility、result unique conflict、signals 分页和 cutover 已经确认。实现仍须
+遵守前置 change、真实 schema、MySQL query plan、部署和 HIL 门禁。
 
 `POST /v1/strategy-backtests` 的职责只到“登记并提交一次回测运行命令”。`apps/mist` 完成请求校验、
 持久化 PENDING `BacktestRun`，并收到 TCP handler 的 accepted response 后，必须立即返回
 `202 Accepted`，不得等待 runner 开始或历史回放完成。
 
 公共响应使用 `libs/transport/http`。HTTP status 与 success envelope `statusCode` 都是 `202`，
-message 为显式 `BACKTEST_ACCEPTED`，`data` 只包含 `runId` 和创建时的 `status=PENDING`，同时返回
-`Location: /v1/strategy-backtests/{runId}`。这里的 PENDING 是 command 被登记时的状态快照，不保证
-客户端收到响应时 run 仍未进入 RUNNING；客户端必须通过 `GET /v1/strategy-backtests/{runId}`
-读取当前状态，并通过既有 `GET /v1/strategy-backtests/{runId}/signals` 读取结果。POST response
-不得内嵌 signal rows、aggregate statistics 或伪造独立 `commandId`，因为 `BacktestRun.id`
-本身就是持久 command identity。
+message 为显式 `BACKTEST_ACCEPTED`，`data` 使用
+`apps/mist/src/strategy/vo/backtest-run-receipt.vo.ts` 的 `BacktestRunReceiptVo`，只包含 `runId` 和
+固定的 `initialStatus=PENDING`，同时返回 `Location: /v1/strategy-backtests/{runId}`。`initialStatus`
+只表示 command 被持久登记时的初始状态，不是响应时的当前状态；即使 worker 已推进到 RUNNING、
+COMPLETED 或 FAILED，也不得为了刷新 POST receipt 再查询数据库。客户端必须通过
+`GET /v1/strategy-backtests/{runId}` 读取当前状态，并通过既有
+`GET /v1/strategy-backtests/{runId}/signals` 读取结果。POST response 不得内嵌 signal rows、aggregate
+statistics 或伪造独立 `commandId`，因为 `BacktestRun.id` 本身就是持久 command identity。
+
+`BacktestRunReceiptVo` 是独立的 accepted receipt 类型，固定字段为正 safe integer `runId` 和字面量
+`initialStatus: 'PENDING'`，再由 `ApiResponseDto<BacktestRunReceiptVo>` 包装；它不得复用或裁剪
+`BacktestRunVo`。timeout readback 已确认 RUNNING、COMPLETED 或 FAILED 后返回的正常 `202` 也使用同一
+receipt，且 `initialStatus` 仍表示该 run 的创建初态，不伪装成当前状态。
 
 run query 继续由 `apps/mist` 直接读取 MySQL，不经过 Backtest RPC，也不依赖 `backtest.ready`。
 HTTP 输入使用 `apps/mist/src/strategy/dto/backtest-run-id-param.dto.ts` 的
@@ -115,9 +140,9 @@ run query 的错误边界固定为：
 - `findOne()` 成功返回 null 时，由 application service 解释为
   `200 + success=false + BACKTEST_RUN_NOT_FOUND`；
 - TypeORM/MySQL 异常不在 repository 或普通 service catch、重试或 readback，由 shared HTTP
-  边界返回 `500 + DATABASE_QUERY_FAILED`；
-- 其他未预期异常由 shared HTTP 边界返回 `500 + INTERNAL_SERVER_ERROR`；
-- 上述 query error 不返回 `ApiError.data` 或 `Location`，成功与失败复用当前请求唯一
+  边界返回 `500 + INTERNAL_ERROR`；
+- 其他未预期异常同样由 shared HTTP 边界返回 `500 + INTERNAL_ERROR`；
+- 上述 query error 不返回 `ApiErrorDto.data` 或 `Location`，成功与失败复用当前请求唯一
   `requestId`，数据库/内部异常只由最终 HTTP 边界记录一次带 operation、runId 和内部证据的
   权威日志。
 
@@ -220,16 +245,15 @@ partial-result visibility 固定采用“物理分批提交、状态门控发布
   `{runId,status}`，不得返回任何部分结果；
 - 只有 COMPLETED 返回 `200` 的最终 result collection；COMPLETED 且零匹配必须是合法空集合，
   不能与“尚未完成”的 `success=false` 业务拒绝混淆。run 不存在使用
-  `200 + success=false + BACKTEST_RUN_NOT_FOUND`，数据库与未知程序错误继续分别使用
-  `500 + DATABASE_QUERY_FAILED` 和
-  `500 + INTERNAL_SERVER_ERROR`；
+  `200 + success=false + BACKTEST_RUN_NOT_FOUND`，数据库与未知程序错误统一使用
+  `500 + INTERNAL_ERROR`；
 - signals 分页不得绕过上述状态发布门；只有 COMPLETED 才进入结果 page query。
 
 signals GET 固定使用以下 HTTP DTO/VO：
 
 - path 继续使用 `BacktestRunIdParamDto`；
 - query 使用 `BacktestSignalResultQueryDto`，只接受可选 `cursor: string` 和
-  `limit: integer`；limit 默认 `50`、范围 `1–100`，非法值返回
+  `limit: integer`；cursor 非空时最大 `512` 字符，limit 默认 `50`、范围 `1–100`，非法值返回
   `400 + VALIDATION_ERROR`；
 - item 使用 `BacktestSignalResultVo`，显式包含现有公共字段 `id`、`backtestRunId`、
   `securityCode`、`signalTime`、`contextSnapshot`、`ruleSnapshot` 和 `createdAt`；时间输出为
@@ -241,9 +265,12 @@ signals GET 固定使用以下 HTTP DTO/VO：
 
 结果按 `signalTime ASC, id ASC` 稳定排序。`id` 只作为相同 signalTime 的 total-order
 tie-breaker，不把公共顺序改为数据库插入顺序。cursor 是服务端生成、客户端不解析的 opaque
-Base64URL token，内部至少包含 cursor version、runId、signalTime 和 id。decoder 必须严格校验
-版本、类型、时间和 runId scope；malformed、unsupported 或属于其他 run 的 cursor 返回
-`400 + VALIDATION_ERROR`，不得进入结果查询。
+Base64URL token，内部固定只包含 cursor version、runId、signalTime 和 id。V1 内部系统不为 cursor
+增加签名、加密、密钥配置或轮换；token 不承载秘密，SQL 仍以 path runId 限定数据作用域。decoder 必须
+拒绝空字符串、padding、非 Base64URL 字符、超过 512 字符、额外字段，以及版本/类型/时间不合法、
+runId/id 不是正 safe integer 或 token runId 与 path runId 不一致的输入；统一返回
+`400 + VALIDATION_ERROR`，且不得进入结果查询或在日志中记录原始 cursor。客户端仍只能把 token 当作
+opaque string，不得依赖其内部 JSON。
 
 查询使用 keyset pagination，而不是 offset：
 
@@ -304,29 +331,32 @@ result schema 字段或 migration，也不在读取时自动修复历史数据�
 已创建 run 的提交失败按以下顺序映射：
 
 - TCP handler 明确返回 `queue_full` 时，`apps/mist` 先以 `status=PENDING` 条件将 run 标记 FAILED；
-  条件更新成功后返回 `429 Too Many Requests`；
-- `backtest.ready=false`、TCP 连接失败，或 TCP response timeout 后仍能以 `status=PENDING`
-  条件标记 FAILED 时，返回 `503 Service Unavailable`；
+  条件更新成功后返回 `429 + BACKTEST_QUEUE_FULL`；
+- `backtest.ready=false` 时返回 `503 + BACKTEST_NOT_READY`；TCP 连接失败时返回
+  `503 + BACKTEST_UNAVAILABLE`；两者仍须先以 `status=PENDING` 条件标记 FAILED；
+- TCP response timeout 后仍能以 `status=PENDING` 条件标记 FAILED 时，返回
+  `504 + BACKTEST_COMMAND_TIMEOUT`；
 - TCP response timeout 后 PENDING-to-FAILED 条件更新影响 `0` 行时，必须 read back run。若已是
-  RUNNING 或 COMPLETED，说明 command 已被领取而 ACK 丢失，返回正常的 `202 Accepted`，不得把
-  run 回滚为 FAILED；
-- 任何上述非 202 响应，只要 `BacktestRun` 已创建，就必须使用 shared `ApiError.data` 返回
+  RUNNING、COMPLETED 或 FAILED，说明 command 已被接受，返回正常的 `202 Accepted`，不得把 run
+  回滚；若仍为 PENDING 或资源 missing，返回 `500 + INTERNAL_ERROR`；readback 自身失败也返回
+  `500 + INTERNAL_ERROR`，不得继续 readback、cleanup 或 resend；
+- 任何上述非 202 响应，只要 `BacktestRun` 已创建，就必须使用 shared `ApiErrorDto.data` 返回
   `runId` 和当前 FAILED 状态，并设置同一个 run `Location`。客户端不得对该失败 run 自动重试；
   用户再次提交时创建新的 run identity。
 
 该映射只覆盖可识别的 command handoff 结果。数据库写入失败、条件更新/readback 失败和其他
-non-target errors 不能伪装成 `queue_full`、`not_ready`、`not_pending` 或 TCP unavailable。
+non-target errors 不能伪装成 `queue_full`、`not_ready`、`run_failed` 或 TCP unavailable。
 
 公共 HTTP 的非目标数据库错误固定使用以下边界：
 
 - 在 PENDING `BacktestRun` 提交前，StrategyVersion 查询、run 创建或事务失败时，返回
-  `500 Internal Server Error`，`ApiError.code=DATABASE_QUERY_FAILED`，省略 `data` 和
+  `500 Internal Server Error`，`ApiErrorDto.code=INTERNAL_ERROR`，省略 `data` 和
   `Location`；
 - PENDING run 已提交且 `runId` 已知后，后续条件更新或 readback 自身发生数据库错误时，返回
-  `500` 和 `DATABASE_QUERY_FAILED`，`ApiError.data` 只包含 `{runId}` 并保留 run-resource
+  `500 + INTERNAL_ERROR`，`ApiErrorDto.data` 只包含 `{runId}` 并保留 run-resource
   `Location`；不得返回未确认的 `status`；
 - `GET /v1/strategy-backtests/{runId}` 或 signals 查询发生数据库错误时，返回 `500` 和
-  `DATABASE_QUERY_FAILED`，不得伪装成 `BACKTEST_RUN_NOT_FOUND` 业务拒绝或成功空集合；
+  `INTERNAL_ERROR`，不得伪装成 `BACKTEST_RUN_NOT_FOUND` 业务拒绝或成功空集合；
 - 只有查询成功返回 not-found、空集合或条件更新 `affected=0` 时，才按业务状态解释；这些成功结果
   本身不属于数据库错误。
 
@@ -337,13 +367,13 @@ structured `HttpException`；该 catch 只负责公共 resource identity，不�
 远端 handler 通过 RPC error channel 返回 `RPC_INTERNAL_ERROR` 时，`apps/mist` 只执行一次
 PENDING-to-FAILED 条件更新：
 
-- 条件更新成功时，返回 `500` 和 `INTERNAL_SERVER_ERROR`，`ApiError.data` 包含已确认的
+- 条件更新成功时，返回 `500 + INTERNAL_ERROR`，`ApiErrorDto.data` 包含已确认的
   `{runId,status:FAILED}` 并保留 `Location`；
 - 条件更新影响 `0` 行时，执行一次必要 readback；RUNNING 或 COMPLETED 证明 command 已被领取，
-  因此返回正常 `202`；已是 FAILED 时返回 `500` 和 `INTERNAL_SERVER_ERROR`，并保留已确认的
+  因此返回正常 `202`；已是 FAILED 时返回 `500 + INTERNAL_ERROR`，并保留已确认的
   `{runId,status:FAILED}` 与 `Location`；
 - 条件更新或 readback 自身发生数据库错误时，回到上述
-  `500 + DATABASE_QUERY_FAILED + data({runId}) + Location`，不返回 status；
+  `500 + INTERNAL_ERROR + data({runId}) + Location`，不返回 status；
 - 任何分支都不得自动重发 RPC。
 
 所有正常 POST 和启动补发共用一个端到端 timeout：`BACKTEST_COMMAND_TIMEOUT_MS`。该配置属于
@@ -370,12 +400,12 @@ requestId 或启动补偿边界生成的 correlation。
 
 handler result 使用
 `RpcResultV1<null, SubmitBacktestRunErrorCodeV1>`，其中 error union 固定为
-`'queue_full' | 'not_ready' | 'not_pending'`，并原样 echo correlation：
+`'queue_full' | 'not_ready' | 'run_failed'`，并原样 echo correlation：
 
 - 新 run 成功入队、同一 run 已在等待集合、已 RUNNING 或已 COMPLETED，返回 `ok=true,data=null`；
 - queue capacity 已满返回 `ok=false,error.code=queue_full`；
 - startup reconciliation 未完成返回 `ok=false,error.code=not_ready`；
-- run 已 FAILED 返回 `ok=false,error.code=not_pending`，不得伪装为幂等 accepted；
+- run 已 FAILED 返回 `ok=false,error.code=run_failed`，不得伪装为幂等 accepted；
 - 缺失/非法 correlation、非法 runId、run 不存在或非预期数据库异常不伪造上述业务 code，走严格
   validation 或 Nest RPC error channel。
 
@@ -385,8 +415,9 @@ handler result 使用
 `RpcResultV1`、本地 TCP connection/timeout 和远端 RPC error channel 三类结果中精确区分；
 `RPC_INTERNAL_ERROR` 不得被映射为 `429`、`503` 或任意 Backtest 业务 rejection。
 
-`RpcRequestV1/RpcResultV1` 只定义通用 envelope；Backtest pattern、payload alias 和 error-code
-union 位于共享 strategy domain library。`correlationId` 只用于观测，不参与 run 幂等；唯一
+`RpcRequestV1/RpcResultV1` 只定义通用 envelope；Backtest pattern、command、error-code union 与
+decoder 位于 `libs/backtest/src/contracts`，由 `@app/backtest` barrel 同时提供给 caller 与 handler，
+不得进入 `libs/transport`、`libs/strategy` 或任一 app source。`correlationId` 只用于观测，不参与 run 幂等；唯一
 durable command identity 仍是 `BacktestRun.id`。
 
 `apps/backtest` 使用 `@MessagePattern` 接收 message，严格验证 envelope 和 run 状态，并把 runId 放入
@@ -411,6 +442,30 @@ V1 使用单实例 FIFO 本地等待队列。`BACKTEST_QUEUE_CAPACITY` 表示尚
 个 RUNNING execution slot；每个 run 独立持有 context、Indicator、quantity projector、result batch、
 deadline 和 cleanup boundary，不能共享 mutable evaluation state。同一个 runId 最多处于一个 active
 slot 或一个 waiting position。
+
+command admission 必须先通过 strict validation/readiness，再按 `runId` 使用短生命周期 keyed promise
+chain 串行化。chain 内先检查 active/waiting identity，再读取权威 run state：waiting、RUNNING 或
+COMPLETED 返回幂等 accepted；FAILED 返回 `run_failed`；只有新的 PENDING 才进入 capacity decision。
+dedupe 必须早于 queue-full 判断，重复 command 不得因当前 capacity 已满被拒绝。
+
+不同 run 的状态查询可以并发；同一 run 的 chain 内，capacity check 与 active/waiting reservation
+之间不得 await，利用单 Node event loop 同步完成内存原子决策。chain settled 后删除，不能随历史 run
+数量增长；active/waiting identity 则由 scheduler 生命周期单独管理。每个 command 根据自己的
+correlation 重新构造 RpcResult，不得缓存复用第一条完整 result，否则不同 correlation 会被错误 echo。
+
+handler `ok=true` 只表示当前进程已经接受 command；waiting run 和尚未由 runner 取得 slot 的 run 在
+MySQL 继续保持 PENDING。runner 真正开始前才执行 `UPDATE ... WHERE id=? AND status=PENDING` 原子
+claim 为 RUNNING，不新增 durable reservation 状态。进程在 memory reservation 后退出时，内存状态
+消失而 durable PENDING 留给下一次启动的一次性 compensation；运行期间不增加 scanner/reconciler。
+
+若 API 因 response loss/timeout 已把 run 条件标记 FAILED，runner claim `affected=0` 时必须直接丢弃
+该 memory identity，不执行、不 readback、不把状态改回 PENDING，并释放 slot、尝试调度至多一个最老
+waiting run。claim query 抛错时，runner failure boundary 只尝试一次 PENDING→FAILED cleanup；cleanup
+失败只记录 authoritative error，不递归重试。所有出口必须在 finally 中 exactly-once release slot。
+
+waiting→active 的 FIFO shift、active reservation 和 runner scheduling 构成无 await 的同步调度步骤；
+schedule runner 若同步抛错必须撤销 active reservation 并进入任务失败收口。每次 release 只能 admit
+至多一个最老 waiting identity，任何数据库或调度异常不得永久占用 execution slot。
 
 Node 单进程的 V1 concurrency 只承诺多个 run 在数据库 I/O 与显式 event-loop yield boundary 之间
 并发推进。每个 run 使用独立内部常量 `BACKTEST_CALCULATION_BATCH_SIZE = 100`：同一组的 canonical K
@@ -526,7 +581,7 @@ V1 不为不同 period 维护日期跨度矩阵，不另设 target count、resul
   TypeORM/MySQL 错误，task 记录数据库错误后结束，不递归重试，也不让该隔离 task 的失败阻止
   `apps/mist` 其他公共 API、market ingress 或 live signal 启动；
 - 已经在本地等待集合、正在 RUNNING 或已经 COMPLETED 的同一 runId，handler 必须返回幂等
-  `ok=true` no-op，且不得再次占位或把 run 改回 PENDING；FAILED run 返回 `not_pending`，不得
+  `ok=true` no-op，且不得再次占位或把 run 改回 PENDING；FAILED run 返回 `run_failed`，不得
   伪装为 accepted；
 - 启动补偿完成后，新增 run 只走 TCP 正常路径，不设置定时 scanner。
 
@@ -642,8 +697,8 @@ Backtest 变成全局启动依赖；Backtest 不可用时其他公共 API、mark
 
 ### 8. 共享代码留在 libraries
 
-公共 HTTP 和 RPC envelope 位于 `libs/transport/http|rpc`；Backtest pattern/payload/error-code
-type、strategy evaluator、validator、bounded context contract、Indicator kernels、
+公共 HTTP 和 RPC envelope 位于 `libs/transport/http|rpc`；Backtest pattern/command/error-code/decoder
+位于 `libs/backtest`；strategy evaluator、validator、bounded context contract、Indicator kernels、
 `QuantityForwardFillProjector` 和 TypeORM entities 放在各自职责明确的 `libs/*`。Chan kernels 可继续
 服务现有 Chan API，但不进入 V1 strategy field catalog 或 backtest hot path。`apps/mist`、
 `apps/backtest` 与 `apps/signal` 不得互相导入 application source。
@@ -801,8 +856,9 @@ change 在共同 transport/domain/analysis contract 稳定后可独立推进，�
 
 ## Risks / Trade-offs
 
-- [现有同步 POST 契约与异步 worker 冲突] → POST 固定为 `202 + runId + PENDING + Location`，且
-  明确 PENDING 只是创建快照；当前进度和结果只从 GET 资源读取。
+- [现有同步 POST 契约与异步 worker 冲突] → POST 固定为
+  `202 + BacktestRunReceiptVo{runId,initialStatus=PENDING} + Location`，明确 `initialStatus` 只是创建
+  初态；当前进度和结果只从 GET 资源读取。
 - [GET 直接返回 entity 导致 persistence 与 OpenAPI 漂移] → 使用
   `BacktestRunIdParamDto → BacktestRunVo → ApiResponseDto<BacktestRunVo>`，保持现有 JSON 字段
   但不暴露 TypeORM entity。
@@ -820,6 +876,10 @@ change 在共同 transport/domain/analysis contract 稳定后可独立推进，�
   negative contract tests 只证明取消能力不存在，deadline 与中断继续使用 FAILED。
 - [API 与 worker 分别写同一 run] → `apps/mist` 只创建 PENDING 记录，`apps/backtest` 独占领取后的
   状态转换；用精确条件更新和测试阻止越权写入。
+- [两个不同 correlation 的同 run command 同时观察 PENDING 并重复占位] → keyed admission chain
+  串行同一 run，dedupe-before-capacity，capacity/reservation 无 await，逐请求重建 correlation result。
+- [response loss 后 API 已标 FAILED，但 memory queue 仍准备执行] → runner 只以 PENDING 条件 claim；
+  affected=0 丢弃 identity 且 finally 释放 slot，不 readback、不恢复 PENDING。
 - [一次加载全部 K 导致内存或数据库压力] → 设计 bounded cursor/page、deadline、concurrency 和
   per-run limits，不把当前全量读取原样搬进新进程。
 - [分页期间历史输入发生变化] → V1 明确以所选 MySQL historical K 在 Backtest 读取期间无并发 writer
@@ -844,12 +904,12 @@ change 在共同 transport/domain/analysis contract 稳定后可独立推进，�
   大于 `64` 的显式值在应用启动阶段 fail-fast，不由业务代码 fallback。
 - [TCP command 无界等待或多套 timeout 冲突] → `mistEnvSchema` 只提供一个端到端
   `BACKTEST_COMMAND_TIMEOUT_MS`，默认 `3000ms`、范围 `500–30000ms`，覆盖连接和响应且不自动重发。
-- [Backtest 自行发明内部 envelope] → 复用 `RpcRequestV1/RpcResultV1`，只在 strategy domain
-  library 定义 `backtest.run.submit.v1` payload/error code。
+- [Backtest 自行发明内部 envelope] → 复用 `RpcRequestV1/RpcResultV1`，只在 `libs/backtest`
+  定义 `backtest.run.submit.v1` pattern/command/error code/decoder。
 - [HTTP 与 RPC 无法关联] → HTTP server requestId 作为必填 correlationId 发送并由 handler 原样
   echo；runId 继续单独承担幂等 identity。
 - [远端数据库错误泄漏或被错分成业务拒绝] → shared RPC exception filter 只发送
-  `RPC_INTERNAL_ERROR`；apps/mist 返回内部 `500`，不得映射为 `queue_full/not_ready/not_pending`
+  `RPC_INTERNAL_ERROR`；apps/mist 返回内部 `500`，不得映射为 `queue_full/not_ready/run_failed`
   或连接不可用。
 - [已创建 run 的数据库失败丢失资源 identity] → 已知 runId 时 `500` 保留 `{runId}` 和
   `Location`，但状态未确认时不返回或猜测 `status`。
@@ -904,7 +964,8 @@ change 在共同 transport/domain/analysis contract 稳定后可独立推进，�
    access 和资源上限。
 6. 实现确认后的 command/execution/persistence 边界和 crash/restart tests。
 7. 完成 Windows appliance、monitoring、真实 MySQL 和负载验证后再切换公共 API。
-8. cutover 与旧 executor 处置方式必须单独批准；不得默认双跑或静默 fallback。
+8. 先部署并验证未接流量的 `backtest`，再部署只通过 RPC 提交的 `mist-backend`；同步 executor 随
+   backend cutover 删除，不增加 feature flag、双跑、本地 fallback 或专用 rollback contract。
 
 ## Open Questions
 
@@ -927,3 +988,5 @@ change 在共同 transport/domain/analysis contract 稳定后可独立推进，�
   独立单 DDL 候选，不能关闭该门禁。
 - `backtest` health/shutdown 已确认使用单一内部 `/health` 和简单中断语义；result persistence batch
   和 calculation batch 已分别固定为内部 100 条/根；V1 不新增容器 CPU/内存配额或发布阈值。
+- cutover 已确认使用 `BacktestRunCommandService` 与 `BacktestRunQueryService` 分离控制面职责，先部署
+  ready 的 Backtest service、后部署新 backend，并同步删除旧 executor；不双跑、不本地 fallback。

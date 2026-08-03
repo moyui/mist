@@ -28,12 +28,12 @@ design 的“只重放 72h Redis、绝不读 MySQL”会让较长 lookback 在�
 `StrategyTrigger` 是版本化 wake-up reference，只标识目标市场状态。完整 history、rule、native
 snapshot 和 notification payload 不进入 queue。
 
-### 2. V1 先使用 sealed-bar trigger
+### 2. V1 先使用 candle-finalization trigger
 
-sealed bar 提供确定性输入。V1 trigger union、BullMQ job name 和 evaluator registration 只接受
-`sealed_bar`；任何其他 job name 或 trigger kind 必须在 contract validation boundary 失败，不得进入
-window、episode、Signal 或 AlertEvent。当前最新 snapshot 继续由 market ingress 的 bounded Node
-memory 持有，不成为 Signal 输入。
+market candle 的 `sealed|discarded` 终态提供确定性输入。V1 trigger union、BullMQ job name 和 worker
+registration 只接受 `candle_finalized`；任何其他 job name 或 trigger kind 必须在 contract validation
+boundary 失败，不得进入 window、period builder、episode、Signal 或 AlertEvent。当前最新 snapshot
+继续由 market ingress 的 bounded Node memory 持有，不成为 Signal 输入。
 
 ### 3. 内部 StrategyMarketDataPort 同时表达 replay 与 realtime capability
 
@@ -50,7 +50,8 @@ domain/application 能力，不是 HTTP、OpenAPI 或 RPC 接口。HTTP query st
   compiled `requiredBarCount` 时组合
   MySQL historical K、Redis current-day sealed 1m K，并以
   `(securityId, source, period)` 分组按最大 compiled `requiredBarCount` 有界读取一次；
-- `resolveRealtimeObservation(StrategyTrigger)` 在热路径解析单次 sealed-bar reference；
+- `resolveRealtimeObservation(StrategyTrigger)` 在热路径解析单次 `candle_finalized` reference：sealed
+  返回当前 canonical 1m bar，discarded 返回无 1m bar 的终态 outcome；
 - warmup 完成后使用 signal-owned shared ring window，不逐策略或每 trigger 重载历史；
 - hydration 只能读取 `timestamp < anchorAt` 的当日 sealed 1m；anchor 对应的当前 bar 必须随后由
   `resolveRealtimeObservation()` 解析并处理一次，禁止 hydration 提前读取 current/future bar；
@@ -172,10 +173,10 @@ V1 不新增独立的固定 `STRATEGY_WINDOW_CAPACITY` 或由用户填写的 `lo
   restart 改变 seed；同组同算法版本只计算一次并供所有 eligible plans 复用；
 - listener、最后一个 eligible strategy 或 registry generation 被移除后，释放对应 group 的 raw
   bars 与 derived state；当 `(securityId,source)` 已无任何 period consumer 时再释放其共享
-  last-accepted trigger cursor；
-- Signal runtime 持有一个进程内 `activeTradingDay`。第一条有效 `sealed_bar` 的 tradingDay 与其不同
+  last-finalized trigger cursor；
+- Signal runtime 持有一个进程内 `activeTradingDay`。第一条有效 `candle_finalized` 的 tradingDay 与其不同
   时，single worker 必须在任何 hydration/evaluation 前一次性释放全部旧日 raw/derived windows、
-  Indicator derived cache、quantity projector state、last-accepted trigger cursors 与 episode active set，
+  Indicator derived cache、quantity projector state、last-finalized trigger cursors 与 episode active set，
   再将 `activeTradingDay` 切换到新日并执行有界 hydration；
   不增加午夜 timer，也不从 prior-day Redis 恢复状态；
 - V1 不增加 aggregate memory budget、数值 bar cap 或容量 env。shadow 必须观测 listener count、
@@ -258,9 +259,11 @@ period-derived 聚合、episode 和 persistence 的剩余细节仍是后续逐�
 upstream candle finalization 已经负责区分 valid 与 discarded；signal runtime 不重新解释或修复
 discard reason：
 
-- discarded outcome 表示该 bucket 没有可消费的 `StrategyBar`，因此不进入共享窗口、不运行
-  analysis/evaluator、不产生 unavailable，也不改变 episode；具体 trigger 是否携带 discarded outcome
-  留给 handoff 专项评审，discard 指标和原因继续由 market/monitoring 边界观测；
+- discarded outcome 表示该 bucket 没有可消费的 1m `StrategyBar`，因此不进入 1m 共享窗口、不运行
+  1m analysis/evaluator、不产生 1m unavailable，也不直接改变 1m episode；它必须由
+  `candle_finalized` trigger 推进 finalization cursor 和 period builder，使所属高周期在固定边界生成
+  complete/incomplete 或零输出。若生成 derived bar，则该高周期仍按普通 evaluator/episode 语义运行；
+  discard 指标和原因继续由 market/monitoring 边界观测，不进入 trigger payload；
 - `volume=null` 或 `amount=null` 是 raw canonical K 的合法状态。只要 required OHLC、identity、source、
   period 和 timestamp 合法，整根 bar 必须保留在窗口中并计入实际有效 bar count，nullable 字段也
   必须原样保留，禁止删除字段、删除 bar 或补成 `0`；
@@ -314,10 +317,10 @@ metrics 只使用上述 bounded reason。`fieldPath`、`observedBars`、`require
 目标 source/runtime 永远不支持的字段必须在 definition validation/realtime registration 阶段拒绝，
 不能靠持续 unavailable 掩盖非法策略。
 
-V1 只定义 sealed-bar observation。`StrategyMarketDataPort` 不包含 snapshot observation input，queue
+V1 只定义 candle-finalization observation。`StrategyMarketDataPort` 不包含 snapshot observation input，queue
 不注册 `snapshot_update`，Signal 也不读取 ingress 最新 snapshot。未来若产品需要未封 K 信号，必须
 另建 focused change，重新评审 owner、canonical payload、频率/coalescing、同分钟幂等、与 sealed K
-的顺序及 episode 语义；不能把当前 change 的 sealed-bar contract 当作隐式扩展授权。backtest 不需要
+的顺序及 episode 语义；不能把当前 change 的 candle-finalization contract 当作隐式扩展授权。backtest 不需要
 模拟 snapshot。
 
 #### 3.9 Derived period 使用同一 StrategyBar 并显式标记 incomplete
@@ -329,6 +332,12 @@ period 窗口在固定边界前只有内部、未封存的 completeness outcome 
 `StrategyBar`。边界到达后一次性决议为 `complete`、`incomplete` 或零组成 K 时不输出；
 `unknown` 不是 `StrategyBar.type` 的第三个枚举值。V1 丢弃迟到组成 K，因此已经输出的 complete 或
 incomplete bar 都是终态，不再相互转换。
+
+这里的“边界到达”只由前置 candle foundation 的 `candle_finalized` 终态 watermark 推进。B1 对 active
+listener 的每个完整理论 1m bucket 注册 expected-bucket due，完全没有 snapshot 时也提交 discarded，
+因此 period builder 在最后组成分钟缺失、午休前或收盘前仍能得到关闭事件。Signal 不增加
+session/grace timer、不按本地 wall clock 猜测终态，也不复制 B1 listener/due scanner；如果 B1 因进程
+中断留下未恢复 gap，realtime 继续接受缺失而不补造 trigger。
 
 5/15/30/60 分钟由当日 sealed 1m 按 A 股上午、下午固定 session 槽分别合成，不跨午休。周期边界
 到达时：
@@ -400,7 +409,8 @@ signal runtime 使用同仓 `apps/signal` entrypoint，Nest project 名为 `sign
 `SignalAppModule`；它依赖 strategy-domain 与 market-analysis libraries。`apps/mist` 继续持有
 control APIs，两个 app 不得互相导入源码。registry refresh 等 request-response command 必须使用
 `libs/transport/rpc` 的 `RpcRequestV1/RpcResultV1` 和必填 correlation；Signal pattern、payload 和
-error code 仍由本 change 逐项评审。
+error code/decoder 由本 change 新增的 `libs/signal/src/contracts` 单一持有，并通过 `@app/signal`
+同时提供给 caller/handler；不得进入 `libs/transport`、`libs/strategy` 或任一 app source。
 
 `apps/signal` 使用一个单实例 Hybrid Nest application，而不是三个独立进程：
 
@@ -476,7 +486,12 @@ type SignalHealthVo = {
     processedCount: number;
     failedCount: number;
     lastProcessedAt: string | null;
-    lastOutcome: 'completed' | 'failed' | 'expired_trading_day' | null;
+    lastOutcome:
+      | 'completed'
+      | 'failed'
+      | 'expired_trading_day'
+      | 'out_of_order_trigger_discarded'
+      | null;
     lastFailureCode: string | null;
   };
   evaluation: {
@@ -507,8 +522,18 @@ type SignalHealthVo = {
 - 所有 count 是当前进程内非负 aggregate，重启后归零。`queue.activeCount` 在 concurrency=1 下只能为
   0 或 1；`processedCount` 统计本进程到达 processor terminal boundary 的总 job 数，`failedCount` 是
   其中 failed 子集；这些值不是 BullMQ retained queue depth；
-- 所有 `*At` 与 `lastTriggerTime` 为 RFC3339 string 或 null。`lastTriggerTime` 保留 job contract 的 market
-  time；`lastAcceptedAt`、`lastProcessedAt`、`lastEvaluatedAt` 是各 owning stage 的服务时间；
+- `expired_trading_day` 与 `out_of_order_trigger_discarded` 都是正常完成的 queue outcome，计入
+  `processedCount` 而不计入 `failedCount`，也不更新 `evaluation.lastEvaluatedAt`；普通成功与相同
+  canonical 内容的 duplicate no-op 都使用 `completed`，V1 不再为 duplicate 增加 health 枚举；
+- 所有 `*At` 与 `lastTriggerTime` 为 RFC3339 string 或 null。`marketData.lastTriggerTime` 是最近一次真正
+  推进任一 `(securityId,source)` last-finalized cursor 的最大 market time；sealed 与 discarded 都可以
+  推进，但 expired、out-of-order、duplicate no-op、contract/content conflict 或 acceptance 前失败均不
+  更新，且该值不得因处理较旧 job 而倒退。`marketData.lastAcceptedAt` 是上述 cursor 最近推进时的
+  Signal 服务时间，同样可由 sealed/discarded 更新；它不声称 Redis bar 一定进入 window。
+  `queue.lastProcessedAt` 与 `evaluation.lastEvaluatedAt` 分别是各 owning stage 的服务时间；
+- sealed acceptance 增加 `rawBarCount`；discarded acceptance 不增加 raw count，但若它关闭周期并产生
+  derived bar，则增加 `derivedBarCount`。expired、out-of-order、duplicate no-op 和 acceptance 前失败不
+  改变 raw/derived count；所有到达 queue terminal boundary 的 job 仍更新 `queue.lastProcessedAt`；
 - `lastFailureCode` 只能是 owning component 定义的 bounded safe code 或 null，禁止返回 SQL、driver
   message、stack、strategy/security identity 或任意 exception object；
 - `REALTIME_STRATEGY_MODE=off` 时 registry 仍完成初始加载；`marketData.state`、`queue.state` 与
@@ -574,16 +599,18 @@ V1 优先保证可解释的稳定执行顺序，不在单机 Signal runtime 中�
 
 - `strategy-trigger` BullMQ Worker 固定使用代码常量 `concurrency=1`。不新增 concurrency env、
   per-symbol keyed queue、worker thread pool 或同一 queue 的第二个 consumer；任一时刻最多只有一个
-  active `sealed_bar` job；
+  active `candle_finalized` job；
 - 单 worker 只保证 job 不并行以及共享 window/analysis/episode state 不被两个 realtime job 同时
-  修改。每个 `(securityId,source)` 保存最后接受进入共享 market state 的 1m trigger timestamp；startup
+  修改。每个 `(securityId,source)` 保存最后接受的 1m finalization trigger timestamp；startup
   compensation 必须按 `triggerTime ASC, source ASC, securityId ASC` 提交。BullMQ delivery order 仍不
   被解释为 market timestamp order：同组较旧 trigger 晚到时以 bounded queue outcome
-  `out_of_order_trigger_discarded` 正常完成，不读取/插入该 bar、不倒序运行 Indicator/evaluator、
-  不改变 episode 或 persistence；相同 timestamp/content 继续按 duplicate no-op，内容冲突仍失败；
-- current observation 一旦通过 canonical acceptance 并进入共享 window，就同步推进 last-accepted cursor；
-  后续某个 plan 失败不会倒退 window/cursor。该 job 仍 failed，后续 trigger 可继续；V1 不重跑失败
-  trigger，也不把内存 rewind 伪装成数据库事务回滚；
+  `out_of_order_trigger_discarded` 正常完成，不读取/插入该 bar、不倒序推进 period builder 或运行
+  Indicator/evaluator、不改变 episode 或 persistence；相同 timestamp/outcome/content 继续按 duplicate
+  no-op，sealed/discarded 冲突或 sealed canonical 内容冲突仍失败；
+- current finalization 一旦通过 canonical acceptance，sealed bar 进入共享 window，discarded slot 进入
+  period builder 的缺失集合，并同步推进 last-finalized cursor；后续某个 derived/evaluation plan 失败
+  不会倒退 window/period state/cursor。该 job 仍 failed，后续 trigger 可继续；V1 不重跑失败 trigger，
+  也不把内存 rewind 伪装成数据库事务回滚；
 - 每个 realtime job 在捕获 registry snapshot 后先生成 eligible execution plans，再按
   `definitionId ASC → versionId ASC → period minute rank ASC` 稳定排序，其中周期 rank 固定为
   `1m < 5m < 15m < 30m < 60m`。trigger 已经固定 `securityId/source`，不得再以对象遍历顺序、注册
@@ -759,7 +786,7 @@ unique 决定，不通过预查询决定。
 
 ### 7. Realtime trigger 使用 NestJS BullMQ integration
 
-sealed-bar trigger 是持久化异步 event，不是 request-response command。V1 在 Nest application 中
+candle-finalization trigger 是持久化异步 event，不是 request-response command。V1 在 Nest application 中
 使用 `@nestjs/bullmq` 与 `bullmq` 接入：
 
 - producer 位于 market candle 成功 commit 之后，consumer 位于 `apps/signal`；
@@ -805,53 +832,68 @@ mist-realtime-redis (same Redis DB / AOF / volume)
 共用 endpoint 只减少单机部署组件，不表示 client ownership、key lifecycle 或健康语义合并。market
 candle commit 后的 `queue.add()` 失败仍按 7.2 记录为 handoff failure，已经提交的 candle 不回滚。
 
-#### 7.1 Sealed-bar job contract 与身份
+#### 7.1 Candle-finalization job contract 与身份
 
-V1 job name 固定为 `sealed_bar`，job data 是可直接理解的触发事实，不复制完整 candle：
+V1 job name 固定为 `candle_finalized`，job data 是可直接理解的 1m 终态事实，不复制完整 candle：
 
 ```ts
-type SealedBarTriggerV1 = {
+type CandleFinalizedTriggerV1 = {
   contractVersion: 1;
   securityId: number;
   source: 'tdx' | 'qmt';
   period: '1m';
   triggerTime: string;
-  triggerPrice: number;
-};
+} & (
+  | {
+      outcome: 'sealed';
+      triggerPrice: number;
+    }
+  | {
+      outcome: 'discarded';
+      triggerPrice: null;
+    }
+);
 ```
 
-- `triggerTime` 必须是 RFC3339 string，表示 realtime sealed K 的 canonical timestamp，即
+- `triggerTime` 必须是 RFC3339 string，表示 realtime 1m bucket 的 canonical timestamp，即
   `bucketStartMs` 所指向的同一 instant；它不是 BullMQ 入队时间、服务当前时间或 `closedAt`；
-- `triggerPrice` 必须是有限 `number`，表示该 sealed K 的 `close`；
+- `outcome='sealed'` 时 `triggerPrice` 必须是有限 `number` 且表示该 sealed K 的 `close`；
+  `outcome='discarded'` 时 `triggerPrice` 必须严格为 `null`；payload 不携带 discard reason；
 - job payload 不包含完整 K、history、strategy/rule、native snapshot、notification payload、
   `securityCode`、`providerSymbol` 或可由 `triggerTime` 按上海时区推导的 `tradingDay`；
 - 确定性 jobId 固定为
-  `sealedbar-v1-{source}-{securityId}-{period}-{Date.parse(triggerTime)}`。所有组成字段均来自已验证
+  `candlefinal-v1-{source}-{securityId}-{period}-{Date.parse(triggerTime)}`。jobId 不加入 outcome，因为
+  candle foundation 对同一 bucket 只能提交一个 sealed/discarded 终态；所有组成字段均来自已验证
   contract，separator 使用 `-`，不得使用 BullMQ 禁止的 `:`；
 - `source` 是 job/canonical market identity 的一部分，不能省略，否则同一证券、period、time 的
   TDX/QMT trigger 会碰撞；
-- `apps/signal` 按 payload 身份通过 `resolveRealtimeObservation()` 只解析这一根 Redis sealed K，
-  然后追加共享 window；正常 trigger 不查询完整历史。完整 OHLC、nullable 量额和 Indicator
-  计算输入继续由 market-data port 提供，不能只用 `triggerPrice` 代替完整 StrategyBar；
+- `apps/signal` 对 sealed payload 通过 `resolveRealtimeObservation()` 只解析这一根 Redis sealed K，
+  然后追加共享 window 并运行 1m 路径；正常 trigger 不查询完整历史。完整 OHLC、nullable 量额和
+  Indicator 计算输入继续由 market-data port 提供，不能只用 `triggerPrice` 代替完整 StrategyBar；
+- discarded payload 不解析或构造 1m bar，不运行 1m evaluator；它只记录该 slot 已终结但无 bar，推进
+  finalization cursor，并让 period builder 决议所有到达固定边界的 derived window。该决议产生 derived
+  bar 时，triggerPrice 由 derived close 得出，而不是使用 null 或反查 queue；
 - 内部 queue 和 market Redis 不是外部通知查询接口。由该 trigger 产生的持久化 Signal
   `contextSnapshot` 至少保留 `triggerTime` 与 `triggerPrice`，使后续 AlertEvent/notifier 不必反查
-  queue 或 market Redis；若 compiled plan 消费量额，还必须通过共享 serializer 保留 effective scalar
-  和 `quantityEvidence`，不得由 realtime runtime 自行创建另一套字段；其余 persistence shape 留给
-  episode/persistence 专项评审；
+  queue 或 market Redis；这里的 trigger evidence 必须来自实际产生 Signal 的 StrategyBar，1m 使用
+  sealed close，derived 使用 derived close，discarded 本身不产生 Signal。若 compiled plan 消费量额，
+  还必须通过共享 serializer 保留 effective scalar 和 `quantityEvidence`，不得由 realtime runtime
+  自行创建另一套字段；
 - jobId 只在对应 job 仍被 BullMQ 保留时抑制重复；job 被清理后可能再次入队，因此共享窗口的
   canonical identity/content 幂等仍是最终数据入口保护。
 
 #### 7.2 当日 best-effort handoff 补偿
 
-V1 不追求 candle 与 queue 的事务一致性。market candle commit 是先行且独立的事实：
+V1 不追求 candle 与 queue 的事务一致性。market sealed/discarded commit 是先行且独立的事实：
 
-- commit 成功后，producer 只执行一次 `queue.add()`；失败记录一次权威错误和 bounded metric，
-  不回滚 candle，也不在 sealing 热路径重试；
+- sealed 或 discarded commit 成功后，post-commit port 都只执行一次 `queue.add()`；失败记录一次权威
+  错误和 bounded metric，不回滚 market state，也不在 sealing 热路径重试；port 未安装或 strategy
+  mode=off 时 candle foundation 的提交行为不变；
 - 如果进程在 candle commit 与 `queue.add()` 之间退出，该 trigger 只有在同一上海交易日内后续
   重启时才有机会补投；
 - realtime strategy mode 为 `shadow` 或 `on` 时，`apps/mist` 在 Redis 与 BullMQ producer
   ready 后，每次进程启动只执行一轮 startup compensation；`off` 不扫描、不投递；
-- 该轮只遍历当前上海交易日、当前 listener/candle manifest 可达的 valid closed candles，并按
+- 该轮只遍历当前上海交易日、当前 listener/candle manifest 可达的 sealed/discarded 终态，并按
   7.1 的 contract 和确定性 jobId 调用 `queue.add()`；不扫描前序交易日，不创建定时 reconciler；
 - completed 与 failed job 必须至少保留到其上海交易日的 startup-compensation 窗口结束。这样同日
   重启重扫时，成功或失败 job 的现存 jobId 都能阻止再次创建；failed job 保持 failed，不因启动
@@ -870,7 +912,7 @@ V1 不追求 candle 与 queue 的事务一致性。market candle commit 是先�
 `maxmemory` 数值上限或 market/queue 用途配额，也不在 producer 侧执行 count-before-add、admission
 lock、达到阈值丢弃或 BullMQ rate limit：
 
-- live handoff 和 startup compensation 都保持一根 sealed K 一个独立 `sealed_bar` job；
+- live handoff 和 startup compensation 都保持一个 1m finalization 一个独立 `candle_finalized` job；
 - startup compensation 不使用 `Queue.addBulk()`，也不建立一个 job 携带多根 K 的 batch contract；
 - waiting job 允许在 worker 变慢或停止时自然积压，producer 不因 backlog 数量停止添加；
 - completed/failed 仍按 7.2 的当日补偿语义保留；不得用过小的 count 提前删除当日 job 并继续
@@ -928,7 +970,7 @@ V1 使用以下 code constants，而不是环境变量：
 ```text
 BullMQ prefix = mist-bullmq
 queue name    = strategy-trigger
-job name      = sealed_bar
+job name      = candle_finalized
 ```
 
 BullMQ Queue 与 Worker 必须使用完全相同的 prefix/queue constants；market Redis adapter 不得使用

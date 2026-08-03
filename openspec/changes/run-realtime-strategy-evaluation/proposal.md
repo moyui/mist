@@ -7,8 +7,9 @@ realtime evaluation。
 ## What Changes
 
 - 定义轻量、版本化 `StrategyTrigger`；trigger 只负责唤醒，不携带完整 history、rule 或 native payload。
-- V1 只交付 deterministic `sealed_bar` 触发；本 change 不定义 `snapshot_update` trigger kind、job、
-  payload、producer 或 evaluator 入口。任何非 `sealed_bar` job 在 trigger contract 边界明确拒绝，
+- V1 只交付 deterministic `candle_finalized` 触发，统一表达 1m `sealed|discarded` 终态；本 change 不定义
+  `snapshot_update` trigger kind、job、payload、producer 或 evaluator 入口。任何非
+  `candle_finalized` job 在 trigger contract 边界明确拒绝，
   不进入 window、episode 或 persistence；未来 snapshot evaluation 必须另建 focused change 从头定义。
 - 复用统一内部 `StrategyMarketDataPort`：`loadRealtimeWindow()` 在冷启动或 registry refresh 使组内
   compiled `requiredBarCount` 扩大时
@@ -90,8 +91,9 @@ realtime evaluation。
 - realtime window 按 trigger 的上海时区交易日互斥切分：MySQL 只读取此前交易日 historical K，
   Redis 只读取触发当日且早于 trigger 的 sealed 1m K；旧日 Redis 不补历史，MySQL 当日数据不参与该次 realtime
   window，内存不作为第三份权威数据。
-- 第一条新 tradingDay 的有效 `sealed_bar` 在 evaluation 前整体清空旧日 raw/derived window、
-  Indicator context、quantity projector 前值、last-accepted trigger cursors 和日内 episode active set，
+- 第一条新 tradingDay 的有效 `candle_finalized` 在任何 hydration/evaluation 前整体清空旧日
+  raw/derived window、
+  Indicator context、quantity projector 前值、last-finalized trigger cursors 和日内 episode active set，
   再按 MySQL 历史与当日 Redis K 有界 hydration；
   Redis prior-day market state 已由 candle owner 在上海 D+1 00:00 到期。
 - realtime window 不预设独立的固定 bar-capacity 配置。只为实际监听且存在 eligible strategy 的
@@ -113,16 +115,20 @@ realtime evaluation。
   缺失分钟复制、补零或伪造成组成 K。
   同一 `(securityId, source, period, timestamp)` 的 canonical 内容完全相同时按幂等重复忽略；内容
   不同时保留已接受版本并将后来版本作为数据契约冲突抛到 worker 边界。
-- upstream discarded outcome 不生成该 1m 的 `StrategyBar`，也不运行该 1m evaluator；它在所属
-  高周期内等价于一个缺失组成分钟，并按 derived incomplete 规则处理。合法 K 的 nullable
+- upstream discarded outcome 通过同一 `candle_finalized` job 推进对应 1m slot 的终结；它不生成该
+  1m 的 `StrategyBar`、不运行 1m evaluator，但在所属高周期内等价于一个缺失组成分钟，并允许边界
+  关闭后按 derived incomplete 规则运行高周期 evaluator。合法 K 的 nullable
   `volume/amount` 必须连同 raw `null` 原样保留并计入窗口。evaluation 前使用共享 projector 按同交易日
   向前填充；只有当日尚无对应前值时才返回 field-level unavailable。projector 不读取更晚的 future
   bar、不跨日继承。非法 canonical K 或
   analysis/evaluator 异常按错误治理抛到 worker 边界。
+- 理论分钟完全没有 snapshot 时，由前置 candle foundation 的 active-listener expected-bucket due 在
+  grace 到期后提交 discarded watermark；Signal 不再实现 session/grace timer，也不自行猜测 bucket
+  是否终结。这样午休前和收盘前的最后组成分钟缺失仍能通过同一 finalization event 关闭高周期窗口。
 - V1 unavailable reason 只允许 `insufficient_history | field_unavailable`；unavailable 不生成
   Signal/AlertEvent 或策略业务记录，metrics 只按 bounded reason 聚合，具体字段和 bar count 进入
   有界 diagnostics。
-- sealed-bar realtime trigger 使用 NestJS 的 BullMQ integration，由 `@nestjs/bullmq`/`bullmq`
+- candle-finalization realtime trigger 使用 NestJS 的 BullMQ integration，由 `@nestjs/bullmq`/`bullmq`
   接入现有单机 `MIST_REALTIME_REDIS_URL`、Redis service/volume 和 AOF；不新增
   `MIST_QUEUE_REDIS_URL`、第二个 Redis service、第二个 volume 或独立 logical DB。market state 固定
   使用 `mist:realtime:v1` namespace，BullMQ 固定使用 `mist-bullmq` prefix；不得把 ioredis
@@ -138,20 +144,22 @@ realtime evaluation。
   queue 写失败不得回滚已封存 candle，共用 Redis 的物理故障会同时影响 market 与 strategy queue。
   不使用 Nest Redis Pub/Sub transporter 或 TCP event；Signal TCP request-response 只承载
   `signal.registry.refresh.v1` 等已批准控制面 command，不提供人工策略执行入口。
-- V1 BullMQ job name 固定为 `sealed_bar`，payload 只传
-  `contractVersion=1`、`securityId`、精确 `source`、`period='1m'`、RFC3339 `triggerTime` 和有限
-  `triggerPrice`。`triggerTime` 是该 sealed K 的 canonical timestamp，`triggerPrice` 是其 close；
-  不传完整 K、history、rule、native payload、`securityCode`、`providerSymbol` 或重复的
-  `tradingDay`。worker 按该身份只解析一根 Redis sealed K 并追加共享窗口，外部通知消费后续持久化
-  Signal/AlertEvent，而不读取内部 queue 或 market Redis。
-- candle commit 后只尝试入队一次，失败不得回滚 candle，也不在热路径循环重试。启用 realtime
-  strategy 的 `apps/mist` 每次启动只对当前上海交易日 valid closed candles 做一次有界补投；
+- V1 BullMQ job name 固定为 `candle_finalized`，payload 公共字段只传 `contractVersion=1`、`securityId`、
+  精确 `source`、`period='1m'` 和 RFC3339 `triggerTime`，再以严格 union 表达
+  `outcome='sealed' + finite triggerPrice` 或 `outcome='discarded' + triggerPrice=null`。`triggerTime`
+  是对应 1m bucket 的 canonical timestamp；sealed 的 `triggerPrice` 是 close，discarded 不携带价格或
+  discard reason。不传完整 K、history、rule、native payload、`securityCode`、`providerSymbol` 或重复
+  的 `tradingDay`。worker 对 sealed 解析一根 Redis K 并运行 1m 路径；对 discarded 只推进 finalization
+  cursor/period builder，外部通知仍只消费后续持久化 Signal/AlertEvent。
+- valid/discarded market commit 后都只尝试入队一次，失败不得回滚 market state，也不在热路径循环重试。
+  启用 realtime strategy 的 `apps/mist` 每次启动只对当前上海交易日 manifest 可达的 sealed/discarded
+  终态做一次有界补投；
   completed/failed job 保留到当日补偿窗口结束，以确定性 jobId 降低重复。补偿失败后不自动重跑，
   不扫描前序交易日，也不新增持续 reconciler、handoff marker 或 outbox；该机制明确是
   best-effort，不承诺 candle/queue 完全一致、exactly-once 或跨日补发。
 - V1 不新增 queue backlog 上限、Redis `maxmemory` 数值上限/用途配额、producer admission check、
   rate limit、`addBulk` 或 batch job；部署必须验证 `maxmemory-policy=noeviction`。realtime 与 startup
-  compensation 都保持一根 sealed K 一个独立 job，允许 BullMQ waiting 自然积压。分别观测 market
+  compensation 都保持一个 1m finalization 一个独立 job，允许 BullMQ waiting 自然积压。分别观测 market
   key/record 数、queue waiting/active/completed/failed、Redis used memory、AOF 和 drain throughput；
   若实际监听规模或 worker outage 证明积压成为问题，先切 strategy `off`，再以独立 change 设计容量、
   batch 或物理拆分，不在本 change 预设复杂度。
@@ -166,14 +174,14 @@ realtime evaluation。
   stalled 也直接 failed。failed job 当日保留且 startup compensation 不自动 retry；不增加
   dead-letter、manual retry API 或 repair loop。正常停止沿用 Nest/BullMQ 标准生命周期关闭 worker，
   不新增 Signal 专属 shutdown 状态机或配置。
-- `sealed_bar` 使用 shared config 管理的单一整轮 deadline。每个可阻塞 I/O 使用 client 或
+- `candle_finalized` 使用 shared config 管理的单一整轮 deadline。每个可阻塞 I/O 使用 client 或
   MySQL 服务端真实支持的 connection/command/query/lock-wait timeout，processor 在阶段边界检查
   剩余预算；禁止以无法取消底层 TypeORM 查询的 `Promise.race` 伪造取消。deadline/timeout 直接使
   当前 job failed，不重试、不转为 evaluation `unavailable`，也不启动后续持久化阶段。预算固定为
   job 30 秒、Redis connect 5 秒/command 3 秒、MySQL connect 5 秒、historical SELECT 5 秒和
   InnoDB lock wait 3 秒；只有 job deadline 使用 `REALTIME_STRATEGY_JOB_TIMEOUT_MS=30000`，
   不为每个 adapter 增加策略专属 env。
-- BullMQ 命名固定为 prefix `mist-bullmq`、queue `strategy-trigger`、job `sealed_bar`，全部是代码
+- BullMQ 命名固定为 prefix `mist-bullmq`、queue `strategy-trigger`、job `candle_finalized`，全部是代码
   contract constant，不新增环境变量。completed 与 failed 使用 `removeOnComplete/removeOnFail`
   `age=86400` 秒且不设 count；惰性清理可多保留但不得早于同日补偿窗口。waiting/active 不套用该
   retention，跨日 waiting 仍由 worker 以 `expired_trading_day` 消费完成。
@@ -209,7 +217,7 @@ realtime evaluation。
   但 runtime refresh 未确认时，公共 mutation 返回 technical failure 与 typed committed/unknown
   evidence。Signal 重启时的全量初始加载是唯一自动收敛点，不增加 outbox、定时补偿或 registry
   polling。
-- V1 `sealed_bar` BullMQ worker 固定 `concurrency=1`，不新增并发配置、per-symbol keyed queue 或
+- V1 `candle_finalized` BullMQ worker 固定 `concurrency=1`，不新增并发配置、per-symbol keyed queue 或
   worker thread pool。一个 job 内的 eligible execution plan 按 `definitionId`、`versionId`、周期分钟数
   升序执行；queue delivery order 不替代 canonical K timestamp 的排序、重复和冲突语义。
 - 删除 legacy `POST /v1/strategy-scans/run` 及其 controller/service/DTO/types/registration/tests；不把

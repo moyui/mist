@@ -18,6 +18,25 @@ reading, bounded context construction, execution, run progression and result per
 - **THEN** it MUST delegate historical execution through the approved command boundary
 - **AND** it MUST NOT execute the historical replay in the API process
 
+#### Scenario: Mist application services are separated
+- **WHEN** the public Backtest controller is migrated
+- **THEN** `BacktestRunCommandService` MUST own durable registration, RPC submission and submit-error mapping
+- **AND** `BacktestRunQueryService` MUST own run and signals MySQL reads, publication gates and HTTP VO mapping
+- **AND** query operations MUST NOT call Backtest RPC
+
+#### Scenario: The synchronous executor is retired
+- **WHEN** the new `mist-backend` is cut over to the Backtest command boundary
+- **THEN** the old `StrategyBacktestService.executeRun()` and its API-process K/evaluator/context dependencies
+  MUST be removed
+- **AND** `apps/mist` MUST NOT retain a historical replay facade, feature flag, double-run path or local fallback
+- **AND** an unavailable Backtest service MUST use the approved failure mapping rather than execute locally
+
+#### Scenario: Runtime deployment is ordered
+- **WHEN** the production cutover is performed
+- **THEN** the unconsumed `backtest` service MUST be deployed and pass its approved health/readiness checks first
+- **AND** the RPC-only `mist-backend` MUST be deployed after that evidence exists
+- **AND** V1 MUST NOT introduce a dedicated rollback protocol for this cutover
+
 ### Requirement: Backtest V1 Shall Only Accept TDX And QMT Sources
 The public Backtest V1 create contract SHALL accept only TDX and QMT, without changing the global datasource
 enum used by other Mist capabilities.
@@ -70,14 +89,21 @@ historical execution or results.
 - **THEN** the API MUST return `202 Accepted` without waiting for the runner or replay
 - **AND** the shared HTTP envelope `statusCode` MUST also be `202`
 - **AND** its message MUST be the explicit `BACKTEST_ACCEPTED`
-- **AND** its data MUST contain the created `runId` and the creation snapshot `status=PENDING`
+- **AND** its data MUST be `BacktestRunReceiptVo` containing the created `runId` and literal
+  `initialStatus=PENDING`
 - **AND** the response MUST set `Location` to `/v1/strategy-backtests/{runId}`
 - **AND** it MUST NOT create a second `commandId`
 
 #### Scenario: The accepted run starts before the HTTP response arrives
 - **WHEN** `apps/backtest` changes the run from PENDING to RUNNING before the client receives the POST response
-- **THEN** the POST body MAY still contain the documented creation snapshot `status=PENDING`
+- **THEN** the POST body MUST still contain the documented creation-state receipt `initialStatus=PENDING`
+- **AND** the POST path MUST NOT perform another database read merely to refresh that receipt
 - **AND** the client MUST use `GET /v1/strategy-backtests/{runId}` for current state
+
+#### Scenario: A timeout readback proves that the run was accepted
+- **WHEN** the timeout readback finds the run in RUNNING, COMPLETED or FAILED and the API returns normal `202`
+- **THEN** the response MUST use the same `BacktestRunReceiptVo`
+- **AND** `initialStatus=PENDING` MUST continue to mean the persisted creation state rather than current state
 
 #### Scenario: A client needs backtest progress or results
 - **WHEN** the client follows the POST `Location`
@@ -129,13 +155,13 @@ approved Mist Backend DTO/VO and shared HTTP conventions.
 - **WHEN** the TypeORM/MySQL lookup throws
 - **THEN** repository and ordinary service code MUST NOT retry, read back, repair or convert it to not-found
 - **AND** the shared HTTP boundary MUST return `500` with
-  `ApiErrorDto.code=DATABASE_QUERY_FAILED`
+  `ApiErrorDto.code=INTERNAL_ERROR`
 - **AND** the response MUST omit `data` and `Location`
 
 #### Scenario: Run lookup throws another unexpected error
 - **WHEN** the query path encounters an unexpected non-database program error
 - **THEN** the shared HTTP boundary MUST return `500` with
-  `ApiErrorDto.code=INTERNAL_SERVER_ERROR`
+  `ApiErrorDto.code=INTERNAL_ERROR`
 - **AND** the response MUST omit `data` and `Location`
 
 #### Scenario: A failed run contains persistence failure evidence
@@ -148,7 +174,7 @@ approved Mist Backend DTO/VO and shared HTTP conventions.
 #### Scenario: An accepted run can be followed through the public contract
 - **WHEN** a caller receives the POST accepted data
 - **THEN** its `runId` and `Location` MUST identify the run GET resource
-- **AND** the accepted-data schema and `BacktestRunVo` MUST remain different public response types
+- **AND** `BacktestRunReceiptVo` and `BacktestRunVo` MUST remain different public response types
 - **AND** the backend/OpenAPI contract MUST make clear that non-COMPLETED counts are not final completed
   statistics
 - **AND** this change MUST NOT require a `mist-fe` implementation change; UI consumption belongs to a separate
@@ -387,10 +413,19 @@ return an unbounded result set.
 
 #### Scenario: A cursor is decoded
 - **WHEN** a cursor is supplied
-- **THEN** it MUST be treated as an opaque Base64URL token containing a supported version, runId, signalTime
-  and id
-- **AND** malformed, unsupported, invalid-time or cross-run tokens MUST return `400 + VALIDATION_ERROR`
+- **THEN** it MUST be a non-empty unpadded Base64URL token no longer than 512 characters containing only a
+  supported version, runId, signalTime and id
+- **AND** runId and id MUST be positive safe integers and token runId MUST equal the path runId
+- **AND** malformed, padded, oversized, extra-field, unsupported, invalid-time or cross-run tokens MUST return
+  `400 + VALIDATION_ERROR` before the result query
+- **AND** validation failure MUST NOT log the raw cursor
 - **AND** the client MUST NOT be required to construct or parse the token
+
+#### Scenario: Cursor confidentiality and integrity are considered
+- **WHEN** the internal V1 cursor contract is implemented
+- **THEN** it MUST NOT add signing, encryption, cursor keys or key rotation
+- **AND** the token MUST NOT contain secrets
+- **AND** every result query MUST still constrain `backtest_run_id` using the validated path runId
 
 #### Scenario: Completed result pages are read sequentially
 - **WHEN** a client follows nextCursor for a COMPLETED run
@@ -471,7 +506,7 @@ exact constraint conflict as an unexpected persistence failure.
 - **WHEN** strategy-version lookup, PENDING run creation or its transaction fails before a `BacktestRun` is
   committed
 - **THEN** the API MUST return `500 Internal Server Error`
-- **AND** `ApiError.code` MUST be `DATABASE_QUERY_FAILED`
+- **AND** `ApiErrorDto.code` MUST be `INTERNAL_ERROR`
 - **AND** the response MUST omit `data` and `Location`
 - **AND** it MUST NOT invent a `runId` or automatically retry
 
@@ -479,15 +514,15 @@ exact constraint conflict as an unexpected persistence failure.
 - **WHEN** a PENDING run has been committed and a later conditional update or readback fails with a database
   error
 - **THEN** the API MUST return `500 Internal Server Error`
-- **AND** `ApiError.code` MUST be `DATABASE_QUERY_FAILED`
-- **AND** `ApiError.data` MUST contain only the known `runId`
+- **AND** `ApiErrorDto.code` MUST be `INTERNAL_ERROR`
+- **AND** `ApiErrorDto.data` MUST contain only the known `runId`
 - **AND** the response MUST retain `/v1/strategy-backtests/{runId}` as `Location`
 - **AND** it MUST NOT return or infer an unconfirmed run status
 - **AND** it MUST NOT perform another readback or retry
 
 #### Scenario: A public run or result query fails
 - **WHEN** either backtest GET resource encounters a database error
-- **THEN** the API MUST return `500` with `ApiError.code=DATABASE_QUERY_FAILED`
+- **THEN** the API MUST return `500` with `ApiErrorDto.code=INTERNAL_ERROR`
 - **AND** it MUST NOT report a `BACKTEST_RUN_NOT_FOUND` business rejection, a successful empty collection or
   partial success
 
@@ -495,7 +530,7 @@ exact constraint conflict as an unexpected persistence failure.
 - **WHEN** a lookup returns null, a collection returns empty or a conditional update affects zero rows
 - **THEN** the owning use case MUST interpret that successful result according to the documented resource or
   state semantics
-- **AND** it MUST NOT classify the result as `DATABASE_QUERY_FAILED`
+- **AND** it MUST NOT classify the result as `INTERNAL_ERROR`
 
 ### Requirement: BacktestRun Shall Be The Durable Task Registry
 V1 SHALL use MySQL `BacktestRun` records as the authoritative durable backtest task registry and SHALL NOT
@@ -524,7 +559,11 @@ a Backtest payload containing only the `BacktestRun` identity.
 ### Requirement: Backtest RPC Shall Reuse The Shared Transport Contract
 The Backtest command SHALL use `RpcRequestV1<SubmitBacktestRunCommandV1>` and
 `RpcResultV1<null, SubmitBacktestRunErrorCodeV1>` from the approved shared RPC boundary. The command SHALL
-contain only `runId`, and the error-code union SHALL contain only `queue_full|not_ready|not_pending`.
+contain only `runId`, and the error-code union SHALL contain only `queue_full|not_ready|run_failed`.
+
+Its pattern, command, error-code union and decoder SHALL be owned by `libs/backtest` and imported through the
+same domain barrel by both caller and handler; they SHALL NOT be owned by transport, strategy or application
+source.
 
 #### Scenario: A Backtest command is encoded
 - **WHEN** `apps/mist` sends `backtest.run.submit.v1`
@@ -538,7 +577,7 @@ contain only `runId`, and the error-code union SHALL contain only `queue_full|no
 - **WHEN** the handler accepts or rejects a valid command
 - **THEN** the result MUST echo the request correlation id
 - **AND** success MUST use `ok=true,data=null`
-- **AND** an expected rejection MUST use only `queue_full`, `not_ready` or `not_pending`
+- **AND** an expected rejection MUST use only `queue_full`, `not_ready` or `run_failed`
 
 #### Scenario: A Backtest RPC payload is invalid or hits an unexpected failure
 - **WHEN** correlation or runId validation fails, the run identity does not exist, or an unexpected database
@@ -550,7 +589,7 @@ contain only `runId`, and the error-code union SHALL contain only `queue_full|no
 - **WHEN** run lookup, state validation or another handler database operation throws an unexpected error
 - **THEN** the shared RPC exception filter MUST send only
   `{status:error,message:RPC_INTERNAL_ERROR}` through the error channel
-- **AND** the handler MUST NOT return `ok=false` with `queue_full`, `not_ready` or `not_pending`
+- **AND** the handler MUST NOT return `ok=false` with `queue_full`, `not_ready` or `run_failed`
 - **AND** the wire error MUST NOT include stack, SQL, driver messages, constraint names or arbitrary internal
   objects
 - **AND** the backtest boundary MUST log the original error with available pattern, runId, correlation and
@@ -560,6 +599,9 @@ contain only `runId`, and the error-code union SHALL contain only `queue_full|no
 - **WHEN** two commands refer to the same durable run with different correlation ids
 - **THEN** dedupe MUST use `BacktestRun.id`
 - **AND** correlation MUST remain an observability identity only
+- **AND** admission for that run MUST be serialized before capacity reservation
+- **AND** each response MUST be reconstructed with its own request correlation rather than reusing a cached
+  complete result
 
 ### Requirement: Backtest Command Timeout Shall Use One Shared Configuration
 The `apps/mist` command client SHALL use one end-to-end `BACKTEST_COMMAND_TIMEOUT_MS` value validated by
@@ -601,7 +643,7 @@ The `apps/mist` command client SHALL use one end-to-end `BACKTEST_COMMAND_TIMEOU
 - **WHEN** the request-response error channel yields `RPC_INTERNAL_ERROR`
 - **THEN** `apps/mist` MUST attempt the approved PENDING-to-FAILED conditional update exactly once
 - **AND** a successful transition MUST return `500` with
-  `ApiError.code=INTERNAL_SERVER_ERROR`
+  `ApiErrorDto.code=INTERNAL_ERROR`
 - **AND** its typed data MUST contain the confirmed `{runId,status:FAILED}`
 - **AND** the response MUST retain the run-resource `Location`
 - **AND** the error MUST NOT be mapped to `429`, `503` or a Backtest rejection code
@@ -611,13 +653,13 @@ The `apps/mist` command client SHALL use one end-to-end `BACKTEST_COMMAND_TIMEOU
 - **THEN** `apps/mist` MUST read back the run exactly once
 - **AND** RUNNING or COMPLETED MUST be treated as a successfully accepted command and return `202`
 - **AND** an already FAILED run MUST return `500` with
-  `ApiError.code=INTERNAL_SERVER_ERROR`
+  `ApiErrorDto.code=INTERNAL_ERROR`
 - **AND** that FAILED response MUST retain `{runId,status:FAILED}` typed data and the run-resource `Location`
 - **AND** the client MUST NOT resend the command automatically
 
 #### Scenario: RPC internal-error cleanup cannot query the database
 - **WHEN** the PENDING-to-FAILED update or its required readback throws a database error
-- **THEN** the API MUST return `500` with `ApiError.code=DATABASE_QUERY_FAILED`
+- **THEN** the API MUST return `500` with `ApiErrorDto.code=INTERNAL_ERROR`
 - **AND** typed data MUST contain only the known `runId`
 - **AND** the response MUST retain `Location` and omit unconfirmed status
 - **AND** no further readback, cleanup attempt or RPC resend MAY occur
@@ -626,31 +668,38 @@ The `apps/mist` command client SHALL use one end-to-end `BACKTEST_COMMAND_TIMEOU
 - **WHEN** the handler returns the stable `queue_full` rejection
 - **THEN** `apps/mist` MUST conditionally change the created run from PENDING to FAILED
 - **AND** after that transition succeeds the API MUST return `429 Too Many Requests`
-- **AND** the shared `ApiError.data` MUST include the failed `runId` and current FAILED status
+- **AND** `ApiErrorDto.code` MUST be `BACKTEST_QUEUE_FULL`
+- **AND** the shared `ApiErrorDto.data` MUST include the failed `runId` and current FAILED status
 - **AND** the response MUST include its run-resource `Location`
 
 #### Scenario: Backtest submission is unavailable
 - **WHEN** backtest-scoped readiness is false or the TCP connection fails
 - **THEN** `apps/mist` MUST conditionally change the created run from PENDING to FAILED
 - **AND** after that transition succeeds the API MUST return `503 Service Unavailable`
-- **AND** the shared `ApiError.data` MUST include the failed `runId` and current FAILED status
+- **AND** readiness false MUST use `ApiErrorDto.code=BACKTEST_NOT_READY`
+- **AND** TCP connection failure MUST use `ApiErrorDto.code=BACKTEST_UNAVAILABLE`
+- **AND** the shared `ApiErrorDto.data` MUST include the failed `runId` and current FAILED status
 - **AND** the response MUST include its run-resource `Location`
 
 #### Scenario: TCP response times out while the run is still pending
 - **WHEN** the TCP response timeout occurs and the PENDING-to-FAILED conditional update succeeds
-- **THEN** the API MUST return `503 Service Unavailable`
-- **AND** the shared `ApiError.data` MUST include the failed `runId` and current FAILED status
+- **THEN** the API MUST return `504 Gateway Timeout`
+- **AND** `ApiErrorDto.code` MUST be `BACKTEST_COMMAND_TIMEOUT`
+- **AND** the shared `ApiErrorDto.data` MUST include the failed `runId` and current FAILED status
 - **AND** the response MUST include its run-resource `Location`
 
 #### Scenario: TCP response is lost after the worker claims the run
 - **WHEN** the TCP response times out and the PENDING-to-FAILED conditional update affects zero rows
-- **THEN** `apps/mist` MUST read back the run
-- **AND** a RUNNING or COMPLETED run MUST be treated as successfully submitted
-- **AND** the API MUST return the approved `202 Accepted` response
-- **AND** it MUST NOT overwrite the worker-owned state
+- **THEN** `apps/mist` MUST read back the run exactly once
+- **AND** a RUNNING, COMPLETED or FAILED run MUST be treated as an accepted command and return the approved
+  `202 Accepted` response
+- **AND** a still-PENDING or missing run MUST return `500` with `ApiErrorDto.code=INTERNAL_ERROR`
+- **AND** a readback database error MUST return `500` with `ApiErrorDto.code=INTERNAL_ERROR`, typed data containing
+  only the known `runId`, and the run-resource `Location`
+- **AND** it MUST NOT overwrite state, perform another readback/cleanup or resend the command
 
 #### Scenario: A failed submission is explicitly requested again
-- **WHEN** a user chooses to resubmit after receiving `429` or `503`
+- **WHEN** a user chooses to resubmit after receiving `429`, `503` or `504`
 - **THEN** the previous failed run MUST remain queryable for audit
 - **AND** the new submission MUST create a new `BacktestRun` identity
 - **AND** clients MUST NOT automatically reuse or resume the failed run
@@ -685,11 +734,25 @@ The schema SHALL accept only integers from `1` through `64` and SHALL default th
 - **WHEN** the same `runId` is already waiting, RUNNING or COMPLETED
 - **THEN** the TCP handler MUST return an idempotent `ok=true` no-op response
 - **AND** it MUST NOT consume another queue slot or move the run back to PENDING
+- **AND** dedupe MUST occur before queue-full evaluation
+
+#### Scenario: Two commands concurrently deliver the same pending run
+- **WHEN** different correlation ids concurrently reference one PENDING run
+- **THEN** a short-lived keyed admission chain MUST serialize decisions for that run
+- **AND** after one command reserves active or waiting identity, the next MUST observe it and return an
+  idempotent success
+- **AND** capacity check and in-memory reservation MUST execute synchronously without an await between them
+- **AND** the keyed chain MUST be removed after settlement while scheduler-owned active/waiting identity remains
+- **AND** no run MAY occupy more than one active slot or waiting position
 
 #### Scenario: A failed run is delivered again
 - **WHEN** the referenced run is already FAILED
-- **THEN** the TCP handler MUST return `ok=false,error.code=not_pending`
+- **THEN** the TCP handler MUST return `ok=false,error.code=run_failed`
 - **AND** it MUST NOT report the failed run as accepted or enqueue it
+- **AND** `apps/mist` MUST map the confirmed domain state to real HTTP 200 with
+  `success=false`, `ApiErrorDto.code=BACKTEST_RUN_ALREADY_FAILED` and typed `{runId,status:FAILED}`
+- **AND** the response MUST retain the run-resource `Location` without another database readback
+- **AND** a client MUST NOT automatically resend that run; an explicit later submission creates a new run
 
 #### Scenario: Queue capacity configuration fails validation
 - **WHEN** an explicit `BACKTEST_QUEUE_CAPACITY` is non-integer, less than `1` or greater than `64`
@@ -711,6 +774,26 @@ default the value to `2`.
 - **WHEN** a distinct valid PENDING run is accepted while active count is below `BACKTEST_CONCURRENCY`
 - **THEN** it MAY proceed directly to atomic claim and execution without consuming waiting capacity
 - **AND** the same runId MUST NOT occupy another active slot or waiting position
+
+#### Scenario: A command is accepted before durable claim
+- **WHEN** the handler has reserved active or waiting identity and returns `ok=true`
+- **THEN** the durable run MAY remain PENDING until the runner actually obtains an execution slot
+- **AND** handler acceptance MUST NOT require a new persistent reservation state
+- **AND** a process exit in this interval MUST leave durable PENDING recovery to the next startup's one-time
+  compensation rather than a runtime scanner
+
+#### Scenario: The runner claims an accepted run
+- **WHEN** an accepted identity obtains an execution slot
+- **THEN** the runner MUST conditionally change exactly that run from PENDING to RUNNING before evaluation
+- **AND** `affected=0` MUST prevent execution, discard the memory identity without readback or PENDING restore,
+  release the slot exactly once and admit at most one oldest waiting identity
+
+#### Scenario: Claim or scheduling fails
+- **WHEN** claim throws, cleanup throws, or synchronous runner scheduling fails
+- **THEN** claim failure MUST attempt at most one PENDING-to-FAILED cleanup
+- **AND** cleanup failure MUST be logged without recursive retry
+- **AND** synchronous schedule failure MUST undo its active reservation before task failure closure
+- **AND** every path MUST release its slot in a finally-equivalent boundary and MUST NOT leave capacity occupied
 
 #### Scenario: All execution slots are occupied
 - **WHEN** active count equals `BACKTEST_CONCURRENCY` and waiting capacity remains

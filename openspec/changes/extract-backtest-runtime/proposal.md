@@ -9,12 +9,19 @@
 - 新建单词命名的 Nest application：项目名 `backtest`、目录 `apps/backtest`、根模块
   `BacktestAppModule`。
 - `apps/mist` 继续持有 `/v1/strategy-backtests` 公共 API、鉴权和查询入口，但不再执行历史回放。
+- 当前混合创建、同步执行与查询的 `StrategyBacktestService` 直接退出：`apps/mist` 新建
+  `BacktestRunCommandService` 持有 durable register、RPC submission 和提交错误映射，新建
+  `BacktestRunQueryService` 持有 run/signals MySQL 查询与 VO mapping；删除旧 `executeRun()`、回测 K
+  repository/evaluator/context-builder 注入及其失效测试，不保留 feature flag、双跑或本地 fallback。
 - `POST /v1/strategy-backtests` 改为异步 command-style 提交：持久登记并被 TCP handler 接受后立即
-  返回 `202 Accepted`、`runId`、创建时的 `PENDING` 状态和
+  返回 `202 Accepted`、`runId`、显式命名的初始状态 `initialStatus=PENDING` 和
   `Location: /v1/strategy-backtests/{runId}`，不等待回测计算或返回结果。
-- 已创建 run 的提交失败使用稳定 HTTP 映射：`queue_full` 条件标记 FAILED 后返回 `429`；backtest
-  未就绪、TCP 连接失败或超时后仍可从 PENDING 条件标记 FAILED 时返回 `503`；超时但数据库已是
-  RUNNING/COMPLETED 时视为丢失 ACK 并返回 `202`。错误响应仍携带 `runId` 与 `Location`。
+- 已创建 run 的提交失败使用稳定 HTTP 映射：`queue_full` 条件标记 FAILED 后返回
+  `429 + BACKTEST_QUEUE_FULL`；backtest 未就绪返回 `503 + BACKTEST_NOT_READY`，TCP 连接失败返回
+  `503 + BACKTEST_UNAVAILABLE`；command timeout 后仍可从 PENDING 条件标记 FAILED 时返回
+  `504 + BACKTEST_COMMAND_TIMEOUT`。timeout 条件更新未命中后只 read back 一次，
+  RUNNING/COMPLETED/FAILED 视为 command 已被接受并返回 `202`，PENDING/missing 或 readback error
+  返回 `500 + INTERNAL_ERROR`。错误响应仍按已确认状态携带 `runId` 与 `Location`。
 - `apps/backtest` 持有历史 K 读取、bounded context 构建、回测任务执行、运行状态推进和
   `BacktestSignalResult` 写入。
 - Backtest V1 的公共请求只接受 `source=tdx|qmt`。`source=ef` 在创建 durable run 前由
@@ -126,10 +133,10 @@
   `backtest.run.submit.v1` 使用必填 correlation 的
   `RpcRequestV1<SubmitBacktestRunCommandV1>` 和
   `RpcResultV1<null, SubmitBacktestRunErrorCodeV1>`；command 只含 `runId`，error union 只含
-  `queue_full|not_ready|not_pending`，均位于共享 strategy domain library，不建立 Backtest 专属
-  transport envelope。
-- 公共 `202/429/503` 响应复用 `libs/transport/http`：成功返回真实 body statusCode、显式
-  `BACKTEST_ACCEPTED` message；已创建 run 的错误 identity 放在 typed `ApiError.data`，HTTP
+  `queue_full|not_ready|run_failed`。pattern、types 与 decoder 由新增 `libs/backtest` domain library
+  单一持有；不进入 `libs/transport` 或 `libs/strategy`，也不建立 Backtest 专属 transport envelope。
+- 公共 `202/429/503/504/500` 响应复用 `libs/transport/http`：成功返回真实 body statusCode、显式
+  `BACKTEST_ACCEPTED` message；已创建 run 的错误 identity 放在 typed `ApiErrorDto.data`，HTTP
   requestId 传播为 RPC correlationId。
 - evaluator、validator、Indicator kernels、quantity projector、Backtest command type 和 backtest entities 保持在
   职责明确的 `libs/*`；contextSnapshot serializer 同样由共享 strategy library 持有，`apps/mist` 与
@@ -172,7 +179,7 @@
   `backtest.ready/state` 表示启动补偿与 command acceptance，另返回低基数 active/waiting/configured
   capacity diagnostics。该 endpoint 不经 Nginx；Compose 只用它探测进程，部署验收和 Backtest-scoped
   compensation 另检查 `backtest.ready=true`。队列满不改变 ready，health 不实时查询 MySQL。
-- 增加独立 backtest runtime 的部署、容量、监控和回滚门禁。V1 不为 Backtest Compose service
+- 增加独立 backtest runtime 的部署、容量和监控门禁。V1 不为 Backtest Compose service
   新增 CPU/内存 hard limit、reservation 或对应环境变量；运行资源仍通过既有 concurrency、waiting
   capacity、execution deadline、consumed-bar limit 和 bounded batch 约束，HIL 只记录实际占用而不猜测
   一组发布阈值。

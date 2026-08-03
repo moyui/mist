@@ -25,10 +25,88 @@ Compose，但 candle 闭环、精确量额、grace、due scanning、恢复和 HI
 latest snapshot 和相邻 open bucket 保持有界 Node memory；Redis 只保存 sealed/discarded 结果、
 watermark、due 和 manifest。该边界避免把高频 mutable snapshot 复制到 Redis。
 
-### 2. 单证券串行、跨证券并行
+### 2. 单 market series 串行、跨 series 并行
 
-accepted snapshot 和到期 finalizer 使用相同 `securityId` keyed execution boundary。具体 queue
-容量、超时和 shutdown 行为在实现前评审，不在本轮预设数值。
+market-series identity 固定为 `(securityId,source)`，candle identity 固定为
+`(securityId,source,bucketStartMs)`。accepted snapshot、expected-bucket due 和到期 finalizer 使用相同
+`(securityId,source)` keyed execution boundary；不同 series 可以并行。Node latest/open state、volume 与
+amount 独立 cumulative baseline、watermark、due、manifest 和所有 market Redis keys 都必须包含 source
+维度，不允许同日 source 切换继承另一来源的 mutable/counter/terminal state。
+
+canonical security identity 仍是 `securityId`，`source` 是市场序列维度和 provenance；
+`providerSymbol` 只用于受控诊断/adapter provenance，禁止进入 Node/Redis identity、任何 Redis key、
+jobId 或下游业务 identity。当前 allowlist 可以继续禁止同一 securityId 同时双源订阅，但该限制不能
+作为省略 source 隔离的理由。
+
+due 不是只有 open candle 出现后才注册。对每个在 1m bucket 开始时位于 active listener inventory 的
+`(securityId,source)`，candle foundation 必须注册 `bucketEnd + grace` due；到期时有合法 open candle
+则 sealed，有 open 但证据不足或完全没有 open candle 都提交 discarded watermark。理论空分钟的
+discarded 只证明监听期间该 bucket 已终结且没有可用 K，不包含或伪造 OHLC、量额、价格。
+
+listener 在分钟中途才新增且尚无 snapshot 时，不倒推当前或此前理论缺口，从下一个完整 bucket 开始
+注册；若中途已有 accepted snapshot，则沿用普通 snapshot-driven current-bucket 聚合。bucket 开始时已
+注册的 due 在 listener 中途移除后仍完成当前 bucket 终态，避免留下悬空 window。进程重启只从可恢复
+current state 与后续 bucket 继续，不补造重启期间已错过的理论分钟，并记录 bounded recovery gap。
+该 expected-bucket due 只属于 market foundation，不能依赖 strategy mode、Signal worker 或 queue。
+
+V1 对 TDX/QMT 使用同一个 `REALTIME_CANDLE_GRACE_MS`，默认 `5000`，只接受 `1000..30000` 的整数；
+不在没有 HIL 证据时增加 source-specific grace。due scanner 固定每 `1000ms` 扫描一次，不增加第二个
+扫描频率配置。grace cutoff 固定为 `bucketEndMs + graceMs`：acceptedAt 晚于 cutoff 的 snapshot 不能
+再修改该 candle。
+
+bucket rollover 只负责把上一 bucket 移入 grace-pending 状态并打开下一 bucket，不得提交上一 bucket，
+也不得漏登新 bucket 的 due。由于最大 grace 小于一分钟，每个 market series 的正常内存状态最多包含
+当前 bucket 和一个上一 bucket；上一 bucket 在 cutoff 前仍可接收属于自身 identity 的合法 snapshot，
+到 cutoff 后冻结。snapshot、due 与 finalizer 始终按完整
+`(securityId,source,bucketStartMs)` 定位，禁止 due 通过“当前 series bucket”误取另一个分钟。
+
+Redis terminal commit 成功前不得删除冻结 candidate、推进可信 baseline 或发出 post-commit trigger。
+原子提交失败时，due scanner 每秒对同一 immutable candidate 幂等重试，hard horizon 固定为
+`bucketEndMs + 60000ms`。到 hard horizon 仍未提交时释放该 candidate，暴露
+`finalization_horizon_exceeded` 健康异常并保留市场缺口；不得把基础设施失败伪装成 discarded，也不
+触发策略。实际无 snapshot、证据本身不合法或已知 restart open-state loss 才可以按对应 market reason
+提交 discarded。
+
+shutdown 不增加专用协议或配置。candle owner 先停止 due scanner、expected-bucket registration 与新
+candle task acceptance，再让已进入 keyed queue 的任务受现有 Redis `3000ms` command timeout 约束尽力
+排空，最后才断开 owned Redis client；进程终止期限可以截断排空。shutdown 不强制封存或删除
+open/grace-pending candidate，不删除未完成 due，也不产生专用 terminal/trigger，避免把截断的一分钟
+伪装为完整 K。
+
+restart 只回放 bounded current-day due/terminal 证据：terminal 已存在而 due 残留时幂等清理 stale due，
+不重复发出 post-commit trigger；due 存在、terminal 不存在且 Node open state 已丢失时，提交不含 OHLC/
+quantity 的 `backend_restart_open_state_lost` discarded；due 与 terminal 均不存在的 elapsed bucket 只记
+recovery gap，不补造 terminal。若重启发生在当前 bucket 中间，已登记 bucket 按 open-state loss
+discarded，latest snapshot 仍可更新，但有效 candle aggregation 从下一完整 bucket 恢复。Signal owning
+change 的 bounded startup compensation 负责发现已提交 terminal，B1 不实现第二套下游 replay。
+
+当前 TDX/QMT allowlist 各自最多 5 个 entry，并禁止同一 securityId 同时双源，因此 V1 active market
+series 上限为 10。Node 不增加脱离 inventory 的 candle-count 配置；正常最多持有 10 份 latest、20 个
+current/prior candidate 以及每 series 的固定 baseline/due metadata。提高 provider allowlist 上限必须先
+重新评审该容量推导。
+
+keyed execution queue 的限制由 `libs/config` 持有：
+
+- `REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES` 默认 `8`，整数范围 `1..256`；
+- `REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL` 默认 `256`，整数范围 `16..4096`，并且不得小于 per-series
+  值。
+
+snapshot admission overflow 必须使 matching candidate 进入 `queue_overflow` market-evidence discard
+路径；尚无 candidate 时保留低基数诊断并由已登记 expected due 产生 no-valid-candle discard。due/finalizer
+task admission overflow 不得污染 candle evidence或伪造 discard；due 保持未完成并在下一次 scanner
+重试，最终仍受 hard horizon 约束。
+
+due scan 和 current-day startup replay 的单次 Redis range command 固定最多返回 64 个 member；不得使用
+无 `LIMIT` 的全量 `ZRANGEBYSCORE`、`KEYS` 或 wildcard scan。canonical Redis writer 在提交前强制
+UTF-8 byte bounds：sealed candle JSON `<=2048`、due member `<=128`、manifest payload `<=1024`。
+超限表示内部 serialization/contract failure，进入 degraded/hard-horizon 路径，不得伪装成 market
+discard。
+
+Redis 不增加业务 record-count cutoff 或 eviction。Compose 明确使用 AOF 与
+`maxmemory-policy noeviction`；OOM/command failure 按已有 finalization failure 处理。以 10 个 series、每个
+交易日 240 个 1m bucket 和 2048-byte closed payload 上限计算，closed JSON 上界约为 4.7 MiB/day；
+Redis object overhead、discard/watermark/manifest、AOF 和共享 BullMQ 占用不靠该估算豁免，必须在
+shadow/HIL 中观测 used memory、AOF size、due lag、record bytes 和增长趋势。
 
 ### 3. 量额使用 exact decimal 与统一 A 股单位
 
@@ -130,7 +208,7 @@ BullMQ 的 waiting/active/completed/failed keys 服从其 owning change，禁止
 或依赖 Redis key-expiration event 驱动业务逻辑。
 
 Node latest snapshot 与 open-candle state 不需要午夜 timer。进程持续运行时，第一条属于新
-tradingDay 的 accepted snapshot 在同一 per-security serialized boundary 内先丢弃旧日 mutable state，
+tradingDay 的 accepted snapshot 在同一 per-market-series serialized boundary 内先丢弃旧日 mutable state，
 再建立新日状态；进程重启天然从空内存开始。没有新交易日 snapshot 时，旧对象可以暂时占据内存，
 但不得再被读取或更新，下一次有效输入必须先完成日切换代。
 
@@ -146,7 +224,8 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
 ## Risks / Trade-offs
 
 - [grace 过短丢弃迟到数据] → 先 shadow 采样并经用户确认具体值。
-- [Redis 故障导致状态不确定] → fail closed、暴露 degraded reason，不生成 guessed candle。
+- [Redis 故障导致状态不确定] → candidate 在固定 hard horizon 内按 exact identity 幂等重试；到期
+  fail closed、暴露 `finalization_horizon_exceeded`，不生成 guessed/discarded candle。
 - [量额 provider 单位或 runtime profile 不清] → canonical 先固定股/元；使用固定 artifact、连续
   snapshot、`amountDelta/volumeDelta` 与同源 historical close HIL 证明 adapter profile，未确认的
   source/security 不得进入 candle productization。
@@ -169,6 +248,4 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
 
 ## Open Questions
 
-- TDX/QMT grace、hard horizon 和 memory/record limits 的具体值。
-- restart 丢失 open state 时的 discard 粒度与 operator diagnostics。
 - TDX 目标 runtime 的唯一 quantity profile，以及 QMT historical bar quantity profile 的 HIL 结果。

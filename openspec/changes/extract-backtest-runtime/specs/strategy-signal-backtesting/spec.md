@@ -16,7 +16,8 @@ resources.
 #### Scenario: A signal backtest run is submitted
 - **WHEN** the PENDING run has been committed and its TCP command is accepted
 - **THEN** `POST /v1/strategy-backtests` MUST return `202 Accepted`
-- **AND** it MUST return the created `runId`, creation snapshot `status=PENDING` and run-resource `Location`
+- **AND** it MUST return `BacktestRunReceiptVo` with the created `runId`, literal
+  `initialStatus=PENDING` and run-resource `Location`
 - **AND** it MUST NOT wait for historical replay or return signal results
 
 #### Scenario: A created signal backtest cannot be handed off

@@ -108,10 +108,12 @@ windows and analysis for all eligible strategies in the group.
 - **THEN** the bar MUST be incorporated once
 - **AND** history MUST NOT be fully reloaded for each strategy
 
-#### Scenario: A sealed-bar trigger is resolved
-- **WHEN** V1 accepts a sealed-bar trigger
+#### Scenario: A candle-finalization trigger is resolved
+- **WHEN** V1 accepts a `candle_finalized` trigger
 - **THEN** `resolveRealtimeObservation()` MUST resolve only the referenced market change
 - **AND** it MUST NOT reload the complete historical window
+- **AND** sealed MUST return the referenced canonical 1m bar while discarded MUST return a terminal outcome
+  without constructing a 1m bar
 
 ### Requirement: Indicator Windows Shall Follow The Compiled Field Contract
 Realtime evaluation SHALL retain and hydrate only the group maximum compiled `requiredBarCount`, while each
@@ -176,7 +178,7 @@ each execution plan's own derived context demand.
 
 ### Requirement: Snapshot Observation Shall Be Outside The V1 Contract
 The V1 internal market-data contract SHALL contain no snapshot observation capability and SHALL accept only
-sealed-bar observation resolution.
+candle-finalization observation resolution.
 
 #### Scenario: V1 receives a snapshot-update trigger
 - **WHEN** a snapshot-update trigger reaches the V1 runtime
@@ -262,7 +264,10 @@ inventing missing bars or accepting conflicting versions of one identity.
 #### Scenario: An upstream bucket is discarded
 - **WHEN** candle finalization produces a discarded outcome rather than a valid sealed bar
 - **THEN** the context port MUST NOT create a `StrategyBar` for that bucket
-- **AND** it MUST NOT run evaluation, return unavailable or change an episode for that outcome
+- **AND** it MUST NOT run the 1m evaluator, return 1m unavailable or directly change the 1m episode
+- **AND** the finalization MUST still advance the period builder so an ended higher-period window can emit its
+  approved complete, incomplete or zero-bar outcome
+- **AND** a derived bar emitted by that boundary MUST follow its ordinary higher-period evaluator and episode path
 - **AND** it MUST leave discard diagnostics with the owning market and monitoring boundaries
 - **AND** a derived-period builder MUST treat that constituent minute as absent when determining the derived
   bar type
@@ -283,6 +288,17 @@ same canonical bar contract.
 - **AND** zero available constituents MUST produce no bar
 - **AND** V1 late-data rejection MUST prevent a terminal complete/incomplete bar from being revised into the
   other type
+
+#### Scenario: The final theoretical constituent has no snapshot
+- **WHEN** the candle foundation's active-listener due commits a discarded watermark for the final 1m slot
+- **THEN** its `candle_finalized` trigger MUST close every derived window ending at that slot
+- **AND** Signal MUST NOT require a later valid K, a local session/grace timer or a database query to close it
+- **AND** the builder MUST apply the same complete, incomplete or zero-bar rule as any other terminal boundary
+
+#### Scenario: An upstream restart leaves an unrecoverable finalization gap
+- **WHEN** candle foundation explicitly cannot recover an already elapsed theoretical bucket
+- **THEN** Signal MUST preserve the missing trigger rather than synthesize a finalization or historical K
+- **AND** the accepted best-effort gap MUST remain observable through the owning market/handoff boundary
 
 #### Scenario: Every constituent minute exists
 - **WHEN** a derived period reaches its fixed session-aligned boundary and every required 1m bar exists
@@ -469,13 +485,13 @@ model rather than a preselected fixed bar-capacity configuration.
 #### Scenario: A listener group loses its final consumer
 - **WHEN** its listener, final eligible strategy or registry generation is removed
 - **THEN** the runtime MUST release that group's raw bars and derived state
-- **AND** it MUST release the shared `(securityId,source)` last-accepted trigger cursor only after no period
+- **AND** it MUST release the shared `(securityId,source)` last-finalized trigger cursor only after no period
   consumer remains for that source/security pair
 
 #### Scenario: The first valid trigger of a new trading day is consumed
 - **WHEN** its trading day differs from the Signal runtime's active trading day
 - **THEN** the single worker MUST release all prior-day raw and derived windows plus Indicator and quantity
-  projection state plus last-accepted trigger cursors
+  projection state plus last-finalized trigger cursors
   before hydration or evaluation
 - **AND** it MUST switch the active trading day and hydrate from prior-day MySQL plus current-day Redis under
   the approved seam

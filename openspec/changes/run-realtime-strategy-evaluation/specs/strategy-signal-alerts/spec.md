@@ -223,7 +223,7 @@ duplicate.
 workflows, so there is no shared operator-triggered live scan operation.
 
 **Migration**: Delete the manual scan controller/service and route. Operator-requested execution uses
-`POST /v1/strategy-backtests`; realtime evaluation is triggered only by the approved sealed-bar queue.
+`POST /v1/strategy-backtests`; realtime evaluation is triggered only by the approved candle-finalization queue.
 
 ### Requirement: Scan APIs Shall Use Version-First Paths
 
