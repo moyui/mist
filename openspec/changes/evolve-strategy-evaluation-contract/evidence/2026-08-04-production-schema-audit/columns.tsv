@@ -1,0 +1,60 @@
+backtest_runs	1	id	int	NO	<NULL>	auto_increment
+backtest_runs	2	strategy_definition_id	int	NO	<NULL>	
+backtest_runs	3	strategy_version_id	int	NO	<NULL>	
+backtest_runs	4	target_universe	json	NO	<NULL>	
+backtest_runs	5	period	int	NO	<NULL>	
+backtest_runs	6	source	enum('ef','tdx','qmt')	NO	<NULL>	
+backtest_runs	7	start_date	datetime	NO	<NULL>	
+backtest_runs	8	end_date	datetime	NO	<NULL>	
+backtest_runs	9	status	enum('pending','running','completed','failed')	NO	pending	
+backtest_runs	10	signal_count	int	NO	0	
+backtest_runs	11	matched_security_count	int	NO	0	
+backtest_runs	12	started_at	datetime	YES	<NULL>	
+backtest_runs	13	completed_at	datetime	YES	<NULL>	
+backtest_runs	14	error_message	text	YES	<NULL>	
+backtest_runs	15	created_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED
+backtest_runs	16	updated_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED on update CURRENT_TIMESTAMP(6)
+backtest_signal_results	1	id	int	NO	<NULL>	auto_increment
+backtest_signal_results	2	backtest_run_id	int	NO	<NULL>	
+backtest_signal_results	3	security_code	varchar(20)	NO	<NULL>	
+backtest_signal_results	4	signal_time	datetime	NO	<NULL>	
+backtest_signal_results	5	context_snapshot	json	NO	<NULL>	
+backtest_signal_results	6	rule_snapshot	json	NO	<NULL>	
+backtest_signal_results	7	created_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED
+strategy_alert_events	1	id	int	NO	<NULL>	auto_increment
+strategy_alert_events	2	strategy_signal_id	int	NO	<NULL>	
+strategy_alert_events	3	status	enum('pending','delivered','acked','failed')	NO	pending	
+strategy_alert_events	4	dedupe_key	varchar(255)	NO	<NULL>	
+strategy_alert_events	5	cooldown_until	datetime	YES	<NULL>	
+strategy_alert_events	6	delivery_result	json	YES	<NULL>	
+strategy_alert_events	7	acknowledged_at	datetime	YES	<NULL>	
+strategy_alert_events	8	created_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED
+strategy_alert_events	9	updated_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED on update CURRENT_TIMESTAMP(6)
+strategy_definitions	1	id	int	NO	<NULL>	auto_increment
+strategy_definitions	2	name	varchar(120)	NO	<NULL>	
+strategy_definitions	3	description	text	YES	<NULL>	
+strategy_definitions	4	status	enum('draft','enabled','disabled','archived')	NO	draft	
+strategy_definitions	5	target_universe	json	NO	<NULL>	
+strategy_definitions	6	periods	json	NO	<NULL>	
+strategy_definitions	7	sources	json	NO	<NULL>	
+strategy_definitions	8	current_version_id	int	YES	<NULL>	
+strategy_definitions	9	created_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED
+strategy_definitions	10	updated_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED on update CURRENT_TIMESTAMP(6)
+strategy_signals	1	id	int	NO	<NULL>	auto_increment
+strategy_signals	2	strategy_definition_id	int	NO	<NULL>	
+strategy_signals	3	strategy_version_id	int	NO	<NULL>	
+strategy_signals	4	security_code	varchar(20)	NO	<NULL>	
+strategy_signals	5	period	int	NO	<NULL>	
+strategy_signals	6	source	enum('ef','tdx','qmt')	NO	<NULL>	
+strategy_signals	7	signal_time	datetime	NO	<NULL>	
+strategy_signals	8	signal_source	enum('live','backtest')	NO	<NULL>	
+strategy_signals	9	context_snapshot	json	NO	<NULL>	
+strategy_signals	10	rule_snapshot	json	NO	<NULL>	
+strategy_signals	11	created_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED
+strategy_versions	1	id	int	NO	<NULL>	auto_increment
+strategy_versions	2	strategy_definition_id	int	NO	<NULL>	
+strategy_versions	3	version_number	int	NO	<NULL>	
+strategy_versions	4	rule_schema_version	enum('v1')	NO	v1	
+strategy_versions	5	rule	json	NO	<NULL>	
+strategy_versions	6	validation_summary	json	NO	<NULL>	
+strategy_versions	7	created_at	datetime(6)	NO	CURRENT_TIMESTAMP(6)	DEFAULT_GENERATED

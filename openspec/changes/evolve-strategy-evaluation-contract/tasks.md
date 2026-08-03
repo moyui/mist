@@ -10,7 +10,7 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
   本 change 的前置依赖。
 - [x] 1.2 记录 strategy entities、migrations、stable specs、API/FE consumers、legacy manual scan、
   signal-level backtest 和 portfolio worktree 的当前边界。
-- [ ] 1.3 只读审计真实 `schema_migrations`、column/index/constraint inventory，以及 strategy
+- [x] 1.3 只读审计真实 `schema_migrations`、column/index/constraint inventory，以及 strategy
   definitions/versions/signals/AlertEvents/backtest runs/results 存量。
 - [ ] 1.4 发现任意存量、候选 migration 编号冲突或 source quantity profile 未证明时，停止 schema 或
   quantity-rule 实施并重新评审。
