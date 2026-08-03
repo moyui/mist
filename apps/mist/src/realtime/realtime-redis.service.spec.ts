@@ -132,6 +132,23 @@ describe('RealtimeRedisService', () => {
     expect(service.client).toBeNull();
   });
 
+  it('allows the candle owner to disconnect the owned client idempotently', async () => {
+    const service = new RealtimeRedisService(
+      makeConfig({
+        MIST_REALTIME_REDIS_URL: 'redis://localhost:6379',
+        REALTIME_PRODUCTIZATION_MODE: 'shadow',
+      }),
+    );
+    await service.onModuleInit();
+    const client = service.client;
+
+    service.disconnectOwned();
+    service.disconnectOwned();
+
+    expect(client?.disconnect).toHaveBeenCalledTimes(1);
+    expect(service.client).toBeNull();
+  });
+
   it('uses an injected client without managing its lifecycle', async () => {
     const fake = makeFakeClient();
     const service = new RealtimeRedisService(

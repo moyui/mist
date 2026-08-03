@@ -130,6 +130,7 @@ export class RealtimeMarketDataProductService
     }
     this.queue.stopAccepting();
     await this.queue.drain();
+    this.redis.disconnectOwned();
   }
 
   /**

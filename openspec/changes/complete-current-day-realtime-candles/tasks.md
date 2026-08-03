@@ -101,7 +101,7 @@
   prior-day/other-source state 不被读取且 BullMQ namespace 不受影响；覆盖 terminal+stale due、
   due+restart loss、无证据 recovery gap 和 mid-bucket restart。
 - [x] 4.5 将可失败隔离的 candle sink 接到 latest-memory acceptance 之后，证明无策略或 MySQL 副作用。
-- [ ] 4.6 实现简单 shutdown 顺序：停止 scanner/registration/new task，按现有 Redis command timeout
+- [x] 4.6 实现简单 shutdown 顺序：停止 scanner/registration/new task，按现有 Redis command timeout
   best-effort drain admitted queue，再断开 owned Redis；不得 force-seal、删 unfinished due 或增加专用
   shutdown 配置/事件。
 

@@ -107,6 +107,11 @@ export class RealtimeRedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
+    this.disconnectOwned();
+  }
+
+  /** Idempotent disconnect used after the candle owner drains admitted work. */
+  disconnectOwned(): void {
     if (this.ownedClient) {
       this.ownedClient.disconnect();
       this.ownedClient = null;

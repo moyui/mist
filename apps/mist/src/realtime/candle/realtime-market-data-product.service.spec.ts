@@ -703,4 +703,50 @@ describe('RealtimeMarketDataProductService', () => {
     expect(finalizer.discardDue).not.toHaveBeenCalled();
     expect(aggregator.peekCandidate(1, 'tdx', bucketStartMs)).toBeNull();
   });
+
+  it('stops admission, drains admitted work, then disconnects owned Redis without finalizing', async () => {
+    const order: string[] = [];
+    const redis = {
+      isAvailable: jest.fn().mockReturnValue(true),
+      client: {},
+      disconnectOwned: jest.fn(() => order.push('disconnect')),
+    } as any;
+    const aggregator = { markInvalid: jest.fn() } as any;
+    const finalizer = { seal: jest.fn(), discardDue: jest.fn() } as any;
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow'),
+      new Clock(),
+      redis,
+      aggregator,
+      finalizer,
+      emptyAllowlist,
+    );
+    const enqueue = jest.fn().mockReturnValue(false);
+    (
+      service as unknown as {
+        queue: {
+          enqueue: jest.Mock;
+          stopAccepting: () => void;
+          drain: () => Promise<void>;
+        };
+      }
+    ).queue = {
+      enqueue,
+      stopAccepting: () => order.push('stop'),
+      drain: async () => {
+        order.push('drain-start');
+        await Promise.resolve();
+        order.push('drain-end');
+      },
+    };
+
+    await service.onModuleDestroy();
+    service.handleSnapshot(makeSnapshot({ eventTime: sh(9, 30) }));
+
+    expect(order).toEqual(['stop', 'drain-start', 'drain-end', 'disconnect']);
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(aggregator.markInvalid).not.toHaveBeenCalled();
+    expect(finalizer.seal).not.toHaveBeenCalled();
+    expect(finalizer.discardDue).not.toHaveBeenCalled();
+  });
 });
