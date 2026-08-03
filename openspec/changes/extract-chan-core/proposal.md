@@ -32,6 +32,8 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
 - 解除 `apps/chan → apps/mist` 业务源码 import；具体 adapter 布局按上述 owner 评审结论实施。
 - 保留现有 Chan URL、HTTP envelope、OpenAPI 输出、Phase A/Phase B 算法和无持久化语义；任何路由
   删除或算法修订必须另开 change。
+- 明确批准一项 HTTP 空结果修正：历史 K 查询成功但为空或不足以形成 Chan 图形时返回合法空结果，
+  不再把内部空 Bi 数组错误暴露成 `400 Invalid input`；其余公共行为保持不变。
 - Strategy KDJ(9,3,3)、MACD(12,26,9)、窗口和共享计算归
   `evolve-strategy-evaluation-contract`；本 change 不提供 Indicator base，也不是 Backtest/Realtime
   Strategy runtime 的前置依赖。

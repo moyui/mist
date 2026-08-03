@@ -29,6 +29,17 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **THEN** that behavior MUST remain in an application adapter outside `libs/chancore`
 - **AND** it MUST invoke the same `@app/chancore` implementation used by every retained Chan route
 
+#### Scenario: An empty approved K sequence is evaluated
+- **WHEN** a ChanCore facade receives an empty ordered K sequence
+- **THEN** `mergeK` and `findFenxings` MUST return empty arrays
+- **AND** `createBi` and `createChannels` MUST return `{ phaseA: [], phaseB: [] }`
+- **AND** no empty result MUST be represented as a database, contract or algorithm error
+
+#### Scenario: Available K is insufficient to form a derived structure
+- **WHEN** valid non-empty K input cannot yet form a Fenxing, complete Bi or Channel
+- **THEN** ChanCore MUST return the naturally derived empty collection or incomplete Bi
+- **AND** it MUST NOT throw merely because the requested derived structure has not formed
+
 ### Requirement: ChanCore Shall Publish A Minimal Algorithm Facade
 The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`, `findFenxings`,
 `createBi` and `createChannels`, plus only the algorithm-owned types and enums required by those method signatures.

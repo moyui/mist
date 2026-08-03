@@ -15,7 +15,7 @@ Indicator API，也不应依赖 ChanCore。
 
 - 抽取只包含当前 Chan 算法的 `libs/chancore` pure ChanCore。
 - 消除 `apps/chan` 对 `apps/mist` 业务源码的 import。
-- 保持当前 Chan 算法、HTTP URL、响应和无 persistence 行为。
+- 保持当前 Chan 算法、HTTP URL、响应和无 persistence 行为，但修正已批准的空历史/不足数据结果。
 - 在 source move 前固定 route、adapter、input/output、错误和 differential contracts。
 
 **Non-Goals:**
@@ -251,6 +251,28 @@ consumer audit、OpenAPI/gateway contract 和回滚评审后再删除。
 仍需在 source move 前确认 `chan-api` 当前 `/v1/indicators/k` 前端链路如何保持，以及 TypeORM K read
 adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体落位。
 
+### 6. 空 K 是合法零结果，不是 invalid input
+
+pure ChanCore 对空的已批准 K 序列固定返回：
+
+```ts
+mergeK([])          // []
+findFenxings([])    // []
+createBi([])        // { phaseA: [], phaseB: [] }
+createChannels([])  // { phaseA: [], phaseB: [] }
+```
+
+非空但不足以形成某级 Chan 图形时同样返回算法自然产生的空数组或未完成笔，不抛出“数据不足”异常。
+空 MySQL 查询是成功结果，不能伪装成数据库失败或请求结构错误。
+
+当前 `/v1/chan/channel` 在 K 查询为空后把内部空 Bi Phase B 传给 `ChannelService`，最终向只提交了
+查询条件的调用方暴露 `400 Invalid input: bi array cannot be empty`。该信息既误判成功空查询，也泄漏
+内部 Bi 实现。本 change 明确批准修正这一处：保留 HTTP `200` 和既有 envelope/VO shape，在 data 中
+返回 `{ phaseA: [], phaseB: [] }`。adapter 不再为了兼容旧错误而制造空 Bi 异常。
+
+这是本 change 唯一批准的 HTTP 行为修正；其他响应、错误、URL 和 OpenAPI contract 仍按行为保持
+门禁执行。
+
 ## Risks / Trade-offs
 
 - [只移动算法但保留 app import] → route/adapter owner 先于 source move 审批，guard test 最终删除精确
@@ -259,6 +281,7 @@ adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体�
 - [DTO/VO/HttpException 泄漏入 core] → library-owned contract 与 adapter mapping tests。
 - [抽取改变 Phase B 或对象引用行为] → 完整 fingerprint、mutation test 和 differential evidence。
 - [重新把 Strategy indicators 并入 Chan base] → active Strategy changes 明确改为 evaluator-owned calculation。
+- [把空历史误判为非法请求] → core/HTTP 空结果 fixtures 与 error-governance contract test。
 
 ## Migration Plan
 
@@ -275,4 +298,4 @@ adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体�
 
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
 - 各 ChanCore 输出类型的最小现有字段集合，以及 HTTP adapter 如何恢复当前 VO。
-- 空输入、非法有限值、当前 Channel HTTP error、mutation、算法版本和 numeric comparison 规则。
+- 非法有限值、mutation、算法版本和 numeric comparison 规则。

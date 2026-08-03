@@ -11,12 +11,19 @@ contracts, invoke the shared pure ChanCore, and map results to the existing publ
 
 ### Requirement: Chan Extraction Shall Preserve Existing Public Behavior
 This change SHALL preserve existing `/v1/chan/*` URLs, envelope/OpenAPI shapes and K merge, Fenxing, Bi Phase
-A/Phase B and Channel Phase A/Phase B semantics.
+A/Phase B and Channel Phase A/Phase B semantics, except for the explicitly approved empty-history correction.
 
 #### Scenario: Characterization and HTTP fixtures are replayed
 - **WHEN** the extracted implementation receives the same valid ordered K input
 - **THEN** its approved full-output fingerprint MUST match the pre-extraction result
-- **AND** any route deletion, response change or algorithm correction MUST be deferred to another change
+- **AND** any route deletion, response change or algorithm correction other than the approved empty-history
+  correction MUST be deferred to another change
+
+#### Scenario: A retained Chan route resolves no historical K
+- **WHEN** its validated query completes successfully with an empty K collection
+- **THEN** the route MUST return HTTP 200 with its retained envelope and a natural empty Chan result
+- **AND** the Channel route MUST return `{ phaseA: [], phaseB: [] }`
+- **AND** it MUST NOT expose an internal empty-Bi validation error to the HTTP consumer
 
 ### Requirement: Chan Application Ownership Shall Be Explicit Before Rewiring
 The independently deployed `chan-api` SHALL be the long-term runtime owner of `/v1/chan/*`. Its controller,

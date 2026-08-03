@@ -27,6 +27,9 @@
   - [x] 1.9.4 确认 `ChanChannel` 保留完整 bis、zone/extreme、enum/status/trend、真实 K 与 display
     identities，并保留 Channel Phase A/Phase B；迁移时修正 ID 被误注释为索引的问题。
 - [ ] 1.10 向项目负责人逐项评审空输入、invalid-input、numeric comparison、mutation 和算法版本。
+  - [x] 1.10.1 确认四个 core facade 对空 K 返回合法零结果；不足数据返回自然空结果或未完成笔；
+    `/v1/chan/channel` 不再把内部空 Bi 暴露成 400。
+  - [ ] 1.10.2 确认 invalid-input、numeric comparison、mutation 和算法版本。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
 ## 2. Pure ChanCore
@@ -47,6 +50,8 @@
 ## 3. Application Adapters
 
 - [ ] 3.1 按已批准 owner 重接 Chan HTTP controller、TypeORM K read adapter、VO/OpenAPI 和错误映射。
+- [ ] 3.1.1 修正 `/v1/chan/channel` 空历史/不足数据行为：返回 HTTP 200 与空两阶段结果，不再抛出
+  `BI_ARRAY_EMPTY`；其他 HTTP contract 保持不变。
 - [ ] 3.2 删除 `apps/chan → apps/mist` 业务源码 import 及 transport guard 中的精确 legacy allowlist。
 - [ ] 3.3 固定所有保留 `/v1/chan/*` 与 `/v1/indicators/k` 路由的 runtime owner 和 compatibility tests。
 - [ ] 3.4 证明 Strategy、Backtest 和 Realtime 不导入 ChanCore 或公共 Indicator HTTP 实现。
