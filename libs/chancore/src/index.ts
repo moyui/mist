@@ -16,3 +16,4 @@ export type {
   ChanK,
   ChanMergedK,
 } from './contracts';
+export { ChanInputError, ChanInvariantError } from './errors';
