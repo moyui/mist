@@ -26,17 +26,17 @@ unit SHALL be shares for volume and CNY yuan for amount.
 - **THEN** the single-symbol snapshot MUST fail closed before decimal parsing or normalization
 - **AND** the datasource native-object and backend frame byte limits MUST NOT substitute for the field limit
 
-#### Scenario: TDX realtime unit profile is not proven
-- **WHEN** the pinned terminal and bridge artifacts lack accepted trading-session evidence distinguishing
-  native hands/ten-thousand-yuan from shares/yuan
-- **THEN** TDX candle productization MUST remain off or shadow
-- **AND** the adapter MUST NOT infer a profile from one payload, current price, field name or arrival source
+#### Scenario: The accepted TDX production runtime supplies quantity strings
+- **WHEN** the pinned TDX bridge/runtime supplies native hands and ten-thousand-yuan decimal strings
+- **THEN** the adapter MUST scale volume by `100` and amount by `10000`
+- **AND** it MUST emit canonical shares/yuan strings through exact Decimal8 integer scaling
+- **AND** it MUST NOT select or change the profile from payload values at runtime
 
-#### Scenario: A TDX profile is accepted
-- **WHEN** supported-session HIL accepts one fixed TDX runtime profile
-- **THEN** a hands/ten-thousand-yuan profile MUST scale volume by `100` and amount by `10000`
-- **AND** a shares/yuan profile MUST preserve both numeric values without scaling
-- **AND** either profile MUST emit canonical shares/yuan strings through exact Decimal8 integer scaling
+#### Scenario: TDX bridge or runtime identity changes
+- **WHEN** deployment changes the accepted terminal, bridge or runtime identity
+- **THEN** candle productization MUST remain off or shadow until the fixed quantity profile is revalidated
+- **AND** an observed profile contradiction MUST be handled by a reviewed OpenSpec delta rather than runtime
+  inference or automatic profile switching
 
 #### Scenario: QMT supplies native volume and amount
 - **WHEN** safe integer volume and finite observable float amount pass the approved bounds
@@ -52,3 +52,9 @@ unit SHALL be shares for volume and CNY yuan for amount.
 - **WHEN** the security is outside the approved A-share `SecurityType.STOCK` unit profile
 - **THEN** the adapter MUST NOT apply the stock `×100` or `×10000` factors
 - **AND** that security MUST remain ineligible for candle productization until its own unit contract is approved
+
+#### Scenario: A quantity anomaly has not naturally occurred
+- **WHEN** no real missing-field, malformed-value or profile-drift incident exists in current evidence
+- **THEN** deterministic negative tests MUST prove fail-closed adapter behavior
+- **AND** the absent incident MUST remain `not-observed` under `capture-realtime-provider-anomalies`
+- **AND** lack of a manufactured anomaly MUST NOT block implementation or normal-path release

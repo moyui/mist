@@ -123,3 +123,19 @@ and preserve every deferred branch as `not-observed`.
 - **THEN** contract or recovery behavior MUST be changed through a separate
   reviewed OpenSpec delta
 - **AND** the incident bundle alone MUST NOT silently alter production behavior
+
+### Requirement: Quantity contract deviations use the same dormant capture boundary
+
+TDX and QMT realtime quantity anomalies SHALL be captured only after a naturally occurring missing-field,
+type, grammar, scale, range, counter-jump or accepted-profile deviation. Evidence SHALL retain source, field,
+bounded reason, artifact identity and observation window without retaining a complete raw native snapshot.
+
+#### Scenario: Quantity negative behavior exists only in deterministic tests
+- **WHEN** malformed, missing or drifting quantity behavior has not occurred in the real runtime
+- **THEN** the live incident status MUST remain `not-observed`
+- **AND** deterministic adapter tests MAY prove fail-closed behavior without blocking normal-path release
+
+#### Scenario: A real quantity profile contradiction appears
+- **WHEN** reviewed evidence contradicts the accepted source/runtime quantity profile or counter semantics
+- **THEN** the incident bundle MUST preserve the bounded observed facts and current artifact identity
+- **AND** product mode MUST remain off or shadow until a separate reviewed OpenSpec delta changes the contract

@@ -1,10 +1,14 @@
 ## 1. Provider 与量额评审门禁
 
-- [ ] 1.1 记录 TDX/QMT realtime quantity 的真实样本、单位、类型、缺失和异常分布。
+- [x] 1.1 记录 TDX/QMT realtime quantity 的真实样本、单位、类型、缺失和异常分布。
   - [x] 1.1.1 确认 A 股 canonical quantity 固定为 `volume=股`、`amount=人民币元`；realtime provider
     adapter 在进入 canonical snapshot 前换算，MySQL `k` 不在本 change 迁移或回填。QMT realtime
-    volume 按手精确乘 `100`、amount 保留 provider-float 可观察元值；TDX runtime profile 必须由
-    固定 artifact 的交易时段 HIL 在“手/万元”与“股/元”之间证明，禁止运行时按值猜测。
+    volume 按手精确乘 `100`、amount 保留 provider-float 可观察元值；2026-07-23 pinned production
+    artifacts 已确认 TDX string“手/万元”和 QMT integer/float“手/元”，证据见
+    `evidence/2026-08-03-provider-quantity-profile.md`，禁止运行时按值猜测。
+  - [x] 1.1.2 当前未自然出现的缺字段/null/非法/profile-drift 分布记录为 `not-observed`；用 deterministic
+    negative tests 验证 fail closed，并由 `capture-realtime-provider-anomalies` 统一承接后续真实 incident，
+    不为验收制造异常，也不阻塞 3.2 实现。
 - [x] 1.2 向项目负责人评审 canonical decimal grammar、precision/scale、TDX numeric rejection 和 QMT provider-float provenance。
   - [x] 1.2.1 确认内部统一使用 scale=8、与 `DECIMAL(36,8)` 同范围的 `Decimal8(bigint)`；V1 只允许
     parse/format/compare/add/subtract、经评审的非负整数单位缩放和范围检查，`×100/×10000` 只服务
