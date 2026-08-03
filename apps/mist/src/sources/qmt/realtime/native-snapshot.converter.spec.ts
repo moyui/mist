@@ -2,6 +2,7 @@ import {
   convertQmtNativeSnapshot,
   resolveQmtBusinessTime,
 } from './native-snapshot.converter';
+import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quantity-validation.error';
 
 describe('QMT native snapshot converter', () => {
   it('preserves canonical identity and complete native values', () => {
@@ -123,5 +124,25 @@ describe('QMT native snapshot converter', () => {
         native: { lastPrice: 541.2, [field]: value },
       }),
     ).toThrow();
+  });
+
+  it('classifies provider-float precision rejection without retaining the value', () => {
+    let error: unknown;
+    try {
+      convertQmtNativeSnapshot({
+        securityId: 300502,
+        providerSymbol: '300502.SZ',
+        capturedAt: '2026-07-22T10:01:03+08:00',
+        native: { lastPrice: 541.2, amount: 0.123456789 },
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(RealtimeQuantityValidationError);
+    expect(error).toMatchObject({
+      source: 'qmt',
+      field: 'amount',
+      reason: 'precision_exceeded',
+    });
   });
 });

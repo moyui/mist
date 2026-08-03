@@ -34,6 +34,15 @@ interface CompactClosedRecord {
   q: 'provisional';
 }
 
+export interface CandleFinalizerDiagnostics {
+  sealedTotal: number;
+  discardTotals: Array<{ reason: InvalidReason; total: number }>;
+  finalizationFailureTotal: number;
+  recordLimitBreachTotal: number;
+  maxSealedRecordBytes: number;
+  maxManifestBytes: number;
+}
+
 /**
  * Atomic Redis sealer for finalized 1-minute candles.
  *
@@ -59,6 +68,12 @@ interface CompactClosedRecord {
 @Injectable()
 export class CandleFinalizer {
   private readonly logger = new Logger(CandleFinalizer.name);
+  private sealedTotal = 0;
+  private readonly discardTotals = new Map<InvalidReason, number>();
+  private finalizationFailureTotal = 0;
+  private recordLimitBreachTotal = 0;
+  private maxSealedRecordBytes = 0;
+  private maxManifestBytes = 0;
 
   /**
    * Seal a candle into Redis atomically.
@@ -98,18 +113,27 @@ export class CandleFinalizer {
       );
       if (candle.validity === 'valid') {
         compactRecord = JSON.stringify(this.toCompactRecord(candle));
+        this.maxSealedRecordBytes = Math.max(
+          this.maxSealedRecordBytes,
+          Buffer.byteLength(compactRecord, 'utf8'),
+        );
         assertRealtimeRedisBytes(
           'sealed candle record',
           compactRecord,
           REALTIME_REDIS_RECORD_LIMITS.sealed,
         );
       }
+      this.maxManifestBytes = Math.max(
+        this.maxManifestBytes,
+        Buffer.byteLength(JSON.stringify(manifest), 'utf8'),
+      );
       assertRealtimeRedisBytes(
         'candle manifest record',
         JSON.stringify(manifest),
         REALTIME_REDIS_RECORD_LIMITS.manifest,
       );
     } catch (error) {
+      this.recordFinalizationFailure(true);
       this.logger.error(
         `Candle seal bounds failed for securityId=${candle.securityId} source=${candle.source} bucket ${candle.bucketStartMs}: ${
           error instanceof Error ? error.message : String(error)
@@ -120,6 +144,7 @@ export class CandleFinalizer {
 
     const expiresAt = marketDayExpiryEpochSeconds(tradingDay);
     if (Math.floor(nowMs / 1_000) >= expiresAt) {
+      this.recordFinalizationFailure();
       this.logger.error(
         `Candle seal rejected expired tradingDay=${tradingDay} securityId=${candle.securityId} source=${candle.source}`,
       );
@@ -168,13 +193,20 @@ export class CandleFinalizer {
       // multi.exec returns null if the transaction was discarded (e.g.
       // WATCH conflict — we don't use WATCH, but guard anyway).
       if (results === null) {
+        this.recordFinalizationFailure();
         this.logger.error(
           `Candle seal transaction discarded for ${candle.providerSymbol} bucket ${candle.bucketStartMs}`,
         );
         return false;
       }
+      if (candle.validity === 'valid') {
+        this.sealedTotal++;
+      } else if (candle.invalidReason) {
+        this.recordDiscard(candle.invalidReason);
+      }
       return true;
     } catch (error) {
+      this.recordFinalizationFailure();
       this.logger.error(
         `Candle seal failed for ${candle.providerSymbol} bucket ${candle.bucketStartMs}: ${
           error instanceof Error ? error.message : String(error)
@@ -215,12 +247,17 @@ export class CandleFinalizer {
         decoded.source,
         decoded.bucketStartMs,
       );
+      this.maxManifestBytes = Math.max(
+        this.maxManifestBytes,
+        Buffer.byteLength(JSON.stringify(manifest), 'utf8'),
+      );
       assertRealtimeRedisBytes(
         'candle manifest record',
         JSON.stringify(manifest),
         REALTIME_REDIS_RECORD_LIMITS.manifest,
       );
     } catch (error) {
+      this.recordFinalizationFailure(true);
       this.logger.error(
         `discardDue bounds failed for securityId=${decoded.securityId} source=${decoded.source} bucket ${decoded.bucketStartMs}: ${
           error instanceof Error ? error.message : String(error)
@@ -229,7 +266,10 @@ export class CandleFinalizer {
       return false;
     }
     const expiresAt = marketDayExpiryEpochSeconds(tradingDay);
-    if (Math.floor(nowMs / 1_000) >= expiresAt) return false;
+    if (Math.floor(nowMs / 1_000) >= expiresAt) {
+      this.recordFinalizationFailure();
+      return false;
+    }
 
     const multi = redis.multi();
     multi.hset(wmK, {
@@ -244,8 +284,15 @@ export class CandleFinalizer {
     multi.expireat(dueK_, expiresAt);
 
     try {
-      return (await multi.exec()) !== null;
+      const committed = (await multi.exec()) !== null;
+      if (committed) {
+        this.recordDiscard(reason);
+      } else {
+        this.recordFinalizationFailure();
+      }
+      return committed;
     } catch (error) {
+      this.recordFinalizationFailure();
       this.logger.error(
         `discardDue failed for securityId=${decoded.securityId} source=${decoded.source} bucket ${decoded.bucketStartMs}: ${
           error instanceof Error ? error.message : String(error)
@@ -253,6 +300,19 @@ export class CandleFinalizer {
       );
       return false;
     }
+  }
+
+  diagnostics(): CandleFinalizerDiagnostics {
+    return {
+      sealedTotal: this.sealedTotal,
+      discardTotals: [...this.discardTotals.entries()]
+        .map(([reason, total]) => ({ reason, total }))
+        .sort((left, right) => left.reason.localeCompare(right.reason)),
+      finalizationFailureTotal: this.finalizationFailureTotal,
+      recordLimitBreachTotal: this.recordLimitBreachTotal,
+      maxSealedRecordBytes: this.maxSealedRecordBytes,
+      maxManifestBytes: this.maxManifestBytes,
+    };
   }
 
   /** Derive tradingDay (YYYYMMDD) from bucketStartMs in Asia/Shanghai. */
@@ -280,5 +340,14 @@ export class CandleFinalizer {
       le: candle.lastEventTime,
       q: 'provisional',
     };
+  }
+
+  private recordFinalizationFailure(recordLimitBreach = false): void {
+    this.finalizationFailureTotal++;
+    if (recordLimitBreach) this.recordLimitBreachTotal++;
+  }
+
+  private recordDiscard(reason: InvalidReason): void {
+    this.discardTotals.set(reason, (this.discardTotals.get(reason) ?? 0) + 1);
   }
 }

@@ -28,6 +28,7 @@ import { SecurityModule } from './security/security.module';
 import { mistEnvSchema } from '@app/config';
 import { StrategyModule } from './strategy/strategy.module';
 import { HttpTransportModule } from '@app/transport/http';
+import { RealtimeIngressModule } from './realtime/realtime-ingress.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { HttpTransportModule } from '@app/transport/http';
       inject: [ConfigService],
     }),
     HistoricalCollectorModule,
+    RealtimeIngressModule,
     ...tdxRealtimeModulesForMode(process.env.TDX_REALTIME_MODE),
     ...qmtRealtimeModulesForMode(process.env.QMT_REALTIME_MODE),
     IndicatorModule,

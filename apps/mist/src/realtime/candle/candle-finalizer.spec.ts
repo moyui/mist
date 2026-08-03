@@ -279,8 +279,9 @@ describe('CandleFinalizer', () => {
     fake.multi.mockReturnValue(fake.chain);
     const bucketStartMs = Date.parse('2026-07-28T01:30:00.000Z');
 
+    const finalizer = new CandleFinalizer();
     await expect(
-      new CandleFinalizer().discardDue(
+      finalizer.discardDue(
         fake as any,
         {
           securityId: 1,
@@ -316,5 +317,11 @@ describe('CandleFinalizer', () => {
           String(command.args[0]).includes(':manifest'),
       ),
     ).toBeDefined();
+    expect(finalizer.diagnostics()).toMatchObject({
+      discardTotals: [{ reason: 'no_snapshot', total: 1 }],
+      finalizationFailureTotal: 0,
+      recordLimitBreachTotal: 0,
+    });
+    expect(finalizer.diagnostics().maxManifestBytes).toBeGreaterThan(0);
   });
 });

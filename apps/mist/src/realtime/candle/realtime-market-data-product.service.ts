@@ -23,6 +23,10 @@ import { KeyedQueue } from './keyed-queue';
 import { resolveCandleBucket } from './candle-bucket.util';
 import type { CandleBucket } from './candle.types';
 import { marketSeriesKey } from './market-series-key';
+import type {
+  RealtimeCandleProductMode,
+  RealtimeCandleRuntimeObservation,
+} from './realtime-candle-health.types';
 import {
   dueKey,
   encodeDueMember,
@@ -64,7 +68,7 @@ export class RealtimeMarketDataProductService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(RealtimeMarketDataProductService.name);
-  private readonly mode: string;
+  private readonly mode: RealtimeCandleProductMode;
   private readonly graceMs: number;
   private readonly queue: KeyedQueue;
   private readonly expectedSeries = new Map<string, ExpectedSeriesState>();
@@ -76,6 +80,13 @@ export class RealtimeMarketDataProductService
   private startupReplayPending = true;
   private startupEligibleBucketStartMs: number | null = null;
   private recoveryGapCount = 0;
+  private snapshotOverflowCount = 0;
+  private dueAdmissionOverflowCount = 0;
+  private lateAfterGraceCount = 0;
+  private candidateCapacityExceededCount = 0;
+  private dueScanFailureCount = 0;
+  private dueRegistrationFailureCount = 0;
+  private finalizationHorizonExceededCount = 0;
 
   constructor(
     private readonly config: ConfigService,
@@ -149,6 +160,7 @@ export class RealtimeMarketDataProductService
       this.processSnapshot(snapshot, acceptedAt),
     );
     if (!accepted) {
+      this.snapshotOverflowCount++;
       this.logger.warn(
         `Queue overflow for ${key}; marking candle queue_overflow.`,
       );
@@ -191,6 +203,11 @@ export class RealtimeMarketDataProductService
 
     switch (outcome.kind) {
       case 'skipped':
+        if (outcome.reason === 'late_after_grace') {
+          this.lateAfterGraceCount++;
+        } else if (outcome.reason === 'candidate_capacity_exceeded') {
+          this.candidateCapacityExceededCount++;
+        }
         return;
 
       case 'opened':
@@ -323,6 +340,7 @@ export class RealtimeMarketDataProductService
       if (expected) this.expectedDueMembers.add(member);
       return true;
     } catch (error) {
+      this.dueRegistrationFailureCount++;
       // A6 (design 303-304): mark candle redis_due_registration_failed.
       this.logger.error(
         `Due registration failed for securityId=${identity.securityId} source=${identity.source} bucket ${bucket.bucketStartMs}: ${
@@ -368,6 +386,7 @@ export class RealtimeMarketDataProductService
         REALTIME_REDIS_RANGE_BATCH_SIZE,
       );
     } catch (error) {
+      this.dueScanFailureCount++;
       this.logger.error(
         `Due scan failed for ${tradingDay}: ${
           error instanceof Error ? error.message : String(error)
@@ -399,6 +418,7 @@ export class RealtimeMarketDataProductService
         }
       });
       if (!accepted) {
+        this.dueAdmissionOverflowCount++;
         this.dueInFlight.delete(member);
         this.logger.warn(
           `Due queue admission overflow for securityId=${decoded.securityId} source=${decoded.source}; due remains pending.`,
@@ -536,6 +556,43 @@ export class RealtimeMarketDataProductService
     };
   }
 
+  /** Process-local, identity-free input for the dedicated health reader. */
+  runtimeObservation(): RealtimeCandleRuntimeObservation {
+    const queue = this.queue.getStats();
+    const aggregator = this.aggregator.diagnostics();
+    const finalizer = this.finalizer.diagnostics();
+    return {
+      mode: this.mode,
+      graceMs: this.graceMs,
+      queue: {
+        pendingGlobal: queue.pendingGlobal,
+        maximumPendingPerSeries: Math.max(
+          0,
+          ...Object.values(queue.pendingByKey),
+        ),
+        snapshotOverflowTotal: this.snapshotOverflowCount,
+        dueAdmissionOverflowTotal: this.dueAdmissionOverflowCount,
+      },
+      candle: {
+        ...aggregator,
+        sealedTotal: finalizer.sealedTotal,
+        discardTotals: finalizer.discardTotals,
+        lateAfterGraceTotal: this.lateAfterGraceCount,
+        candidateCapacityExceededTotal: this.candidateCapacityExceededCount,
+        finalizationFailureTotal: finalizer.finalizationFailureTotal,
+        finalizationHorizonExceededTotal: this.finalizationHorizonExceededCount,
+        recordLimitBreachTotal: finalizer.recordLimitBreachTotal,
+        recoveryGapTotal: this.recoveryGapCount,
+        maxSealedRecordBytes: finalizer.maxSealedRecordBytes,
+        maxManifestBytes: finalizer.maxManifestBytes,
+      },
+      due: {
+        scanFailureTotal: this.dueScanFailureCount,
+        registrationFailureTotal: this.dueRegistrationFailureCount,
+      },
+    };
+  }
+
   private nextCompleteBucketStartMs(now: number): number | null {
     const current = resolveCandleBucket(new Date(now).toISOString());
     let candidate = current
@@ -630,6 +687,7 @@ export class RealtimeMarketDataProductService
     this.logger.error(
       `finalization_horizon_exceeded securityId=${decoded.securityId} source=${decoded.source} bucket=${decoded.bucketStartMs}`,
     );
+    this.finalizationHorizonExceededCount++;
   }
 
   private clearDueTracking(member: string): void {

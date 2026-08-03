@@ -1,4 +1,5 @@
 import { convertTdxNativeSnapshot } from './native-snapshot.converter';
+import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quantity-validation.error';
 
 describe('TDX native snapshot converter', () => {
   it('uses only provider-native time and preserves identity/native values', () => {
@@ -123,7 +124,8 @@ describe('TDX native snapshot converter', () => {
   );
 
   it('fails closed when accepted unit scaling exceeds Decimal8 range', () => {
-    expect(() =>
+    let error: unknown;
+    try {
       convertTdxNativeSnapshot({
         securityId: 600030,
         providerSymbol: '600030.SH',
@@ -132,7 +134,15 @@ describe('TDX native snapshot converter', () => {
           Now: 31.25,
           Volume: '9999999999999999999999999999.99999999',
         },
-      }),
-    ).toThrow(RangeError);
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(RealtimeQuantityValidationError);
+    expect(error).toMatchObject({
+      source: 'tdx',
+      field: 'volume',
+      reason: 'out_of_range',
+    });
   });
 });

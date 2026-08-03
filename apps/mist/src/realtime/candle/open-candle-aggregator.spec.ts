@@ -463,4 +463,17 @@ describe('OpenCandleAggregator', () => {
     expect(closing.native).toBeUndefined();
     expect(closing.orderBook).toBeUndefined();
   });
+
+  it('reports only bounded aggregate candidate diagnostics', () => {
+    const agg = new OpenCandleAggregator();
+    agg.applySnapshot(snap({ eventTime: sh(9, 30) }));
+    agg.freezeCandidate(1, 'tdx', bucketStart(sh(9, 30)));
+
+    expect(agg.diagnostics()).toEqual({
+      seriesCount: 1,
+      candidateCount: 1,
+      invalidCandidateCount: 0,
+      frozenCandidateCount: 1,
+    });
+  });
 });

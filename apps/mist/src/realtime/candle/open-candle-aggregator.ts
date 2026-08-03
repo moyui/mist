@@ -185,6 +185,31 @@ export class OpenCandleAggregator {
       .map((candidate) => candidate.state.bucketStartMs);
   }
 
+  diagnostics(): {
+    seriesCount: number;
+    candidateCount: number;
+    invalidCandidateCount: number;
+    frozenCandidateCount: number;
+  } {
+    let candidateCount = 0;
+    let invalidCandidateCount = 0;
+    let frozenCandidateCount = 0;
+    for (const owner of this.series.values()) {
+      for (const candidate of [owner.prior, owner.current]) {
+        if (!candidate) continue;
+        candidateCount++;
+        if (candidate.state.validity === 'invalid') invalidCandidateCount++;
+        if (candidate.frozen) frozenCandidateCount++;
+      }
+    }
+    return {
+      seriesCount: this.series.size,
+      candidateCount,
+      invalidCandidateCount,
+      frozenCandidateCount,
+    };
+  }
+
   /** Freeze an exact candidate without removing it or advancing baseline. */
   freezeCandidate(
     securityId: number,
