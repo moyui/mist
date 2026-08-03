@@ -1,12 +1,18 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   DataSource,
   Period,
   StrategyDefinition,
+  StrategyRuleSchemaVersion,
+  StrategySignalKind,
   StrategyStatus,
   StrategyVersion,
 } from '@app/shared-data';
-import { StrategyRuleValidator } from '../rules/strategy-rule-validator';
+import { StrategyExecutionPlanService } from '../rules/strategy-execution-plan.service';
 import { StrategyDefinitionService } from './strategy-definition.service';
 
 describe('StrategyDefinitionService', () => {
@@ -26,9 +32,9 @@ describe('StrategyDefinitionService', () => {
         return entity;
       }),
       find: jest.fn(async () => definitions),
-      findOne: jest.fn(async ({ where }) => {
-        return definitions.find((definition) => definition.id === where.id);
-      }),
+      findOne: jest.fn(async ({ where }) =>
+        definitions.find((definition) => definition.id === where.id),
+      ),
     };
     const versionRepository = {
       create: jest.fn((input) => ({ ...input })),
@@ -37,26 +43,20 @@ describe('StrategyDefinitionService', () => {
         versions.push(entity);
         return entity;
       }),
-      count: jest.fn(async ({ where }) => {
-        return versions.filter(
+      find: jest.fn(async ({ where }) =>
+        versions.filter(
           (version) =>
             version.strategyDefinitionId === where.strategyDefinitionId,
-        ).length;
-      }),
-      find: jest.fn(async ({ where }) => {
-        return versions.filter(
-          (version) =>
-            version.strategyDefinitionId === where.strategyDefinitionId,
-        );
-      }),
-      findOne: jest.fn(async ({ where }) => {
-        return versions.find(
+        ),
+      ),
+      findOne: jest.fn(async ({ where }) =>
+        versions.find(
           (version) =>
             version.id === where.id &&
             (where.strategyDefinitionId === undefined ||
               version.strategyDefinitionId === where.strategyDefinitionId),
-        );
-      }),
+        ),
+      ),
     };
     const transaction = jest.fn(async (callback) => {
       const definitionsBefore = definitions.map((value) => ({ ...value }));
@@ -80,7 +80,7 @@ describe('StrategyDefinitionService', () => {
     const service = new StrategyDefinitionService(
       definitionRepository as any,
       versionRepository as any,
-      new StrategyRuleValidator(),
+      new StrategyExecutionPlanService(),
     );
 
     return {
@@ -100,17 +100,14 @@ describe('StrategyDefinitionService', () => {
     periods: [Period.DAY],
     sources: [DataSource.TDX],
     rule: {
-      all: [
-        {
-          field: 'indicator.macd.histogram',
-          operator: 'crossesAbove',
-          value: 0,
-        },
-      ],
+      field: 'indicator.macd.histogram',
+      operator: 'crossesAbove',
+      value: 0,
     },
+    signalKind: StrategySignalKind.ENTRY,
   };
 
-  it('creates a draft strategy definition with initial version 1', async () => {
+  it('atomically creates a draft definition and its only immutable version', async () => {
     const { service, versions } = createHarness();
 
     const strategy = await service.create(createDto);
@@ -126,34 +123,45 @@ describe('StrategyDefinitionService', () => {
       id: 1,
       strategyDefinitionId: 1,
       versionNumber: 1,
+      ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
       rule: createDto.rule,
-    });
-  });
-
-  it('updates rules by creating a new immutable version', async () => {
-    const { service, versions } = createHarness();
-    const strategy = await service.create(createDto);
-
-    const updated = await service.update(strategy.id, {
-      description: 'Updated description',
-      rule: {
-        all: [{ field: 'k.close', operator: 'gt', value: 100 }],
+      signalKind: StrategySignalKind.ENTRY,
+      validationSummary: {
+        signalKind: StrategySignalKind.ENTRY,
+        conditionCount: 1,
+        fields: ['indicator.macd.histogram'],
+        requiredBarCount: 131,
       },
     });
+  });
 
-    expect(updated).toMatchObject({
-      id: strategy.id,
-      description: 'Updated description',
-      currentVersionId: 2,
+  it('normalizes a create-only decimal threshold before persistence', async () => {
+    const { service, versions } = createHarness();
+
+    await service.create({
+      ...createDto,
+      rule: { field: 'k.volume', operator: 'gt', value: '001.2300' },
     });
-    expect(versions).toHaveLength(2);
-    expect(versions[1]).toMatchObject({
-      strategyDefinitionId: strategy.id,
-      versionNumber: 2,
+
+    expect(versions[0].rule).toEqual({
+      field: 'k.volume',
+      operator: 'gt',
+      value: '1.23',
     });
   });
 
-  it('enables and disables a strategy without changing versions', async () => {
+  it('maps create-contract compiler failures to an HTTP 400 error', async () => {
+    const { service } = createHarness();
+
+    await expect(
+      service.create({
+        ...createDto,
+        signalKind: 'hold' as StrategySignalKind,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('enables and disables a price strategy without changing versions', async () => {
     const { service, versions } = createHarness();
     const strategy = await service.create(createDto);
 
@@ -166,6 +174,36 @@ describe('StrategyDefinitionService', () => {
       currentVersionId: 1,
     });
     expect(versions).toHaveLength(1);
+  });
+
+  it('keeps quantity strategies out of realtime registration before source HIL', async () => {
+    const { service } = createHarness();
+    const strategy = await service.create({
+      ...createDto,
+      rule: { field: 'k.amount', operator: 'gte', value: '100' },
+    });
+
+    await expect(service.enable(strategy.id)).rejects.toThrow(
+      /quantity profile HIL/,
+    );
+    await expect(service.disable(strategy.id)).resolves.toMatchObject({
+      status: StrategyStatus.DISABLED,
+    });
+  });
+
+  it('fails closed when stored immutable rule data is not canonical', async () => {
+    const { service, versions } = createHarness();
+    const strategy = await service.create({
+      ...createDto,
+      rule: { field: 'k.volume', operator: 'gt', value: '1.23' },
+    });
+    versions[0].rule = {
+      field: 'k.volume',
+      operator: 'gt',
+      value: '01.2300',
+    };
+
+    await expect(service.findById(strategy.id)).rejects.toThrow(TypeError);
   });
 
   it('throws when the strategy definition does not exist', async () => {
@@ -190,7 +228,7 @@ describe('StrategyDefinitionService', () => {
     expect(versions).toEqual([]);
   });
 
-  it('rolls back a rule update when the current-version pointer cannot be saved', async () => {
+  it('rolls back creation when the current-version pointer cannot be saved', async () => {
     const {
       service,
       definitions,
@@ -198,25 +236,21 @@ describe('StrategyDefinitionService', () => {
       definitionRepository,
       transaction,
     } = createHarness();
-    const strategy = await service.create(createDto);
-    definitionRepository.save.mockRejectedValueOnce(
-      new Error('definition update failed'),
+    definitionRepository.save
+      .mockImplementationOnce(async (entity) => {
+        entity.id = 1;
+        definitions.push(entity);
+        return entity;
+      })
+      .mockRejectedValueOnce(new Error('definition pointer write failed'));
+
+    await expect(service.create(createDto)).rejects.toThrow(
+      'definition pointer write failed',
     );
 
-    await expect(
-      service.update(strategy.id, {
-        description: 'must roll back',
-        rule: { field: 'k.close', operator: 'gt', value: 100 },
-      }),
-    ).rejects.toThrow('definition update failed');
-
-    expect(transaction).toHaveBeenCalledTimes(2);
-    expect(definitions).toHaveLength(1);
-    expect(definitions[0]).toMatchObject({
-      description: createDto.description,
-      currentVersionId: 1,
-    });
-    expect(versions).toHaveLength(1);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(definitions).toEqual([]);
+    expect(versions).toEqual([]);
   });
 
   it('rejects enablement when the current version is missing', async () => {

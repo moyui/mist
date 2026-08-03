@@ -11,6 +11,7 @@ import {
 } from '@app/shared-data';
 import { StrategyEvaluationContextBuilder } from './scanner/strategy-evaluation-context.builder';
 import { StrategyScanService } from './scanner/strategy-scan.service';
+import { StrategyExecutionPlanService } from './rules/strategy-execution-plan.service';
 import { StrategyRuleEvaluator } from './rules/strategy-rule-evaluator';
 import { StrategyRuleValidator } from './rules/strategy-rule-validator';
 import { StrategyAlertEventService } from './services/strategy-alert-event.service';
@@ -30,6 +31,7 @@ const strategyEntities = [
 
 const strategyProviders = [
   StrategyRuleValidator,
+  StrategyExecutionPlanService,
   StrategyRuleEvaluator,
   StrategyEvaluationContextBuilder,
   StrategyDefinitionService,

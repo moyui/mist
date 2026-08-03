@@ -10,10 +10,10 @@ import {
   StrategyStatus,
   StrategyVersion,
 } from '@app/shared-data';
+import type { CompiledStrategyExecutionPlan } from '@app/strategy';
 import { Repository } from 'typeorm';
 import { CreateStrategyDefinitionDto } from '../dto/create-strategy-definition.dto';
-import { UpdateStrategyDefinitionDto } from '../dto/update-strategy-definition.dto';
-import { StrategyRuleValidator } from '../rules/strategy-rule-validator';
+import { StrategyExecutionPlanService } from '../rules/strategy-execution-plan.service';
 
 @Injectable()
 export class StrategyDefinitionService {
@@ -22,11 +22,14 @@ export class StrategyDefinitionService {
     private readonly definitionRepository: Repository<StrategyDefinition>,
     @InjectRepository(StrategyVersion)
     private readonly versionRepository: Repository<StrategyVersion>,
-    private readonly ruleValidator: StrategyRuleValidator,
+    private readonly executionPlanService: StrategyExecutionPlanService,
   ) {}
 
   async create(dto: CreateStrategyDefinitionDto): Promise<StrategyDefinition> {
-    const validationSummary = this.ruleValidator.validate(dto.rule);
+    const compilation = this.executionPlanService.compileForCreate(
+      dto.rule,
+      dto.signalKind,
+    );
     return await this.definitionRepository.manager.transaction(
       async (manager) => {
         const definitionRepository = manager.getRepository(StrategyDefinition);
@@ -48,8 +51,9 @@ export class StrategyDefinitionService {
             strategyDefinitionId: definition.id,
             versionNumber: 1,
             ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
-            rule: dto.rule,
-            validationSummary,
+            rule: compilation.normalizedRule as Record<string, unknown>,
+            signalKind: dto.signalKind,
+            validationSummary: toValidationSummary(compilation.plan),
           }),
         );
 
@@ -59,64 +63,29 @@ export class StrategyDefinitionService {
     );
   }
 
-  async update(
-    id: number,
-    dto: UpdateStrategyDefinitionDto,
-  ): Promise<StrategyDefinition> {
-    const validationSummary =
-      dto.rule === undefined
-        ? undefined
-        : this.ruleValidator.validate(dto.rule);
-
-    return await this.definitionRepository.manager.transaction(
-      async (manager) => {
-        const definitionRepository = manager.getRepository(StrategyDefinition);
-        const versionRepository = manager.getRepository(StrategyVersion);
-        const definition = await this.findByIdWithRepository(
-          definitionRepository,
-          id,
-        );
-
-        if (dto.name !== undefined) definition.name = dto.name;
-        if (dto.description !== undefined) {
-          definition.description = dto.description;
-        }
-        if (dto.targetUniverse !== undefined) {
-          definition.targetUniverse = dto.targetUniverse;
-        }
-        if (dto.periods !== undefined) definition.periods = dto.periods;
-        if (dto.sources !== undefined) definition.sources = dto.sources;
-
-        if (dto.rule !== undefined && validationSummary !== undefined) {
-          const existingVersionCount = await versionRepository.count({
-            where: { strategyDefinitionId: definition.id },
-          });
-          const version = await versionRepository.save(
-            versionRepository.create({
-              strategyDefinition: definition,
-              strategyDefinitionId: definition.id,
-              versionNumber: existingVersionCount + 1,
-              ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
-              rule: dto.rule,
-              validationSummary,
-            }),
-          );
-          definition.currentVersionId = version.id;
-        }
-
-        return await definitionRepository.save(definition);
-      },
-    );
-  }
-
   async findAll(): Promise<StrategyDefinition[]> {
-    return await this.definitionRepository.find({
+    const definitions = await this.definitionRepository.find({
       order: { id: 'DESC' },
     });
+    for (const definition of definitions) {
+      await this.requireCompiledCurrentVersion(
+        definition,
+        this.versionRepository,
+      );
+    }
+    return definitions;
   }
 
   async findById(id: number): Promise<StrategyDefinition> {
-    return await this.findByIdWithRepository(this.definitionRepository, id);
+    const definition = await this.findByIdWithRepository(
+      this.definitionRepository,
+      id,
+    );
+    await this.requireCompiledCurrentVersion(
+      definition,
+      this.versionRepository,
+    );
+    return definition;
   }
 
   async enable(id: number): Promise<StrategyDefinition> {
@@ -128,7 +97,11 @@ export class StrategyDefinitionService {
           definitionRepository,
           id,
         );
-        await this.requireOwnedCurrentVersion(definition, versionRepository);
+        const version = await this.requireOwnedCurrentVersion(
+          definition,
+          versionRepository,
+        );
+        this.executionPlanService.compileForRealtimeRegistration(version);
         definition.status = StrategyStatus.ENABLED;
         return await definitionRepository.save(definition);
       },
@@ -136,17 +109,24 @@ export class StrategyDefinitionService {
   }
 
   async disable(id: number): Promise<StrategyDefinition> {
-    const definition = await this.findById(id);
+    const definition = await this.findByIdWithRepository(
+      this.definitionRepository,
+      id,
+    );
     definition.status = StrategyStatus.DISABLED;
     return await this.definitionRepository.save(definition);
   }
 
   async listVersions(strategyDefinitionId: number): Promise<StrategyVersion[]> {
     await this.findById(strategyDefinitionId);
-    return await this.versionRepository.find({
+    const versions = await this.versionRepository.find({
       where: { strategyDefinitionId },
       order: { versionNumber: 'DESC' },
     });
+    versions.forEach((version) =>
+      this.executionPlanService.compileStoredVersion(version),
+    );
+    return versions;
   }
 
   private async findByIdWithRepository(
@@ -182,4 +162,27 @@ export class StrategyDefinitionService {
     }
     return version;
   }
+
+  private async requireCompiledCurrentVersion(
+    definition: StrategyDefinition,
+    repository: Repository<StrategyVersion>,
+  ): Promise<CompiledStrategyExecutionPlan> {
+    const version = await this.requireOwnedCurrentVersion(
+      definition,
+      repository,
+    );
+    return this.executionPlanService.compileStoredVersion(version);
+  }
+}
+
+function toValidationSummary(
+  plan: CompiledStrategyExecutionPlan,
+): Record<string, unknown> {
+  return {
+    ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
+    signalKind: plan.signalKind,
+    conditionCount: plan.conditionCount,
+    fields: plan.fields,
+    requiredBarCount: plan.requiredBarCount,
+  };
 }

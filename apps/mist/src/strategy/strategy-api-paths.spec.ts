@@ -68,7 +68,10 @@ describe('Strategy API path registry', () => {
     expectRoute(routes, RequestMethod.POST, '/v1/strategies');
     expectRoute(routes, RequestMethod.GET, '/v1/strategies');
     expectRoute(routes, RequestMethod.GET, '/v1/strategies/:id');
-    expectRoute(routes, RequestMethod.PATCH, '/v1/strategies/:id');
+    expect(routes).not.toContainEqual({
+      method: RequestMethod.PATCH,
+      path: '/v1/strategies/:id',
+    });
     expectRoute(routes, RequestMethod.POST, '/v1/strategies/:id/enable');
     expectRoute(routes, RequestMethod.POST, '/v1/strategies/:id/disable');
     expectRoute(routes, RequestMethod.GET, '/v1/strategies/:id/versions');

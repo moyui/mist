@@ -6,7 +6,6 @@ describe('StrategyController', () => {
       create: jest.fn().mockResolvedValue({ id: 1 }),
       findAll: jest.fn().mockResolvedValue([{ id: 1 }]),
       findById: jest.fn().mockResolvedValue({ id: 1 }),
-      update: jest.fn().mockResolvedValue({ id: 1, currentVersionId: 2 }),
       enable: jest.fn().mockResolvedValue({ id: 1, status: 'enabled' }),
       disable: jest.fn().mockResolvedValue({ id: 1, status: 'disabled' }),
       listVersions: jest.fn().mockResolvedValue([{ id: 1 }]),
@@ -24,15 +23,12 @@ describe('StrategyController', () => {
       periods: [1440],
       sources: ['tdx'],
       rule: { field: 'k.close', operator: 'gt', value: 10 },
-    } as any;
-    const updateDto = {
-      rule: { field: 'k.close', operator: 'lt', value: 20 },
+      signalKind: 'entry',
     } as any;
 
     await controller.create(createDto);
     await controller.findAll();
     await controller.findById('1');
-    await controller.update('1', updateDto);
     await controller.enable('1');
     await controller.disable('1');
     await controller.listVersions('1');
@@ -40,7 +36,6 @@ describe('StrategyController', () => {
     expect(service.create).toHaveBeenCalledWith(createDto);
     expect(service.findAll).toHaveBeenCalled();
     expect(service.findById).toHaveBeenCalledWith(1);
-    expect(service.update).toHaveBeenCalledWith(1, updateDto);
     expect(service.enable).toHaveBeenCalledWith(1);
     expect(service.disable).toHaveBeenCalledWith(1);
     expect(service.listVersions).toHaveBeenCalledWith(1);
