@@ -12,9 +12,11 @@
 - [x] 1.6 确认 pure library 固定为 `libs/chancore`、Nest project `chancore`、import
   `@app/chancore`；Trend/K merge/Fenxing/Bi/Channel 与纯 helpers/enums/types 进入 library，
   Controller/DTO/VO/K read 留在 application adapter。
-- [ ] 1.7 向项目负责人逐项评审 public exports、最小 input/output、空输入、invalid-input、numeric
-  comparison、mutation 和算法版本。
-- [ ] 1.8 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
+- [x] 1.7 确认 public barrel 只导出无状态 `ChanCore.mergeK/findFenxings/createBi/createChannels` 及
+  签名所需 types/enums；内部 services/helpers/Nest module 不导出，不新增 speculative `analyze()`。
+- [ ] 1.8 向项目负责人逐项评审最小 input/output、空输入、invalid-input、numeric comparison、
+  mutation 和算法版本。
+- [ ] 1.9 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
 ## 2. Pure ChanCore
 
@@ -23,7 +25,9 @@
 - [ ] 2.2 迁移 K merge、Trend、Fenxing、Bi Phase A/Phase B、Channel Phase A/Phase B 与纯 helpers，
   保持已批准的输入输出和算法语义。
 - [ ] 2.3 用 library-owned types 替代 DTO/VO/Entity 输入，adapter 显式完成双向映射。
-- [ ] 2.4 用 full-output differential fixtures 证明结构、枚举、顺序、日期、数值与 mutation contract。
+- [ ] 2.4 建立最小 public barrel；contract test 拒绝导出内部算法实现、helpers、Nest module 或
+  `analyze()`。
+- [ ] 2.5 用 full-output differential fixtures 证明结构、枚举、顺序、日期、数值与 mutation contract。
 
 ## 3. Application Adapters
 

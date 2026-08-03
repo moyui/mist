@@ -50,6 +50,20 @@ pure library 的落位固定为：
 TypeScript，不保留 `@Injectable()` 等 Nest 装饰器，也不能继续以 HTTP DTO/VO 或 TypeORM Entity 作为
 library contract。
 
+`@app/chancore` 的 public barrel 只导出：
+
+- 无状态 `ChanCore`；
+- `ChanCore.mergeK(orderedK)`；
+- `ChanCore.findFenxings(orderedK)`；
+- `ChanCore.createBi(orderedK)`；
+- `ChanCore.createChannels(orderedK)`；
+- 上述签名实际需要的 algorithm-owned input/output types 和 enums。
+
+四个方法都从同一份原始有序 `ChanK[]` 开始；`findFenxings` 和 `createBi` 在内部完成 K merge，
+`createChannels` 在内部完成 K merge、Bi 计算并固定消费 Bi Phase B。public barrel 不导出 Trend、
+KMerge、Bi、Channel 实现类、helpers 或 Nest module，也不为当前不存在的调用方增加统一
+`analyze()`。内部算法测试可以直接覆盖 library-internal 文件，但测试便利性不能扩大 public exports。
+
 adapter 负责 HTTP DTO、日期解析、source 选择、TypeORM K/Security 查询、升序与有限值校验、
 library input mapping、HTTP VO/OpenAPI 和错误映射。ChanCore 不访问数据库、Redis、HTTP、环境变量
 或 Nest controller，不写入 Chan persistence。
@@ -104,5 +118,5 @@ adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体�
 ## Open Questions
 
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
-- library-owned input/output 的最小现有字段集合。
+- `ChanK` 与各输出类型的最小现有字段集合。
 - 空输入、非法有限值、当前 Channel HTTP error、mutation、算法版本和 numeric comparison 规则。

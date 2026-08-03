@@ -16,8 +16,10 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
   无 persistence、无 Nest/HTTP/TypeORM 依赖的 Chan 计算核心。
 - 迁移当前 Trend、K merge、Fenxing、Bi、Channel 和纯 helpers/enums/types；Controller、HTTP DTO/VO、
   OpenAPI、日期/source 解析和 K 数据库读取继续属于 application adapter。
-- 在移动代码前继续逐项确认 public exports、输入输出、空值/非法输入、数值比较、mutation 和算法
-  版本语义。
+- public API 只暴露无状态 `ChanCore` 的 `mergeK`、`findFenxings`、`createBi`、`createChannels`，以及
+  方法签名实际需要的 algorithm-owned types/enums；内部 services/helpers 和 Nest module 不导出，也不
+  预先增加统一 `analyze()`。
+- 在移动代码前继续逐项确认输入输出字段、空值/非法输入、数值比较、mutation 和算法版本语义。
 - `/v1/chan/*` 的长期唯一 runtime owner 固定为独立部署的 `chan-api`；当前 change 不顺手删除
   `mist-backend` 中的兼容路由，后续通过独立 route migration 清理双入口。
 - 在移动 controller/module 前确认现有双入口兼容范围，以及 `chan-api` 的 TypeORM K read adapter 和

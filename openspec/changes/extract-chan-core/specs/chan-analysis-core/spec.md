@@ -23,6 +23,25 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **THEN** that behavior MUST remain in an application adapter outside `libs/chancore`
 - **AND** it MUST invoke the same `@app/chancore` implementation used by every retained Chan route
 
+### Requirement: ChanCore Shall Publish A Minimal Algorithm Facade
+The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`, `findFenxings`,
+`createBi` and `createChannels`, plus only the algorithm-owned types and enums required by those method signatures.
+
+#### Scenario: An adapter invokes an existing Chan operation
+- **WHEN** an adapter requests merged K, Fenxing, Bi or Channel output from ordered raw `ChanK` input
+- **THEN** it MUST invoke the corresponding `ChanCore` facade method
+- **AND** `createChannels` MUST derive Bi internally and consume Bi Phase B before deriving Channel output
+
+#### Scenario: An internal algorithm component is implemented
+- **WHEN** Trend, K merge, Bi, Channel or a supporting helper is added under `libs/chancore`
+- **THEN** that component MUST remain private to the library unless an approved facade signature requires it
+- **AND** the public barrel MUST NOT export internal services, helpers or a Nest module
+
+#### Scenario: No current consumer needs a combined analysis operation
+- **WHEN** the extraction is implemented
+- **THEN** ChanCore MUST NOT add a speculative `analyze` public method
+- **AND** any future combined operation MUST be reviewed as a separate contract change
+
 ### Requirement: ChanCore Shall Not Own Strategy Indicators Or Market Retrieval
 ChanCore SHALL NOT provide Strategy KDJ/MACD, public Indicator endpoints, a public unified K API or
 `StrategyMarketDataPort` implementations.
