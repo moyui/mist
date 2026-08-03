@@ -96,7 +96,7 @@
   finalizer 必须精确匹配 due bucket，commit 失败保留 immutable candidate 并按秒重试，hard horizon 到期
   只记录基础设施 gap，不写 discarded 或 post-commit trigger；due/replay Redis command 固定 batch 64，
   禁止 unlimited range/KEYS/wildcard scan，并检查 sealed/due/manifest byte bounds。
-- [ ] 4.4 实现 bounded manifest replay、上海 D+1 00:00 exact-key expiry、Node trading-day rollover 和
+- [x] 4.4 实现 bounded manifest replay、上海 D+1 00:00 exact-key expiry、Node trading-day rollover 和
   restart/open-state diagnostics；证明 Redis/manifest identity 包含 securityId/source、不含 providerSymbol，
   prior-day/other-source state 不被读取且 BullMQ namespace 不受影响；覆盖 terminal+stale due、
   due+restart loss、无证据 recovery gap 和 mid-bucket restart。

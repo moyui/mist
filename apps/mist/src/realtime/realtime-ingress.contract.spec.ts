@@ -22,6 +22,21 @@ describe('formal realtime schema-v2 ingress contract', () => {
     expect(ingress.read(7)).toBe(qmt);
   });
 
+  it('drops prior-day source projections before accepting a new trading day', () => {
+    const ingress = new RealtimeSnapshotIngressService();
+    const prior = canonicalSnapshot('tdx', 7);
+    prior.eventTime = '2026-07-28T14:59:00+08:00';
+    const current = canonicalSnapshot('qmt', 7);
+    current.eventTime = '2026-07-29T09:30:00+08:00';
+
+    ingress.handleSnapshot(prior);
+    ingress.handleSnapshot(current);
+
+    expect(ingress.readSeries(7, 'tdx')).toBeNull();
+    expect(ingress.readSeries(7, 'qmt')).toBe(current);
+    expect(ingress.read(7)).toBe(current);
+  });
+
   it('funnels a TDX one-entry native map through the common ingress', () => {
     const store = new TdxRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();

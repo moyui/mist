@@ -52,7 +52,7 @@ function makeRedisHarness() {
   const chain = {
     zadd: jest.fn().mockReturnThis(),
     hset: jest.fn().mockReturnThis(),
-    expire: jest.fn().mockReturnThis(),
+    expireat: jest.fn().mockReturnThis(),
     exec: jest.fn().mockResolvedValue([]),
   };
   const client = {
@@ -104,7 +104,7 @@ describe('RealtimeMarketDataProductService', () => {
     const fakeMulti = {
       zadd: jest.fn().mockReturnThis(),
       hset: jest.fn().mockReturnThis(),
-      expire: jest.fn().mockReturnThis(),
+      expireat: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue([]),
     };
     const fakeClient = { multi: jest.fn().mockReturnValue(fakeMulti) };
@@ -136,7 +136,7 @@ describe('RealtimeMarketDataProductService', () => {
     const fakeMulti = {
       zadd: jest.fn().mockReturnThis(),
       hset: jest.fn().mockReturnThis(),
-      expire: jest.fn().mockReturnThis(),
+      expireat: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue([]),
     };
     const fakeClient = { multi: jest.fn().mockReturnValue(fakeMulti) };
@@ -311,7 +311,7 @@ describe('RealtimeMarketDataProductService', () => {
     expect(harness.chain.zadd).toHaveBeenCalledWith(
       expect.stringContaining('20260728:candle:1m:due'),
       Date.parse('2026-07-28T01:31:05.000Z'),
-      `1:tdx:600030.SH:${clockMs}`,
+      `1:tdx:${clockMs}`,
     );
     expect(harness.client.zrangebyscore).toHaveBeenLastCalledWith(
       expect.stringContaining('20260728:candle:1m:due'),
@@ -321,6 +321,13 @@ describe('RealtimeMarketDataProductService', () => {
       0,
       64,
     );
+    expect(harness.chain.expireat).toHaveBeenCalledWith(
+      expect.stringContaining('20260728'),
+      Date.parse('2026-07-29T00:00:00+08:00') / 1_000,
+    );
+    for (const [key] of harness.chain.expireat.mock.calls) {
+      expect(String(key).startsWith('bull:')).toBe(false);
+    }
   });
 
   it('does not register a listener added mid-bucket until the next full minute', async () => {
@@ -351,7 +358,7 @@ describe('RealtimeMarketDataProductService', () => {
     expect(harness.chain.zadd).toHaveBeenCalledWith(
       expect.any(String),
       Date.parse('2026-07-28T01:32:05.000Z'),
-      `1:tdx:600030.SH:${clockMs}`,
+      `1:tdx:${clockMs}`,
     );
   });
 
@@ -412,7 +419,7 @@ describe('RealtimeMarketDataProductService', () => {
     await scanAndDrain(service);
     clockMs = Date.parse('2026-07-28T01:30:00.000Z');
     await scanAndDrain(service);
-    const member = `1:tdx:600030.SH:${clockMs}`;
+    const member = `1:tdx:${clockMs}`;
     harness.client.zrangebyscore.mockResolvedValue([member]);
     clockMs = Date.parse('2026-07-28T01:31:05.000Z');
     await scanAndDrain(service);
@@ -423,7 +430,6 @@ describe('RealtimeMarketDataProductService', () => {
       {
         securityId: 1,
         source: 'tdx',
-        providerSymbol: '600030.SH',
         bucketStartMs: Date.parse('2026-07-28T01:30:00.000Z'),
       },
       'no_snapshot',
@@ -451,11 +457,10 @@ describe('RealtimeMarketDataProductService', () => {
       finalizer,
       emptyAllowlist,
     );
-    const member = `1:tdx:600030.SH:${bucketStartMs}`;
+    const member = `1:tdx:${bucketStartMs}`;
     const decoded = {
       securityId: 1,
       source: 'tdx' as const,
-      providerSymbol: '600030.SH',
       bucketStartMs,
     };
     const process = (
@@ -467,7 +472,6 @@ describe('RealtimeMarketDataProductService', () => {
           decoded: {
             securityId: number;
             source: 'tdx';
-            providerSymbol: string;
             bucketStartMs: number;
           },
           now: number,
@@ -501,7 +505,7 @@ describe('RealtimeMarketDataProductService', () => {
   it('classifies a due without local expected state as restart open-state loss', async () => {
     const harness = makeRedisHarness();
     const bucketStartMs = Date.parse('2026-07-28T01:30:00.000Z');
-    const member = `1:tdx:600030.SH:${bucketStartMs}`;
+    const member = `1:tdx:${bucketStartMs}`;
     harness.client.zrangebyscore.mockResolvedValue([member]);
     const finalizer = {
       seal: jest.fn(),
@@ -525,12 +529,107 @@ describe('RealtimeMarketDataProductService', () => {
     );
   });
 
+  it('removes a stale due when its exact terminal watermark already exists', async () => {
+    const harness = makeRedisHarness();
+    const bucketStartMs = Date.parse('2026-07-28T01:30:00.000Z');
+    const member = `1:tdx:${bucketStartMs}`;
+    harness.client.zrangebyscore.mockResolvedValue([member]);
+    harness.client.hgetall.mockImplementation((key: string) =>
+      key.includes(':manifest')
+        ? Promise.resolve({})
+        : Promise.resolve({ sealedThroughBucket: String(bucketStartMs) }),
+    );
+    const finalizer = { seal: jest.fn(), discardDue: jest.fn() } as any;
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow'),
+      { now: () => bucketStartMs + 65_000 } as any,
+      harness.redis,
+      new OpenCandleAggregator(),
+      finalizer,
+      emptyAllowlist,
+    );
+
+    await scanAndDrain(service);
+    expect(harness.client.zrem).toHaveBeenCalledWith(
+      expect.stringContaining('20260728:candle:1m:due'),
+      member,
+    );
+    expect(finalizer.seal).not.toHaveBeenCalled();
+    expect(finalizer.discardDue).not.toHaveBeenCalled();
+  });
+
+  it('replays only bounded current-day manifests derived from exact due identities', async () => {
+    const harness = makeRedisHarness();
+    const bucketStartMs = Date.parse('2026-07-28T05:00:00.000Z');
+    const member = `7:qmt:${bucketStartMs}`;
+    harness.client.zrangebyscore
+      .mockResolvedValueOnce([member])
+      .mockResolvedValueOnce([]);
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow'),
+      { now: () => Date.parse('2026-07-28T01:29:00.000Z') } as any,
+      harness.redis,
+      new OpenCandleAggregator(),
+      { seal: jest.fn(), discardDue: jest.fn() } as any,
+      emptyAllowlist,
+    );
+
+    await scanAndDrain(service);
+    expect(harness.client.zrangebyscore).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('20260728:candle:1m:due'),
+      0,
+      '+inf',
+      'LIMIT',
+      0,
+      64,
+    );
+    expect(harness.client.hgetall).toHaveBeenCalledWith(
+      expect.stringContaining(':day:20260728:qmt:7:manifest'),
+    );
+    expect(harness.client.hgetall).not.toHaveBeenCalledWith(
+      expect.stringContaining(':tdx:'),
+    );
+  });
+
+  it('keeps a mid-bucket restart out of valid aggregation until the next complete minute', async () => {
+    const harness = makeRedisHarness();
+    const aggregator = new OpenCandleAggregator();
+    let clockMs = Date.parse('2026-07-28T01:30:30.000Z');
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow'),
+      { now: () => clockMs } as any,
+      harness.redis,
+      aggregator,
+      { seal: jest.fn(), discardDue: jest.fn() } as any,
+      emptyAllowlist,
+    );
+    (
+      service as unknown as { initializeStartupBoundary: () => void }
+    ).initializeStartupBoundary();
+
+    service.handleSnapshot(makeSnapshot({ eventTime: sh(9, 30, 30) }));
+    await (
+      service as unknown as { queue: { drain: () => Promise<void> } }
+    ).queue.drain();
+    expect(aggregator.peekOpen(1, 'tdx')).toBeNull();
+    expect(service.diagnostics()).toEqual({
+      recoveryGapCount: 1,
+      startupEligibleBucketStartMs: Date.parse('2026-07-28T01:31:00.000Z'),
+    });
+
+    clockMs = Date.parse('2026-07-28T01:31:00.000Z');
+    service.handleSnapshot(makeSnapshot({ eventTime: sh(9, 31) }));
+    await (
+      service as unknown as { queue: { drain: () => Promise<void> } }
+    ).queue.drain();
+    expect(aggregator.peekOpen(1, 'tdx')?.bucketStartMs).toBe(clockMs);
+  });
+
   it('leaves a due untouched when due queue admission overflows', async () => {
     const harness = makeRedisHarness();
     const bucketStartMs = Date.parse('2026-07-28T01:30:00.000Z');
-    harness.client.zrangebyscore.mockResolvedValue([
-      `1:tdx:600030.SH:${bucketStartMs}`,
-    ]);
+    harness.client.zrangebyscore.mockResolvedValue([`1:tdx:${bucketStartMs}`]);
     const finalizer = { seal: jest.fn(), discardDue: jest.fn() } as any;
     const service = new RealtimeMarketDataProductService(
       makeConfig('shadow'),
@@ -569,7 +668,7 @@ describe('RealtimeMarketDataProductService', () => {
       finalizer,
       emptyAllowlist,
     );
-    const member = `1:tdx:600030.SH:${bucketStartMs}`;
+    const member = `1:tdx:${bucketStartMs}`;
     await (
       service as unknown as {
         processDueMember: (
@@ -579,7 +678,6 @@ describe('RealtimeMarketDataProductService', () => {
           decoded: {
             securityId: number;
             source: 'tdx';
-            providerSymbol: string;
             bucketStartMs: number;
           },
           now: number,
@@ -592,7 +690,6 @@ describe('RealtimeMarketDataProductService', () => {
       {
         securityId: 1,
         source: 'tdx',
-        providerSymbol: '600030.SH',
         bucketStartMs,
       },
       bucketStartMs + 120_000,

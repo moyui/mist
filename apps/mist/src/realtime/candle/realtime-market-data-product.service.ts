@@ -30,7 +30,7 @@ import {
   manifestKey,
   closedCandleKey,
   watermarkKey,
-  RETENTION_AFTER_DAY_END_HOURS,
+  marketDayExpiryEpochSeconds,
   REALTIME_REDIS_RANGE_BATCH_SIZE,
   REALTIME_REDIS_RECORD_LIMITS,
   assertRealtimeRedisBytes,
@@ -73,6 +73,9 @@ export class RealtimeMarketDataProductService
   private readonly dueInFlight = new Set<string>();
   private scannerTimer: ReturnType<typeof setInterval> | null = null;
   private stopping = false;
+  private startupReplayPending = true;
+  private startupEligibleBucketStartMs: number | null = null;
+  private recoveryGapCount = 0;
 
   constructor(
     private readonly config: ConfigService,
@@ -107,6 +110,7 @@ export class RealtimeMarketDataProductService
 
   onModuleInit(): void {
     if (this.mode === 'off' || !this.redis.isAvailable()) return;
+    this.initializeStartupBoundary();
     void this.scanDue();
     this.scannerTimer = setInterval(
       () => void this.scanDue(),
@@ -167,6 +171,17 @@ export class RealtimeMarketDataProductService
   ): Promise<void> {
     const client = this.redis.client;
     if (!client) return;
+
+    const snapshotBucket = snapshot.eventTime
+      ? resolveCandleBucket(snapshot.eventTime)
+      : null;
+    if (
+      snapshotBucket &&
+      this.startupEligibleBucketStartMs !== null &&
+      snapshotBucket.bucketStartMs < this.startupEligibleBucketStartMs
+    ) {
+      return;
+    }
 
     const outcome = this.aggregator.applySnapshot(snapshot, {
       acceptedAtMs: acceptedAt,
@@ -266,7 +281,6 @@ export class RealtimeMarketDataProductService
       const member = encodeDueMember(
         identity.securityId,
         identity.source,
-        identity.providerSymbol,
         bucket.bucketStartMs,
       );
       if (this.registeredDueMembers.has(member)) {
@@ -277,13 +291,13 @@ export class RealtimeMarketDataProductService
       const manifestK = manifestKey(
         bucket.tradingDay,
         identity.source,
-        identity.providerSymbol,
+        identity.securityId,
       );
       const manifest = {
         closed: closedCandleKey(
           bucket.tradingDay,
           identity.source,
-          identity.providerSymbol,
+          identity.securityId,
         ),
       };
 
@@ -295,18 +309,12 @@ export class RealtimeMarketDataProductService
       const multi = client.multi();
       multi.zadd(dueKey(bucket.tradingDay), dueScore, member);
       multi.hset(manifestK, manifest);
-      multi.expire(
-        manifestK,
-        Math.max(
-          Math.ceil(
-            (bucket.bucketEndMs +
-              RETENTION_AFTER_DAY_END_HOURS * 3600_000 -
-              acceptedAt) /
-              1000,
-          ),
-          1,
-        ),
-      );
+      const expiresAt = marketDayExpiryEpochSeconds(bucket.tradingDay);
+      if (Math.floor(acceptedAt / 1_000) >= expiresAt) {
+        throw new Error(`tradingDay=${bucket.tradingDay} is already expired`);
+      }
+      multi.expireat(manifestK, expiresAt);
+      multi.expireat(dueKey(bucket.tradingDay), expiresAt);
       if ((await multi.exec()) === null) {
         throw new Error('due registration transaction returned null');
       }
@@ -343,6 +351,10 @@ export class RealtimeMarketDataProductService
     await this.syncExpectedBuckets(client, now);
     const tradingDay = this.currentTradingDay(now);
     if (!tradingDay) return;
+    if (this.startupReplayPending) {
+      const replayed = await this.replayCurrentDayManifests(client, tradingDay);
+      if (replayed) this.startupReplayPending = false;
+    }
 
     let members: string[];
     try {
@@ -450,6 +462,77 @@ export class RealtimeMarketDataProductService
         state.lastRegisteredBucketStartMs = bucket.bucketStartMs;
       }
     }
+  }
+
+  private initializeStartupBoundary(): void {
+    const now = this.clock.now();
+    this.startupEligibleBucketStartMs = this.nextCompleteBucketStartMs(now);
+    const current = resolveCandleBucket(new Date(now).toISOString());
+    if (current && now > current.bucketStartMs) {
+      this.recoveryGapCount++;
+      this.logger.warn(
+        `recovery_gap startup_mid_bucket bucket=${current.bucketStartMs}; valid aggregation resumes at ${this.startupEligibleBucketStartMs ?? 'unknown'}`,
+      );
+    }
+  }
+
+  private async replayCurrentDayManifests(
+    client: Redis,
+    tradingDay: string,
+  ): Promise<boolean> {
+    try {
+      const members = await client.zrangebyscore(
+        dueKey(tradingDay),
+        0,
+        '+inf',
+        'LIMIT',
+        0,
+        REALTIME_REDIS_RANGE_BATCH_SIZE,
+      );
+      for (const member of members) {
+        const decoded = decodeDueMember(member);
+        this.registeredDueMembers.add(member);
+        const manifestK = manifestKey(
+          tradingDay,
+          decoded.source,
+          decoded.securityId,
+        );
+        const manifest = await client.hgetall(manifestK);
+        assertRealtimeRedisBytes(
+          'candle manifest record',
+          JSON.stringify(manifest),
+          REALTIME_REDIS_RECORD_LIMITS.manifest,
+        );
+        const allowed = new Set([
+          closedCandleKey(tradingDay, decoded.source, decoded.securityId),
+          watermarkKey(tradingDay, decoded.source, decoded.securityId),
+          dueKey(tradingDay),
+        ]);
+        if (Object.values(manifest).some((value) => !allowed.has(value))) {
+          throw new Error(
+            `manifest contains a key outside securityId=${decoded.securityId} source=${decoded.source}`,
+          );
+        }
+      }
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Current-day manifest replay failed for ${tradingDay}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
+  }
+
+  diagnostics(): {
+    recoveryGapCount: number;
+    startupEligibleBucketStartMs: number | null;
+  } {
+    return {
+      recoveryGapCount: this.recoveryGapCount,
+      startupEligibleBucketStartMs: this.startupEligibleBucketStartMs,
+    };
   }
 
   private nextCompleteBucketStartMs(now: number): number | null {
@@ -560,7 +643,7 @@ export class RealtimeMarketDataProductService
   ): Promise<boolean> {
     try {
       const wm = await client.hgetall(
-        watermarkKey(tradingDay, decoded.source, decoded.providerSymbol),
+        watermarkKey(tradingDay, decoded.source, decoded.securityId),
       );
       const sealedThrough = Number(wm.sealedThroughBucket ?? 0);
       return sealedThrough >= decoded.bucketStartMs;

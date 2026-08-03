@@ -9,7 +9,7 @@ import {
   manifestKey,
   dueKey,
   encodeDueMember,
-  RETENTION_AFTER_DAY_END_HOURS,
+  marketDayExpiryEpochSeconds,
   REALTIME_REDIS_RECORD_LIMITS,
   assertRealtimeRedisBytes,
 } from '../realtime-redis.constants';
@@ -45,7 +45,7 @@ interface CompactClosedRecord {
  *   2. `HSET watermark-key` sealedThroughBucket / outcome=closed / closing totals
  *   3. `ZREM due-key member`                         (bucket no longer pending)
  *   4. `HSET manifest-key` the list of keys in this partition
- *   5. `EXPIRE` each key to dayEnd+72h (relative, from the passed `nowMs`)
+ *   5. `EXPIREAT` each exact key at Shanghai D+1 00:00
  *
  * For an **invalid** candle:
  *   1. (skip HSET closed — no K query exposure)
@@ -77,14 +77,10 @@ export class CandleFinalizer {
     const closedK = closedCandleKey(
       tradingDay,
       candle.source,
-      candle.providerSymbol,
+      candle.securityId,
     );
-    const wmK = watermarkKey(tradingDay, candle.source, candle.providerSymbol);
-    const manifestK = manifestKey(
-      tradingDay,
-      candle.source,
-      candle.providerSymbol,
-    );
+    const wmK = watermarkKey(tradingDay, candle.source, candle.securityId);
+    const manifestK = manifestKey(tradingDay, candle.source, candle.securityId);
     const dueK_ = dueKey(tradingDay);
     const manifest = {
       closed: closedK,
@@ -98,7 +94,6 @@ export class CandleFinalizer {
       member = encodeDueMember(
         candle.securityId,
         candle.source,
-        candle.providerSymbol,
         candle.bucketStartMs,
       );
       if (candle.validity === 'valid') {
@@ -123,7 +118,13 @@ export class CandleFinalizer {
       return false;
     }
 
-    const ttlSeconds = this.computeTtlSeconds(candle.bucketEndMs, nowMs);
+    const expiresAt = marketDayExpiryEpochSeconds(tradingDay);
+    if (Math.floor(nowMs / 1_000) >= expiresAt) {
+      this.logger.error(
+        `Candle seal rejected expired tradingDay=${tradingDay} securityId=${candle.securityId} source=${candle.source}`,
+      );
+      return false;
+    }
 
     const multi = redis.multi();
 
@@ -156,10 +157,11 @@ export class CandleFinalizer {
     // Record the partition manifest (idempotent key list for cleanup).
     multi.hset(manifestK, manifest);
 
-    // Relative TTL on all keys.
-    multi.expire(closedK, ttlSeconds);
-    multi.expire(wmK, ttlSeconds);
-    multi.expire(manifestK, ttlSeconds);
+    // Exact current-day retention. This does not touch any shared BullMQ key.
+    multi.expireat(closedK, expiresAt);
+    multi.expireat(wmK, expiresAt);
+    multi.expireat(manifestK, expiresAt);
+    multi.expireat(dueK_, expiresAt);
 
     try {
       const results = await multi.exec();
@@ -192,23 +194,18 @@ export class CandleFinalizer {
     decoded: {
       securityId: number;
       source: RealtimeSource;
-      providerSymbol: string;
       bucketStartMs: number;
     },
     reason: InvalidReason,
     nowMs: number,
   ): Promise<boolean> {
     const tradingDay = this.tradingDayFromBucketMs(decoded.bucketStartMs);
-    const wmK = watermarkKey(
-      tradingDay,
-      decoded.source,
-      decoded.providerSymbol,
-    );
+    const wmK = watermarkKey(tradingDay, decoded.source, decoded.securityId);
     const dueK_ = dueKey(tradingDay);
     const manifestK = manifestKey(
       tradingDay,
       decoded.source,
-      decoded.providerSymbol,
+      decoded.securityId,
     );
     const manifest = { watermark: wmK, due: dueK_ };
     let member: string;
@@ -216,7 +213,6 @@ export class CandleFinalizer {
       member = encodeDueMember(
         decoded.securityId,
         decoded.source,
-        decoded.providerSymbol,
         decoded.bucketStartMs,
       );
       assertRealtimeRedisBytes(
@@ -232,16 +228,8 @@ export class CandleFinalizer {
       );
       return false;
     }
-    const ttlSeconds = Math.max(
-      Math.ceil(
-        (decoded.bucketStartMs +
-          60_000 +
-          RETENTION_AFTER_DAY_END_HOURS * 3600_000 -
-          nowMs) /
-          1000,
-      ),
-      1,
-    );
+    const expiresAt = marketDayExpiryEpochSeconds(tradingDay);
+    if (Math.floor(nowMs / 1_000) >= expiresAt) return false;
 
     const multi = redis.multi();
     multi.hset(wmK, {
@@ -251,14 +239,15 @@ export class CandleFinalizer {
     });
     multi.zrem(dueK_, member);
     multi.hset(manifestK, manifest);
-    multi.expire(wmK, ttlSeconds);
-    multi.expire(manifestK, ttlSeconds);
+    multi.expireat(wmK, expiresAt);
+    multi.expireat(manifestK, expiresAt);
+    multi.expireat(dueK_, expiresAt);
 
     try {
       return (await multi.exec()) !== null;
     } catch (error) {
       this.logger.error(
-        `discardDue failed for ${decoded.providerSymbol} bucket ${decoded.bucketStartMs}: ${
+        `discardDue failed for securityId=${decoded.securityId} source=${decoded.source} bucket ${decoded.bucketStartMs}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -274,21 +263,6 @@ export class CandleFinalizer {
       (zoned.getMonth() + 1).toString().padStart(2, '0'),
       zoned.getDate().toString().padStart(2, '0'),
     ].join('');
-  }
-
-  /**
-   * Compute the relative TTL (seconds) from now until bucketEnd + 72h.
-   * design.md: "目标过期点为 dayEnd + 72h". We approximate dayEnd from the
-   * bucket end (the last bucket of the day ends at/near close). This is a
-   * safe upper bound; the post-close sync change deletes keys precisely.
-   */
-  private computeTtlSeconds(bucketEndMs: number, nowMs: number): number {
-    const retentionMs = RETENTION_AFTER_DAY_END_HOURS * 3600_000;
-    const targetMs = bucketEndMs + retentionMs;
-    const ttl = Math.ceil((targetMs - nowMs) / 1000);
-    // Floor at 1 second to avoid negative/zero TTL (which means "delete now"
-    // in Redis). If we're past the target, give a small grace.
-    return Math.max(ttl, 1);
   }
 
   private toCompactRecord(candle: SealedCandle): CompactClosedRecord {

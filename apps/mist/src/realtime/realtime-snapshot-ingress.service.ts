@@ -3,6 +3,7 @@ import { CanonicalRealtimeSnapshot } from './realtime.types';
 import type { RealtimeSource } from './realtime.types';
 import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
 import { marketSeriesKey } from './candle/market-series-key';
+import { resolveCandleBucket } from './candle/candle-bucket.util';
 
 @Injectable()
 export class RealtimeSnapshotIngressService {
@@ -14,6 +15,7 @@ export class RealtimeSnapshotIngressService {
     number,
     CanonicalRealtimeSnapshot
   >();
+  private readonly tradingDayBySecurity = new Map<number, string>();
 
   constructor(
     @Optional()
@@ -23,6 +25,26 @@ export class RealtimeSnapshotIngressService {
   handleSnapshot(
     snapshot: CanonicalRealtimeSnapshot,
   ): CanonicalRealtimeSnapshot {
+    const bucket = snapshot.eventTime
+      ? resolveCandleBucket(snapshot.eventTime)
+      : null;
+    const previousTradingDay = this.tradingDayBySecurity.get(
+      snapshot.securityId,
+    );
+    if (
+      bucket &&
+      previousTradingDay !== undefined &&
+      previousTradingDay !== bucket.tradingDay
+    ) {
+      const prefix = `${snapshot.securityId}:`;
+      for (const key of this.latestBySeries.keys()) {
+        if (key.startsWith(prefix)) this.latestBySeries.delete(key);
+      }
+      this.latestBySecurity.delete(snapshot.securityId);
+    }
+    if (bucket) {
+      this.tradingDayBySecurity.set(snapshot.securityId, bucket.tradingDay);
+    }
     this.latestBySeries.set(
       marketSeriesKey(snapshot.securityId, snapshot.source),
       snapshot,

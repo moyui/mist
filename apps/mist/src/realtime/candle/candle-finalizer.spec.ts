@@ -14,7 +14,7 @@ interface FakeChain {
   hset: jest.Mock;
   hdel: jest.Mock;
   zrem: jest.Mock;
-  expire: jest.Mock;
+  expireat: jest.Mock;
   exec: jest.Mock;
 }
 
@@ -37,8 +37,8 @@ function makeFakeRedis(): {
       commands.push({ cmd: 'zrem', args });
       return chain;
     }),
-    expire: jest.fn((...args: unknown[]) => {
-      commands.push({ cmd: 'expire', args });
+    expireat: jest.fn((...args: unknown[]) => {
+      commands.push({ cmd: 'expireat', args });
       return chain;
     }),
     exec: jest.fn(async () => []),
@@ -124,7 +124,7 @@ describe('CandleFinalizer', () => {
     const zrem = fake.commands.find((c) => c.cmd === 'zrem');
     expect(zrem).toBeDefined();
     expect(zrem!.args[0]).toContain(':candle:1m:due');
-    expect(zrem!.args[1]).toBe(`1:tdx:600030.SH:${candle.bucketStartMs}`);
+    expect(zrem!.args[1]).toBe(`1:tdx:${candle.bucketStartMs}`);
 
     // Manifest recorded.
     const manifest = fake.commands.find(
@@ -132,9 +132,12 @@ describe('CandleFinalizer', () => {
     );
     expect(manifest).toBeDefined();
 
-    // EXPIRE on closed, watermark, manifest (3 expire calls).
-    const expires = fake.commands.filter((c) => c.cmd === 'expire');
-    expect(expires.length).toBe(3);
+    // EXPIREAT on closed, watermark, manifest and the exact market due key.
+    const expires = fake.commands.filter((c) => c.cmd === 'expireat');
+    expect(expires).toHaveLength(4);
+    expect(new Set(expires.map((command) => command.args[1]))).toEqual(
+      new Set([Date.parse('2026-07-29T00:00:00+08:00') / 1_000]),
+    );
   });
 
   it('preserves null quantities without serializing the string null', async () => {
@@ -208,7 +211,8 @@ describe('CandleFinalizer', () => {
     fake.multi.mockReturnValue(fake.chain);
 
     const finalizer = new CandleFinalizer();
-    const ok = await finalizer.seal(fake as any, makeSealed(), Date.now());
+    const candle = makeSealed();
+    const ok = await finalizer.seal(fake as any, candle, candle.bucketEndMs);
 
     expect(ok).toBe(false);
   });
@@ -219,27 +223,27 @@ describe('CandleFinalizer', () => {
     fake.multi.mockReturnValue(fake.chain);
 
     const finalizer = new CandleFinalizer();
-    const ok = await finalizer.seal(fake as any, makeSealed(), Date.now());
+    const candle = makeSealed();
+    const ok = await finalizer.seal(fake as any, candle, candle.bucketEndMs);
 
     expect(ok).toBe(false);
   });
 
-  it('computes a positive TTL even when now is past the target', async () => {
+  it('rejects a write after the Shanghai D+1 midnight expiry', async () => {
     const fake = makeFakeRedis();
     fake.chain.exec.mockResolvedValue([]);
     fake.multi.mockReturnValue(fake.chain);
 
     const finalizer = new CandleFinalizer();
     const candle = makeSealed();
-    // nowMs far in the future — TTL should floor at 1, not go negative.
-    const farFuture = candle.bucketEndMs + 999_999_999_999;
-
-    await finalizer.seal(fake as any, candle, farFuture);
-
-    const expires = fake.commands.filter((c) => c.cmd === 'expire');
-    for (const e of expires) {
-      expect(e.args[1]).toBeGreaterThanOrEqual(1);
-    }
+    await expect(
+      finalizer.seal(
+        fake as any,
+        candle,
+        Date.parse('2026-07-29T00:00:00+08:00'),
+      ),
+    ).resolves.toBe(false);
+    expect(fake.multi).not.toHaveBeenCalled();
   });
 
   it('rejects an oversized sealed record before opening a Redis transaction', async () => {
@@ -281,7 +285,6 @@ describe('CandleFinalizer', () => {
         {
           securityId: 1,
           source: 'tdx',
-          providerSymbol: '600030.SH',
           bucketStartMs,
         },
         'no_snapshot',

@@ -81,6 +81,19 @@ export class OpenCandleAggregator {
       return { kind: 'skipped', reason: 'late_after_grace' };
     }
 
+    // A security can move source between trading days. Remove every prior-day
+    // owner for that canonical security before accepting the new day so an
+    // old source cannot retain mutable baselines indefinitely.
+    const securityPrefix = `${snapshot.securityId}:`;
+    for (const [seriesKey, state] of this.series) {
+      if (
+        seriesKey.startsWith(securityPrefix) &&
+        state.tradingDay !== bucket.tradingDay
+      ) {
+        this.series.delete(seriesKey);
+      }
+    }
+
     const key = marketSeriesKey(snapshot.securityId, snapshot.source);
     let owner = this.series.get(key);
     if (!owner || owner.tradingDay !== bucket.tradingDay) {

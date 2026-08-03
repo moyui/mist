@@ -437,6 +437,21 @@ describe('OpenCandleAggregator', () => {
     expect(agg.peekOpen(1, 'qmt')?.open).toBe(20);
   });
 
+  it('removes prior-day mutable owners across a security source switch', () => {
+    const agg = new OpenCandleAggregator();
+    agg.applySnapshot(snap({ eventTime: sh(14, 59), source: 'tdx' }));
+
+    agg.applySnapshot(
+      snap({ eventTime: sh(9, 30, 0, 29), source: 'qmt', last: 20 }),
+    );
+
+    expect(agg.peekOpen(1, 'tdx')).toBeNull();
+    expect(agg.peekOpen(1, 'qmt')).toMatchObject({
+      tradingDay: '20260729',
+      open: 20,
+    });
+  });
+
   it('keeps native payload out of the frozen closing projection', () => {
     const agg = new OpenCandleAggregator();
     const snapshot = snap({ eventTime: sh(9, 30) });
