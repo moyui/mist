@@ -197,9 +197,7 @@ describe('service boundary import graph', () => {
       'apps/chan/src/chan-app.module.ts -> apps/mist/src/chan/chan.module',
       'apps/realtime-subscription-hil/src/main.ts -> apps/mist/src/realtime/hil/realtime-subscription-hil',
       'apps/schedule/src/data-collection.controller.ts -> apps/mist/src/collector',
-      'apps/schedule/src/data-collection.controller.ts -> apps/mist/src/strategy/scanner/strategy-scan.service',
       'apps/schedule/src/schedule.module.ts -> apps/mist/src/collector/historical-collector.module',
-      'apps/schedule/src/schedule.module.ts -> apps/mist/src/strategy/strategy-core.module',
     ]);
     const violations = productionFiles
       .filter((file) => file.includes(`${sep}apps${sep}`))

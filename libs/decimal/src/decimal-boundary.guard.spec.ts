@@ -100,7 +100,9 @@ describe('Decimal8 pure boundary', () => {
       'apps/mist/src/sources/qmt/qmt-source.service.ts',
       'libs/shared-data/src/transformers/canonical-decimal.transformer.ts',
       'apps/mist/src/realtime/candle/open-candle-aggregator.ts',
-      'apps/mist/src/strategy/rules/strategy-rule-evaluator.ts',
+      'libs/strategy/src/rules/strategy-rule.compiler.ts',
+      'libs/strategy/src/projection/quantity-forward-fill.projector.ts',
+      'libs/strategy/src/evaluation/strategy-rule.evaluator.ts',
     ];
     for (const consumer of consumers) {
       expect(readFileSync(join(repositoryRoot, consumer), 'utf8')).toContain(
