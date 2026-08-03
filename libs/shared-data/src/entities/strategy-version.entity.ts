@@ -8,6 +8,7 @@ import {
   Unique,
 } from 'typeorm';
 import { StrategyRuleSchemaVersion } from '../enums/strategy-rule-schema-version.enum';
+import { StrategySignalKind } from '../enums/strategy-signal-kind.enum';
 import { StrategyDefinition } from './strategy-definition.entity';
 
 @Entity({ name: 'strategy_versions' })
@@ -38,6 +39,13 @@ export class StrategyVersion {
 
   @Column({ type: 'json' })
   rule: Record<string, unknown> = {};
+
+  @Column({
+    name: 'signal_kind',
+    type: 'enum',
+    enum: StrategySignalKind,
+  })
+  signalKind!: StrategySignalKind;
 
   @Column({ name: 'validation_summary', type: 'json' })
   validationSummary: Record<string, unknown> = {};

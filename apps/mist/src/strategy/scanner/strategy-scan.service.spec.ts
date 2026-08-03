@@ -4,6 +4,7 @@ import {
   StrategyAlertEvent,
   StrategyAlertStatus,
   StrategySignal,
+  StrategySignalKind,
   StrategySignalSource,
   StrategyStatus,
 } from '@app/shared-data';
@@ -32,10 +33,11 @@ describe('StrategyScanService', () => {
       id: 7,
       strategyDefinitionId: 1,
       rule: { field: 'k.close', operator: 'gt', value: 100 },
+      signalKind: StrategySignalKind.ENTRY,
     };
     const k = {
       id: 10,
-      security: { code: '600519', type: 'STOCK' },
+      security: { id: 11, code: '600519', type: 'STOCK' },
       source: DataSource.TDX,
       period: Period.DAY,
       timestamp: signalTime,
@@ -134,18 +136,19 @@ describe('StrategyScanService', () => {
       expect.objectContaining({
         strategyDefinitionId: 1,
         strategyVersionId: 7,
-        securityCode: '600519',
+        securityId: 11,
         period: Period.DAY,
         source: DataSource.TDX,
         signalTime,
         signalSource: StrategySignalSource.LIVE,
+        signalKind: StrategySignalKind.ENTRY,
       }),
     );
     expect(alertEventRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         strategySignalId: 2,
         status: StrategyAlertStatus.PENDING,
-        dedupeKey: '1:7:600519:1440:tdx:2026-07-07T09:30:00.000Z',
+        dedupeKey: '1:7:11:1440:tdx:2026-07-07T09:30:00.000Z',
       }),
     );
     expect(versionRepository.findOne).toHaveBeenCalledWith({

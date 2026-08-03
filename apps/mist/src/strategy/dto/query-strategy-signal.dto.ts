@@ -8,7 +8,7 @@ export class QueryStrategySignalDto {
 
   @IsOptional()
   @IsString()
-  securityCode?: string;
+  securityId?: string;
 
   @IsOptional()
   @IsEnum(Period)

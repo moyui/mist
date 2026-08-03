@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -9,10 +10,13 @@ import {
 import { DataSource } from '../enums/data-source.enum';
 import { Period } from '../enums/period.enum';
 import { StrategySignalSource } from '../enums/strategy-signal-source.enum';
+import { StrategySignalKind } from '../enums/strategy-signal-kind.enum';
+import { Security } from './security.entity';
 import { StrategyDefinition } from './strategy-definition.entity';
 import { StrategyVersion } from './strategy-version.entity';
 
 @Entity({ name: 'strategy_signals' })
+@Index('idx_strategy_signals_security_time', ['securityId', 'signalTime'])
 export class StrategySignal {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -31,8 +35,18 @@ export class StrategySignal {
   @JoinColumn({ name: 'strategy_version_id' })
   strategyVersion!: StrategyVersion;
 
-  @Column({ name: 'security_code', type: 'varchar', length: 20 })
-  securityCode: string = '';
+  @Column({ name: 'security_id', type: 'int' })
+  securityId: number = 0;
+
+  @ManyToOne(() => Security, {
+    onDelete: 'RESTRICT',
+    onUpdate: 'RESTRICT',
+  })
+  @JoinColumn({
+    name: 'security_id',
+    foreignKeyConstraintName: 'fk_strategy_signals_security',
+  })
+  security!: Security;
 
   @Column({ type: 'int' })
   period: Period = Period.DAY;
@@ -49,6 +63,13 @@ export class StrategySignal {
     enum: StrategySignalSource,
   })
   signalSource: StrategySignalSource = StrategySignalSource.LIVE;
+
+  @Column({
+    name: 'signal_kind',
+    type: 'enum',
+    enum: StrategySignalKind,
+  })
+  signalKind!: StrategySignalKind;
 
   @Column({ name: 'context_snapshot', type: 'json' })
   contextSnapshot!: Record<string, unknown>;

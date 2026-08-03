@@ -104,6 +104,43 @@ ORDER BY
   constraints.`CONSTRAINT_NAME` ASC,
   usage_rows.`ORDINAL_POSITION` ASC;
 
+SELECT
+  (
+    SELECT COUNT(*)
+    FROM `information_schema`.`COLUMNS`
+    WHERE `TABLE_SCHEMA` = DATABASE()
+      AND `TABLE_NAME` = 'strategy_versions'
+      AND `COLUMN_NAME` = 'signal_kind'
+  ) AS `strategy_version_signal_kind_count`,
+  (
+    SELECT COUNT(*)
+    FROM `information_schema`.`COLUMNS`
+    WHERE `TABLE_SCHEMA` = DATABASE()
+      AND `TABLE_NAME` = 'strategy_signals'
+      AND `COLUMN_NAME` = 'security_code'
+  ) AS `strategy_signal_security_code_count`,
+  (
+    SELECT COUNT(*)
+    FROM `information_schema`.`COLUMNS`
+    WHERE `TABLE_SCHEMA` = DATABASE()
+      AND `TABLE_NAME` = 'strategy_signals'
+      AND `COLUMN_NAME` = 'security_id'
+  ) AS `strategy_signal_security_id_count`,
+  (
+    SELECT COUNT(*)
+    FROM `information_schema`.`COLUMNS`
+    WHERE `TABLE_SCHEMA` = DATABASE()
+      AND `TABLE_NAME` = 'strategy_signals'
+      AND `COLUMN_NAME` = 'signal_kind'
+  ) AS `strategy_signal_kind_count`,
+  (
+    SELECT COUNT(*)
+    FROM `information_schema`.`TABLE_CONSTRAINTS`
+    WHERE `CONSTRAINT_SCHEMA` = DATABASE()
+      AND `TABLE_NAME` = 'strategy_signals'
+      AND `CONSTRAINT_NAME` = 'fk_strategy_signals_security'
+  ) AS `strategy_signal_security_fk_count`;
+
 SHOW CREATE TABLE `strategy_definitions`;
 SHOW CREATE TABLE `strategy_versions`;
 SHOW CREATE TABLE `strategy_signals`;

@@ -68,7 +68,7 @@ export class StrategyScanService {
             const dedupeKey = this.buildDedupeKey(
               definition,
               version,
-              securityCode,
+              k.security.id,
               period,
               source,
               k.timestamp,
@@ -92,11 +92,12 @@ export class StrategyScanService {
                     signalRepository.create({
                       strategyDefinitionId: definition.id,
                       strategyVersionId: version.id,
-                      securityCode,
+                      securityId: k.security.id,
                       period,
                       source,
                       signalTime: k.timestamp,
                       signalSource: StrategySignalSource.LIVE,
+                      signalKind: version.signalKind,
                       contextSnapshot: context,
                       ruleSnapshot: version.rule,
                     }),
@@ -185,7 +186,7 @@ export class StrategyScanService {
   private buildDedupeKey(
     definition: StrategyDefinition,
     version: StrategyVersion,
-    securityCode: string,
+    securityId: number,
     period: K['period'],
     source: K['source'],
     signalTime: Date,
@@ -193,7 +194,7 @@ export class StrategyScanService {
     return [
       definition.id,
       version.id,
-      securityCode,
+      securityId,
       period,
       source,
       signalTime.toISOString(),

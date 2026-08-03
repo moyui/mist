@@ -7,6 +7,13 @@ describe('strategy evaluation production preflight', () => {
     'deploy/database/audit-strategy-evaluation-contract.sql',
   );
   const audit = readFileSync(auditPath, 'utf8');
+  const readback = readFileSync(
+    join(
+      process.cwd(),
+      'deploy/database/readback-strategy-evaluation-contract.sql',
+    ),
+    'utf8',
+  );
   const targetTables = [
     'strategy_definitions',
     'strategy_versions',
@@ -32,11 +39,35 @@ describe('strategy evaluation production preflight', () => {
     expect(audit).toContain('`information_schema`.`STATISTICS`');
     expect(audit).toContain('`information_schema`.`TABLE_CONSTRAINTS`');
     expect(audit).toContain('`information_schema`.`KEY_COLUMN_USAGE`');
+    expect(audit).toContain('strategy_signal_security_fk_count');
   });
 
-  it('contains no schema or data mutation statement', () => {
-    expect(audit).not.toMatch(
+  it.each([
+    ['preflight', audit],
+    ['readback', readback],
+  ])('%s contains no schema or data mutation statement', (_name, sql) => {
+    expect(sql).not.toMatch(
       /^\s*(?:ALTER|CREATE|DELETE|DROP|INSERT|RENAME|REPLACE|TRUNCATE|UPDATE)\b/im,
     );
+  });
+
+  it('readbacks exact target columns, FK, indexes and migration ledger', () => {
+    for (const readiness of [
+      'strategy_version_signal_kind_ready',
+      'strategy_signal_security_id_ready',
+      'strategy_signal_kind_ready',
+      'strategy_signal_security_index_ready',
+      'strategy_signal_security_fk_ready',
+      'alert_dedupe_unique_ready',
+    ]) {
+      expect(readback).toContain(readiness);
+    }
+    expect(readback).toContain('retired_security_code_count');
+    expect(readback).toContain('unapproved_signal_unique_count');
+    expect(readback).toContain('014_evolve_strategy_evaluation_contract.sql');
+    expect(readback).toContain("`references_rows`.`DELETE_RULE` = 'RESTRICT'");
+    expect(readback).toContain("`references_rows`.`UPDATE_RULE` = 'RESTRICT'");
+    expect(readback).toContain('SHOW CREATE TABLE `strategy_versions`');
+    expect(readback).toContain('SHOW CREATE TABLE `strategy_signals`');
   });
 });

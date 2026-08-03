@@ -17,7 +17,7 @@ export class StrategySignalService {
     if (query.strategyDefinitionId) {
       where.strategyDefinitionId = Number(query.strategyDefinitionId);
     }
-    if (query.securityCode) where.securityCode = query.securityCode;
+    if (query.securityId) where.securityId = Number(query.securityId);
     if (query.period !== undefined) where.period = query.period;
     if (query.source !== undefined) where.source = query.source;
 
