@@ -46,7 +46,7 @@
   修改；确认不存在未声明 compatibility branch。
 - [x] 4.4 执行本 change、stable specs 与相关 active changes 的 strict validation，以及三个仓库的
   `git diff --check`。
-- [x] 4.5 记录发布顺序为 backend boundary 已部署 → `mist-fe`/`mist-skills` 可独立发布；本 change 不
+- [x] 4.5 记录发布顺序为 backend boundary 先部署并完成运行验证 → `mist-fe`/`mist-skills` 可独立发布；本 change 不
   需要数据库、Redis、交易终端或生产 HIL。
 
 ---
@@ -113,13 +113,16 @@
 
 - mist-fe `app/api/client.ts`：`MistApiError<TData>`（extends Error，含
   `code/message/httpStatus/requestId/data/errors`）、`MistApiContractError`（extends Error）、纯
-  `parseEnvelope`、`requestJson`（strict）、`requestNoContent`（204 专用）。commit `ddbe494`。
+  `parseEnvelope`、`requestJson`（strict）、`requestNoContent`（204 专用）。初始实现 commit `ddbe494`；
+  2026-08-04 质量复查补充 branch/data/errors fail-closed 校验与负向测试。
 - mist-skills `shared/mist_client.py`：`MistApiError(message, code, http_status, *, request_id, data,
   errors)`、`MistApiContractError`、`parse_envelope`、`MistClient.request_no_content`；
   `shared/api_contracts.py` `KLINE_COLLECT_ERROR_CODES`；`kline_runner.py`/`script_runner.py` 机械迁移。
-  commit `ab0907c`。
+  初始实现 commit `ab0907c`；2026-08-04 质量复查同步 branch/errors fail-closed、真实诊断上下文和
+  no-content HTTP method 保留。
 - 两端 contract fixtures 覆盖同一组：200/201 success、HTTP-200 business rejection、400/500/502
-  technical、bare payload、invalid JSON、missing/invalid field、status mismatch、additive field、204。
+  technical、bare payload、invalid JSON、missing/invalid field、status mismatch、非法 success/error
+  branch、非法 validation errors、additive field 和 204。
 
 ### 4.1 / 4.2 自动化基线
 
@@ -127,15 +130,16 @@
 |------|------|------|
 | mist-fe | `pnpm run lint` | 通过（0 error） |
 | mist-fe | `pnpm run typecheck` | 通过 |
-| mist-fe | `pnpm run test:ci` | 通过（112 tests，含 37 client contract） |
-| mist-fe | `pnpm run build` | 通过（Next.js 16 production build） |
+| mist-fe | `pnpm run test:ci` | 通过（119 tests，含 44 client contract） |
+| mist-fe | `pnpm run build` | 通过（Next.js 16 production build；沙箱内 Google Fonts 网络失败后，在获准联网环境复跑通过） |
 | mist-fe | lint-staged（commit 时） | 通过 |
 | mist-skills | `uv run ruff check .` | 通过 |
 | mist-skills | `uv run pyright` | 0 errors |
 | mist-skills | `uv run black --check .` | 通过 |
-| mist-skills | `uv run pytest` | 通过（101 tests，含 35 client contract） |
+| mist-skills | `uv run pytest` | 通过（110 tests，含 44 client contract） |
 
-无环境阻塞、无跳过、无未执行项。
+最终无环境阻塞、无跳过、无未执行项。Frontend build 的首次失败是沙箱不能访问 Google Fonts，
+不是编译或产品代码失败；同一源码在获准联网后构建通过。
 
 ### 4.3 残留检索
 
@@ -147,5 +151,19 @@
 
 ### 4.5 发布顺序
 
-backend boundary 已部署（master `4a61afa` 含 `libs/transport`）→ `mist-fe`/`mist-skills` 可独立发布。
-本 change 不需要数据库、Redis、交易终端或生产 HIL；未 push、未归档（待用户确认）。
+backend boundary 已在 master `4a61afa` 实现并归档，但本 change 没有取得生产 runtime 已部署的证据。
+正式发布顺序必须是：先部署并验证 backend `libs/transport` envelope，再独立发布 `mist-fe` 和
+`mist-skills`；严格 consumer 不得先于 backend 部署。本 change 不需要数据库、Redis、交易终端或
+生产 HIL；consumer 分支未 push、change 未归档（待用户确认）。
+
+### 2026-08-04 代码质量复查
+
+- 修复两端 parser 会接受 HTTP 500 `success=true`、HTTP 201 `success=false` 等非法 branch 的问题；
+  只有 2xx success、HTTP 200 business rejection 和 non-2xx technical error 可进入对应分支。
+- 修复 mist-fe success envelope 缺失 `data` 时返回 `undefined` 的问题，改为 contract error。
+- 两端都完整校验 `errors` 为 `Record<string, string[]>`，并且只允许出现在
+  `HTTP 400 + VALIDATION_ERROR`；数组、字符串 value、非字符串成员和显式 `null` 均 fail closed。
+- mist-skills 的成功 data shape mismatch 现在保留真实 HTTP status/requestId；no-content helper 对
+  DELETE 等非 POST method 不再静默改发 POST。
+- 复查后验证：mist-fe lint/typecheck/119 tests/build 全部通过；mist-skills ruff/black/pyright/110 tests
+  全部通过；stable specs `58/58`、全量 OpenSpec `66/66` strict validation 通过。
