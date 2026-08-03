@@ -1,4 +1,6 @@
-export interface ChanCharacterizationK {
+import type { ChanK } from './contracts';
+
+export interface ChanCharacterizationK extends ChanK {
   readonly id: number;
   readonly symbol: string;
   readonly time: Date;

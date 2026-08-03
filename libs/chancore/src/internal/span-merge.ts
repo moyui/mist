@@ -1,4 +1,6 @@
 /**
+ * ChanCore internal helper.
+ *
  * 定点迭代合并的通用 operations 接口。
  *
  * Bi（笔）与 Channel（中枢）的 Phase B 都遵循同一套"短跨度优先 + 最左优先 +

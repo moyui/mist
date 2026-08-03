@@ -1,30 +1,29 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ChannelService } from './channel.service';
 import {
+  BiStatus,
+  BiType,
   ChannelLevel,
   ChannelStatus,
   ChannelType,
-} from '../enums/channel.enum';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import { BiStatus, BiType } from '../enums/bi.enum';
-import { BiVo } from '../vo/bi.vo';
-import { FenxingType } from '../enums/fenxing.enum';
-import { ChannelVo } from '../vo/channel.vo';
+  FenxingType,
+  TrendDirection,
+} from '../contracts';
+import type { ChanBi, ChanChannel } from '../contracts';
+import { ChannelCalculator } from './channel';
 
 /**
  * 构造一个用于中枢测试的笔。
  *
- * trendIdx 为偶数 → 向上笔（lowest=base, highest=base+range）；
- * trendIdx 为奇数 → 向下笔（highest=base+range, lowest=base）。
+ * trendIdx 为偶数 → 向上笔（low=base, high=base+range）；
+ * trendIdx 为奇数 → 向下笔（high=base+range, low=base）。
  * 通过 base 的递增/递减，让相邻笔构成可重叠的震荡，便于形成 zg>zd 的中枢。
  */
-function makeBi(trendIdx: number, base: number, range = 10): BiVo {
+function makeBi(trendIdx: number, base: number, range = 10): ChanBi {
   const isUp = trendIdx % 2 === 0;
   return {
     startTime: new Date(2024, 0, trendIdx + 1),
     endTime: new Date(2024, 0, trendIdx + 2),
-    highest: base + range,
-    lowest: base,
+    high: base + range,
+    low: base,
     trend: isUp ? TrendDirection.Up : TrendDirection.Down,
     type: BiType.Complete,
     status: BiStatus.Valid,
@@ -33,8 +32,8 @@ function makeBi(trendIdx: number, base: number, range = 10): BiVo {
     originData: [],
     startFenxing: {
       type: isUp ? FenxingType.Bottom : FenxingType.Top,
-      highest: base + range,
-      lowest: base,
+      high: base + range,
+      low: base,
       leftIds: [trendIdx * 2 - 1],
       middleIds: [trendIdx * 2],
       rightIds: [trendIdx * 2 + 1],
@@ -43,15 +42,15 @@ function makeBi(trendIdx: number, base: number, range = 10): BiVo {
     },
     endFenxing: {
       type: isUp ? FenxingType.Top : FenxingType.Bottom,
-      highest: base + range,
-      lowest: base,
+      high: base + range,
+      low: base,
       leftIds: [trendIdx * 2],
       middleIds: [trendIdx * 2 + 1],
       rightIds: [trendIdx * 2 + 2],
       middleIndex: trendIdx + 1,
       middleOriginId: trendIdx * 2 + 1,
     },
-  } as BiVo;
+  } as ChanBi;
 }
 
 function makeChannel(
@@ -59,10 +58,10 @@ function makeChannel(
   bases: number[],
   trend: TrendDirection,
   status: ChannelStatus,
-): ChannelVo {
+): ChanChannel {
   const bis = bases.map((base, index) => makeBi(offset + index, base, 20));
-  const highs = bis.map((bi) => bi.highest);
-  const lows = bis.map((bi) => bi.lowest);
+  const highs = bis.map((bi) => bi.high);
+  const lows = bis.map((bi) => bi.low);
 
   return {
     bis,
@@ -81,23 +80,19 @@ function makeChannel(
   };
 }
 
-function mergeChannels(service: ChannelService, channels: ChannelVo[]) {
+function mergeChannels(service: ChannelCalculator, channels: ChanChannel[]) {
   return (
     service as unknown as {
-      mergeChannels(value: readonly ChannelVo[]): ChannelVo[];
+      mergeChannels(value: readonly ChanChannel[]): ChanChannel[];
     }
   ).mergeChannels(channels);
 }
 
-describe('ChannelService', () => {
-  let service: ChannelService;
+describe('ChannelCalculator', () => {
+  let service: ChannelCalculator;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [ChannelService],
-    }).compile();
-
-    service = module.get<ChannelService>(ChannelService);
+  beforeEach(() => {
+    service = new ChannelCalculator();
   });
 
   it('service should be defined', () => {
@@ -105,9 +100,12 @@ describe('ChannelService', () => {
   });
 
   it('returns a two-phase result object with phaseA and phaseB arrays', () => {
-    const result = service.createChannel({
-      bi: [makeBi(0, 100), makeBi(1, 100), makeBi(2, 100), makeBi(3, 100)],
-    });
+    const result = service.createChannels([
+      makeBi(0, 100),
+      makeBi(1, 100),
+      makeBi(2, 100),
+      makeBi(3, 100),
+    ]);
 
     // 两阶段契约：{ phaseA, phaseB }，都是数组
     expect(result).toHaveProperty('phaseA');
@@ -119,9 +117,12 @@ describe('ChannelService', () => {
   });
 
   it('produces no channels when fewer than 5 bis', () => {
-    const result = service.createChannel({
-      bi: [makeBi(0, 100), makeBi(1, 100), makeBi(2, 100), makeBi(3, 100)],
-    });
+    const result = service.createChannels([
+      makeBi(0, 100),
+      makeBi(1, 100),
+      makeBi(2, 100),
+      makeBi(3, 100),
+    ]);
 
     expect(result.phaseA).toHaveLength(0);
     expect(result.phaseB).toHaveLength(0);
@@ -139,7 +140,7 @@ describe('ChannelService', () => {
      *
      * 前4笔高点：90,100,102,105 → zg=min=90, gg=max=105
      * 后4笔低点：85,88,90,92   → zd=max=92, dd=min=85
-     * A.lowest=80 < dd=85 ✓    E.highest=120 > gg=105 ✓
+     * A.low=80 < dd=85 ✓    E.high=120 > gg=105 ✓
      * zg=90 > zd=92？否 → 需要调整让 zg > zd
      *
      * 调整：让前4笔高点更高、后4笔低点更低，使 zg > zd：
@@ -154,7 +155,7 @@ describe('ChannelService', () => {
      *
      * 再调：拉开中间震荡幅度
      */
-    function buildValidUpChannel(): BiVo[] {
+    function buildValidUpChannel(): ChanBi[] {
       // A 从 50 涨到 110（起点 50 远低于中枢）
       // BCD 在 90~120 之间震荡
       // E 从 95 涨到 180（终点 180 远高于中枢）
@@ -168,7 +169,7 @@ describe('ChannelService', () => {
     }
 
     it('detects a base channel from 5 bis satisfying chanlun definition', () => {
-      const result = service.createChannel({ bi: buildValidUpChannel() });
+      const result = service.createChannels(buildValidUpChannel());
 
       // Phase A 至少枚举出 1 个基础中枢
       expect(result.phaseA.length).toBeGreaterThanOrEqual(1);
@@ -181,7 +182,7 @@ describe('ChannelService', () => {
     });
 
     it('stamps each detected base channel as Valid', () => {
-      const result = service.createChannel({ bi: buildValidUpChannel() });
+      const result = service.createChannels(buildValidUpChannel());
 
       expect(result.phaseA.length).toBeGreaterThan(0);
       for (const channel of result.phaseA) {
@@ -194,7 +195,7 @@ describe('ChannelService', () => {
         makeBi(index, base, 20),
       );
 
-      const result = service.createChannel({ bi: valid });
+      const result = service.createChannels(valid);
 
       expect(result.phaseA[0].status).toBe(ChannelStatus.Valid);
       expect(result.phaseB).toHaveLength(1);
@@ -206,9 +207,7 @@ describe('ChannelService', () => {
       );
       const unrelatedLaterBi = makeBi(6, 200, 20);
 
-      const result = service.createChannel({
-        bi: [...valid, unrelatedLaterBi],
-      });
+      const result = service.createChannels([...valid, unrelatedLaterBi]);
 
       expect(result.phaseA).toHaveLength(1);
       expect(result.phaseA[0].status).toBe(ChannelStatus.Valid);
@@ -220,21 +219,21 @@ describe('ChannelService', () => {
         (base, index) => makeBi(index, base, 20),
       );
 
-      const result = service.createChannel({ bi: extendable });
+      const result = service.createChannels(extendable);
 
       expect(result.phaseA[0].bis).toHaveLength(5);
       expect(result.phaseA[0].endId).toBe(extendable[4].originIds.at(-1));
     });
 
     it('produces no channel when bis do not overlap (zg <= zd)', () => {
-      // 5 笔单调上升、无重叠区间：每笔的 lowest 都高于前一笔的 highest
-      const noOverlap: BiVo[] = [];
+      // 5 笔单调上升、无重叠区间：每笔的 low 都高于前一笔的 high
+      const noOverlap: ChanBi[] = [];
       for (let i = 0; i < 5; i++) {
         // 从 100 起，每笔区间 [base, base+5]，相邻笔不重叠
         const base = 100 + i * 10 + (i % 2) * 5;
         noOverlap.push(makeBi(i, base, 5));
       }
-      const result = service.createChannel({ bi: noOverlap });
+      const result = service.createChannels(noOverlap);
 
       expect(result.phaseA).toHaveLength(0);
       expect(result.phaseB).toHaveLength(0);

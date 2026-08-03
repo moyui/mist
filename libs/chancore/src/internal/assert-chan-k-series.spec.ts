@@ -26,6 +26,12 @@ describe('assertChanKSeries', () => {
         volume: null,
         amount: '0.00000000',
       }),
+      makeK({
+        id: 99,
+        time: new Date('2026-07-01T01:33:00.000Z'),
+        volume: '1234567890123456789012345678.12345678',
+        amount: '-1.00000000',
+      }),
     ];
 
     expect(() => assertChanKSeries(orderedK)).not.toThrow();

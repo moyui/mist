@@ -4,13 +4,10 @@ import { ApiEnvelopeResponse } from '@app/transport/http';
 import { Throttle } from '@nestjs/throttler';
 import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
-import { CreateChannelDto } from './dto/create-channel.dto';
 import { ChannelTwoPhaseVo } from './vo/channel.vo';
 import { BiTwoPhaseVo } from './vo/bi.vo';
 import { MergeKDto } from './dto/merge-k.dto';
 import { IndicatorQueryDto } from '../indicator/dto/query/indicator-query.dto';
-import { ChannelService } from './services/channel.service';
-import { KMergeService } from './services/k-merge.service';
 import { TimezoneService } from '@app/timezone';
 import { IndicatorService } from '../indicator/indicator.service';
 
@@ -19,8 +16,6 @@ import { IndicatorService } from '../indicator/indicator.service';
 export class ChanController {
   constructor(
     private readonly chanService: ChanService,
-    private readonly kMergeService: KMergeService,
-    private readonly channelService: ChannelService,
     private readonly indicatorService: IndicatorService,
     private readonly timezoneService: TimezoneService,
   ) {}
@@ -68,10 +63,11 @@ export class ChanController {
       highest: k.high,
       lowest: k.low,
       close: k.close,
+      volume: k.volume,
       amount: k.amount,
     }));
 
-    return this.kMergeService.merge(kData);
+    return this.chanService.mergeK(kData);
   }
 
   @Post('bi')
@@ -107,6 +103,7 @@ export class ChanController {
       highest: k.high,
       lowest: k.low,
       close: k.close,
+      volume: k.volume,
       amount: k.amount,
     }));
     const createBiDto: CreateBiDto = { k: kData };
@@ -145,6 +142,7 @@ export class ChanController {
       highest: k.high,
       lowest: k.low,
       close: k.close,
+      volume: k.volume,
       amount: k.amount,
     }));
     const createBiDto: CreateBiDto = { k: kData };
@@ -185,13 +183,10 @@ export class ChanController {
       highest: k.high,
       lowest: k.low,
       close: k.close,
+      volume: k.volume,
       amount: k.amount,
     }));
     const createBiDto: CreateBiDto = { k: kData };
-    const biData = await this.chanService.createBi(createBiDto);
-    // channel 用 phaseB（消化 invalid 残留后的干净序列）
-    const createChannelDto: CreateChannelDto = { bi: biData.phaseB };
-    // 返回两阶段中枢结果 { phaseA, phaseB }
-    return this.channelService.createChannel(createChannelDto);
+    return this.chanService.createChannels(createBiDto);
   }
 }

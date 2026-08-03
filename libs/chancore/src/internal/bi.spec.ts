@@ -1,46 +1,42 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { BiService } from './bi.service';
-import { BiStatus, BiType } from '../enums/bi.enum';
-import { FenxingType } from '../enums/fenxing.enum';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import { KVo } from '../../indicator/vo/k.vo';
-import { BiVo } from '../vo/bi.vo';
-import { FenxingVo } from '../vo/fenxing.vo';
-import { MergedKVo } from '../vo/merged-k.vo';
+import { BiStatus, BiType, FenxingType, TrendDirection } from '../contracts';
+import type { ChanBi, ChanFenxing, ChanK, ChanMergedK } from '../contracts';
+import { ChanInvariantError } from '../errors';
+import { BiCalculator } from './bi';
 
 const createK = (
   id: number,
-  highest: number,
-  lowest: number,
+  high: number,
+  low: number,
   timeIndex: number = id,
-): KVo => ({
+): ChanK => ({
   id,
   symbol: 'TEST',
   time: new Date(Date.UTC(2026, 0, timeIndex)),
   amount: String(id * 100),
-  open: lowest + 1,
-  close: highest - 1,
-  highest,
-  lowest,
+  volume: String(id),
+  open: low + 1,
+  close: high - 1,
+  high,
+  low,
 });
 
 const createMergedK = (
   index: number,
-  highest: number,
-  lowest: number,
+  high: number,
+  low: number,
   ids: number[] = [index * 10 + 1, index * 10 + 2],
-): MergedKVo => {
+): ChanMergedK => {
   const mergedData = ids.map((id, offset) =>
-    createK(id, highest - offset, lowest + offset),
+    createK(id, high - offset, low + offset),
   );
 
   return {
     startTime: mergedData[0].time,
     endTime: mergedData[mergedData.length - 1].time,
-    highest,
-    lowest,
+    high,
+    low,
     trend: TrendDirection.Up,
     mergedCount: mergedData.length,
     mergedIds: ids,
@@ -48,7 +44,7 @@ const createMergedK = (
   };
 };
 
-const createMergedFixture = (): MergedKVo[] => [
+const createMergedFixture = (): ChanMergedK[] => [
   createMergedK(0, 10, 1),
   createMergedK(1, 13, 3),
   createMergedK(2, 16, 6),
@@ -60,13 +56,13 @@ const createMergedFixture = (): MergedKVo[] => [
 const createFenxing = (
   type: FenxingType,
   middleIndex: number,
-  highest: number,
-  lowest: number,
+  high: number,
+  low: number,
   middleOriginId: number,
-): FenxingVo => ({
+): ChanFenxing => ({
   type,
-  highest,
-  lowest,
+  high,
+  low,
   leftIds: [middleOriginId - 1],
   middleIds: [middleOriginId],
   rightIds: [middleOriginId + 1],
@@ -75,14 +71,14 @@ const createFenxing = (
 });
 
 const createCompleteBi = (
-  startFenxing: FenxingVo,
-  endFenxing: FenxingVo,
+  startFenxing: ChanFenxing,
+  endFenxing: ChanFenxing,
   trend: TrendDirection,
-): BiVo => ({
+): ChanBi => ({
   startTime: new Date(Date.UTC(2026, 0, startFenxing.middleOriginId)),
   endTime: new Date(Date.UTC(2026, 0, endFenxing.middleOriginId)),
-  highest: Math.max(startFenxing.highest, endFenxing.highest),
-  lowest: Math.min(startFenxing.lowest, endFenxing.lowest),
+  high: Math.max(startFenxing.high, endFenxing.high),
+  low: Math.min(startFenxing.low, endFenxing.low),
   trend,
   type: BiType.Complete,
   status: BiStatus.Valid,
@@ -93,12 +89,12 @@ const createCompleteBi = (
   endFenxing,
 });
 
-const publicBiFields = (bi: BiVo) => ({
+const publicBiFields = (bi: ChanBi) => ({
   trend: bi.trend,
   type: bi.type,
   status: bi.status,
-  highest: bi.highest,
-  lowest: bi.lowest,
+  high: bi.high,
+  low: bi.low,
   originIds: bi.originIds,
   independentCount: bi.independentCount,
   startFenxingType: bi.startFenxing?.type ?? null,
@@ -109,26 +105,26 @@ const createWidthBi = (
   ids: number[],
   startPosition: number = 0,
   endPosition: number = ids.length - 1,
-): BiVo => {
+): ChanBi => {
   const originData = ids.map((id, position) =>
     createK(id, 20 + position, 10 + position, position + 1),
   );
   const startId = ids[startPosition];
   const endId = ids[endPosition];
-  const startFenxing: FenxingVo = {
+  const startFenxing: ChanFenxing = {
     type: FenxingType.Bottom,
-    highest: 12,
-    lowest: 8,
+    high: 12,
+    low: 8,
     leftIds: [-101],
     middleIds: [startId],
     rightIds: [-102],
     middleIndex: startPosition,
     middleOriginId: startId,
   };
-  const endFenxing: FenxingVo = {
+  const endFenxing: ChanFenxing = {
     type: FenxingType.Top,
-    highest: 24,
-    lowest: 20,
+    high: 24,
+    low: 20,
     leftIds: [-201],
     middleIds: [endId],
     rightIds: [-202],
@@ -139,8 +135,8 @@ const createWidthBi = (
   return {
     startTime: originData[startPosition].time,
     endTime: originData[endPosition].time,
-    highest: 24,
-    lowest: 8,
+    high: 24,
+    low: 8,
     trend: TrendDirection.Up,
     type: BiType.Complete,
     status: BiStatus.Unknown,
@@ -152,26 +148,22 @@ const createWidthBi = (
   };
 };
 
-const nonIdentityWidthFields = (bi: BiVo) => ({
+const nonIdentityWidthFields = (bi: ChanBi) => ({
   trend: bi.trend,
   type: bi.type,
   status: bi.status,
-  highest: bi.highest,
-  lowest: bi.lowest,
+  high: bi.high,
+  low: bi.low,
   independentCount: bi.independentCount,
   startFenxingType: bi.startFenxing?.type ?? null,
   endFenxingType: bi.endFenxing?.type ?? null,
 });
 
-describe('BiService', () => {
-  let service: BiService;
+describe('BiCalculator', () => {
+  let service: BiCalculator;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [BiService],
-    }).compile();
-
-    service = module.get<BiService>(BiService);
+  beforeEach(() => {
+    service = new BiCalculator();
   });
 
   it('should be defined', () => {
@@ -185,9 +177,11 @@ describe('BiService', () => {
       endFenxing: null,
     };
 
-    expect(() =>
-      service['mergeTwoBis'](incompleteBi as any, incompleteBi as any, []),
-    ).toThrow('Bi invariant failed');
+    const mergeIncomplete = () =>
+      service['mergeTwoBis'](incompleteBi as any, incompleteBi as any, []);
+
+    expect(mergeIncomplete).toThrow(ChanInvariantError);
+    expect(mergeIncomplete).toThrow('Bi invariant failed');
   });
 
   it('characterizes public getBi output for a focused merged-K fixture', () => {
@@ -198,8 +192,8 @@ describe('BiService', () => {
         trend: TrendDirection.Down,
         type: BiType.Complete,
         status: BiStatus.Invalid,
-        highest: 16,
-        lowest: 0,
+        high: 16,
+        low: 0,
         originIds: [21, 22, 31, 32, 41, 42],
         independentCount: 6,
         startFenxingType: FenxingType.Top,
@@ -209,8 +203,8 @@ describe('BiService', () => {
         trend: TrendDirection.Up,
         type: BiType.UnComplete,
         status: BiStatus.Unknown,
-        highest: 11,
-        lowest: 0,
+        high: 11,
+        low: 0,
         originIds: [41, 42, 51, 52],
         independentCount: 4,
         startFenxingType: FenxingType.Bottom,
@@ -238,8 +232,8 @@ describe('BiService', () => {
     const { bi: unfinished } = service['buildUnCompleteBi'](data, 2, 5, null);
 
     expect(candidate).toMatchObject({
-      highest: 16,
-      lowest: 1,
+      high: 16,
+      low: 1,
       originIds: [1, 2, 11, 12, 21, 22],
       independentCount: 6,
       startFenxing: bottom,
@@ -250,8 +244,8 @@ describe('BiService', () => {
     ]);
 
     expect(mergedTwo).toMatchObject({
-      highest: 16,
-      lowest: 1,
+      high: 16,
+      low: 1,
       originIds: [1, 2, 11, 12, 21, 22],
       independentCount: 6,
       startFenxing: bottom,
@@ -259,8 +253,8 @@ describe('BiService', () => {
     });
 
     expect(mergedThree).toMatchObject({
-      highest: 16,
-      lowest: 0,
+      high: 16,
+      low: 0,
       originIds: [1, 2, 11, 12, 21, 22, 31, 32, 41, 42],
       independentCount: 10,
       startFenxing: bottom,
@@ -268,8 +262,8 @@ describe('BiService', () => {
     });
 
     expect(unfinished).toMatchObject({
-      highest: 16,
-      lowest: 0,
+      high: 16,
+      low: 0,
       originIds: [21, 22, 31, 32, 41, 42, 51, 52],
       independentCount: 8,
       startFenxing: null,
@@ -296,25 +290,34 @@ describe('BiService', () => {
       const consecutive = createWidthBi([1, 2, 3, 4]);
       const interleaved = createWidthBi([101, 9000, 305, 70000]);
 
-      consecutive.status = service['isCandidateBiValid'](consecutive)
-        ? BiStatus.Valid
-        : BiStatus.Invalid;
-      interleaved.status = service['isCandidateBiValid'](interleaved)
-        ? BiStatus.Valid
-        : BiStatus.Invalid;
+      const evaluatedConsecutive: ChanBi = {
+        ...consecutive,
+        status: service['isCandidateBiValid'](consecutive)
+          ? BiStatus.Valid
+          : BiStatus.Invalid,
+      };
+      const evaluatedInterleaved: ChanBi = {
+        ...interleaved,
+        status: service['isCandidateBiValid'](interleaved)
+          ? BiStatus.Valid
+          : BiStatus.Invalid,
+      };
 
-      expect(nonIdentityWidthFields(interleaved)).toEqual(
-        nonIdentityWidthFields(consecutive),
+      expect(nonIdentityWidthFields(evaluatedInterleaved)).toEqual(
+        nonIdentityWidthFields(evaluatedConsecutive),
       );
-      expect(consecutive.originIds).toEqual([1, 2, 3, 4]);
-      expect(interleaved.originIds).toEqual([101, 9000, 305, 70000]);
-      expect(interleaved.startFenxing?.middleOriginId).toBe(101);
-      expect(interleaved.endFenxing?.middleOriginId).toBe(70000);
+      expect(evaluatedConsecutive.originIds).toEqual([1, 2, 3, 4]);
+      expect(evaluatedInterleaved.originIds).toEqual([101, 9000, 305, 70000]);
+      expect(evaluatedInterleaved.startFenxing?.middleOriginId).toBe(101);
+      expect(evaluatedInterleaved.endFenxing?.middleOriginId).toBe(70000);
     });
 
     it('rejects a missing Fenxing endpoint identity as an invariant failure', () => {
-      const bi = createWidthBi([10, 20, 30, 40, 50]);
-      bi.endFenxing!.middleOriginId = 999;
+      const source = createWidthBi([10, 20, 30, 40, 50]);
+      const bi: ChanBi = {
+        ...source,
+        endFenxing: { ...source.endFenxing!, middleOriginId: 999 },
+      };
 
       expect(() => service['isBiWideEnough'](bi)).toThrow(
         'Wide Bi invariant failed',
@@ -330,12 +333,12 @@ describe('BiService', () => {
     });
   });
 
-  it('owns both Phase A and Phase B reductions inside BiService', () => {
-    const source = readFileSync(join(__dirname, 'bi.service.ts'), 'utf8');
+  it('owns both Phase A and Phase B reductions inside BiCalculator', () => {
+    const source = readFileSync(join(__dirname, 'bi.ts'), 'utf8');
 
     expect(source).toContain('private reducePhaseATimeStack');
     expect(source).toContain('private mergeBiSegments');
-    // Phase B 驱动已抽离到共享 span-merge.helper.ts，BiService 注入领域谓词。
+    // Phase B 驱动已抽离到共享 span-merge.ts，BiCalculator 注入领域谓词。
     expect(source).toContain('mergeSpans(');
     expect(source).not.toContain('private isPhaseBMergeableSpan');
     expect(source).not.toContain('bi-phase-a-time-stack.helper');
@@ -344,8 +347,8 @@ describe('BiService', () => {
     expect(source).not.toContain('PhaseBMergeOperations');
     expect(source).not.toContain('BiSourceTag');
     expect(source).not.toContain('processCandidateBisWithRollback');
-    expect(source).not.toContain('confirmed: BiVo[]');
-    expect(source).not.toContain('pending: BiVo[]');
+    expect(source).not.toContain('confirmed: ChanBi[]');
+    expect(source).not.toContain('pending: ChanBi[]');
     expect(source).toContain('collectMergedKRange');
     expect(source).not.toContain('rangeKs.forEach');
   });

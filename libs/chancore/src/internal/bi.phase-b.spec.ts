@@ -1,25 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BiStatus, BiType } from '../enums/bi.enum';
-import { FenxingType } from '../enums/fenxing.enum';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import type { BiVo } from '../vo/bi.vo';
-import type { FenxingVo } from '../vo/fenxing.vo';
-import { BiService } from './bi.service';
+import { BiStatus, BiType, FenxingType, TrendDirection } from '../contracts';
+import type { ChanBi, ChanFenxing } from '../contracts';
+import { BiCalculator } from './bi';
 
 interface BiOptions {
   trend?: TrendDirection;
   status?: BiStatus;
   type?: BiType;
-  highest?: number;
-  lowest?: number;
+  high?: number;
+  low?: number;
   withFenxings?: boolean;
 }
 
-function createFenxing(id: number, type: FenxingType): FenxingVo {
+function createFenxing(id: number, type: FenxingType): ChanFenxing {
   return {
     type,
-    highest: 10,
-    lowest: 0,
+    high: 10,
+    low: 0,
     leftIds: [id * 10 - 1],
     middleIds: [id * 10],
     rightIds: [id * 10 + 1],
@@ -28,21 +24,21 @@ function createFenxing(id: number, type: FenxingType): FenxingVo {
   };
 }
 
-function createBi(id: number, options: BiOptions = {}): BiVo {
+function createBi(id: number, options: BiOptions = {}): ChanBi {
   const {
     trend = TrendDirection.Up,
     status = BiStatus.Valid,
     type = BiType.Complete,
-    highest = 10,
-    lowest = 0,
+    high = 10,
+    low = 0,
     withFenxings = type === BiType.Complete,
   } = options;
 
   return {
     startTime: new Date(Date.UTC(2026, 0, id * 2)),
     endTime: new Date(Date.UTC(2026, 0, id * 2 + 1)),
-    highest,
-    lowest,
+    high,
+    low,
     trend,
     type,
     status,
@@ -59,11 +55,11 @@ function createBi(id: number, options: BiOptions = {}): BiVo {
 }
 
 function mockPhaseBPrimitives(
-  service: BiService,
+  service: BiCalculator,
   overrides: {
-    canMergeTwoBis?: (head: BiVo, tail: BiVo) => boolean;
-    mergeTwoBis?: (head: BiVo, tail: BiVo) => BiVo;
-    isCandidateBiValid?: (bi: BiVo) => boolean;
+    canMergeTwoBis?: (head: ChanBi, tail: ChanBi) => boolean;
+    mergeTwoBis?: (head: ChanBi, tail: ChanBi) => ChanBi;
+    isCandidateBiValid?: (bi: ChanBi) => boolean;
   } = {},
 ) {
   return {
@@ -72,11 +68,11 @@ function mockPhaseBPrimitives(
       .mockImplementation(overrides.canMergeTwoBis ?? (() => true)),
     mergeTwoBis: jest.spyOn(service as any, 'mergeTwoBis').mockImplementation(
       overrides.mergeTwoBis ??
-        ((head: BiVo, tail: BiVo) => ({
+        ((head: ChanBi, tail: ChanBi) => ({
           ...head,
           endTime: tail.endTime,
-          highest: Math.max(head.highest, tail.highest),
-          lowest: Math.min(head.lowest, tail.lowest),
+          high: Math.max(head.high, tail.high),
+          low: Math.min(head.low, tail.low),
           status: BiStatus.Unknown,
           independentCount: head.independentCount + tail.independentCount,
           originIds: [...head.originIds, ...tail.originIds],
@@ -89,14 +85,11 @@ function mockPhaseBPrimitives(
   };
 }
 
-describe('BiService Phase B invalid-span merge', () => {
-  let service: BiService;
+describe('BiCalculator Phase B invalid-span merge', () => {
+  let service: BiCalculator;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [BiService],
-    }).compile();
-    service = module.get<BiService>(BiService);
+  beforeEach(() => {
+    service = new BiCalculator();
   });
 
   it.each([
@@ -125,14 +118,14 @@ describe('BiService Phase B invalid-span merge', () => {
   );
 
   it('merges a span when only a middle Bi is invalid', () => {
-    const head = createBi(1, { highest: 10, lowest: 0 });
+    const head = createBi(1, { high: 10, low: 0 });
     const middle = createBi(2, {
       trend: TrendDirection.Down,
       status: BiStatus.Invalid,
-      highest: 9,
-      lowest: 1,
+      high: 9,
+      low: 1,
     });
-    const tail = createBi(3, { highest: 12, lowest: 2 });
+    const tail = createBi(3, { high: 12, low: 2 });
     mockPhaseBPrimitives(service);
 
     const result = service['mergeBiSegments']([head, middle, tail], []);
@@ -151,21 +144,21 @@ describe('BiService Phase B invalid-span merge', () => {
     const result = service['mergeBiSegments'](phaseABis, []);
 
     expect(result).toEqual(phaseABis);
-    result.forEach((bi: BiVo, index: number) =>
+    result.forEach((bi: ChanBi, index: number) =>
       expect(bi).not.toBe(phaseABis[index]),
     );
     expect(primitives.mergeTwoBis).not.toHaveBeenCalled();
   });
 
   it('rejects a span when a middle Bi breaks the endpoint price envelope', () => {
-    const head = createBi(1, { highest: 10, lowest: 0 });
+    const head = createBi(1, { high: 10, low: 0 });
     const middle = createBi(2, {
       trend: TrendDirection.Down,
       status: BiStatus.Invalid,
-      highest: 13,
-      lowest: 1,
+      high: 13,
+      low: 1,
     });
-    const tail = createBi(3, { highest: 12, lowest: 2 });
+    const tail = createBi(3, { high: 12, low: 2 });
     const primitives = mockPhaseBPrimitives(service);
 
     const result = service['mergeBiSegments']([head, middle, tail], []);
@@ -196,8 +189,8 @@ describe('BiService Phase B invalid-span merge', () => {
 
     expect(primitives.mergeTwoBis).toHaveBeenCalled();
     const [firstHead, firstTail] = primitives.mergeTwoBis.mock.calls[0] as [
-      BiVo,
-      BiVo,
+      ChanBi,
+      ChanBi,
     ];
     expect(firstHead.originIds).toEqual([2]);
     expect(firstTail.originIds).toEqual([3]);
@@ -247,8 +240,8 @@ describe('BiService Phase B invalid-span merge', () => {
   it('does not mutate the input array or its Bi objects', () => {
     const first = Object.freeze(
       createBi(1, { status: BiStatus.Invalid }),
-    ) as BiVo;
-    const second = Object.freeze(createBi(2)) as BiVo;
+    ) as ChanBi;
+    const second = Object.freeze(createBi(2)) as ChanBi;
     const phaseABis = Object.freeze([first, second]);
     mockPhaseBPrimitives(service);
 

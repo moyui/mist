@@ -1,26 +1,34 @@
-import { Injectable } from '@nestjs/common';
-import { KVo } from '../../indicator/vo/k.vo';
-import { TrendService } from './trend.service';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import { MergedKVo } from '../vo/merged-k.vo';
+import { TrendDirection } from '../contracts';
+import type { ChanK, ChanMergedK } from '../contracts';
+import { TrendCalculator } from './trend';
 
-@Injectable()
-export class KMergeService {
-  constructor(private readonly trendService: TrendService) {}
+type MutableMergedK = {
+  startTime: Date;
+  endTime: Date;
+  high: number;
+  low: number;
+  trend: TrendDirection;
+  mergedCount: number;
+  mergedIds: number[];
+  mergedData: ChanK[];
+};
+
+export class KMergeCalculator {
+  constructor(private readonly trend = new TrendCalculator()) {}
 
   // 处理包含关系
   private handleContainedState(
-    current: MergedKVo,
-    next: KVo,
+    current: ChanMergedK,
+    next: ChanK,
     trend: TrendDirection,
   ): { merged: boolean; newHigh: number; newLow: number } {
     // 判断包含关系的方向
     // 前包含后：当前K线包含下一根K线
     const currentContainsNext =
-      current.highest >= next.highest && current.lowest <= next.lowest;
+      current.high >= next.high && current.low <= next.low;
     // 后包含前：下一根K线包含当前K线
     const nextContainsCurrent =
-      next.highest >= current.highest && next.lowest <= current.lowest;
+      next.high >= current.high && next.low <= current.low;
 
     // 没有包含关系，不合并
     if (!currentContainsNext && !nextContainsCurrent) {
@@ -31,8 +39,8 @@ export class KMergeService {
     let actualTrend = trend;
     if (actualTrend === TrendDirection.None) {
       // 比较中心点位置来决定方向
-      const currentMiddle = (current.highest + current.lowest) / 2;
-      const nextMiddle = (next.highest + next.lowest) / 2;
+      const currentMiddle = (current.high + current.low) / 2;
+      const nextMiddle = (next.high + next.low) / 2;
 
       if (nextMiddle < currentMiddle) {
         actualTrend = TrendDirection.Down;
@@ -48,57 +56,49 @@ export class KMergeService {
     if (actualTrend === TrendDirection.Up) {
       return {
         merged: true,
-        newHigh: Math.max(current.highest, next.highest),
-        newLow: Math.max(current.lowest, next.lowest),
+        newHigh: Math.max(current.high, next.high),
+        newLow: Math.max(current.low, next.low),
       };
     }
 
     // 处理向下趋势, 低低取低
     return {
       merged: true,
-      newHigh: Math.min(current.highest, next.highest),
-      newLow: Math.min(current.lowest, next.lowest),
+      newHigh: Math.min(current.high, next.high),
+      newLow: Math.min(current.low, next.low),
     };
   }
 
   // 合并k线
-  merge(data: KVo[]): MergedKVo[] {
+  merge(data: readonly ChanK[]): ChanMergedK[] {
     if (data.length === 0) {
       return [];
     }
     let currentTrend = TrendDirection.None;
     // 基准K线
-    let baseData: MergedKVo = {
+    let baseData: MutableMergedK = {
       startTime: data[0].time,
       endTime: data[0].time,
-      highest: data[0].highest,
-      lowest: data[0].lowest,
+      high: data[0].high,
+      low: data[0].low,
       trend: currentTrend,
       mergedCount: 1,
       mergedIds: [data[0].id],
       mergedData: [data[0]],
     };
-    const mergedKs: MergedKVo[] = [baseData];
+    const mergedKs: ChanMergedK[] = [baseData];
     for (let i = 1; i < data.length; i++) {
       const now = data[i];
       // 使用上一个合并K线来判断趋势
       const lastMergedK = mergedKs[mergedKs.length - 1];
 
-      // 将MergedKVo转换为KVo，以便trendService使用
-      const lastMergedKAsKVo: KVo = {
-        id: lastMergedK.mergedIds[lastMergedK.mergedIds.length - 1],
-        symbol: lastMergedK.mergedData[0].symbol,
-        time: lastMergedK.endTime,
-        amount:
-          lastMergedK.mergedData[lastMergedK.mergedData.length - 1].amount,
-        open: lastMergedK.mergedData[0].open,
-        close: lastMergedK.mergedData[lastMergedK.mergedData.length - 1].close,
-        highest: lastMergedK.highest,
-        lowest: lastMergedK.lowest,
+      const lastMergedRange: Pick<ChanK, 'high' | 'low'> = {
+        high: lastMergedK.high,
+        low: lastMergedK.low,
       };
 
-      currentTrend = this.trendService.judgeSimpleTrend(
-        lastMergedKAsKVo,
+      currentTrend = this.trend.judgeSimpleTrend(
+        lastMergedRange,
         now,
         currentTrend,
       );
@@ -113,8 +113,8 @@ export class KMergeService {
       if (containedState.merged) {
         // 先处理baseData
         baseData.endTime = now.time;
-        baseData.highest = containedState.newHigh;
-        baseData.lowest = containedState.newLow;
+        baseData.high = containedState.newHigh;
+        baseData.low = containedState.newLow;
         baseData.mergedCount += 1;
         baseData.trend = currentTrend;
         baseData.mergedIds.push(now.id);
@@ -122,11 +122,11 @@ export class KMergeService {
         // 然后替换上一条k线
         mergedKs[mergedKs.length - 1] = { ...baseData };
       } else {
-        const newBaseData: MergedKVo = {
+        const newBaseData: MutableMergedK = {
           startTime: now.time,
           endTime: now.time,
-          highest: now.highest,
-          lowest: now.lowest,
+          high: now.high,
+          low: now.low,
           trend: currentTrend,
           mergedCount: 1,
           mergedIds: [now.id],

@@ -1,54 +1,35 @@
 import { createHash } from 'node:crypto';
-import { BiStatus, BiType } from '../enums/bi.enum';
-import type { FenxingVo } from '../vo/fenxing.vo';
-import type { BiVo } from '../vo/bi.vo';
-import type { ChannelVo } from '../vo/channel.vo';
-import type { MergedKVo } from '../vo/merged-k.vo';
-import type { KVo } from '../../indicator/vo/k.vo';
-import { BiService } from './bi.service';
-import { ChannelService } from './channel.service';
+import { BiStatus, BiType, ChanCore } from './index';
+import type {
+  ChanBi,
+  ChanChannel,
+  ChanFenxing,
+  ChanK,
+  ChanMergedK,
+} from './index';
 import {
   ChanCharacterizationK,
   createChanFullOutputFixture,
 } from './chan-full-output.characterization.fixture';
-import { KMergeService } from './k-merge.service';
-import { TrendService } from './trend.service';
-
-type LegacyK = KVo & { volume: string | null };
 
 const EXPECTED_FULL_OUTPUT_SHA256 =
   '7a24563a1d419c87cc151cfcd83ce42732fe59b6fc535de2d818699994964312';
 
-function toLegacyK(k: ChanCharacterizationK): LegacyK {
-  return {
-    id: k.id,
-    symbol: k.symbol,
-    time: new Date(k.time.getTime()),
-    open: k.open,
-    highest: k.high,
-    lowest: k.low,
-    close: k.close,
-    volume: k.volume,
-    amount: k.amount,
-  };
-}
-
-function toContractK(k: KVo): ChanCharacterizationK {
-  const source = k as LegacyK;
+function toContractK(source: ChanK): ChanCharacterizationK {
   return {
     id: source.id,
     symbol: source.symbol,
     time: new Date(source.time.getTime()),
     open: source.open,
-    high: source.highest,
-    low: source.lowest,
+    high: source.high,
+    low: source.low,
     close: source.close,
     volume: source.volume,
     amount: source.amount,
   };
 }
 
-function toContractFenxing(fenxing: FenxingVo | null) {
+function toContractFenxing(fenxing: ChanFenxing | null) {
   if (!fenxing) return null;
   return {
     leftIds: [...fenxing.leftIds],
@@ -57,17 +38,17 @@ function toContractFenxing(fenxing: FenxingVo | null) {
     middleIndex: fenxing.middleIndex,
     middleOriginId: fenxing.middleOriginId,
     type: fenxing.type,
-    high: fenxing.highest,
-    low: fenxing.lowest,
+    high: fenxing.high,
+    low: fenxing.low,
   };
 }
 
-function toContractMergedK(mergedK: MergedKVo) {
+function toContractMergedK(mergedK: ChanMergedK) {
   return {
     startTime: new Date(mergedK.startTime.getTime()),
     endTime: new Date(mergedK.endTime.getTime()),
-    high: mergedK.highest,
-    low: mergedK.lowest,
+    high: mergedK.high,
+    low: mergedK.low,
     trend: mergedK.trend,
     mergedCount: mergedK.mergedCount,
     mergedIds: [...mergedK.mergedIds],
@@ -75,12 +56,12 @@ function toContractMergedK(mergedK: MergedKVo) {
   };
 }
 
-function toContractBi(bi: BiVo) {
+function toContractBi(bi: ChanBi) {
   return {
     startTime: new Date(bi.startTime.getTime()),
     endTime: new Date(bi.endTime.getTime()),
-    high: bi.highest,
-    low: bi.lowest,
+    high: bi.high,
+    low: bi.low,
     trend: bi.trend,
     type: bi.type,
     status: bi.status,
@@ -92,7 +73,7 @@ function toContractBi(bi: BiVo) {
   };
 }
 
-function toContractChannel(channel: ChannelVo) {
+function toContractChannel(channel: ChanChannel) {
   return {
     bis: channel.bis.map(toContractBi),
     zg: channel.zg,
@@ -110,15 +91,12 @@ function toContractChannel(channel: ChannelVo) {
   };
 }
 
-function runLegacyFullPipeline() {
+function runCoreFullPipeline() {
   const input = createChanFullOutputFixture();
-  const merged = new KMergeService(new TrendService()).merge(
-    input.map(toLegacyK),
-  );
-  const biService = new BiService();
-  const fenxings = biService.getFenxings(merged);
-  const bis = biService.getBi(merged);
-  const channels = new ChannelService().createChannel({ bi: bis.phaseB });
+  const merged = ChanCore.mergeK(input);
+  const fenxings = ChanCore.findFenxings(input);
+  const bis = ChanCore.createBi(input);
+  const channels = ChanCore.createChannels(input);
 
   return {
     input,
@@ -145,9 +123,9 @@ function runLegacyFullPipeline() {
   };
 }
 
-describe('legacy Chan full-output characterization', () => {
+describe('ChanCore full-output differential characterization', () => {
   it('locks one raw K through merged K, Fenxing, Bi and Channel fingerprint', () => {
-    const result = runLegacyFullPipeline();
+    const result = runCoreFullPipeline();
     const inputIds = result.input.map((k) => k.id);
 
     expect(result.input).toHaveLength(45);
@@ -169,7 +147,7 @@ describe('legacy Chan full-output characterization', () => {
   });
 
   it('locks unique wide-Bi endpoints and position distance with sparse IDs', () => {
-    const { bis } = runLegacyFullPipeline();
+    const { bis } = runCoreFullPipeline();
     const validCompleteBis = bis.phaseB.filter(
       (bi) => bi.type === BiType.Complete && bi.status === BiStatus.Valid,
     );

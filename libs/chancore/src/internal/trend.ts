@@ -1,10 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import { KVo } from '../../indicator/vo/k.vo';
-import { BiVo } from '../vo/bi.vo';
+import { TrendDirection } from '../contracts';
+import type { ChanBi, ChanK } from '../contracts';
 
-@Injectable()
-export class TrendService {
+type PriceRange = Pick<ChanK, 'high' | 'low'>;
+
+export class TrendCalculator {
   /**
    * Judges the trend direction based on two consecutive K-line data points
    * @param prev Previous K-line data
@@ -13,14 +12,14 @@ export class TrendService {
    * @returns TrendDirection - Up if highs and lows are rising, Down if both are falling
    */
   judgeSimpleTrend(
-    prev: KVo,
-    now: KVo,
+    prev: PriceRange,
+    now: PriceRange,
     prevTrend: TrendDirection,
   ): TrendDirection {
     // Only Up trend when both high and low are rising
-    if (now.highest > prev.highest && now.lowest > prev.lowest) {
+    if (now.high > prev.high && now.low > prev.low) {
       return TrendDirection.Up;
-    } else if (now.highest < prev.highest && now.lowest < prev.lowest) {
+    } else if (now.high < prev.high && now.low < prev.low) {
       return TrendDirection.Down;
     } else {
       // Continue previous trend if current pattern is unclear
@@ -36,13 +35,13 @@ export class TrendService {
    * @param now Current Bi segment
    * @returns true if both Bi segments form a consistent trend pattern
    */
-  hasConsistentBiTrend(prev: BiVo, now: BiVo) {
+  hasConsistentBiTrend(prev: ChanBi, now: ChanBi) {
     if (prev.trend !== now.trend) return false; // Different trends, cannot form pattern
     if (now.trend === TrendDirection.Up) {
-      return prev.highest <= now.highest && prev.lowest <= now.lowest;
+      return prev.high <= now.high && prev.low <= now.low;
     }
     if (now.trend === TrendDirection.Down) {
-      return prev.highest >= now.highest && prev.lowest >= now.lowest;
+      return prev.high >= now.high && prev.low >= now.low;
     }
     return false;
   }

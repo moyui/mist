@@ -21,7 +21,7 @@
 - 初始审计基线：`master@fe56c6863cc498acbad0a6803da16c2615bb6997`
 - 当前实施基线：`master@3a07d4b725dec2c288058505c82959224281d2a3`
 - 已同步前置：归档 change `2026-08-03-fix-chan-wide-bi-distance`
-- 当前状态：未移动应用源码、未新增 migration
+- 当前状态：pure source move 与现有 Chan wrapper 已完成；未新增 migration
 
 ### pure calculation 影响链
 
@@ -73,14 +73,38 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
   `7a24563a1d419c87cc151cfcd83ce42732fe59b6fc535de2d818699994964312`；
 - strict OpenSpec validation 持续通过。
 
-### 尚未满足的实施门禁
+### Source move 完成证据
 
-- source move 后的新 ChanCore 尚未与已冻结 full-output fingerprint 做 differential；
-- equal-boundary、readonly 和 public `algorithmVersion` 的新 core 证据尚未实施；
-- pure boundary/public barrel tests 尚未实施；
-- 旧算法尚未移动，现有 wrapper 尚未接入 `@app/chancore`。
+- Trend、K merge、Fenxing、Bi、Channel、`bi-range`、`span-merge` 及算法 enums/types 已移动到
+  `libs/chancore`；生产源码扫描只发现这一份算法实现。
+- public barrel 只暴露 `ChanCore`、四个 facade、批准的 types/enums/errors；没有 deep-import alias、Nest
+  module、internal helper 或 `analyze()`。
+- 45 根 frozen fixture 在 core 上仍得到 38 merged K、15 Fenxing、Bi 9/9、Channel 1/1，完整 SHA-256
+  保持 `7a24563a1d419c87cc151cfcd83ce42732fe59b6fc535de2d818699994964312`。
+- equal-center、strict Fenxing、first-wins、Bi non-strict progression、`zg === zd`、相邻 representable
+  number、exact Date/identity、frozen input 和四 facade before/after fingerprint 均有定向测试。
+- `ChanService` 是 caller-owned 薄边界：显式映射 `highest/lowest` 与 `high/low`、复制 Date/数组、保留完整
+  OHLCVA 输入，并保留旧 channel 空数据 HTTP 400；core 自身仍按契约返回合法空结果。
+- `@app/chancore` 的生产 import 只存在于现有 Chan wrapper/legacy enum 出口；Backtest、Realtime、
+  Signal/Alert、Strategy evaluator 未增加 ChanCore prerequisite。
 
-以上门禁完成前不得宣称 extraction 完成。
+### 验证记录
+
+- `pnpm run lint:check`：通过。
+- `pnpm run typecheck`：通过。
+- `pnpm run test:ci`：通过；受限沙箱首次仅因既有 HTTP integration 无法绑定临时端口失败，允许本机
+  loopback 后全量重跑通过。
+- `pnpm run build:docker` 与 `pnpm exec nest build chancore`：通过。
+- `pnpm run ci:contracts`：通过；worktree 验证使用临时多仓 root 映射，CI 的 Chan smell target 已随
+  source move 更新到 `libs/chancore/src/internal`。
+- `openspec validate extract-chan-core --strict` 与 `git diff --check`：通过。
+
+### Residual work
+
+- Backtest/Realtime/Signal/Alert 对 ChanCore 的采用由各自 focused owning change 决定。
+- 现有 Chan API cleanup、DTO/VO/OpenAPI 调整或 app ownership 变更另开 change。
+- 公共 Indicator/K API 与 lookback 重构继续由既有独立 change 持有，本 change 不处理。
+- 归档门禁 4.5 等待项目负责人审阅本节 differential 与 validation evidence。
 
 ### Source move 前契约复核
 

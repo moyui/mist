@@ -1,16 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BiStatus, BiType } from '../enums/bi.enum';
-import { FenxingType } from '../enums/fenxing.enum';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import type { BiVo } from '../vo/bi.vo';
-import type { FenxingVo } from '../vo/fenxing.vo';
-import { BiService } from './bi.service';
+import { BiStatus, BiType, FenxingType, TrendDirection } from '../contracts';
+import type { ChanBi, ChanFenxing } from '../contracts';
+import { BiCalculator } from './bi';
 
-function createFenxing(index: number, type: FenxingType): FenxingVo {
+function createFenxing(index: number, type: FenxingType): ChanFenxing {
   return {
     type,
-    highest: index + 20,
-    lowest: index + 10,
+    high: index + 20,
+    low: index + 10,
     leftIds: [index * 10 - 1],
     middleIds: [index * 10],
     rightIds: [index * 10 + 1],
@@ -24,12 +20,12 @@ function createBi(
   end: number,
   trend: TrendDirection,
   status: BiStatus,
-): BiVo {
+): ChanBi {
   return {
     startTime: new Date(Date.UTC(2026, 0, start + 1)),
     endTime: new Date(Date.UTC(2026, 0, end + 1)),
-    highest: end + 20,
-    lowest: start + 10,
+    high: end + 20,
+    low: start + 10,
     trend,
     type: BiType.Complete,
     status,
@@ -47,14 +43,14 @@ function createBi(
   };
 }
 
-function rangeKey(bi: BiVo): string {
+function rangeKey(bi: ChanBi): string {
   return `${bi.startFenxing?.middleIndex}-${bi.endFenxing?.middleIndex}`;
 }
 
 function mockPhaseAPrimitives(
-  service: BiService,
-  canMerge: (first: BiVo, middle: BiVo, third: BiVo) => boolean,
-  isValid: (bi: BiVo) => boolean = () => true,
+  service: BiCalculator,
+  canMerge: (first: ChanBi, middle: ChanBi, third: ChanBi) => boolean,
+  isValid: (bi: ChanBi) => boolean = () => true,
 ) {
   return {
     canMergeThreeBis: jest
@@ -62,11 +58,11 @@ function mockPhaseAPrimitives(
       .mockImplementation(canMerge),
     mergeThreeBis: jest
       .spyOn(service as any, 'mergeThreeBis')
-      .mockImplementation((first: BiVo, third: BiVo) => ({
+      .mockImplementation((first: ChanBi, third: ChanBi) => ({
         ...first,
         endTime: third.endTime,
-        highest: Math.max(first.highest, third.highest),
-        lowest: Math.min(first.lowest, third.lowest),
+        high: Math.max(first.high, third.high),
+        low: Math.min(first.low, third.low),
         status: BiStatus.Unknown,
         independentCount: first.independentCount + third.independentCount,
         originIds: [...first.originIds, ...third.originIds],
@@ -78,14 +74,11 @@ function mockPhaseAPrimitives(
   };
 }
 
-describe('BiService Phase A time-stack reduction', () => {
-  let service: BiService;
+describe('BiCalculator Phase A time-stack reduction', () => {
+  let service: BiCalculator;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [BiService],
-    }).compile();
-    service = module.get<BiService>(BiService);
+  beforeEach(() => {
+    service = new BiCalculator();
   });
 
   it('repeats top-three reduction until the new stack top is stable', () => {
@@ -185,10 +178,10 @@ describe('BiService Phase A time-stack reduction', () => {
   it('does not mutate the input array or Bi objects', () => {
     const first = Object.freeze(
       createBi(0, 1, TrendDirection.Up, BiStatus.Invalid),
-    ) as BiVo;
+    ) as ChanBi;
     const second = Object.freeze(
       createBi(1, 2, TrendDirection.Down, BiStatus.Invalid),
-    ) as BiVo;
+    ) as ChanBi;
     const candidates = Object.freeze([first, second]);
 
     mockPhaseAPrimitives(service, () => false);

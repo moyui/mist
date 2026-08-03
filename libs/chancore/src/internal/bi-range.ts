@@ -1,15 +1,14 @@
-import { KVo } from '../../indicator/vo/k.vo';
-import { MergedKVo } from '../vo/merged-k.vo';
+import type { ChanK, ChanMergedK } from '../contracts';
 
 export interface MergedKRangeStats {
-  highest: number;
-  lowest: number;
+  high: number;
+  low: number;
   originIds: number[];
-  originData: KVo[];
+  originData: ChanK[];
   independentCount: number;
 }
 
-export const uniqueKById = (items: KVo[]): KVo[] => {
+export const uniqueKById = (items: readonly ChanK[]): ChanK[] => {
   const seen = new Set<number>();
   return items.filter((item) => {
     if (seen.has(item.id)) {
@@ -21,27 +20,27 @@ export const uniqueKById = (items: KVo[]): KVo[] => {
 };
 
 export const collectMergedKRange = (
-  data: MergedKVo[],
+  data: readonly ChanMergedK[],
   startIndex: number,
   endIndex: number,
 ): MergedKRangeStats => {
   const originIds: number[] = [];
-  const originData: KVo[] = [];
-  let highest = -Infinity;
-  let lowest = Infinity;
+  const originData: ChanK[] = [];
+  let high = -Infinity;
+  let low = Infinity;
   let independentCount = 0;
 
   for (const mergedK of data.slice(startIndex, endIndex + 1)) {
-    highest = Math.max(highest, mergedK.highest);
-    lowest = Math.min(lowest, mergedK.lowest);
+    high = Math.max(high, mergedK.high);
+    low = Math.min(low, mergedK.low);
     originIds.push(...mergedK.mergedIds);
     originData.push(...mergedK.mergedData);
     independentCount += mergedK.mergedData.length;
   }
 
   return {
-    highest,
-    lowest,
+    high,
+    low,
     originIds: Array.from(new Set(originIds)),
     originData: uniqueKById(originData),
     independentCount,

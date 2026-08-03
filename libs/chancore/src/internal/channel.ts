@@ -1,31 +1,18 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { minMaxBy } from '@app/utils';
-import { ERROR_MESSAGES } from '@app/constants';
-import { CreateChannelDto } from '../dto/create-channel.dto';
 import {
   ChannelLevel,
   ChannelStatus,
   ChannelType,
-} from '../enums/channel.enum';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import { BiVo } from '../vo/bi.vo';
-import { ChannelVo } from '../vo/channel.vo';
-import { mergeSpans } from './span-merge.helper';
+  TrendDirection,
+} from '../contracts';
+import type {
+  ChanBi,
+  ChanChannel,
+  ChanChannelTwoPhaseResult,
+} from '../contracts';
+import { minMaxBy } from './min-max-by';
+import { mergeSpans } from './span-merge';
 
-/**
- * 两阶段合并结果：
- * - phaseA: 固定5笔滑窗枚举的所有基础中枢（valid + invalid 残留混合）
- * - phaseB: 定点迭代合并后的最终中枢序列（消化 invalid 残留后的干净序列）
- * 前端叠加渲染：phaseA 淡色，phaseB 实色。
- */
-export interface ChannelTwoPhaseResult {
-  phaseA: ChannelVo[];
-  phaseB: ChannelVo[];
-}
-
-@Injectable()
-export class ChannelService {
-  // 画中枢
+export class ChannelCalculator {
   /**
    * 主函数：识别中枢（两阶段算法：Phase A 5笔滑窗枚举 + Phase B 定点迭代合并）
    *
@@ -40,90 +27,10 @@ export class ChannelService {
    * - Phase A 枚举所有候选，不漏；Phase B 合并冗余，不重
    * - Phase A 保留通过基础重叠检查的候选，再用范围与极值规则标记 Valid/Invalid
    *
-   * @param createChannelDto 包含笔数据的 DTO（用 Phase B 笔序列）
+   * @param data Phase B 笔序列
    * @returns 两阶段中枢结果 { phaseA, phaseB }
    */
-  createChannel(createChannelDto: CreateChannelDto): ChannelTwoPhaseResult {
-    this.validateInput(createChannelDto);
-    this.validateBiIntegrity(createChannelDto.bi);
-    return this.getChannel(createChannelDto.bi);
-  }
-
-  private validateInput(createChannelDto: CreateChannelDto): void {
-    if (!createChannelDto || !createChannelDto.bi) {
-      throw new HttpException(
-        ERROR_MESSAGES.BI_DATA_REQUIRED,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    if (!Array.isArray(createChannelDto.bi)) {
-      throw new HttpException(
-        ERROR_MESSAGES.BI_MUST_BE_ARRAY,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    if (createChannelDto.bi.length === 0) {
-      throw new HttpException(
-        ERROR_MESSAGES.BI_ARRAY_EMPTY,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // 校验每笔都有必需字段
-    for (let i = 0; i < createChannelDto.bi.length; i++) {
-      const bi = createChannelDto.bi[i];
-      if (!bi.highest || !bi.lowest) {
-        throw new HttpException(
-          ERROR_MESSAGES.BI_MISSING_HIGH_LOW.replace('{{index}}', String(i)),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (typeof bi.highest !== 'number' || typeof bi.lowest !== 'number') {
-        throw new HttpException(
-          ERROR_MESSAGES.BI_INVALID_NUMBER_TYPE.replace('{{index}}', String(i)),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (bi.highest <= bi.lowest) {
-        throw new HttpException(
-          ERROR_MESSAGES.BI_HIGH_MUST_EXCEED_LOW.replace(
-            '{{index}}',
-            String(i),
-          ),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-  }
-
-  private validateBiIntegrity(bis: BiVo[]): void {
-    for (let i = 0; i < bis.length; i++) {
-      const bi = bis[i];
-      const isLastBi = i === bis.length - 1;
-
-      // 最后一笔可以是未完成的（endFenxing 为 null）
-      if (isLastBi && !bi.endFenxing) {
-        continue;
-      }
-
-      // 其他笔必须有完整的 startFenxing 和 endFenxing
-      if (!bi.startFenxing || !bi.endFenxing) {
-        throw new HttpException(
-          ERROR_MESSAGES.BI_MISSING_FENXING.replace('{{index}}', String(i + 1)),
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-  }
-
-  /**
-   * 获取中枢（两阶段：Phase A 枚举 + Phase B 合并）
-   * @param data 笔数组
-   * @returns 两阶段中枢结果
-   */
-  private getChannel(data: BiVo[]): ChannelTwoPhaseResult {
+  createChannels(data: readonly ChanBi[]): ChanChannelTwoPhaseResult {
     // Phase A：固定5笔滑窗枚举所有基础中枢
     const phaseA = this.enumerateChannels(data);
 
@@ -143,8 +50,8 @@ export class ChannelService {
    * @param data 笔数组
    * @returns Phase A 枚举出的所有基础中枢
    */
-  private enumerateChannels(data: BiVo[]): ChannelVo[] {
-    const channels: ChannelVo[] = [];
+  private enumerateChannels(data: readonly ChanBi[]): ChanChannel[] {
+    const channels: ChanChannel[] = [];
     const biCount = data.length;
 
     if (biCount < 5) {
@@ -161,7 +68,7 @@ export class ChannelService {
       }
 
       // 基础重叠由 detectChannel 保证；范围与极值规则决定最终 status。
-      const stamped: ChannelVo = {
+      const stamped: ChanChannel = {
         ...channel,
         status: this.isCandidateChannelValid(channel)
           ? ChannelStatus.Valid
@@ -190,9 +97,9 @@ export class ChannelService {
    * @returns 合并到不动点后的最终中枢序列
    */
   private mergeChannels(
-    phaseAChannels: readonly ChannelVo[],
-    data: BiVo[] = [],
-  ): ChannelVo[] {
+    phaseAChannels: readonly ChanChannel[],
+    data: readonly ChanBi[] = [],
+  ): ChanChannel[] {
     // 步骤1：延伸（需要原始笔序列；无笔序列时跳过，仅做重合合并）
     const extended =
       data.length > 0
@@ -235,7 +142,10 @@ export class ChannelService {
    * @param data 原始笔序列
    * @returns 延伸后的中枢（可能比原中枢多笔）
    */
-  private extendChannel(channel: ChannelVo, data: BiVo[]): ChannelVo {
+  private extendChannel(
+    channel: ChanChannel,
+    data: readonly ChanBi[],
+  ): ChanChannel {
     // 找到中枢首笔/末笔在 data 中的索引
     const firstBiTime = channel.bis[0].startTime.getTime();
     const lastBiTime = channel.bis[channel.bis.length - 1].endTime.getTime();
@@ -298,11 +208,11 @@ export class ChannelService {
    * 从 N 笔序列和已算好的几何参数构建中枢对象。
    */
   private buildChannelFromBis(
-    bis: BiVo[],
-    originalBis: BiVo[],
+    bis: readonly ChanBi[],
+    originalBis: readonly ChanBi[],
     startIndex: number,
     geometry: { zg: number; zd: number; gg: number; dd: number },
-  ): ChannelVo {
+  ): ChanChannel {
     const endIndex = startIndex + bis.length - 1;
     const firstBi = originalBis[startIndex];
     const firstBiMiddleIndex = Math.floor(firstBi.originIds.length / 2);
@@ -338,14 +248,14 @@ export class ChannelService {
    * @param channel 候选中枢
    * @returns 是否有效
    */
-  private isCandidateChannelValid(channel: ChannelVo): boolean {
+  private isCandidateChannelValid(channel: ChanChannel): boolean {
     return channel.bis.length >= 3 && channel.zg > channel.zd;
   }
 
   /**
    * 验证笔的趋势是否交替
    */
-  private validateTrendAlternating(bis: BiVo[]): boolean {
+  private validateTrendAlternating(bis: readonly ChanBi[]): boolean {
     for (let i = 0; i < bis.length - 1; i++) {
       if (bis[i].trend === bis[i + 1].trend) {
         return false;
@@ -363,13 +273,13 @@ export class ChannelService {
    *   zd = max(后 N-1 笔低点)   中枢下沿
    *   gg = max(前 N-1 笔高点)   中枢最高
    *   dd = min(后 N-1 笔低点)   中枢最低
-   *   约束：A.lowest < dd 且 E.highest > gg
+   *   约束：A.low < dd 且 E.high > gg
    * - 下降中枢（A 下降，从上方进入）：镜像对称
    *   zg = min(后 N-1 笔高点)
    *   zd = max(前 N-1 笔低点)
    *   gg = max(后 N-1 笔高点)
    *   dd = min(前 N-1 笔低点)
-   *   约束：A.highest > gg 且 E.lowest < dd
+   *   约束：A.high > gg 且 E.low < dd
    *
    * 5 笔时前 N-1 = 前4笔（A,B,C,D），后 N-1 = 后4笔（B,C,D,E）。
    * 7 笔时前 N-1 = 前6笔，后 N-1 = 后6笔。以此类推。
@@ -379,7 +289,7 @@ export class ChannelService {
    * @param bis N 笔序列（N≥5，已保证趋势交替）
    * @returns 合法时返回几何参数，否则返回 null
    */
-  private validateChannelGeometry(bis: BiVo[]): {
+  private validateChannelGeometry(bis: readonly ChanBi[]): {
     zg: number;
     zd: number;
     gg: number;
@@ -401,8 +311,8 @@ export class ChannelService {
     let zg: number, zd: number, gg: number, dd: number;
     if (isUp) {
       // 上升：前 N-1 笔算 zg/gg，后 N-1 笔算 zd/dd
-      const frontHigh = minMaxBy(front, (bi) => bi.highest);
-      const backLow = minMaxBy(back, (bi) => bi.lowest);
+      const frontHigh = minMaxBy(front, (bi) => bi.high);
+      const backLow = minMaxBy(back, (bi) => bi.low);
       if (!frontHigh || !backLow) return null;
       zg = frontHigh.min;
       gg = frontHigh.max;
@@ -410,8 +320,8 @@ export class ChannelService {
       dd = backLow.min;
     } else {
       // 下降：后 N-1 笔算 zg/gg，前 N-1 笔算 zd/dd
-      const backHigh = minMaxBy(back, (bi) => bi.highest);
-      const frontLow = minMaxBy(front, (bi) => bi.lowest);
+      const backHigh = minMaxBy(back, (bi) => bi.high);
+      const frontLow = minMaxBy(front, (bi) => bi.low);
       if (!backHigh || !frontLow) return null;
       zg = backHigh.min;
       gg = backHigh.max;
@@ -426,13 +336,13 @@ export class ChannelService {
 
     // 约束2：首末笔必须突破中枢边界（进入段和离开段的标志性特征）
     if (isUp) {
-      // 上升：A 从下方进入（A.lowest < dd），E 向上离开（E.highest > gg）
-      if (firstBi.lowest >= dd || lastBi.highest <= gg) {
+      // 上升：A 从下方进入（A.low < dd），E 向上离开（E.high > gg）
+      if (firstBi.low >= dd || lastBi.high <= gg) {
         return null;
       }
     } else {
-      // 下降：A 从上方进入（A.highest > gg），E 向下离开（E.lowest < dd）
-      if (firstBi.highest <= gg || lastBi.lowest >= dd) {
+      // 下降：A 从上方进入（A.high > gg），E 向下离开（E.low < dd）
+      if (firstBi.high <= gg || lastBi.low >= dd) {
         return null;
       }
     }
@@ -448,10 +358,10 @@ export class ChannelService {
    * @returns 中枢对象或 null
    */
   private detectChannel(
-    fiveBis: BiVo[],
-    originalBis: BiVo[],
+    fiveBis: readonly ChanBi[],
+    originalBis: readonly ChanBi[],
     startIndex: number,
-  ): ChannelVo | null {
+  ): ChanChannel | null {
     if (fiveBis.length < 5) {
       return null;
     }
@@ -515,7 +425,7 @@ export class ChannelService {
    * @param tail 尾中枢
    * @returns 能否合并
    */
-  private canMergeTwoChannels(head: ChannelVo, tail: ChannelVo): boolean {
+  private canMergeTwoChannels(head: ChanChannel, tail: ChanChannel): boolean {
     // y 轴价格重叠：两个 zone 的交集非空
     const priceOverlapHigh = Math.min(head.zg, tail.zg);
     const priceOverlapLow = Math.max(head.zd, tail.zd);
@@ -525,15 +435,15 @@ export class ChannelService {
 
     // 合并后 zone 仍有效（zg > zd）
     const allBis = [...head.bis, ...tail.bis];
-    const highMinMax = minMaxBy(allBis, (bi) => bi.highest);
-    const lowMinMax = minMaxBy(allBis, (bi) => bi.lowest);
+    const highMinMax = minMaxBy(allBis, (bi) => bi.high);
+    const lowMinMax = minMaxBy(allBis, (bi) => bi.low);
     if (!highMinMax || !lowMinMax) {
       return false;
     }
     return highMinMax.min > lowMinMax.max;
   }
 
-  private channelsOverlapInTime(head: ChannelVo, tail: ChannelVo): boolean {
+  private channelsOverlapInTime(head: ChanChannel, tail: ChanChannel): boolean {
     const headStart = head.bis[0]?.startTime.getTime();
     const headEnd = head.bis.at(-1)?.endTime.getTime();
     const tailStart = tail.bis[0]?.startTime.getTime();
@@ -561,7 +471,7 @@ export class ChannelService {
    * @param span 中枢 span（含首尾）
    * @returns 中间中枢是否都与合并 zone 价格重叠
    */
-  private middleChannelsFitEnvelope(span: readonly ChannelVo[]): boolean {
+  private middleChannelsFitEnvelope(span: readonly ChanChannel[]): boolean {
     const head = span[0];
     const tail = span[span.length - 1];
     // 合并 zone 的交集范围
@@ -582,10 +492,10 @@ export class ChannelService {
    * @param tail 尾中枢
    * @returns 合并后的中枢
    */
-  private mergeTwoChannels(head: ChannelVo, tail: ChannelVo): ChannelVo {
+  private mergeTwoChannels(head: ChanChannel, tail: ChanChannel): ChanChannel {
     // 合并笔序列：head 的笔 + tail 的笔，按时间顺序去重
     const seen = new Set<number>();
-    const mergedBis: BiVo[] = [];
+    const mergedBis: ChanBi[] = [];
     for (const bi of [...head.bis, ...tail.bis]) {
       const biKey = bi.startTime.getTime();
       if (seen.has(biKey)) {

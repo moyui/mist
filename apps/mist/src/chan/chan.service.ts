@@ -1,37 +1,57 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ChanCore } from '@app/chancore';
+import { ERROR_MESSAGES } from '@app/constants';
 import { CreateBiDto } from './dto/create-bi.dto';
-import { BiService } from './services/bi.service';
-import { KMergeService } from './services/k-merge.service';
+import {
+  toChanK,
+  toLegacyBi,
+  toLegacyChannel,
+  toLegacyFenxing,
+  toLegacyMergedK,
+  type LegacyChanKInput,
+} from './chan-core.mapper';
 
 @Injectable()
 export class ChanService {
-  constructor(
-    private readonly biService: BiService,
-    private readonly kMergeService: KMergeService,
-  ) {}
+  mergeK(data: readonly LegacyChanKInput[]) {
+    return ChanCore.mergeK(data.map(toChanK)).map(toLegacyMergedK);
+  }
 
   // 画笔
   createBi(createBiDto: CreateBiDto) {
-    // 首先进行合并k线操作
-    const mergedK = this.kMergeService.merge(createBiDto.k);
-    // 接下来进行画笔操作
-    return this.biService.getBi(mergedK);
+    const result = ChanCore.createBi(createBiDto.k.map(toChanK));
+    return {
+      phaseA: result.phaseA.map(toLegacyBi),
+      phaseB: result.phaseB.map(toLegacyBi),
+    };
   }
 
   // 获取分型数据
   getFenxings(createBiDto: CreateBiDto) {
-    // 首先进行合并k线操作
-    const mergedK = this.kMergeService.merge(createBiDto.k);
-    // 返回分型数据
-    return this.biService.getFenxings(mergedK);
+    return ChanCore.findFenxings(createBiDto.k.map(toChanK)).map(
+      (fenxing) => toLegacyFenxing(fenxing)!,
+    );
+  }
+
+  createChannels(createBiDto: CreateBiDto) {
+    if (createBiDto.k.length === 0) {
+      throw new HttpException(
+        ERROR_MESSAGES.BI_ARRAY_EMPTY,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const result = ChanCore.createChannels(createBiDto.k.map(toChanK));
+    return {
+      phaseA: result.phaseA.map(toLegacyChannel),
+      phaseB: result.phaseB.map(toLegacyChannel),
+    };
   }
 
   analyze(createBiDto: CreateBiDto) {
-    const mergedK = this.kMergeService.merge(createBiDto.k);
-
     return {
-      bis: this.biService.getBi(mergedK),
-      fenxings: this.biService.getFenxings(mergedK),
+      bis: this.createBi(createBiDto),
+      fenxings: this.getFenxings(createBiDto),
     };
   }
 }

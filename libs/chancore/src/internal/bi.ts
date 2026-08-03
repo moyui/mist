@@ -1,33 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import { KVo } from '../../indicator/vo/k.vo';
-import { BiType, BiStatus } from '../enums/bi.enum';
-import { FenxingType } from '../enums/fenxing.enum';
-import { TrendDirection } from '../enums/trend-direction.enum';
-import { BiVo } from '../vo/bi.vo';
-import { FenxingVo } from '../vo/fenxing.vo';
-import { MergedKVo } from '../vo/merged-k.vo';
-import { collectMergedKRange, uniqueKById } from './bi-range.helper';
-import { mergeSpans } from './span-merge.helper';
+import { BiStatus, BiType, FenxingType, TrendDirection } from '../contracts';
+import type {
+  ChanBi,
+  ChanBiTwoPhaseResult,
+  ChanFenxing,
+  ChanK,
+  ChanMergedK,
+} from '../contracts';
+import { ChanInvariantError } from '../errors';
+import { collectMergedKRange, uniqueKById } from './bi-range';
+import { mergeSpans } from './span-merge';
 
-type CompleteBiWithFenxings = BiVo & {
-  startFenxing: FenxingVo;
-  endFenxing: FenxingVo;
+type CompleteBiWithFenxings = ChanBi & {
+  startFenxing: ChanFenxing;
+  endFenxing: ChanFenxing;
 };
 type ThreeBiPattern = 'up-down-up' | 'down-up-down';
 
-/**
- * 两阶段合并结果：
- * - phaseA: 三笔合并输出（valid + invalid 残留混合）
- * - phaseB: n笔合并后处理输出（消化 invalid 残留后的干净序列）
- * 前端叠加渲染：phaseA 实线，phaseB 淡色线。
- */
-export interface BiTwoPhaseResult {
-  phaseA: BiVo[];
-  phaseB: BiVo[];
-}
-
-@Injectable()
-export class BiService {
+export class BiCalculator {
   /**
    * 主函数：识别笔（新算法：Phase A 单时间栈 + Phase B invalid 区间归约）
    *
@@ -46,7 +35,7 @@ export class BiService {
    * @param data 合并K线数据
    * @returns 识别出的笔数组，保证趋势交替
    */
-  getBi(data: MergedKVo[]): BiTwoPhaseResult {
+  getBi(data: ChanMergedK[]): ChanBiTwoPhaseResult {
     // 步骤1: 识别所有顶底分型
     const allFenxings = this.getAllRawFenxings(data);
 
@@ -69,7 +58,7 @@ export class BiService {
   /**
    * 获取所有分型数据（供前端使用）
    */
-  getFenxings(data: MergedKVo[]): FenxingVo[] {
+  getFenxings(data: ChanMergedK[]): ChanFenxing[] {
     // 步骤1: 识别所有顶底分型
     const allFenxings = this.getAllRawFenxings(data);
 
@@ -83,8 +72,8 @@ export class BiService {
   /**
    * 步骤1: 获取所有原始分型
    */
-  private getAllRawFenxings(data: MergedKVo[]): FenxingVo[] {
-    const fenxings: FenxingVo[] = [];
+  private getAllRawFenxings(data: ChanMergedK[]): ChanFenxing[] {
+    const fenxings: ChanFenxing[] = [];
 
     for (let i = 1; i < data.length - 1; i++) {
       const fenxing = this.detectBasicFenxing(
@@ -106,33 +95,33 @@ export class BiService {
    * 基础分型检测
    */
   private detectBasicFenxing(
-    prev: MergedKVo,
-    now: MergedKVo,
-    next: MergedKVo,
+    prev: ChanMergedK,
+    now: ChanMergedK,
+    next: ChanMergedK,
     nowIndex: number,
-  ): FenxingVo | null {
+  ): ChanFenxing | null {
     // 简单的分型检测，不做强度判断
     const isTop =
-      now.highest > prev.highest &&
-      now.highest > next.highest &&
-      now.lowest > Math.min(prev.lowest, next.lowest);
+      now.high > prev.high &&
+      now.high > next.high &&
+      now.low > Math.min(prev.low, next.low);
 
     const isBottom =
-      now.lowest < prev.lowest &&
-      now.lowest < next.lowest &&
-      now.highest < Math.max(prev.highest, next.highest);
+      now.low < prev.low &&
+      now.low < next.low &&
+      now.high < Math.max(prev.high, next.high);
 
     if (isTop) {
       const highestIndex = now.mergedData.reduce(
         (maxIdx, k, idx) =>
-          k.highest > now.mergedData[maxIdx].highest ? idx : maxIdx,
+          k.high > now.mergedData[maxIdx].high ? idx : maxIdx,
         0,
       );
 
       return {
         type: FenxingType.Top,
-        highest: now.highest,
-        lowest: Math.min(prev.lowest, next.lowest),
+        high: now.high,
+        low: Math.min(prev.low, next.low),
         leftIds: prev.mergedIds,
         middleIds: now.mergedIds,
         middleIndex: nowIndex,
@@ -143,15 +132,14 @@ export class BiService {
 
     if (isBottom) {
       const lowestIndex = now.mergedData.reduce(
-        (minIdx, k, idx) =>
-          k.lowest < now.mergedData[minIdx].lowest ? idx : minIdx,
+        (minIdx, k, idx) => (k.low < now.mergedData[minIdx].low ? idx : minIdx),
         0,
       );
 
       return {
         type: FenxingType.Bottom,
-        highest: Math.max(prev.highest, next.highest),
-        lowest: now.lowest,
+        high: Math.max(prev.high, next.high),
+        low: now.low,
         leftIds: prev.mergedIds,
         middleIds: now.mergedIds,
         middleIndex: nowIndex,
@@ -166,12 +154,12 @@ export class BiService {
   /**
    * 步骤2: 生成交错序列（顶底交替）
    */
-  private createAlternatingSequence(fenxings: FenxingVo[]): FenxingVo[] {
+  private createAlternatingSequence(fenxings: ChanFenxing[]): ChanFenxing[] {
     if (fenxings.length <= 1) {
       return fenxings;
     }
 
-    const result: FenxingVo[] = [fenxings[0]];
+    const result: ChanFenxing[] = [fenxings[0]];
 
     for (let i = 1; i < fenxings.length; i++) {
       const current = fenxings[i];
@@ -183,11 +171,11 @@ export class BiService {
       } else {
         // 类型相同，取更极值的一个
         if (current.type === FenxingType.Top) {
-          if (current.highest > last.highest) {
+          if (current.high > last.high) {
             result[result.length - 1] = current;
           }
         } else {
-          if (current.lowest < last.lowest) {
+          if (current.low < last.low) {
             result[result.length - 1] = current;
           }
         }
@@ -200,7 +188,7 @@ export class BiService {
   /**
    * 根据分型找到对应的原始K线
    */
-  private findKByFenxing(data: MergedKVo[], fenxing: FenxingVo): KVo {
+  private findKByFenxing(data: ChanMergedK[], fenxing: ChanFenxing): ChanK {
     const middleId = fenxing.middleOriginId; // 使用分型的中间K线ID
 
     // 在合并K数据中查找包含这个ID的原始K线
@@ -211,25 +199,25 @@ export class BiService {
       }
     }
 
-    // 如果找不到，回退到使用分型所在合并K的第一个K线
-    const fallback = data[fenxing.middleIndex].mergedData[0];
-    return fallback;
+    throw new ChanInvariantError(
+      `Fenxing middleOriginId ${middleId} is missing from merged K data`,
+    );
   }
 
   /**
    * 创建未完成的笔
    */
   private buildUnCompleteBi(
-    data: MergedKVo[],
+    data: ChanMergedK[],
     startIndex: number,
     endIndex: number,
-    prevBi: BiVo | null,
-  ): { isSequence: boolean; bi: BiVo } {
+    prevBi: ChanBi | null,
+  ): { isSequence: boolean; bi: ChanBi } {
     const start = data[startIndex];
     const end = data[endIndex];
     const rangeStats = collectMergedKRange(data, startIndex, endIndex);
     const trend =
-      start.lowest <= end.highest ? TrendDirection.Up : TrendDirection.Down;
+      start.low <= end.high ? TrendDirection.Up : TrendDirection.Down;
 
     // 计算开始时间：优先使用上一笔的结束分型时间
     let startTime: Date;
@@ -253,8 +241,8 @@ export class BiService {
         bi: {
           startTime: prevBi.startTime,
           endTime: end.endTime,
-          highest: Math.max(prevBi.highest, rangeStats.highest),
-          lowest: Math.min(prevBi.lowest, rangeStats.lowest),
+          high: Math.max(prevBi.high, rangeStats.high),
+          low: Math.min(prevBi.low, rangeStats.low),
           trend,
           type: BiType.UnComplete,
           status: BiStatus.Unknown, // 未完成笔初始化为未知状态
@@ -277,8 +265,8 @@ export class BiService {
       bi: {
         startTime: startTime,
         endTime: end.endTime,
-        highest: rangeStats.highest,
-        lowest: rangeStats.lowest,
+        high: rangeStats.high,
+        low: rangeStats.low,
         trend,
         type: BiType.UnComplete,
         status: BiStatus.Unknown, // 未完成笔初始化为未知状态
@@ -302,10 +290,10 @@ export class BiService {
    * @returns 候选笔数组
    */
   private generateCandidateBis(
-    fenxings: FenxingVo[],
-    data: MergedKVo[],
-  ): BiVo[] {
-    const candidates: BiVo[] = [];
+    fenxings: ChanFenxing[],
+    data: ChanMergedK[],
+  ): ChanBi[] {
+    const candidates: ChanBi[] = [];
 
     for (let i = 0; i < fenxings.length - 1; i++) {
       const start = fenxings[i];
@@ -313,12 +301,18 @@ export class BiService {
 
       // 生成所有候选笔，不做宽笔过滤
       // 宽笔过滤将在步骤4的最终输出时进行
-      const bi = this.buildBiFromFenxings(BiType.Complete, start, end, data);
-
-      // 计算并设置状态
-      bi.status = this.isCandidateBiValid(bi)
-        ? BiStatus.Valid
-        : BiStatus.Invalid;
+      const candidate = this.buildBiFromFenxings(
+        BiType.Complete,
+        start,
+        end,
+        data,
+      );
+      const bi: ChanBi = {
+        ...candidate,
+        status: this.isCandidateBiValid(candidate)
+          ? BiStatus.Valid
+          : BiStatus.Invalid,
+      };
 
       candidates.push(bi);
     }
@@ -327,11 +321,11 @@ export class BiService {
   }
 
   private assertPhaseATimeStackCompleteBi(
-    bi: BiVo,
+    bi: ChanBi,
     label: string,
   ): asserts bi is CompleteBiWithFenxings {
     if (bi.type !== BiType.Complete || !bi.startFenxing || !bi.endFenxing) {
-      throw new Error(
+      throw new ChanInvariantError(
         `Phase A time stack invariant failed: ${label} must be Complete`,
       );
     }
@@ -346,7 +340,7 @@ export class BiService {
     current: CompleteBiWithFenxings,
   ): void {
     if (previous.endFenxing.middleIndex !== current.startFenxing.middleIndex) {
-      throw new Error(
+      throw new ChanInvariantError(
         `Phase A time stack invariant failed: non-contiguous Bis ${this.phaseATimeStackRangeOf(previous)} -> ${this.phaseATimeStackRangeOf(current)}`,
       );
     }
@@ -363,20 +357,20 @@ export class BiService {
       merged.startFenxing.middleIndex !== expectedStart ||
       merged.endFenxing.middleIndex !== expectedEnd
     ) {
-      throw new Error(
+      throw new ChanInvariantError(
         `Phase A time stack invariant failed: merged Bi ${this.phaseATimeStackRangeOf(merged)} does not preserve ${expectedStart}-${expectedEnd}`,
       );
     }
   }
 
   private reducePhaseATimeStack(
-    candidates: readonly BiVo[],
-    data: MergedKVo[],
-  ): BiVo[] {
-    const stack: BiVo[] = [];
+    candidates: readonly ChanBi[],
+    data: ChanMergedK[],
+  ): ChanBi[] {
+    const stack: ChanBi[] = [];
 
     for (const sourceCandidate of candidates) {
-      const candidate: BiVo = { ...sourceCandidate };
+      const candidate: ChanBi = { ...sourceCandidate };
       this.assertPhaseATimeStackCompleteBi(candidate, 'candidate');
 
       if (stack.length > 0) {
@@ -406,7 +400,7 @@ export class BiService {
         const merged = this.mergeThreeBis(first, third, data);
         this.assertPhaseATimeStackCompleteBi(merged, 'merged Bi');
         this.assertPhaseATimeStackOuterBoundary(merged, first, third);
-        const replacement: BiVo = {
+        const replacement: ChanBi = {
           ...merged,
           status: this.isCandidateBiValid(merged)
             ? BiStatus.Valid
@@ -429,9 +423,9 @@ export class BiService {
    * canMergeTwoBis/envelope/mergeTwoBis/重新判状态）通过 operations 注入。
    */
   private mergeBiSegments(
-    phaseABis: readonly BiVo[],
-    data: MergedKVo[],
-  ): BiVo[] {
+    phaseABis: readonly ChanBi[],
+    data: ChanMergedK[],
+  ): ChanBi[] {
     return mergeSpans(phaseABis, {
       isCompleteItem: (bi) =>
         bi.type === BiType.Complete && !!bi.startFenxing && !!bi.endFenxing,
@@ -442,13 +436,13 @@ export class BiService {
       middleFitsEnvelope: (span) => {
         const head = span[0];
         const tail = span[span.length - 1];
-        const envelopeHigh = Math.max(head.highest, tail.highest);
-        const envelopeLow = Math.min(head.lowest, tail.lowest);
+        const envelopeHigh = Math.max(head.high, tail.high);
+        const envelopeLow = Math.min(head.low, tail.low);
         return span
           .slice(1, -1)
           .every(
             (middle) =>
-              middle.highest <= envelopeHigh && middle.lowest >= envelopeLow,
+              middle.high <= envelopeHigh && middle.low >= envelopeLow,
           );
       },
       mergeTwo: (head, tail) => this.mergeTwoBis(head, tail, data),
@@ -465,9 +459,9 @@ export class BiService {
    * 获取三笔的模式
    */
   private getThreePattern(
-    bi1: BiVo,
-    bi2: BiVo,
-    bi3: BiVo,
+    bi1: ChanBi,
+    bi2: ChanBi,
+    bi3: ChanBi,
   ): ThreeBiPattern | null {
     const isUpDownUp =
       bi1.trend === TrendDirection.Up &&
@@ -484,17 +478,17 @@ export class BiService {
   }
 
   private assertCompleteBi(
-    bi: BiVo,
+    bi: ChanBi,
     label: string,
   ): asserts bi is CompleteBiWithFenxings {
     if (!bi.startFenxing || !bi.endFenxing) {
-      throw new Error(
+      throw new ChanInvariantError(
         `Bi invariant failed: ${label} requires startFenxing and endFenxing`,
       );
     }
   }
 
-  private canMergeTwoBis(bi1: BiVo, bi2: BiVo) {
+  private canMergeTwoBis(bi1: ChanBi, bi2: ChanBi) {
     this.assertCompleteBi(bi1, 'bi1');
     this.assertCompleteBi(bi2, 'bi2');
 
@@ -505,23 +499,23 @@ export class BiService {
     if (
       bi2.trend === TrendDirection.Up &&
       bi1.trend === TrendDirection.Up &&
-      bi1.endFenxing.highest <= bi2.endFenxing.highest &&
-      bi1.startFenxing.lowest < bi2.startFenxing.lowest
+      bi1.endFenxing.high <= bi2.endFenxing.high &&
+      bi1.startFenxing.low < bi2.startFenxing.low
     ) {
       return true;
     }
     if (
       bi2.trend === TrendDirection.Down &&
       bi1.trend === TrendDirection.Down &&
-      bi1.startFenxing.highest > bi2.startFenxing.highest &&
-      bi1.endFenxing.lowest >= bi2.endFenxing.lowest
+      bi1.startFenxing.high > bi2.startFenxing.high &&
+      bi1.endFenxing.low >= bi2.endFenxing.low
     ) {
       return true;
     }
     return false;
   }
 
-  private canMergeThreeBis(bi1: BiVo, bi2: BiVo, bi3: BiVo) {
+  private canMergeThreeBis(bi1: ChanBi, bi2: ChanBi, bi3: ChanBi) {
     this.assertCompleteBi(bi1, 'bi1');
     this.assertCompleteBi(bi2, 'bi2');
     this.assertCompleteBi(bi3, 'bi3');
@@ -533,14 +527,14 @@ export class BiService {
     switch (pattern) {
       case 'up-down-up': {
         return (
-          bi1.startFenxing.lowest <= bi2.endFenxing.lowest &&
-          bi2.startFenxing.highest <= bi3.endFenxing.highest
+          bi1.startFenxing.low <= bi2.endFenxing.low &&
+          bi2.startFenxing.high <= bi3.endFenxing.high
         );
       }
       case 'down-up-down':
         return (
-          bi1.startFenxing.highest >= bi2.endFenxing.highest &&
-          bi2.startFenxing.lowest >= bi3.endFenxing.lowest
+          bi1.startFenxing.high >= bi2.endFenxing.high &&
+          bi2.startFenxing.low >= bi3.endFenxing.low
         );
       default:
         return false;
@@ -550,7 +544,7 @@ export class BiService {
   /**
    * 合并两笔
    */
-  private mergeTwoBis(bi1: BiVo, bi2: BiVo, data: MergedKVo[]): BiVo {
+  private mergeTwoBis(bi1: ChanBi, bi2: ChanBi, data: ChanMergedK[]): ChanBi {
     this.assertCompleteBi(bi1, 'bi1');
     this.assertCompleteBi(bi2, 'bi2');
 
@@ -566,8 +560,8 @@ export class BiService {
     return {
       startTime: startK.time,
       endTime: endK.time,
-      highest: rangeStats.highest,
-      lowest: rangeStats.lowest,
+      high: rangeStats.high,
+      low: rangeStats.low,
       trend: bi1.trend,
       type: BiType.Complete,
       status: BiStatus.Unknown, // 合并后的笔初始化为未知状态，将由 helper 重新验证
@@ -582,7 +576,7 @@ export class BiService {
   /**
    * 合并三笔
    */
-  private mergeThreeBis(bi1: BiVo, bi3: BiVo, data: MergedKVo[]): BiVo {
+  private mergeThreeBis(bi1: ChanBi, bi3: ChanBi, data: ChanMergedK[]): ChanBi {
     this.assertCompleteBi(bi1, 'bi1');
     this.assertCompleteBi(bi3, 'bi3');
 
@@ -598,8 +592,8 @@ export class BiService {
     return {
       startTime: startK.time,
       endTime: endK.time,
-      highest: rangeStats.highest,
-      lowest: rangeStats.lowest,
+      high: rangeStats.high,
+      low: rangeStats.low,
       trend: bi1.trend,
       type: BiType.Complete,
       status: BiStatus.Unknown, // 合并后的笔初始化为未知状态，将由 helper 重新验证
@@ -627,7 +621,7 @@ export class BiService {
    * @returns 是否满足宽笔要求
    */
   private resolveUniqueOriginPosition(
-    originData: readonly KVo[],
+    originData: readonly ChanK[],
     middleOriginId: number,
     label: 'start' | 'end',
   ): number {
@@ -638,7 +632,7 @@ export class BiService {
         continue;
       }
       if (resolvedPosition !== -1) {
-        throw new Error(
+        throw new ChanInvariantError(
           `Wide Bi invariant failed: ${label} middleOriginId ${middleOriginId} occurs more than once in originData`,
         );
       }
@@ -646,7 +640,7 @@ export class BiService {
     }
 
     if (resolvedPosition === -1) {
-      throw new Error(
+      throw new ChanInvariantError(
         `Wide Bi invariant failed: ${label} middleOriginId ${middleOriginId} is missing from originData`,
       );
     }
@@ -655,9 +649,9 @@ export class BiService {
   }
 
   private isWideBi(
-    startFenxing: FenxingVo,
-    endFenxing: FenxingVo,
-    originData: readonly KVo[],
+    startFenxing: ChanFenxing,
+    endFenxing: ChanFenxing,
+    originData: readonly ChanK[],
   ): boolean {
     const startPosition = this.resolveUniqueOriginPosition(
       originData,
@@ -700,10 +694,10 @@ export class BiService {
    */
   private buildBiFromFenxings(
     type: BiType,
-    start: FenxingVo,
-    end: FenxingVo,
-    data: MergedKVo[],
-  ): BiVo {
+    start: ChanFenxing,
+    end: ChanFenxing,
+    data: ChanMergedK[],
+  ): ChanBi {
     const startIdx = start.middleIndex;
     const endIdx = end.middleIndex;
     const rangeStats = collectMergedKRange(data, startIdx, endIdx);
@@ -720,8 +714,8 @@ export class BiService {
     return {
       startTime: startK.time,
       endTime: endK.time,
-      highest: rangeStats.highest,
-      lowest: rangeStats.lowest,
+      high: rangeStats.high,
+      low: rangeStats.low,
       trend,
       type,
       status: BiStatus.Unknown, // 初始化为未知状态
@@ -737,9 +731,9 @@ export class BiService {
    * 构建最终的未完成笔
    */
   private buildFinalUncompleteBi(
-    completeStack: readonly BiVo[],
-    data: MergedKVo[],
-  ): BiVo[] {
+    completeStack: readonly ChanBi[],
+    data: ChanMergedK[],
+  ): ChanBi[] {
     const result = completeStack.map((bi) => ({ ...bi }));
 
     if (result.length === 0 && data.length > 0) {
@@ -789,7 +783,7 @@ export class BiService {
    * @param bi 待检查的笔
    * @returns 是否满足宽笔要求
    */
-  private isBiWideEnough(bi: BiVo): boolean {
+  private isBiWideEnough(bi: ChanBi): boolean {
     if (!bi.startFenxing || !bi.endFenxing) {
       return false;
     }
@@ -801,8 +795,8 @@ export class BiService {
    * 检查分型包含关系
    */
   private isFenxingContainment(
-    a: FenxingVo | null,
-    b: FenxingVo | null,
+    a: ChanFenxing | null,
+    b: ChanFenxing | null,
   ): {
     hasContainment: boolean;
     type: 'a_contains_b' | 'b_contains_a' | 'none';
@@ -817,16 +811,16 @@ export class BiService {
 
     if (a.type === FenxingType.Top && b.type === FenxingType.Bottom) {
       // a是顶分型，b是底分型
-      if (a.highest >= b.highest && a.lowest <= b.lowest) {
+      if (a.high >= b.high && a.low <= b.low) {
         return { hasContainment: true, type: 'a_contains_b' };
-      } else if (b.highest >= a.highest && b.lowest <= a.lowest) {
+      } else if (b.high >= a.high && b.low <= a.low) {
         return { hasContainment: true, type: 'b_contains_a' };
       }
     } else if (a.type === FenxingType.Bottom && b.type === FenxingType.Top) {
       // a是底分型，b是顶分型
-      if (a.highest >= b.highest && a.lowest <= b.lowest) {
+      if (a.high >= b.high && a.low <= b.low) {
         return { hasContainment: true, type: 'a_contains_b' };
-      } else if (b.highest >= a.highest && b.lowest <= a.lowest) {
+      } else if (b.high >= a.high && b.low <= a.low) {
         return { hasContainment: true, type: 'b_contains_a' };
       }
     }
@@ -840,7 +834,7 @@ export class BiService {
    * @param data
    * @returns
    */
-  private isCandidateBiValid(bi: BiVo): boolean {
+  private isCandidateBiValid(bi: ChanBi): boolean {
     const differentTypes = bi.startFenxing?.type !== bi.endFenxing?.type;
     const wideEnough = this.isBiWideEnough(bi);
     const noContainment = !this.isFenxingContainment(

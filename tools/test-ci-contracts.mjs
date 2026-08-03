@@ -255,16 +255,18 @@ function assertBackendRuntimeSweep() {
   );
   assertIncludes(chanService, 'analyze(', 'mist ChanService analysis helper');
 
-  const biService = read(
-    join(repos.mist, 'apps/mist/src/chan/services/bi.service.ts'),
+  const biCalculator = read(
+    join(repos.mist, 'libs/chancore/src/internal/bi.ts'),
   );
-  if (/(?:startFenxing|endFenxing)!\./.test(biService)) {
-    fail('BiService merge paths must use explicit Fenxing invariant guards');
+  if (/(?:startFenxing|endFenxing)!\./.test(biCalculator)) {
+    fail(
+      'ChanCore BiCalculator merge paths must use explicit Fenxing invariant guards',
+    );
   }
   assertIncludes(
-    biService,
+    biCalculator,
     'assertCompleteBi',
-    'mist BiService invariant guard',
+    'mist ChanCore BiCalculator invariant guard',
   );
 
   const efExtension = read(
@@ -365,12 +367,12 @@ function assertBackendP3QuickWins() {
     );
   }
 
-  const channelService = read(
-    join(repos.mist, 'apps/mist/src/chan/services/channel.service.ts'),
+  const channelCalculator = read(
+    join(repos.mist, 'libs/chancore/src/internal/channel.ts'),
   );
-  if (/return\s*\{\s*channels\s*,\s*offsetIndex\b/.test(channelService)) {
+  if (/return\s*\{\s*channels\s*,\s*offsetIndex\b/.test(channelCalculator)) {
     fail(
-      'CODE_SMELL R1.2: ChannelService.getChannel must not return offsetIndex',
+      'CODE_SMELL R1.2: ChannelCalculator must not return offsetIndex',
     );
   }
 
@@ -450,40 +452,40 @@ function assertBackendP3ServiceCleanups() {
     );
   }
 
-  const biService = read(
-    join(repos.mist, 'apps/mist/src/chan/services/bi.service.ts'),
+  const biCalculator = read(
+    join(repos.mist, 'libs/chancore/src/internal/bi.ts'),
   );
   assertNotIncludes(
-    biService,
+    biCalculator,
     'getThreePattern(bi1: BiVo, bi2: BiVo, bi3: BiVo): string | null',
     'CODE_SMELL N1.2 getThreePattern typed return',
   );
   assertNotIncludes(
-    biService,
+    biCalculator,
     'lastFrom: string',
     'CODE_SMELL O1.2 getLastBi source tag typing',
   );
   assertNotIncludes(
-    biService,
+    biCalculator,
     'private removeBiByIndex<T>',
     'CODE_SMELL N1.4 removeBiByIndex generic',
   );
   assertNotIncludes(
-    biService,
+    biCalculator,
     '// 这个不应该存在',
     'CODE_SMELL C1.4 orphan Chan comment',
   );
   assertNotIncludes(
-    biService,
+    biCalculator,
     '此参数保留用于兼容性，但不再使用',
     'CODE_SMELL R1.6 stale isBiWideEnough JSDoc',
   );
 
-  const trendService = read(
-    join(repos.mist, 'apps/mist/src/chan/services/trend.service.ts'),
+  const trendCalculator = read(
+    join(repos.mist, 'libs/chancore/src/internal/trend.ts'),
   );
   assertNotIncludes(
-    trendService,
+    trendCalculator,
     'judgeBiTrend',
     'CODE_SMELL N1.5 boolean Bi trend method naming',
   );
