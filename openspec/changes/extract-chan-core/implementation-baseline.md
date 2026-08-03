@@ -2,14 +2,16 @@
 
 记录时间：2026-08-03
 
-### 范围修正
+### 最终范围
 
-本 change 取代尚未实施的 `extract-market-analysis-kernels`：
+本 change 取代尚未实施的 `extract-market-analysis-kernels`，只交付 pure `libs/chancore`：
 
-- 不再把 Chan 与 Indicator 作为共同 base；
-- Strategy KDJ/MACD 归 `evolve-strategy-evaluation-contract`；
-- 当前公共 Indicator/K API 保持现状，不进入本 change；
-- 本 change 只抽取 `libs/chancore` 并解除 `apps/chan → apps/mist` 业务源码依赖。
+- 不把 Chan 与 Indicator/Strategy calculation 合并成通用 analysis base；
+- 不重构现有 `chan-api`、`mist-backend`、Controller、DTO/VO、OpenAPI、K reader 或 route ownership；
+- 不处理 `/v1/indicators/*`、gateway、frontend、skills、deploy 或跨 app import；
+- 现有调用若接入新 core，只保留不改变公共行为的薄 wrapper；
+- 为 Backtest、Realtime、Signal/Alert 等后续 owning change 提供直接 library 调用边界，但当前 V1 不
+  开放 `chan.*`，不新增 prerequisite。
 
 ### 仓库与工作区
 
@@ -19,79 +21,58 @@
 - 初始审计基线：`master@fe56c6863cc498acbad0a6803da16c2615bb6997`
 - 当前实施基线：`master@3a07d4b725dec2c288058505c82959224281d2a3`
 - 已同步前置：归档 change `2026-08-03-fix-chan-wide-bi-distance`
-- 初始实现状态：未移动应用源码、未新增 migration
+- 当前状态：未移动应用源码、未新增 migration
 
-### 当前真实链路
+### pure calculation 影响链
 
 ```text
-mist-fe / mist-skills
-  -> gateway /api/chan
-  -> apps/chan (chan-api:8008)
-  -> apps/mist/src/chan/ChanModule             [跨 app import]
-  -> IndicatorService.findKData                [TypeORM K/Security adapter]
-  -> KMerge / Fenxing / Bi / Channel services  [DTO/VO/Nest/HTTP 混合]
-  -> shared HTTP envelope
+caller-owned ordered ChanK[]
+  -> @app/chancore public facade
+  -> private validation
+  -> Trend / K merge / Fenxing / Bi / Channel pure calculation
+  -> readonly algorithm-owned result
+  -> direct consumer or consumer-owned thin wrapper
 ```
 
-`apps/mist` 同时装配 IndicatorModule 与 ChanModule，因此当前存在两个 app 都可注册相关 controller 的
-兼容状态；长期唯一 owner 已确认是独立部署的 `chan-api`。
+core 不拥有 producer transport、K retrieval、HTTP/RPC wire、database/Redis persistence、deployment 或
+monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/Alert owning change 自己定义。
 
-### 已确认的范围结论
+### 已确认 contract
 
-- ChanCore 与 Strategy Indicator calculation 是两个独立 owner。
-- 独立部署的 `chan-api` 是 `/v1/chan/*` 的长期唯一 runtime owner；当前 change 不删除
-  `mist-backend` 兼容路由，后续由独立 route migration 清理。
-- pure library 固定为 `libs/chancore`、Nest project `chancore`、import `@app/chancore`。
-- Trend、K merge、Fenxing、Bi、Channel 和纯 helpers/enums/types 进入 ChanCore；Controller、HTTP
-  DTO/VO、OpenAPI、日期/source 解析与 TypeORM K read 留在 application adapter。
-- public barrel 只导出无状态 `ChanCore.mergeK/findFenxings/createBi/createChannels` 和签名所需
-  algorithm-owned types/enums 及已批准的 `ChanInputError/ChanInvariantError`；内部
-  services/helpers/Nest module 不导出，不增加 speculative `analyze()`。
-- `ChanK` 固定为完整 `id/symbol/time/open/high/low/close/volume/amount`；量额保持 canonical decimal
-  string/null，core 使用 `high/low`，adapter 保持现有 HTTP `highest/lowest`。
-- `ChanMergedK` 保留 `startTime/endTime/high/low/trend/mergedCount/mergedIds/mergedData`；
-  `mergedData` 是完整 `ChanK[]`，三个计数视图必须一致，HTTP adapter 继续恢复现有字段和 K VO 外观。
-- `ChanFenxing` 保留左中右三组原始 K IDs、合并 K 序列位置 `middleIndex`、真实极值 K identity
-  `middleOriginId`、type 和标准 `high/low`；不复制完整 K，不新增 time，HTTP 恢复 `highest/lowest`。
-- `ChanBi` 保留首尾时间、算法 high/low、trend、独立 type/status、origin IDs、完整 `ChanK[]` 和
-  nullable 首尾分型；完整/未完成的 null 语义保持现状，Bi Phase A/Phase B 均对外保留。
-- `ChanChannel` 保留完整 bis、`zg/zd/gg/dd`、level/type/status/trend、首尾与 display K identity；
-  Channel Phase A/Phase B 均保留，现有 `startId/endId` 的“索引”错误注释在迁移时修正。
-- 完整行情输入只为后续 Chan 演进留出边界；本 change 不增加笔力度、背驰、量价或 MACD 算法，
-  也不导入公共 IndicatorService/Strategy evaluator。
-- Backtest/Realtime 通过 StrategyMarketDataPort + shared evaluator 计算 KDJ/MACD，不依赖 ChanCore 或
-  `/v1/indicators/*`。
-- 不创建 `@app/analysis/indicator`，不预先发明 `reference/timestampMs/ordinal` 等 Chan 字段。
-- ChanCore 不查询 K、不写 persistence、不访问 HTTP/TypeORM/Redis/env。
-- 现有 URL、HTTP contract 和 Chan 算法在本 change 内保持不变，只有空历史/不足数据返回合法零结果
-  是明确批准的 HTTP 行为修正。
-- pure core 的四个 facade 对空 K 分别返回 `[]`、`[]`、空 Bi 两阶段和空 Channel 两阶段；HTTP
-  `/v1/chan/channel` 不再把内部空 Bi 暴露为 400。
-- facade 使用同一个 private validator 拒绝重复 identity、跨 symbol、非严格递增/非法时间、非有限
-  OHLC、`high < low` 和非法 decimal/null；不排序、转换或补值。MySQL fixed-scale 尾随零合法。
-- `ChanInputError/ChanInvariantError` 不携带 HTTP 语义；query DTO 仍可为 400，DB-derived input 或算法
-  invariant 错误作为内部错误传播，不能改成空结果或用户 400。
-- OHLC 保持 finite number 和现有 strict/non-strict comparison；不加 epsilon/rounding/Decimal，
-  相等中心不合并、相等分型不成立、相同极值 first-wins、`zg === zd` 不成立中枢。
-- core interfaces/collections 使用 readonly value contract；不 mutation input、不保留状态或 cache，
-  允许输出图共享只读 `ChanK`，不 runtime freeze/deep-clone，adapter 新建 VO 并复制 entity Date。
-- `ChanCore.algorithmVersion` 固定从正整数 `1` 开始，只标识算法语义；不进入 HTTP/DB/config，算法
-  语义变化必须 version bump + full-output fingerprint，纯 refactor/source move 不 bump。
-- “现有 Chan 算法”以已归档宽笔修复后的行为为准：独立 K 数量按候选 `originData` 的序列位置差
-  计算，不按数据库 K ID 差计算；端点缺失或重复继续作为 invariant failure。
+- library：`libs/chancore`；project `chancore`；import `@app/chancore`。
+- facade：`mergeK/findFenxings/createBi/createChannels`；不增加 `analyze()`。
+- public barrel：facade、签名所需 types/enums、`ChanInputError/ChanInvariantError`、
+  `algorithmVersion=1`；不导出 internals 或 Nest module。
+- input：完整 readonly `ChanK(id/symbol/time/open/high/low/close/volume/amount)`；量额为 exact decimal
+  string/null。
+- outputs：完整 MergedK、Fenxing、Bi/Phase A/Phase B、Channel/Phase A/Phase B；使用标准
+  `high/low`，现有 wrapper 若需要可恢复 `highest/lowest`。
+- empty：四个 facade 对空 K 返回自然零结果；不足数据返回自然空集合或未完成笔。
+- validation：单 symbol、time 严格递增、identity 唯一、finite OHLC、`high >= low`、合法
+  DECIMAL(36,8) string/null；不排序、转换、过滤、去重或填充。
+- errors：precondition 使用 `ChanInputError`，算法不变量使用 `ChanInvariantError`；二者不含 HTTP、Nest
+  或 persistence 语义。
+- numeric：保留现有 strict/non-strict JavaScript number comparison、midpoint 公式和 first-wins；不加
+  epsilon/rounding/Decimal；`zg === zd` 不成立中枢。
+- mutation：readonly value contract；不 mutation caller，不保留状态/cache，不 runtime freeze/deep-clone；
+  允许共享 readonly `ChanK`，引用 identity 不属于公共契约。
+- version：正整数 1；算法语义变化必须 version bump + full-output fingerprint，纯 source move/refactor
+  不 bump；不进入 HTTP/DB/config。
+- 算法基线：宽笔按候选 `originData` 序列位置计数，端点缺失/重复为 invariant failure，不使用数据库
+  ID 差。
 
 ### 已完成审计
 
-- 当前 Chan service/controller/DTO/VO/type/app import inventory；
-- frontend/skills/gateway/deploy/monitoring route consumer inventory；
-- 现有 9 个相关 Jest suites、50 个 tests 全部通过；
-- stable Chan lifecycle 与 Strategy runtime ownership 对照。
+- 当前算法 service/helper/type/test inventory；
+- 完整 input/output、empty/error/numeric/mutation/version 逐项评审；
+- active Strategy/Backtest/Realtime specs 对照：当前 V1 明确不开放 `chan.*`；
+- strict OpenSpec validation 持续通过。
 
 ### 尚未满足的实施门禁
 
-- 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
-- full-output fingerprint 还需纳入非连续 K ID、唯一端点解析和宽笔 position-distance 回归场景；
-- `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
-- output、empty-result、invalid-input、numeric、mutation 与 version contract 已确认。
+- 现有 fixtures 还不是完整 raw K → all outputs fingerprint；
+- full-output differential 尚未纳入非连续 K ID、equal-boundary、readonly 和 algorithmVersion 证据；
+- pure boundary/public barrel tests 尚未实施；
+- 旧算法尚未移动，现有 wrapper 尚未接入 `@app/chancore`。
 
-以上门禁完成前不得移动 source files。
+以上门禁完成前不得宣称 extraction 完成。

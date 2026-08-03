@@ -24,10 +24,10 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **AND** the result MUST NOT depend on gaps in global persisted K IDs
 - **AND** a missing or duplicate endpoint occurrence MUST remain an invariant failure
 
-#### Scenario: A Chan request needs application behavior
-- **WHEN** a request requires K retrieval, date or source parsing, OpenAPI metadata, HTTP envelope or VO mapping
-- **THEN** that behavior MUST remain in an application adapter outside `libs/chancore`
-- **AND** it MUST invoke the same `@app/chancore` implementation used by every retained Chan route
+#### Scenario: A caller needs behavior outside calculation
+- **WHEN** a caller requires K retrieval, transport parsing, persistence, monitoring or external shape mapping
+- **THEN** that behavior MUST remain outside `libs/chancore`
+- **AND** it MAY invoke ChanCore directly or through a caller-owned thin wrapper
 
 #### Scenario: An empty approved K sequence is evaluated
 - **WHEN** a ChanCore facade receives an empty ordered K sequence
@@ -94,21 +94,22 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **AND** it MUST NOT require runtime freeze, JSON cloning or recursive deep-copy isolation
 - **AND** consumers MUST NOT rely on object reference identity between inputs, phases or repeated calls
 
-#### Scenario: A persistence entity becomes ChanCore input
-- **WHEN** the application adapter maps a TypeORM K entity
+#### Scenario: A caller source model becomes ChanCore input
+- **WHEN** a caller maps its own market-data model
 - **THEN** it MUST create a new complete `ChanK` value object
-- **AND** it MUST copy the entity timestamp into a new Date value
+- **AND** it MUST copy any mutable timestamp into a new Date value
 
-#### Scenario: Core output becomes an HTTP response
-- **WHEN** the application adapter maps core output to retained HTTP VOs
-- **THEN** it MUST create new VO structures without mutating or re-sorting the core result
-- **AND** changing an adapter-owned VO MUST NOT change the core result
+#### Scenario: Core output is mapped by a thin wrapper
+- **WHEN** a caller maps core output to another shape
+- **THEN** it MUST create new structures without mutating or re-sorting the core result
+- **AND** changing the wrapper-owned result MUST NOT change the core result
 
 #### Scenario: A caller identifies current Chan semantics
 - **WHEN** it reads the stateless facade contract
 - **THEN** `ChanCore.algorithmVersion` MUST be the readonly positive integer `1` for this extraction baseline
 - **AND** callers MUST NOT pass or negotiate an algorithm version
-- **AND** the version MUST NOT be duplicated into each result, HTTP response, database schema or environment config
+- **AND** the version MUST NOT be duplicated into each result, external protocol, database schema or environment
+  config
 
 #### Scenario: Existing algorithm semantics change in a future change
 - **WHEN** a formation rule, comparison boundary, tie-breaker, reduction order, phase rule, output semantic or new
@@ -127,8 +128,8 @@ The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade w
 `createBi` and `createChannels`, plus only the algorithm-owned types, enums and approved
 `ChanInputError/ChanInvariantError` required by its call and throw contracts.
 
-#### Scenario: An adapter invokes an existing Chan operation
-- **WHEN** an adapter requests merged K, Fenxing, Bi or Channel output from ordered raw `ChanK` input
+#### Scenario: A caller invokes an existing Chan operation
+- **WHEN** a caller requests merged K, Fenxing, Bi or Channel output from ordered raw `ChanK` input
 - **THEN** it MUST invoke the corresponding `ChanCore` facade method
 - **AND** `createChannels` MUST derive Bi internally and consume Bi Phase B before deriving Channel output
 
@@ -152,10 +153,10 @@ The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade w
 Price fields SHALL be numbers, `time` SHALL remain a `Date`, and `volume/amount` SHALL remain canonical decimal
 strings or `null` rather than JavaScript numbers.
 
-#### Scenario: An application adapter maps a persisted K into ChanCore
-- **WHEN** the adapter prepares an ordered bar for ChanCore
+#### Scenario: A caller maps a market bar into ChanCore
+- **WHEN** the caller prepares an ordered bar for ChanCore
 - **THEN** it MUST map the complete OHLCVA value into `ChanK`
-- **AND** it MUST NOT pass a TypeORM entity as the library input
+- **AND** it MUST NOT pass an application entity or transport DTO as the library input
 - **AND** it MUST NOT coerce non-null volume or amount to a JavaScript number
 
 #### Scenario: Current Chan algorithms receive the expanded input
@@ -170,12 +171,6 @@ strings or `null` rather than JavaScript numbers.
 - **AND** `mergedCount`, `mergedIds.length` and `mergedData.length` MUST be equal
 - **AND** its algorithm-derived `high/low` MUST NOT be replaced with simple raw-range extrema
 
-#### Scenario: A merged K is returned through the existing HTTP route
-- **WHEN** the application adapter maps `ChanMergedK` to the retained HTTP contract
-- **THEN** it MUST map core `high/low` to HTTP `highest/lowest`
-- **AND** it MUST retain the existing public K VO shape without requiring `volume` to be newly exposed
-- **AND** the narrower HTTP shape MUST NOT cause ChanCore to discard `volume` from `mergedData`
-
 #### Scenario: A Fenxing is emitted
 - **WHEN** `findFenxings` emits a `ChanFenxing`
 - **THEN** it MUST contain the raw K IDs of the left, middle and right merged-K groups
@@ -183,11 +178,6 @@ strings or `null` rather than JavaScript numbers.
 - **AND** `middleOriginId` MUST identify the raw K that produced the middle extreme
 - **AND** it MUST contain `type` and algorithm-derived `high/low`
 - **AND** it MUST NOT require copied raw K groups or a newly invented time field
-
-#### Scenario: A Fenxing is returned through the existing HTTP route
-- **WHEN** the application adapter maps `ChanFenxing` to the retained HTTP contract
-- **THEN** it MUST preserve all three ID groups, `middleIndex`, `middleOriginId` and `type`
-- **AND** it MUST map core `high/low` to HTTP `highest/lowest`
 
 #### Scenario: A complete Bi is emitted
 - **WHEN** `createBi` emits a complete `ChanBi`
@@ -204,21 +194,15 @@ strings or `null` rather than JavaScript numbers.
 #### Scenario: Bi two-phase output is returned
 - **WHEN** `createBi` completes its Phase A and Phase B reductions
 - **THEN** it MUST return both `phaseA` and `phaseB` as full `ChanBi[]` values
-- **AND** the adapter MUST NOT flatten, merge or omit either phase
+- **AND** callers MUST NOT flatten, merge or omit either phase
 - **AND** Channel derivation MUST consume Bi Phase B
-
-#### Scenario: A Bi is returned through the existing HTTP route
-- **WHEN** the application adapter maps `ChanBi` to the retained HTTP contract
-- **THEN** it MUST recursively map core `high/low` to HTTP `highest/lowest`
-- **AND** it MUST map complete `ChanK` evidence to the retained public K VO shape
-- **AND** it MUST preserve `type`, `status`, nullable endpoint Fenxings and both phase arrays
 
 #### Scenario: A Channel is emitted
 - **WHEN** `createChannels` emits a `ChanChannel`
 - **THEN** it MUST contain the full contributing `bis`, `zg/zd/gg/dd`, `level`, `type`, `status`, `trend`,
   boundary IDs and display IDs
 - **AND** `startId/endId/displayStartId/displayEndId` MUST identify raw K values rather than array positions
-- **AND** no algorithm or adapter MUST perform position arithmetic on those IDs
+- **AND** no algorithm or caller MUST perform position arithmetic on those IDs
 
 #### Scenario: Current Channel scope is preserved
 - **WHEN** the current Channel algorithm runs after extraction
@@ -230,18 +214,13 @@ strings or `null` rather than JavaScript numbers.
 - **THEN** it MUST return both complete `phaseA` and `phaseB` arrays
 - **AND** Phase A MAY contain valid and invalid candidates
 - **AND** Phase B MUST contain the retained final valid Channels
-- **AND** the adapter MUST NOT recompute display IDs, flatten the result or omit either phase
+- **AND** callers MUST NOT recompute display IDs, flatten the result or omit either phase
 
 #### Scenario: A future Chan strength algorithm uses MACD or quantity
 - **WHEN** a future change defines Bi strength, divergence or volume-price analysis
 - **THEN** that change MAY derive a Chan-owned calculation from complete `ChanK` input
 - **AND** it MUST separately approve parameters, algorithm version, null handling and output contract
 - **AND** ChanCore MUST NOT import the public IndicatorService or Strategy evaluator implementation
-
-#### Scenario: The HTTP response retains legacy high and low names
-- **WHEN** a retained Chan route maps ChanCore output to its existing HTTP VO
-- **THEN** the adapter MUST map core `high/low` to the existing `highest/lowest` contract where required
-- **AND** this change MUST NOT rename the public HTTP response fields
 
 ### Requirement: ChanCore Shall Not Own Strategy Indicators Or Market Retrieval
 ChanCore SHALL NOT provide Strategy KDJ/MACD, public Indicator endpoints, a public unified K API or
@@ -252,9 +231,9 @@ ChanCore SHALL NOT provide Strategy KDJ/MACD, public Indicator endpoints, a publ
 - **THEN** the Strategy-owned evaluator contract MUST perform or invoke that calculation
 - **AND** the runtime MUST NOT depend on ChanCore or the public Indicator HTTP API
 
-#### Scenario: A Chan request needs K data
-- **WHEN** a Chan HTTP adapter handles a request
-- **THEN** the adapter MUST retrieve, order, validate and map K input before invoking ChanCore
+#### Scenario: A ChanCore caller needs K data
+- **WHEN** any caller invokes ChanCore
+- **THEN** that caller MUST retrieve, order and map K input before invocation
 - **AND** ChanCore MUST NOT query K data itself
 
 ### Requirement: ChanCore Contracts Shall Be Approved Before Source Moves
