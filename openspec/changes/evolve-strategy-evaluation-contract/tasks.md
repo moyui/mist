@@ -6,9 +6,9 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
 
 ## 1. 前置与生产审计
 
-- [ ] 1.1 确认 `complete-current-day-realtime-candles` 的共享 `Decimal8` 已通过验收；ChanCore 不作为
+- [x] 1.1 确认 `complete-current-day-realtime-candles` 的共享 `Decimal8` 已通过验收；ChanCore 不作为
   本 change 的前置依赖。
-- [ ] 1.2 记录 strategy entities、migrations、stable specs、API/FE consumers、legacy manual scan、
+- [x] 1.2 记录 strategy entities、migrations、stable specs、API/FE consumers、legacy manual scan、
   signal-level backtest 和 portfolio worktree 的当前边界。
 - [ ] 1.3 只读审计真实 `schema_migrations`、column/index/constraint inventory，以及 strategy
   definitions/versions/signals/AlertEvents/backtest runs/results 存量。
