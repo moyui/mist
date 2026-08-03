@@ -15,9 +15,9 @@
 
 ## 3. 验证与交付
 
-- [ ] 3.1 运行 `bi.service` 定向测试以及全部 Chan service/controller/persistence tests。
-- [ ] 3.2 运行 lint check、typecheck、test、build 和 `ci:contracts`；区分已知基线失败与本 change 回归。
-- [ ] 3.3 执行 `openspec validate fix-chan-wide-bi-distance --strict`、全部 strict OpenSpec validation 和
+- [x] 3.1 运行 `bi.service` 定向测试以及全部 Chan service/controller/persistence tests。
+- [x] 3.2 运行 lint check、typecheck、test、build 和 `ci:contracts`；区分已知基线失败与本 change 回归。
+- [x] 3.3 执行 `openspec validate fix-chan-wide-bi-distance --strict`、全部 strict OpenSpec validation 和
       `git diff --check`。
-- [ ] 3.4 记录本 change 是 `extract-chan-core` characterization baseline 的前置依赖，并向项目负责人
+- [x] 3.4 记录本 change 是 `extract-chan-core` characterization baseline 的前置依赖，并向项目负责人
       提交验证证据。
