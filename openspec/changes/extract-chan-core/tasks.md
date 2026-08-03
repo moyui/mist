@@ -18,6 +18,9 @@
 - [x] 1.8 确认 `ChanK` 完整输入为 `id/symbol/time/open/high/low/close/volume/amount`；量额是
   canonical decimal string/null，现有算法不启用 MACD/力度等新能力。
 - [ ] 1.9 向项目负责人评审各 ChanCore 输出类型和现有 HTTP VO 恢复规则。
+  - [x] 1.9.1 确认 `ChanMergedK` 保留完整时间、算法 high/low、trend、count、IDs 和 `ChanK[]`；
+    adapter 恢复现有 `highest/lowest` 与 K VO 外观。
+  - [ ] 1.9.2 确认 Fenxing、Bi、Channel 和 Phase A/Phase B 输出。
 - [ ] 1.10 向项目负责人逐项评审空输入、invalid-input、numeric comparison、mutation 和算法版本。
 - [ ] 1.11 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 

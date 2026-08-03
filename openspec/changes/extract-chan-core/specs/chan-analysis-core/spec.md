@@ -64,6 +64,19 @@ strings or `null` rather than JavaScript numbers.
 - **THEN** their existing decision logic and output behavior MUST remain unchanged
 - **AND** the presence of open, close, volume or amount MUST NOT silently enable a new calculation
 
+#### Scenario: K containment produces a merged K
+- **WHEN** `mergeK` emits a `ChanMergedK`
+- **THEN** it MUST contain `startTime`, `endTime`, algorithm-derived `high/low`, `trend`, `mergedCount`,
+  `mergedIds` and the complete contributing `ChanK[]` as `mergedData`
+- **AND** `mergedCount`, `mergedIds.length` and `mergedData.length` MUST be equal
+- **AND** its algorithm-derived `high/low` MUST NOT be replaced with simple raw-range extrema
+
+#### Scenario: A merged K is returned through the existing HTTP route
+- **WHEN** the application adapter maps `ChanMergedK` to the retained HTTP contract
+- **THEN** it MUST map core `high/low` to HTTP `highest/lowest`
+- **AND** it MUST retain the existing public K VO shape without requiring `volume` to be newly exposed
+- **AND** the narrower HTTP shape MUST NOT cause ChanCore to discard `volume` from `mergedData`
+
 #### Scenario: A future Chan strength algorithm uses MACD or quantity
 - **WHEN** a future change defines Bi strength, divergence or volume-price analysis
 - **THEN** that change MAY derive a Chan-owned calculation from complete `ChanK` input

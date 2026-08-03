@@ -86,9 +86,32 @@ Bi 和 Channel 的判断行为保持不变；`open/close/volume/amount` 为未�
 `number`。`source/period/securityId/type` 仍由 application request/query context 持有，不重复塞进每根
 `ChanK`。
 
+`mergeK` 的 library-owned 输出固定为：
+
+```ts
+interface ChanMergedK {
+  startTime: Date;
+  endTime: Date;
+  high: number;
+  low: number;
+  trend: TrendDirection;
+  mergedCount: number;
+  mergedIds: number[];
+  mergedData: ChanK[];
+}
+```
+
+`startTime/endTime` 分别来自该组合并 K 的第一根和最后一根原始 K；`high/low` 是包含关系算法处理后的
+价格，不得重新解释为原始 K 的简单区间极值。`mergedCount` 必须与 `mergedIds.length`、
+`mergedData.length` 一致。虽然 `mergedIds` 可由 `mergedData` 推导，当前算法和 HTTP contract 都使用它，
+V1 继续显式保留。`mergedData` 保留完整 `ChanK`，使后续 focused strength change 不需要从不完整输出
+重新补行情字段。
+
 core 使用标准 `high/low`；现有 HTTP VO 的 `highest/lowest` 由 adapter 显式映射。以后若 Chan 用
 MACD 判断笔力度，focused change 应从 `close` 派生 Chan-owned calculation 并固定参数、版本和输出；
 它不能直接导入公共 IndicatorService 或 Strategy evaluator，也不能在本次 source move 中顺手加入。
+当前 HTTP `KVo` 没有 `volume`；本 change 不扩展公共 HTTP 输出。adapter 将完整 `ChanK` 映射成现有
+`KVo` 外观时可以不暴露该字段，但不得因此从 ChanCore 的 `mergedData` 中删除它。
 
 adapter 负责 HTTP DTO、日期解析、source 选择、TypeORM K/Security 查询、升序与有限值校验、
 library input mapping、HTTP VO/OpenAPI 和错误映射。ChanCore 不访问数据库、Redis、HTTP、环境变量
