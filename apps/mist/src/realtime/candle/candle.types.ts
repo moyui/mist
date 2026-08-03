@@ -40,7 +40,6 @@ export type InvalidReason =
   | 'baseline_unavailable'
   | 'counter_reset'
   | 'queue_overflow'
-  | 'epoch_discontinuity'
   | 'backend_restart_open_state_lost'
   | 'redis_due_registration_failed'
   | 'redis_finalization_failed'
@@ -51,28 +50,23 @@ export type InvalidReason =
  *
  * design.md (lines 150-160) explicitly forbids copying the full native object
  * or order book into the closed record — only these allowlisted scalars.
- * `streamEpoch` and `sequence` are optional because the current
- * `CanonicalRealtimeSnapshot` type does not carry them; future schema changes
- * may populate them.
+ * Transport generation and schema-v1 sequence do not belong to candle state.
  */
 export interface ClosingSnapshot {
   securityId: number;
-  securityCode: string;
   providerSymbol: string;
   source: RealtimeSource;
   eventTime: string;
   capturedAt: string;
   price: number;
-  cumulativeVolume: number;
-  cumulativeAmount: number;
+  cumulativeVolume: string | null;
+  cumulativeAmount: string | null;
   quality: {
     level: string;
     eventTimeAvailable: boolean;
     aggregationEligible: boolean;
     partialPrices: boolean;
   };
-  streamEpoch?: string | null;
-  sequence?: number | null;
 }
 
 /**
@@ -87,7 +81,6 @@ export interface OpenCandleState {
   source: RealtimeSource;
   providerSymbol: string;
   securityId: number;
-  securityCode: string;
   session: CandleSession;
   bucketStartMs: number;
   bucketEndMs: number;
@@ -99,13 +92,13 @@ export interface OpenCandleState {
   close: number;
 
   // Non-negative deltas since baseline.
-  volumeDelta: number;
-  amountDelta: number;
+  volumeDelta: string | null;
+  amountDelta: string | null;
 
   // Cumulative totals at the moment of the last applied snapshot — used to
   // compute the next delta and to detect counter resets.
-  lastCumulativeVolume: number | null;
-  lastCumulativeAmount: number | null;
+  lastCumulativeVolume: string | null;
+  lastCumulativeAmount: string | null;
 
   firstEventTime: string;
   lastEventTime: string;
@@ -128,7 +121,6 @@ export interface SealedCandle {
   source: RealtimeSource;
   providerSymbol: string;
   securityId: number;
-  securityCode: string;
   session: CandleSession;
   bucketStartMs: number;
   bucketEndMs: number;
@@ -137,12 +129,12 @@ export interface SealedCandle {
   high: number;
   low: number;
   close: number;
-  volume: number;
-  amount: number;
+  volume: string | null;
+  amount: string | null;
 
   /** Closing cumulative totals — the baseline for the NEXT bucket. */
-  closingCumulativeVolume: number;
-  closingCumulativeAmount: number;
+  closingCumulativeVolume: string | null;
+  closingCumulativeAmount: string | null;
 
   closingSnapshot: ClosingSnapshot | null;
 

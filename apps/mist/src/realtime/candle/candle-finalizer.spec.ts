@@ -12,6 +12,7 @@ interface RecordedCommand {
 
 interface FakeChain {
   hset: jest.Mock;
+  hdel: jest.Mock;
   zrem: jest.Mock;
   expire: jest.Mock;
   exec: jest.Mock;
@@ -26,6 +27,10 @@ function makeFakeRedis(): {
   const chain: FakeChain = {
     hset: jest.fn((...args: unknown[]) => {
       commands.push({ cmd: 'hset', args });
+      return chain;
+    }),
+    hdel: jest.fn((...args: unknown[]) => {
+      commands.push({ cmd: 'hdel', args });
       return chain;
     }),
     zrem: jest.fn((...args: unknown[]) => {
@@ -48,7 +53,6 @@ function makeSealed(overrides: Partial<SealedCandle> = {}): SealedCandle {
     source: 'tdx',
     providerSymbol: '600030.SH',
     securityId: 1,
-    securityCode: '600030',
     session: 'morning',
     bucketStartMs: Date.parse('2026-07-28T01:30:00.000Z'),
     bucketEndMs: Date.parse('2026-07-28T01:31:00.000Z'),
@@ -56,10 +60,10 @@ function makeSealed(overrides: Partial<SealedCandle> = {}): SealedCandle {
     high: 12,
     low: 9,
     close: 11,
-    volume: 100,
-    amount: 1100,
-    closingCumulativeVolume: 5000,
-    closingCumulativeAmount: 55000,
+    volume: '100',
+    amount: '1100',
+    closingCumulativeVolume: '5000',
+    closingCumulativeAmount: '55000',
     closingSnapshot: null,
     firstEventTime: '2026-07-28T01:30:00+08:00',
     lastEventTime: '2026-07-28T01:30:45+08:00',
@@ -104,7 +108,7 @@ describe('CandleFinalizer', () => {
       h: 12,
       l: 9,
       c: 11,
-      v: 100,
+      v: '100',
       q: 'provisional',
     });
 
@@ -131,6 +135,36 @@ describe('CandleFinalizer', () => {
     // EXPIRE on closed, watermark, manifest (3 expire calls).
     const expires = fake.commands.filter((c) => c.cmd === 'expire');
     expect(expires.length).toBe(3);
+  });
+
+  it('preserves null quantities without serializing the string null', async () => {
+    const fake = makeFakeRedis();
+    fake.chain.exec.mockResolvedValue([]);
+    fake.multi.mockReturnValue(fake.chain);
+    const candle = makeSealed({
+      volume: null,
+      amount: null,
+      closingCumulativeVolume: null,
+      closingCumulativeAmount: null,
+    });
+
+    expect(
+      await new CandleFinalizer().seal(fake as any, candle, candle.bucketEndMs),
+    ).toBe(true);
+    const closedHset = fake.commands.find(
+      (command) =>
+        command.cmd === 'hset' &&
+        String(command.args[0]).includes(':candle:1m:closed'),
+    );
+    const record = JSON.parse(closedHset!.args[2] as string);
+    expect(record).toMatchObject({ v: null, a: null, cv: null, ca: null });
+    const deletedFields = fake.commands
+      .filter((command) => command.cmd === 'hdel')
+      .map((command) => command.args[1]);
+    expect(deletedFields).toEqual([
+      'closingCumulativeVolume',
+      'closingCumulativeAmount',
+    ]);
   });
 
   it('does NOT write closed record for an invalid candle (discarded)', async () => {

@@ -1,3 +1,4 @@
+import { Decimal8, normalizeExternalDecimalText } from '@app/decimal';
 import { CanonicalRealtimeSnapshot } from '../../../realtime/realtime.types';
 
 export interface TdxNativeSnapshotInput {
@@ -26,8 +27,8 @@ export function convertTdxNativeSnapshot(
     eventTime,
     capturedAt: input.capturedAt,
     prices: { last, open, high, low, lastClose },
-    cumulativeVolume: readTdxNativeNumber(input.native, ['Volume', 'volume']),
-    cumulativeAmount: readTdxNativeNumber(input.native, ['Amount', 'amount']),
+    cumulativeVolume: readTdxNativeQuantity(input.native, 'Volume', 100),
+    cumulativeAmount: readTdxNativeQuantity(input.native, 'Amount', 10_000),
     quality: {
       level: 'latest-state',
       eventTimeAvailable: eventTime !== null,
@@ -38,6 +39,38 @@ export function convertTdxNativeSnapshot(
     },
     native: structuredClone(input.native),
   };
+}
+
+function readTdxNativeQuantity(
+  native: Record<string, unknown>,
+  field: 'Volume' | 'Amount',
+  factor: 100 | 10_000,
+): string | null {
+  rejectNonExactQuantityKey(native, field);
+  if (!(field in native) || native[field] === null) return null;
+  const value = native[field];
+  if (typeof value !== 'string') {
+    throw new TypeError(`TDX native ${field} must be a decimal string`);
+  }
+  const normalized = normalizeExternalDecimalText(value);
+  return Decimal8.parseCanonical(normalized)
+    .scaleByUnit(factor)
+    .formatCanonical();
+}
+
+function rejectNonExactQuantityKey(
+  native: Record<string, unknown>,
+  exactField: 'Volume' | 'Amount',
+): void {
+  const normalizedField = exactField.toLowerCase();
+  const alias = Object.keys(native).find(
+    (key) => key !== exactField && key.toLowerCase() === normalizedField,
+  );
+  if (alias !== undefined) {
+    throw new TypeError(
+      `TDX native quantity must use exact key ${exactField}, got ${alias}`,
+    );
+  }
 }
 
 export function readTdxNativeNumber(

@@ -73,9 +73,9 @@
   只允许 provider profile 的 `×100/×10000`，不提供任意乘除/舍入，不新增
   third-party decimal dependency。实现独立 external-text normalize 与 strict canonical parse；原始
   scale 必须在裁剪尾随零前检查，并覆盖 whitespace/sign/exponent/locale/Unicode/省略位/负零测试。
-- [ ] 3.2 更新 canonical snapshot quantity 类型及 TDX/QMT provider-specific converters；canonical
+- [x] 3.2 更新 canonical snapshot quantity 类型及 TDX/QMT provider-specific converters；canonical
   输出统一为股/元，缺失/null 与非法已出现值分流，非 A 股 STOCK 不套用股票换算因子。
-- [ ] 3.3 同步 OpenAPI、negative tests、四仓 fixture 和 SHA sidecars。
+- [x] 3.3 同步 OpenAPI、negative tests、四仓 fixture 和 SHA sidecars。
 - [ ] 3.4 将 app-local `k-decimal.util.ts` 的合法消费者迁移到共享 primitive，并证明 candle、strategy
   evaluator 与 period builder 不存在重复 parser/comparator；检索并拒绝量额路径中的 `Number(...)`、
   `String(number)`、`BigInt(number)`、raw bigint JSON 和隐式 number/bigint 混算；修复现有 utility

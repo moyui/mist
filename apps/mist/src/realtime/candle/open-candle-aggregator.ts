@@ -1,3 +1,4 @@
+import { Decimal8 } from '@app/decimal';
 import { Injectable } from '@nestjs/common';
 import type { CanonicalRealtimeSnapshot } from '../realtime.types';
 import { resolveCandleBucket } from './candle-bucket.util';
@@ -29,8 +30,8 @@ function aggregationKey(securityId: number, source: string): string {
  * itself `baseline_unavailable` unless a snapshot arrives that establishes one.
  */
 export interface BaselineTotals {
-  cumulativeVolume: number;
-  cumulativeAmount: number;
+  cumulativeVolume: string | null;
+  cumulativeAmount: string | null;
 }
 
 /**
@@ -168,35 +169,22 @@ export class OpenCandleAggregator {
     const cumVol = snapshot.cumulativeVolume;
     const cumAmt = snapshot.cumulativeAmount;
 
-    // If cumulative totals are absent on the snapshot itself, the bucket can
-    // still form OHLC but volume/amount deltas stay 0; that is not invalid.
-    const snapshotHasTotals =
-      cumVol !== null &&
-      cumAmt !== null &&
-      Number.isFinite(cumVol) &&
-      Number.isFinite(cumAmt);
-
-    // First-snapshot delta: if a prior baseline exists (from a sealed candle
-    // or restart injection), delta = current - baseline; otherwise the first
-    // snapshot establishes the running total and delta = 0.
-    let initialVolDelta = 0;
-    let initialAmtDelta = 0;
-    if (
-      snapshotHasTotals &&
-      baseline !== null &&
-      Number.isFinite(baseline.cumulativeVolume) &&
-      Number.isFinite(baseline.cumulativeAmount)
-    ) {
-      initialVolDelta = Math.max(0, cumVol! - baseline.cumulativeVolume);
-      initialAmtDelta = Math.max(0, cumAmt! - baseline.cumulativeAmount);
-    }
+    const initialVolume = initializeQuantity(
+      cumVol,
+      baseline?.cumulativeVolume ?? null,
+    );
+    const initialAmount = initializeQuantity(
+      cumAmt,
+      baseline?.cumulativeAmount ?? null,
+    );
+    const counterReset =
+      initialVolume.counterReset || initialAmount.counterReset;
 
     const state: OpenCandleState = {
       tradingDay: bucket.tradingDay,
       source: snapshot.source,
       providerSymbol: snapshot.providerSymbol,
       securityId: snapshot.securityId,
-      securityCode: '', // not present on CanonicalRealtimeSnapshot; filled by caller if needed
       session: bucket.session,
       bucketStartMs: bucket.bucketStartMs,
       bucketEndMs: bucket.bucketEndMs,
@@ -204,16 +192,16 @@ export class OpenCandleAggregator {
       high: price,
       low: price,
       close: price,
-      volumeDelta: initialVolDelta,
-      amountDelta: initialAmtDelta,
-      lastCumulativeVolume: snapshotHasTotals ? cumVol : null,
-      lastCumulativeAmount: snapshotHasTotals ? cumAmt : null,
+      volumeDelta: initialVolume.delta,
+      amountDelta: initialAmount.delta,
+      lastCumulativeVolume: initialVolume.baseline,
+      lastCumulativeAmount: initialAmount.baseline,
       firstEventTime: snapshot.eventTime!,
       lastEventTime: snapshot.eventTime!,
       lastAppliedEventTimeMs: Date.parse(snapshot.eventTime!),
       closingSnapshot: toClosingSnapshot(snapshot),
-      validity: 'valid',
-      invalidReason: null,
+      validity: counterReset ? 'invalid' : 'valid',
+      invalidReason: counterReset ? 'counter_reset' : null,
     };
 
     // The first snapshot's own cumulative totals serve as the bucket's delta
@@ -224,9 +212,9 @@ export class OpenCandleAggregator {
     // When no prior/external baseline exists, volume/amount deltas simply
     // start from zero relative to this snapshot's totals.
     this.open.set(key, state);
-    // openNewBucket always sets validity='valid' (invalid markers like
-    // baseline_unavailable are reserved for stricter future scenarios).
-    return { kind: 'opened', bucket };
+    return counterReset
+      ? { kind: 'invalidated', reason: 'counter_reset', bucket }
+      : { kind: 'opened', bucket };
   }
 
   private updateExistingBucket(
@@ -258,34 +246,28 @@ export class OpenCandleAggregator {
     state.lastAppliedEventTimeMs = eventMs;
     state.closingSnapshot = toClosingSnapshot(snapshot);
 
-    // Apply cumulative deltas if available.
-    const cumVol = snapshot.cumulativeVolume;
-    const cumAmt = snapshot.cumulativeAmount;
-    if (
-      cumVol !== null &&
-      cumAmt !== null &&
-      state.lastCumulativeVolume !== null &&
-      state.lastCumulativeAmount !== null
-    ) {
-      const dVol = cumVol - state.lastCumulativeVolume;
-      const dAmt = cumAmt - state.lastCumulativeAmount;
-      if (dVol < 0 || dAmt < 0) {
-        // Rule: counter reset → discard this bucket, rebase for the next.
-        state.validity = 'invalid';
-        state.invalidReason = 'counter_reset';
-        // The current cumulative reading becomes the new baseline.
-        state.lastCumulativeVolume = cumVol;
-        state.lastCumulativeAmount = cumAmt;
-        return {
-          kind: 'invalidated',
-          reason: 'counter_reset',
-          bucket: bucketOf(state),
-        };
-      }
-      state.volumeDelta += dVol;
-      state.amountDelta += dAmt;
-      state.lastCumulativeVolume = cumVol;
-      state.lastCumulativeAmount = cumAmt;
+    const volume = applyQuantityUpdate(
+      state.volumeDelta,
+      state.lastCumulativeVolume,
+      snapshot.cumulativeVolume,
+    );
+    const amount = applyQuantityUpdate(
+      state.amountDelta,
+      state.lastCumulativeAmount,
+      snapshot.cumulativeAmount,
+    );
+    state.volumeDelta = volume.delta;
+    state.amountDelta = amount.delta;
+    state.lastCumulativeVolume = volume.baseline;
+    state.lastCumulativeAmount = amount.baseline;
+    if (volume.counterReset || amount.counterReset) {
+      state.validity = 'invalid';
+      state.invalidReason = 'counter_reset';
+      return {
+        kind: 'invalidated',
+        reason: 'counter_reset',
+        bucket: bucketOf(state),
+      };
     }
 
     return { kind: 'updated', bucket: bucketOf(state) };
@@ -323,7 +305,6 @@ export class OpenCandleAggregator {
       source: state.source,
       providerSymbol: state.providerSymbol,
       securityId: state.securityId,
-      securityCode: state.securityCode,
       session: state.session,
       bucketStartMs: state.bucketStartMs,
       bucketEndMs: state.bucketEndMs,
@@ -333,8 +314,8 @@ export class OpenCandleAggregator {
       close: state.close,
       volume: state.volumeDelta,
       amount: state.amountDelta,
-      closingCumulativeVolume: state.lastCumulativeVolume ?? 0,
-      closingCumulativeAmount: state.lastCumulativeAmount ?? 0,
+      closingCumulativeVolume: state.lastCumulativeVolume,
+      closingCumulativeAmount: state.lastCumulativeAmount,
       closingSnapshot: state.closingSnapshot,
       firstEventTime: state.firstEventTime,
       lastEventTime: state.lastEventTime,
@@ -394,14 +375,68 @@ function toClosingSnapshot(
 ): ClosingSnapshot {
   return {
     securityId: snapshot.securityId,
-    securityCode: '', // CanonicalRealtimeSnapshot does not carry code; caller fills if needed
     providerSymbol: snapshot.providerSymbol,
     source: snapshot.source,
     eventTime: snapshot.eventTime ?? '',
     capturedAt: snapshot.capturedAt,
     price: snapshot.prices.last,
-    cumulativeVolume: snapshot.cumulativeVolume ?? 0,
-    cumulativeAmount: snapshot.cumulativeAmount ?? 0,
+    cumulativeVolume: snapshot.cumulativeVolume,
+    cumulativeAmount: snapshot.cumulativeAmount,
     quality: { ...snapshot.quality },
   };
+}
+
+interface QuantityUpdate {
+  delta: string | null;
+  baseline: string | null;
+  counterReset: boolean;
+}
+
+function initializeQuantity(
+  current: string | null,
+  baseline: string | null,
+): QuantityUpdate {
+  if (current === null) {
+    return baseline === null
+      ? { delta: null, baseline: null, counterReset: false }
+      : { delta: '0', baseline, counterReset: false };
+  }
+  if (baseline === null) {
+    Decimal8.parseCanonical(current);
+    return { delta: '0', baseline: current, counterReset: false };
+  }
+  const currentValue = Decimal8.parseCanonical(current);
+  const baselineValue = Decimal8.parseCanonical(baseline);
+  if (currentValue.compare(baselineValue) < 0) {
+    return { delta: '0', baseline: current, counterReset: true };
+  }
+  return {
+    delta: currentValue.subtract(baselineValue).formatCanonical(),
+    baseline: current,
+    counterReset: false,
+  };
+}
+
+function applyQuantityUpdate(
+  accumulated: string | null,
+  baseline: string | null,
+  current: string | null,
+): QuantityUpdate {
+  if (current === null) {
+    return { delta: accumulated, baseline, counterReset: false };
+  }
+  if (baseline === null) {
+    Decimal8.parseCanonical(current);
+    return { delta: '0', baseline: current, counterReset: false };
+  }
+  const currentValue = Decimal8.parseCanonical(current);
+  const baselineValue = Decimal8.parseCanonical(baseline);
+  if (currentValue.compare(baselineValue) < 0) {
+    return { delta: accumulated, baseline: current, counterReset: true };
+  }
+  const increment = currentValue.subtract(baselineValue);
+  const nextDelta = Decimal8.parseCanonical(accumulated ?? '0')
+    .add(increment)
+    .formatCanonical();
+  return { delta: nextDelta, baseline: current, counterReset: false };
 }

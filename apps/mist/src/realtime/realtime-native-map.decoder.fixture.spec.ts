@@ -24,6 +24,20 @@ describe('schema-v2 canonical golden', () => {
       cases: Record<string, unknown>;
     };
     expect(fixture.contract.schemaVersion).toBe(2);
+    const tdxNative = (
+      fixture.cases.tdxOneEntry as {
+        data: { native: Record<string, Record<string, unknown>> };
+      }
+    ).data.native['600030.SH'];
+    const qmtNative = (
+      fixture.cases.qmtOneEntry as {
+        data: { native: Record<string, Record<string, unknown>> };
+      }
+    ).data.native['300502.SZ'];
+    expect(typeof tdxNative['Volume']).toBe('string');
+    expect(typeof tdxNative['Amount']).toBe('string');
+    expect(typeof qmtNative['volume']).toBe('number');
+    expect(typeof qmtNative['amount']).toBe('number');
     expect(
       decodeRealtimeNativeMapMessage(
         parseRealtimeMessage(JSON.stringify(fixture.cases.tdxOneEntry)),

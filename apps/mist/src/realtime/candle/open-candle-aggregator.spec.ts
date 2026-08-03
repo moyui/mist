@@ -5,8 +5,8 @@ import { OpenCandleAggregator } from './open-candle-aggregator';
 function snap(opts: {
   eventTime: string;
   last: number;
-  cumulativeVolume?: number | null;
-  cumulativeAmount?: number | null;
+  cumulativeVolume?: string | null;
+  cumulativeAmount?: string | null;
   source?: 'tdx' | 'qmt';
   securityId?: number;
   providerSymbol?: string;
@@ -24,8 +24,10 @@ function snap(opts: {
       low: opts.last,
       lastClose: null,
     },
-    cumulativeVolume: opts.cumulativeVolume ?? 0,
-    cumulativeAmount: opts.cumulativeAmount ?? 0,
+    cumulativeVolume:
+      opts.cumulativeVolume === undefined ? '0' : opts.cumulativeVolume,
+    cumulativeAmount:
+      opts.cumulativeAmount === undefined ? '0' : opts.cumulativeAmount,
     quality: {
       level: 'latest-state',
       eventTimeAvailable: true,
@@ -57,24 +59,24 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(9, 30, 0),
         last: 10,
-        cumulativeVolume: 100,
-        cumulativeAmount: 1000,
+        cumulativeVolume: '100',
+        cumulativeAmount: '1000',
       }),
     );
     agg.applySnapshot(
       snap({
         eventTime: sh(9, 30, 20),
         last: 12,
-        cumulativeVolume: 150,
-        cumulativeAmount: 1800,
+        cumulativeVolume: '150',
+        cumulativeAmount: '1800',
       }),
     );
     agg.applySnapshot(
       snap({
         eventTime: sh(9, 30, 40),
         last: 8,
-        cumulativeVolume: 200,
-        cumulativeAmount: 2000,
+        cumulativeVolume: '200',
+        cumulativeAmount: '2000',
       }),
     );
 
@@ -83,8 +85,8 @@ describe('OpenCandleAggregator', () => {
     expect(open.high).toBe(12);
     expect(open.low).toBe(8);
     expect(open.close).toBe(8); // last observed
-    expect(open.volumeDelta).toBe(100); // 200 - 100 baseline
-    expect(open.amountDelta).toBe(1000); // 2000 - 1000
+    expect(open.volumeDelta).toBe('100'); // 200 - 100 baseline
+    expect(open.amountDelta).toBe('1000'); // 2000 - 1000
   });
 
   it('ignores duplicate or late eventTime (does not rewind state)', () => {
@@ -124,24 +126,24 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(9, 30, 0),
         last: 10,
-        cumulativeVolume: 100,
-        cumulativeAmount: 1000,
+        cumulativeVolume: '100',
+        cumulativeAmount: '1000',
       }),
     );
     agg.applySnapshot(
       snap({
         eventTime: sh(9, 30, 30),
         last: 15,
-        cumulativeVolume: 200,
-        cumulativeAmount: 2000,
+        cumulativeVolume: '200',
+        cumulativeAmount: '2000',
       }),
     );
     const outcome = agg.applySnapshot(
       snap({
         eventTime: sh(9, 31, 10),
         last: 14,
-        cumulativeVolume: 250,
-        cumulativeAmount: 2500,
+        cumulativeVolume: '250',
+        cumulativeAmount: '2500',
       }),
     );
 
@@ -149,7 +151,7 @@ describe('OpenCandleAggregator', () => {
     if (outcome.kind === 'rolled-over') {
       expect(outcome.sealed!.open).toBe(10);
       expect(outcome.sealed!.close).toBe(15);
-      expect(outcome.sealed!.volume).toBe(100); // 200 - 100
+      expect(outcome.sealed!.volume).toBe('100'); // 200 - 100
     }
   });
 
@@ -160,27 +162,27 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(11, 29, 0),
         last: 10,
-        cumulativeVolume: 5000,
-        cumulativeAmount: 50000,
+        cumulativeVolume: '5000',
+        cumulativeAmount: '50000',
       }),
     );
     // Seal it.
     const sealed = agg.sealCurrent(1, 'tdx');
-    expect(sealed!.closingCumulativeVolume).toBe(5000);
+    expect(sealed!.closingCumulativeVolume).toBe('5000');
 
     // Afternoon snapshot should pick up the carried baseline.
     const outcome = agg.applySnapshot(
       snap({
         eventTime: sh(13, 0, 5),
         last: 11,
-        cumulativeVolume: 5200,
-        cumulativeAmount: 53000,
+        cumulativeVolume: '5200',
+        cumulativeAmount: '53000',
       }),
     );
     expect(outcome.kind).not.toBe('invalidated');
     const open = agg.peekOpen(1, 'tdx')!;
     expect(open.validity).toBe('valid');
-    expect(open.volumeDelta).toBe(200); // 5200 - 5000 baseline
+    expect(open.volumeDelta).toBe('200'); // 5200 - 5000 baseline
   });
 
   it('marks counter_reset when cumulative volume decreases', () => {
@@ -189,16 +191,16 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(9, 30, 0),
         last: 10,
-        cumulativeVolume: 1000,
-        cumulativeAmount: 10000,
+        cumulativeVolume: '1000',
+        cumulativeAmount: '10000',
       }),
     );
     const outcome = agg.applySnapshot(
       snap({
         eventTime: sh(9, 30, 30),
         last: 11,
-        cumulativeVolume: 500,
-        cumulativeAmount: 5000,
+        cumulativeVolume: '500',
+        cumulativeAmount: '5000',
       }),
     );
     expect(outcome.kind).toBe('invalidated');
@@ -207,7 +209,7 @@ describe('OpenCandleAggregator', () => {
     }
     // The rebased cumulative should serve as the next baseline.
     const open = agg.peekOpen(1, 'tdx')!;
-    expect(open.lastCumulativeVolume).toBe(500);
+    expect(open.lastCumulativeVolume).toBe('500');
   });
 
   it('opens the first bucket validly with no prior baseline (delta starts from snapshot totals)', () => {
@@ -216,15 +218,15 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(9, 30, 0),
         last: 10,
-        cumulativeVolume: 1000,
-        cumulativeAmount: 10000,
+        cumulativeVolume: '1000',
+        cumulativeAmount: '10000',
       }),
       null, // no baseline — the snapshot's own totals are the starting point
     );
     expect(outcome.kind).toBe('opened');
     const open = agg.peekOpen(1, 'tdx')!;
     expect(open.validity).toBe('valid');
-    expect(open.volumeDelta).toBe(0); // no prior reference → 0 for the first snapshot
+    expect(open.volumeDelta).toBe('0'); // no prior reference → 0 for the first snapshot
   });
 
   it('does not mark invalid when snapshot has no cumulative totals (OHLC still forms)', () => {
@@ -238,8 +240,71 @@ describe('OpenCandleAggregator', () => {
       }),
       null,
     );
-    // No cumulative totals → deltas stay 0, OHLC still forms, not invalid.
+    // No cumulative totals → raw quantities remain unavailable, OHLC still forms.
     expect(outcome.kind).toBe('opened');
+    const sealed = agg.sealCurrent(1, 'tdx')!;
+    expect(sealed.volume).toBeNull();
+    expect(sealed.amount).toBeNull();
+    expect(sealed.closingCumulativeVolume).toBeNull();
+    expect(sealed.closingCumulativeAmount).toBeNull();
+  });
+
+  it('maintains volume and amount baselines independently through null updates', () => {
+    const agg = new OpenCandleAggregator();
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 0),
+        last: 10,
+        cumulativeVolume: '100',
+        cumulativeAmount: null,
+      }),
+    );
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 20),
+        last: 10,
+        cumulativeVolume: null,
+        cumulativeAmount: '1000',
+      }),
+    );
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 40),
+        last: 10,
+        cumulativeVolume: '125.00000001',
+        cumulativeAmount: null,
+      }),
+    );
+
+    const sealed = agg.sealCurrent(1, 'tdx')!;
+    expect(sealed.volume).toBe('25.00000001');
+    expect(sealed.amount).toBe('0');
+    expect(sealed.closingCumulativeVolume).toBe('125.00000001');
+    expect(sealed.closingCumulativeAmount).toBe('1000');
+  });
+
+  it('computes scale-eight deltas beyond Number safe precision exactly', () => {
+    const agg = new OpenCandleAggregator();
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 0),
+        last: 10,
+        cumulativeVolume: '9007199254740992.00000001',
+        cumulativeAmount: '9007199254740992.00000001',
+      }),
+    );
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 20),
+        last: 10,
+        cumulativeVolume: '9007199254740992.00000003',
+        cumulativeAmount: '9007199254740992.00000004',
+      }),
+    );
+
+    const open = agg.peekOpen(1, 'tdx')!;
+    expect(open.volumeDelta).toBe('0.00000002');
+    expect(open.amountDelta).toBe('0.00000003');
   });
 
   it('computes the first delta from an injected priorClosingTotals baseline on restart', () => {
@@ -248,16 +313,16 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(9, 35, 0),
         last: 10,
-        cumulativeVolume: 3000,
-        cumulativeAmount: 30000,
+        cumulativeVolume: '3000',
+        cumulativeAmount: '30000',
       }),
-      { cumulativeVolume: 2900, cumulativeAmount: 29000 },
+      { cumulativeVolume: '2900', cumulativeAmount: '29000' },
     );
     const open = agg.peekOpen(1, 'tdx')!;
     expect(open.validity).toBe('valid');
     // delta = current(3000) - baseline(2900) on the very first snapshot.
-    expect(open.volumeDelta).toBe(100);
-    expect(open.amountDelta).toBe(1000);
+    expect(open.volumeDelta).toBe('100');
+    expect(open.amountDelta).toBe('1000');
   });
 
   it('does not inherit baseline across trading days', () => {
@@ -267,8 +332,8 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(14, 59, 0),
         last: 10,
-        cumulativeVolume: 9000,
-        cumulativeAmount: 90000,
+        cumulativeVolume: '9000',
+        cumulativeAmount: '90000',
       }),
     );
     agg.sealCurrent(1, 'tdx');
@@ -279,14 +344,14 @@ describe('OpenCandleAggregator', () => {
     const day2 = snap({
       eventTime: '2026-07-29T09:30:00+08:00',
       last: 11,
-      cumulativeVolume: 100,
-      cumulativeAmount: 1000,
+      cumulativeVolume: '100',
+      cumulativeAmount: '1000',
     });
     const outcome = agg.applySnapshot(day2);
     expect(outcome.kind).toBe('opened');
     const open = agg.peekOpen(1, 'tdx')!;
     expect(open.validity).toBe('valid');
-    expect(open.volumeDelta).toBe(0); // not 100 - 9000 (would be negative/counter-reset)
+    expect(open.volumeDelta).toBe('0'); // not 100 - 9000 (would be negative/counter-reset)
   });
 
   it('sealCurrent returns null when nothing is open', () => {
@@ -300,15 +365,15 @@ describe('OpenCandleAggregator', () => {
       snap({
         eventTime: sh(9, 30, 0),
         last: 10,
-        cumulativeVolume: 100,
-        cumulativeAmount: 1000,
+        cumulativeVolume: '100',
+        cumulativeAmount: '1000',
       }),
     );
     const sealed = agg.sealCurrent(1, 'tdx')!;
     expect(sealed.quality).toBe('provisional');
     expect(sealed.validity).toBe('valid');
     expect(sealed.open).toBe(10);
-    expect(sealed.closingCumulativeVolume).toBe(100);
+    expect(sealed.closingCumulativeVolume).toBe('100');
   });
 
   it('closingSnapshot is a compact projection (no full native object)', () => {

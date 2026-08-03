@@ -22,10 +22,10 @@ interface CompactClosedRecord {
   h: number;
   l: number;
   c: number;
-  v: number;
-  a: number;
-  cv: number;
-  ca: number;
+  v: string | null;
+  a: string | null;
+  cv: string | null;
+  ca: string | null;
   cs: SealedCandle['closingSnapshot'];
   fe: string;
   le: string;
@@ -105,9 +105,19 @@ export class CandleFinalizer {
       sealedThroughBucket: String(candle.bucketStartMs),
       outcome: candle.validity === 'valid' ? 'closed' : 'discarded',
       ...(candle.invalidReason ? { invalidReason: candle.invalidReason } : {}),
-      closingCumulativeVolume: String(candle.closingCumulativeVolume),
-      closingCumulativeAmount: String(candle.closingCumulativeAmount),
+      ...(candle.closingCumulativeVolume !== null
+        ? { closingCumulativeVolume: candle.closingCumulativeVolume }
+        : {}),
+      ...(candle.closingCumulativeAmount !== null
+        ? { closingCumulativeAmount: candle.closingCumulativeAmount }
+        : {}),
     });
+    if (candle.closingCumulativeVolume === null) {
+      multi.hdel(wmK, 'closingCumulativeVolume');
+    }
+    if (candle.closingCumulativeAmount === null) {
+      multi.hdel(wmK, 'closingCumulativeAmount');
+    }
 
     // Remove the due member for this bucket.
     multi.zrem(dueK_, member);

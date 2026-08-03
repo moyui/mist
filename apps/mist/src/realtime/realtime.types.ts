@@ -20,8 +20,8 @@ export interface CanonicalRealtimeSnapshot {
     low: number | null;
     lastClose: number | null;
   };
-  cumulativeVolume: number | null;
-  cumulativeAmount: number | null;
+  cumulativeVolume: string | null;
+  cumulativeAmount: string | null;
   quality: {
     level: 'latest-state';
     eventTimeAvailable: boolean;

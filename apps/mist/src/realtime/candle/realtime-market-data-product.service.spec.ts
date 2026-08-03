@@ -17,8 +17,8 @@ function makeConfig(mode: string): ConfigService {
 
 function makeSnapshot(opts: {
   eventTime: string;
-  cumulativeVolume?: number;
-  cumulativeAmount?: number;
+  cumulativeVolume?: string;
+  cumulativeAmount?: string;
 }): CanonicalRealtimeSnapshot {
   return {
     source: 'tdx',
@@ -27,8 +27,8 @@ function makeSnapshot(opts: {
     eventTime: opts.eventTime,
     capturedAt: opts.eventTime,
     prices: { last: 10, open: 10, high: 10, low: 10, lastClose: null },
-    cumulativeVolume: opts.cumulativeVolume ?? 100,
-    cumulativeAmount: opts.cumulativeAmount ?? 1000,
+    cumulativeVolume: opts.cumulativeVolume ?? '100',
+    cumulativeAmount: opts.cumulativeAmount ?? '1000',
     quality: {
       level: 'latest-state',
       eventTimeAvailable: true,
@@ -121,8 +121,8 @@ describe('RealtimeMarketDataProductService', () => {
     service.handleSnapshot(
       makeSnapshot({
         eventTime: sh(9, 30, 0),
-        cumulativeVolume: 100,
-        cumulativeAmount: 1000,
+        cumulativeVolume: '100',
+        cumulativeAmount: '1000',
       }),
     );
     await new Promise((r) => setTimeout(r, 30));
@@ -130,8 +130,8 @@ describe('RealtimeMarketDataProductService', () => {
     service.handleSnapshot(
       makeSnapshot({
         eventTime: sh(9, 31, 0),
-        cumulativeVolume: 200,
-        cumulativeAmount: 2000,
+        cumulativeVolume: '200',
+        cumulativeAmount: '2000',
       }),
     );
     await new Promise((r) => setTimeout(r, 30));

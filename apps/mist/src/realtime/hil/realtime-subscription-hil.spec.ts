@@ -69,8 +69,8 @@ describe('realtime subscription HIL operation sequence', () => {
         low: 9.95,
         lastClose: 10.05,
       },
-      cumulativeVolume: 123456,
-      cumulativeAmount: 1234567,
+      cumulativeVolume: '123456',
+      cumulativeAmount: '1234567',
       quality: {
         level: 'latest-state',
         eventTimeAvailable: false,
