@@ -51,8 +51,12 @@
   contract tests。
 - [x] 3.7 证明数据库 entity/column、migration、K reader、Chan algorithm output value 与
   `algorithmVersion` 均未改变。
-- [x] 3.8 盘点 `mist-fe`、`mist-skills` 消费者并记录 matching-version 发布门禁；本批不修改其代码，
-  消费者迁移完成前不得部署 breaking backend contract。
+- [x] 3.8 盘点 `mist-fe`、`mist-skills` 消费者并记录 matching-version 发布门禁；在 3.9/3.10 完成前
+  不得部署 breaking backend contract。
+- [ ] 3.9 在独立 `mist-fe` branch/worktree 中将 API types、KPanel、live/snapshot consumer、fixtures、
+  tests 和文档递归迁移到 `high/low`；不得加入旧字段 fallback，fixture 只改字段名不改值与顺序。
+- [ ] 3.10 在独立 `mist-skills` branch/worktree 中迁移 K/Chan agent-facing 文档、示例和 contract tests；
+  共享 client 继续原样返回 backend data，不增加 shape alias。
 
 ## 4. 验证与交付
 
@@ -62,4 +66,6 @@
 - [x] 4.3 检索 `libs/chancore` 的 TypeORM/Redis/HTTP/Nest/env/persistence imports 和旧算法重复实现。
 - [x] 4.4 在 HTTP 字段迁移后重跑 strict OpenSpec、`git diff --check`，记录未来 Chan strategy
   adoption、route/app cleanup、公共 Indicator/K API 重构为 residual work。
-- [ ] 4.5 向项目负责人审阅 differential 与 validation evidence 后才归档。
+- [ ] 4.5 运行 `mist-fe` lint/typecheck/full tests/production build、`mist-skills` ruff/pyright/black/pytest，
+  执行三仓旧字段检索、`git diff --check` 与 backend `ci:contracts` matching-worktree 验证。
+- [ ] 4.6 向项目负责人审阅三仓 differential 与 validation evidence 后才归档。

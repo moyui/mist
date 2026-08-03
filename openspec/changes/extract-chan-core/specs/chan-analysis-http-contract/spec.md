@@ -39,3 +39,14 @@ contract SHALL wait until owned `mist-fe` and `mist-skills` consumers have match
 - **WHEN** backend, frontend and skills versions all consume `high/low`
 - **THEN** they MUST be released as one coordinated contract group
 - **AND** no runtime alias, dual-write or database compatibility layer SHALL be introduced
+
+#### Scenario: Frontend consumes K and Chan responses
+- **WHEN** `mist-fe` types, live API data, snapshots or chart conversion consume a K, merged-K, Fenxing or Bi item
+- **THEN** they MUST read `high/low` recursively
+- **AND** frontend parsers MUST NOT accept `highest/lowest` fallback fields
+- **AND** migrated snapshots MUST preserve all values, ordering and phase structure while changing only field names
+
+#### Scenario: Skills expose K and Chan response fields
+- **WHEN** `mist-skills` documents, mocks or returns K/Chan analysis data
+- **THEN** its agent-facing field contract MUST use `high/low`
+- **AND** the shared client MUST continue to return backend data without synthesizing retired field aliases

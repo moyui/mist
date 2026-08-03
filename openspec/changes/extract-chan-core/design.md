@@ -28,7 +28,8 @@ Strategy runtime 已有另一条边界：Backtest/Signal 通过 `StrategyMarketD
 - 不新增公共统一 K API，不让 Chan 使用 `StrategyMarketDataPort`。
 - 不修改 K reader、module、route owner、gateway、deploy 或跨 app import；除 `/v1/indicators/k` 外不改
   其他 Indicator API。
-- 不在本批修改 frontend 或 skills；它们必须在匹配消费者批次中迁移后，backend breaking contract 才能部署。
+- 不重构 frontend UI、chart 算法或 skills client transport；只迁移本 breaking contract 的字段类型、
+  消费点、fixtures、文档和测试。
 - 不修订 Chan 算法、不新增买卖点、不写 Chan 表。
 
 ## Decisions
@@ -254,7 +255,15 @@ Bi characterization 必须固定以下语义：宽笔起止端点在当前候选
 
 Chan service 在避免保留第二份算法的前提下继续作为调用 `@app/chancore` 的薄 HTTP wrapper，只负责
 fresh-object/Date 映射。API route cleanup、统一 K query 或 app ownership 调整仍由后续 focused change
-负责。`mist-fe` 和 `mist-skills` 由独立批次迁移；它们未完成前不得部署本 backend breaking contract。
+负责。`mist-fe` 与 `mist-skills` 在各自独立 worktree/branch 中完成字段迁移，但属于本 change 的同一
+匹配版本组；三仓验证完成前不得部署 backend breaking contract。
+
+Frontend 必须在 API type、KPanel 输入、chart conversion、live response、snapshot loader/generator、
+fixtures、tests 和用户文档中递归改为 `high/low`。不得在 parser 中接受 `highest/lowest` fallback；现有
+frontend-owned snapshots 直接机械迁移字段名，不重新请求 backend 或改变数值、顺序、phase。
+
+Skills 的共享 HTTP client 继续把 backend `data` 原样返回，不增加 K/Chan shape parser。迁移范围只包括
+agent-facing field 文档、示例和 mock/contract tests；它们必须用 `high/low`，不得继续宣传或生成旧字段。
 
 ### 6. 空 K 是合法零结果，不是 invalid input
 
@@ -367,7 +376,7 @@ characterization evidence 固定记录 `algorithmVersion + input fixture + expec
 - [DB fixed-scale decimal 被误判为非规范] → 覆盖 `0.00000000`、8 位小数和非法 exponent/number。
 - [抽取时“修复精度”改变边界结果] → 锁定 strict/non-strict、first-wins 和 equal-boundary fixtures。
 - [wrapper 为输出 VO 直接 mutation core output] → readonly contracts、fresh mapping 与 frozen-input tests。
-- [backend 先于消费者部署] → OpenSpec 记录 matching-version gate，frontend/skills 未迁移前不部署。
+- [backend 先于消费者部署] → 三仓独立 branch、完整验证与 matching-version release gate。
 - [深拷贝完整 evidence 放大内存] → 允许共享 immutable `ChanK`，不承诺引用身份、不 runtime freeze。
 - [算法变化仍沿用同一版本] → version/fingerprint 同 change 门禁和 explicit bump tests。
 
@@ -380,9 +389,10 @@ characterization evidence 固定记录 `algorithmVersion + input fixture + expec
 5. 现有调用点直接调用 library 或保留薄 wrapper；将 K/Chan HTTP VO、mapper 与 OpenAPI 统一成
    `high/low`，删除 `highest/lowest` 且不保留 alias。
 6. 运行 differential、pure-boundary、HTTP contract regression、build 与 strict OpenSpec gates。
-7. 记录 frontend/skills matching-version 发布门禁；Strategy adoption、API/app ownership、公共
-   Indicator/K 重构继续作为 residual changes。
+7. 在独立 repo branch 中迁移 frontend/skills types、消费者、fixtures、docs/tests，完成三仓全量验证并
+   记录 matching-version 发布集合；Strategy adoption、API/app ownership、公共 Indicator/K 重构继续
+   作为 residual changes。
 
 ## Open Questions
 
-无。`high/low` breaking contract 已由项目负责人确认；frontend/skills 仍按独立批次迁移。
+无。`high/low` breaking contract 与三仓同步迁移已由项目负责人确认。

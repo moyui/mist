@@ -28,6 +28,8 @@ Nest service、HTTP DTO/VO 与应用代码中，Backtest、Realtime、Signal/Ale
   Chan HTTP 输出统一使用 `high/low`，删除 `highest/lowest` 旧字段且不提供双字段兼容。
 - 同步修正 `/v1/indicators/k`、`/v1/chan/merge-k`、`/v1/chan/fenxing`、`/v1/chan/bi` 和
   `/v1/chan/channel` 的 VO、OpenAPI 与递归嵌套输出；数据库 `k.high/k.low`、算法语义和 route 不变。
+- 同步迁移 `mist-fe` 的 API/types、KPanel、Chan snapshots/fixtures/tests，以及 `mist-skills` 的用户文档、
+  示例和 contract tests，使三仓形成可共同发布的 `high/low` 匹配版本组。
 - Backtest、Realtime、Signal/Alert 或其他计算单元未来可直接调用 `@app/chancore`，也可在自己的
   bounded context 增加薄 wrapper；只有对应 owning change 明确采用时才形成依赖。
 - 当前 active Backtest/Realtime V1 仍不开放 `chan.*`，因此本 change 不把 ChanCore 反向加入它们的
@@ -58,8 +60,10 @@ Nest service、HTTP DTO/VO 与应用代码中，Backtest、Realtime、Signal/Ale
   specs、runtime 或部署依赖。
 - **算法基线**：依赖已归档 `fix-chan-wide-bi-distance`；differential fixture 覆盖非连续 K ID 与序列
   位置计数。
-- **消费者发布门禁**：`mist-fe` 与 `mist-skills` 的字段迁移由各自后续批次完成；匹配版本完成前不得部署
-  本 breaking backend contract，也不增加 `highest/lowest` 兼容字段。
+- **`mist-fe`**：API types、KPanel、Chan snapshot/fixture、tests 与文档同步使用 `high/low`。
+- **`mist-skills`**：agent-facing K/Chan 字段文档、示例和 contract tests 同步使用 `high/low`；共享客户端
+  继续透传 backend data，不增加 shape alias。
+- **消费者发布门禁**：三仓匹配版本必须共同通过验证后才能部署，不增加 `highest/lowest` 兼容字段。
 - **明确不包含**：现有 route ownership、TypeORM K reader、除 `/v1/indicators/k` 外的 Indicator API、
-  gateway/frontend/skills 实现、跨 app import 清理、统一 K API、数据库 migration、Chan persistence、
+  gateway/deploy、跨 app import 清理、统一 K API、数据库 migration、Chan persistence、
   买卖点、力度/MACD 新算法及部署拓扑。
