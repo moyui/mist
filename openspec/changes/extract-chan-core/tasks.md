@@ -5,7 +5,8 @@
   route/consumer 拓扑。
 - [ ] 1.3 建立完整 raw K → merged K → Fenxing/Bi/Channel characterization fixture 与 full-output
   fingerprint；现有局部 Phase A/Phase B tests 继续保留。
-- [ ] 1.4 向项目负责人评审 `/v1/chan/*` 长期唯一 owner、当前双入口和独立 route migration 范围。
+- [x] 1.4 确认独立部署的 `chan-api` 是 `/v1/chan/*` 长期唯一 owner；本 change 保留
+  `mist-backend` 当前兼容路由，后续独立 route migration 负责 consumer audit 与删除。
 - [ ] 1.5 向项目负责人评审 `chan-api` TypeORM K read adapter、`/v1/indicators/k` 兼容链路和
   Controller/VO/Nest module 落位。
 - [ ] 1.6 向项目负责人逐项评审 pure Chan library 名称、public exports、最小 input/output、空输入、

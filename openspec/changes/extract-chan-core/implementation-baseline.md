@@ -32,11 +32,13 @@ mist-fe / mist-skills
 ```
 
 `apps/mist` 同时装配 IndicatorModule 与 ChanModule，因此当前存在两个 app 都可注册相关 controller 的
-可能性；长期 owner 尚未确认。
+兼容状态；长期唯一 owner 已确认是独立部署的 `chan-api`。
 
 ### 已确认的范围结论
 
 - ChanCore 与 Strategy Indicator calculation 是两个独立 owner。
+- 独立部署的 `chan-api` 是 `/v1/chan/*` 的长期唯一 runtime owner；当前 change 不删除
+  `mist-backend` 兼容路由，后续由独立 route migration 清理。
 - Backtest/Realtime 通过 StrategyMarketDataPort + shared evaluator 计算 KDJ/MACD，不依赖 ChanCore 或
   `/v1/indicators/*`。
 - 不创建 `@app/analysis/indicator`，不预先发明 `reference/timestampMs/ordinal` 等 Chan 字段。
@@ -53,7 +55,7 @@ mist-fe / mist-skills
 ### 尚未满足的实施门禁
 
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
-- Chan route、K read adapter、`/v1/indicators/k` 和 Nest module owner 未确认；
+- `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
 - pure library 名称与 input/output/error/numeric/mutation/version contract 未确认。
 
 以上门禁完成前不得移动 source files。

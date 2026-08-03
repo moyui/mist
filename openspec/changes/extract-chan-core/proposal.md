@@ -15,8 +15,10 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
   无 persistence、无 Nest/HTTP/TypeORM 依赖的 Chan 计算核心。
 - 在移动代码前逐项确认 Chan library 名称、public exports、输入输出、空值/非法输入、数值比较、
   mutation 和算法版本语义。
-- 在移动 controller/module 前确认 `/v1/chan/*` 的唯一长期 owner、现有双入口兼容范围，以及
-  `chan-api` 的 TypeORM K read adapter 和 `/v1/indicators/k` 兼容链路。
+- `/v1/chan/*` 的长期唯一 runtime owner 固定为独立部署的 `chan-api`；当前 change 不顺手删除
+  `mist-backend` 中的兼容路由，后续通过独立 route migration 清理双入口。
+- 在移动 controller/module 前确认现有双入口兼容范围，以及 `chan-api` 的 TypeORM K read adapter 和
+  `/v1/indicators/k` 兼容链路。
 - 解除 `apps/chan → apps/mist` 业务源码 import；具体 adapter 布局按上述 owner 评审结论实施。
 - 保留现有 Chan URL、HTTP envelope、OpenAPI 输出、Phase A/Phase B 算法和无持久化语义；任何路由
   删除或算法修订必须另开 change。
@@ -42,8 +44,8 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
 ## Impact
 
 - **`mist`**：新增 pure Chan library，重接经确认 owner 的 Chan adapters、tests 和 app import guard。
-- **`apps/chan`**：停止导入 `apps/mist` 业务源码；继续作为现有部署中的独立数据库连接与 HTTP
-  runtime，除非后续 owner 评审另有明确结论。
+- **`apps/chan`**：停止导入 `apps/mist` 业务源码；作为 `/v1/chan/*` 的长期唯一 runtime owner，
+  继续独立持有数据库连接与 HTTP 进程。
 - **Strategy changes**：`evolve-strategy-evaluation-contract` 单一持有 Strategy KDJ/MACD；
   `extract-backtest-runtime` 与 `run-realtime-strategy-evaluation` 不依赖本 change。
 - **不包含**：公共 Indicator 重构、公共统一 K API、Strategy field 扩展、数据库 migration、

@@ -58,16 +58,18 @@ TypeORM K read adapter，必须在 source move 前单独确认。
 先盘点每个现有字段究竟由算法还是 HTTP 输出消费，再以行为保持为目标定义 library-owned types。
 未来 Realtime Chan 若需要临时 ordinal，必须在对应 focused change 中重新评审。
 
-### 5. HTTP adapter owner 是 source move 前置门禁
+### 5. `chan-api` 是 Chan 公共路由的长期唯一 owner
 
-仅抽取 pure functions 不能自动消除 app-to-app import。必须先确认：
+生产 gateway、frontend 和 monitoring 已经把独立部署的 `chan-api:8008` 作为正式 Chan runtime，
+因此 `/v1/chan/*` 的长期唯一 owner 固定为 `apps/chan`。算法单独部署是产品边界，不要求
+`mist-backend` 参与 Chan 请求执行。
 
-- `/v1/chan/*` 长期由 `chan-api`、`mist-backend` 或经过独立迁移期持有；
-- 当前两个 app 的 route 是否都必须暂时保留；
-- `chan-api` 当前 `/v1/indicators/k` 前端链路如何保持；
-- Controller、TypeORM read adapter、VO mapping 和 Nest module 分别落在哪个非 app-internal owner。
+本 change 只抽取 core 并建立 `apps/chan` 自有 adapter，不把内部重构与公共 route deletion 合并。
+`apps/mist` 当前重复注册的 `/v1/chan/*` 在本 change 中保持兼容，后续独立 route migration 必须完成
+consumer audit、OpenAPI/gateway contract 和回滚评审后再删除。
 
-本 change 不根据文件名猜测答案，也不在 owner 未确认时移动 controller/module。
+仍需在 source move 前确认 `chan-api` 当前 `/v1/indicators/k` 前端链路如何保持，以及 TypeORM K read
+adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体落位。
 
 ## Risks / Trade-offs
 
@@ -82,7 +84,7 @@ TypeORM K read adapter，必须在 source move 前单独确认。
 
 1. 固定 current routes、consumers、full-output fixtures 和 app import baseline。
 2. 逐项确认 library、types、error/numeric/mutation/version contracts。
-3. 确认 Chan route owner、K read adapter 和现有 Indicator K compatibility。
+3. 按已确认的 `chan-api` route owner，确认 K read adapter 和现有 Indicator K compatibility。
 4. 将 K merge、Fenxing、Bi、Channel 算法移动到 pure ChanCore。
 5. 按 owner 结论重接 HTTP/TypeORM adapters，删除 app-to-app import allowlist。
 6. 运行 differential、HTTP/OpenAPI、build、full backend 与 strict OpenSpec gates。
@@ -91,7 +93,6 @@ TypeORM K read adapter，必须在 source move 前单独确认。
 ## Open Questions
 
 - pure Chan library 的最终目录、Nest project key 和 import path。
-- `/v1/chan/*` 的长期唯一 owner，以及当前双入口是否需要独立迁移 change。
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
 - library-owned input/output 的最小现有字段集合。
 - 空输入、非法有限值、当前 Channel HTTP error、mutation、算法版本和 numeric comparison 规则。

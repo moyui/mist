@@ -19,10 +19,16 @@ A/Phase B and Channel Phase A/Phase B semantics.
 - **AND** any route deletion, response change or algorithm correction MUST be deferred to another change
 
 ### Requirement: Chan Application Ownership Shall Be Explicit Before Rewiring
-The owner of Chan controllers, TypeORM K read adapter, VO mapping and Nest module SHALL be approved before the
-legacy `apps/chan → apps/mist` source import is removed.
+The independently deployed `chan-api` SHALL be the long-term runtime owner of `/v1/chan/*`. Its controller,
+TypeORM K read adapter, VO mapping and Nest module placement SHALL be approved before the legacy
+`apps/chan → apps/mist` source import is removed.
 
 #### Scenario: The app-to-app import is replaced
 - **WHEN** `apps/chan/src/chan-app.module.ts` no longer imports `apps/mist` source
 - **THEN** every retained public route MUST still have one explicitly named runtime owner
 - **AND** existing gateway/frontend compatibility MUST be covered by contract tests
+
+#### Scenario: The duplicate Mist Backend route is considered for removal
+- **WHEN** the internal extraction has completed
+- **THEN** this change MUST leave the current `mist-backend` compatibility route in place
+- **AND** a separate route-migration change MUST own its consumer audit and deletion
