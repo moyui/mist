@@ -68,4 +68,4 @@
   adoption、route/app cleanup、公共 Indicator/K API 重构为 residual work。
 - [x] 4.5 运行 `mist-fe` lint/typecheck/full tests/production build、`mist-skills` ruff/pyright/black/pytest，
   执行三仓旧字段检索、`git diff --check` 与 backend `ci:contracts` matching-worktree 验证。
-- [ ] 4.6 向项目负责人审阅三仓 differential 与 validation evidence 后才归档。
+- [x] 4.6 向项目负责人审阅三仓 differential 与 validation evidence 后才归档。

@@ -4,9 +4,7 @@
 
 Track the completed P2 Chan Bi range-aggregation hygiene remediation so future
 algorithm work keeps the shared range boundary and its regression coverage.
-
 ## Requirements
-
 ### Requirement: Bi range aggregation is single-sourced
 
 The Chan Bi algorithm SHALL compute merged-K range statistics through one
@@ -36,20 +34,21 @@ Bi construction path.
 
 ### Requirement: Chan Bi behavior remains externally stable
 
-The hygiene refactor SHALL preserve public Chan Bi output shape and algorithm
-behavior for existing consumers.
+The hygiene refactor SHALL preserve Chan Bi algorithm values and ordering for existing calculations. The separately
+approved HTTP contract migration MAY rename public price interval fields from `highest/lowest` to `high/low`, but
+MUST NOT alter the underlying extrema or Bi reduction behavior.
 
 #### Scenario: Public getBi behavior is characterized
 
-- **WHEN** `BiService.getBi` runs against a focused merged-K fixture
-- **THEN** the resulting Bi sequence MUST preserve the same field values before
-  and after the refactor
+- **WHEN** `BiService.getBi` or its ChanCore replacement runs against a focused merged-K fixture
+- **THEN** the resulting Bi sequence MUST preserve the same extrema, origin, status and ordering before and after
+  the refactor
+- **AND** the current HTTP representation MUST expose those extrema as `high/low`
 - **AND** the test MUST not depend on database, datasource, or HTTP services
 
 #### Scenario: Review evidence is explicit
 
 - **WHEN** this batch is completed
-- **THEN** its evidence MUST map `CODE_REVIEW H3` and `CODE_SMELL_REVIEW D1.7`
-  to changed files and verification commands
-- **AND** the implementation MUST NOT claim unrelated Chan algorithm P3 items
-  are complete
+- **THEN** its evidence MUST map the prior hygiene findings and the approved field migration to changed files and
+  verification commands
+- **AND** the implementation MUST NOT claim unrelated Chan algorithm items are complete
