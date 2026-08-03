@@ -54,3 +54,9 @@ export type {
   StrategyRuleOperator,
   StrategySignalKind,
 } from './rules/strategy-rule.types';
+export { QuantityForwardFillProjector } from './projection/quantity-forward-fill.projector';
+export type {
+  ProjectedStrategyBar,
+  ProjectedStrategyQuantity,
+  StrategyQuantityResolution,
+} from './projection/quantity-forward-fill.projector';
