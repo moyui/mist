@@ -1687,10 +1687,8 @@ enabled source 的 monitoring 仍存在；不得把 `off` 写成普通健康、�
 - `eventTime=null` 的 observation 不进入 candle 聚合；另行定义重复
   latest-state 的累计量处理，不得用 transport epoch/sequence 补回顺序保证。
 
-`sync-post-close-provider-history` 等待 B1 归档后实施，因此它继承的是上述
-schema-v2 baseline，而不是编写 post-close artifacts 时的旧 schema-v1
-baseline。当前 post-close proposal、design、tasks 与
-`datasource-provider-contract` delta 必须同步刷新：
+收盘后 provider history sync 已无限期延期，当前不存在 active implementation change。未来若由新
+owner 重新创建，它必须继承上述 schema-v2 baseline，而不是旧 schema-v1 baseline，并重新确认：
 
 - historical `/v1/bars/query`、normalizer、source-specific persistence 与届时
   已接受的手工 bridge 行为保持不变；

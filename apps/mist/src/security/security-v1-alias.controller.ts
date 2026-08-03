@@ -8,11 +8,13 @@ import {
   Param,
   Post,
   Put,
-  UseFilters,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiEnvelopeResponse,
+  ApiTechnicalErrorResponse,
+} from '@app/transport/http';
 import { Security } from '@app/shared-data';
-import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { DeleteSecuritySourceDto } from './dto/delete-security-source.dto';
 import { InitSecurityDto } from './dto/init-security.dto';
@@ -20,19 +22,22 @@ import { SecurityService } from './security.service';
 
 @ApiTags('securities v1')
 @Controller('v1')
-@UseFilters(AllExceptionsFilter)
 export class SecurityV1AliasController {
   constructor(private readonly securityService: SecurityService) {}
 
   @Post('securities')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Initialize a new security' })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 201,
     description: 'Security successfully initialized',
     type: Security,
   })
-  @ApiResponse({ status: 409, description: 'Security already exists' })
+  @ApiTechnicalErrorResponse({
+    status: 409,
+    description: 'Security already exists',
+    codes: ['CONFLICT'],
+  })
   async initializeSecurity(
     @Body() initSecurityDto: InitSecurityDto,
   ): Promise<Security> {
@@ -41,10 +46,11 @@ export class SecurityV1AliasController {
 
   @Get('securities')
   @ApiOperation({ summary: 'Get all active securities' })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'List of all active securities',
-    type: [Security],
+    type: Security,
+    isArray: true,
   })
   async getAllSecurities(): Promise<Security[]> {
     return await this.securityService.findAll();
@@ -58,8 +64,16 @@ export class SecurityV1AliasController {
       'Canonical security code; provider-formatted inputs are normalized',
     example: '600519',
   })
-  @ApiResponse({ status: 200, description: 'Security found', type: Security })
-  @ApiResponse({ status: 404, description: 'Security not found' })
+  @ApiEnvelopeResponse({
+    status: 200,
+    description: 'Security found',
+    type: Security,
+  })
+  @ApiTechnicalErrorResponse({
+    status: 404,
+    description: 'Security not found',
+    codes: ['NOT_FOUND'],
+  })
   async findSecurityByCode(@Param('code') code: string): Promise<Security> {
     return await this.securityService.findSecurityByCode(code);
   }
@@ -68,12 +82,16 @@ export class SecurityV1AliasController {
   @ApiOperation({
     summary: 'Add or update data source for an existing security',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'Source successfully updated',
     type: Security,
   })
-  @ApiResponse({ status: 404, description: 'Security not found' })
+  @ApiTechnicalErrorResponse({
+    status: 404,
+    description: 'Security not found',
+    codes: ['NOT_FOUND'],
+  })
   async addSecuritySource(
     @Body() addSecuritySourceDto: AddSecuritySourceDto,
   ): Promise<Security> {
@@ -83,8 +101,15 @@ export class SecurityV1AliasController {
   @Delete('security-sources')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a security source configuration' })
-  @ApiResponse({ status: 200, description: 'Source configuration deleted' })
-  @ApiResponse({ status: 404, description: 'Source configuration not found' })
+  @ApiEnvelopeResponse({
+    status: 200,
+    description: 'Source configuration deleted',
+  })
+  @ApiTechnicalErrorResponse({
+    status: 404,
+    description: 'Source configuration not found',
+    codes: ['NOT_FOUND'],
+  })
   async deleteSecuritySource(
     @Body() dto: DeleteSecuritySourceDto,
   ): Promise<void> {
@@ -99,11 +124,15 @@ export class SecurityV1AliasController {
       'Canonical security code; provider-formatted inputs are normalized',
     example: '600519',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'Source configuration retrieved successfully',
   })
-  @ApiResponse({ status: 404, description: 'Security not found' })
+  @ApiTechnicalErrorResponse({
+    status: 404,
+    description: 'Security not found',
+    codes: ['NOT_FOUND'],
+  })
   async getSecuritySources(@Param('code') code: string) {
     return await this.securityService.getSecuritySources(code);
   }
@@ -117,11 +146,15 @@ export class SecurityV1AliasController {
       'Canonical security code to deactivate; provider-formatted inputs are normalized',
     example: '600519',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'Security successfully deactivated',
   })
-  @ApiResponse({ status: 404, description: 'Security not found' })
+  @ApiTechnicalErrorResponse({
+    status: 404,
+    description: 'Security not found',
+    codes: ['NOT_FOUND'],
+  })
   async deactivateSecurity(@Param('code') code: string): Promise<void> {
     await this.securityService.deactivateSecurity(code);
   }
@@ -135,8 +168,15 @@ export class SecurityV1AliasController {
       'Canonical security code to activate; provider-formatted inputs are normalized',
     example: '600519',
   })
-  @ApiResponse({ status: 200, description: 'Security successfully activated' })
-  @ApiResponse({ status: 404, description: 'Security not found' })
+  @ApiEnvelopeResponse({
+    status: 200,
+    description: 'Security successfully activated',
+  })
+  @ApiTechnicalErrorResponse({
+    status: 404,
+    description: 'Security not found',
+    codes: ['NOT_FOUND'],
+  })
   async activateSecurity(@Param('code') code: string): Promise<void> {
     await this.securityService.activateSecurity(code);
   }

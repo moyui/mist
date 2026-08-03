@@ -20,6 +20,12 @@
 本指南是日常检查入口，不替代具体功能的 stable OpenSpec、active change、数据库 migration、
 provider 官方契约或生产证据。
 
+Mist 后端的错误分类、TypeORM 异常传播、HTTP/RPC 出口以及 worker/realtime 失败边界，另外遵循
+[`backend-error-handling-governance-guide.md`](./backend-error-handling-governance-guide.md)。
+
+Mist Backend 的 DTO、VO、Entity、domain contract 命名与文件组织，另外遵循
+[`mist-backend-code-style-guide.md`](./mist-backend-code-style-guide.md)。
+
 ## 2. 规范优先级
 
 出现冲突时，按以下顺序判断：
@@ -183,6 +189,20 @@ TDX/QMT 各自解析 provider historical bar time 后写入，不要求原始格
 - `volume/amount` 使用 nullable exact `DECIMAL(36,8)`。
 - `volume/amount` 的有效有限值以十进制字符串或等价 exact 表达保存，不取整。
 - 缺失、空值、`NaN` 或 `Infinity` 归一为 `null`，不得补零。
+- Redis、MySQL、wire 与 canonical raw `StrategyBar` 必须保留原始 null，不得用前值覆盖事实数据。
+- 唯一已批准的消费层例外是策略共享纯函数 `QuantityForwardFillProjector`：它只能在
+  `(securityId, source, period, tradingDay)` 内分别为 volume/amount 生成 evaluation effective view，
+  只读更早值，不读 future，不跨交易日，不写回 raw bar 或持久化层。显式 `"0"` 是有效观察。
+- 同交易日没有前值时保持 unavailable；日线每根 K 的 tradingDay 不同，不能继承上一根日线。停牌日
+  没有 K 时不得虚构 bar 或 evaluation anchor。
+- derived period 必须先用 raw constituents 完成聚合，再对 final raw derived bar 应用 projector；
+  不得先 forward-fill 组成 1m 后参与合计。
+- 持久化 Signal/Backtest result 必须复用共享 contextSnapshot serializer：`k.volume/k.amount` 保持
+  evaluator 实际使用的 canonical scalar；compiled execution plan 消费的量额 observation 另存
+  `quantityEvidence.current/previous.{volume|amount}`，每项固定为
+  `raw: string|null`、`effective: string`、`resolution: observed|forwardFilled`。evidence 按 plan 在
+  `all/any` 短路前 materialize；plan 不消费量额时省略。`unavailable` 只属于进程内 evaluability，
+  不产生结果或 snapshot；不得以 `k.type`、`evaluationQuality`、完整 raw K 副本或新数据库字段替代。
 - `NaN` 只能作为进程内 sentinel，不能跨 wire 或落库。
 
 ### 6.6 数据库命名和完整性
@@ -208,13 +228,15 @@ Chan 当前为请求时实时派生计算，不写 MySQL。未来若重新持久
 
 ### 6.7 当前明确延期或不实施的能力
 
-- `sync-post-close-provider-history` 无限期延期；不得据此启用 `apps/schedule` 自动写入。
+- 收盘后 provider history sync 无限期延期且当前无 active change；不得启用 `apps/schedule` 自动写入。
 - `apps/schedule` 保留给后续职责设计，不恢复旧通用 scheduler。
 - AlertEvent 当前只要求能够发送；不擅自增加严格状态机、attempt、retry 或 dead-letter 字段。
 - 当前产品范围不支持期货和期权；不得用股票字段语义推断未来衍生品 schema。
 
 ## 7. 命名、文件和目录规则
 
+- Mist Backend 的 DTO/VO class 后缀、文件后缀、目录和边界以
+  [`mist-backend-code-style-guide.md`](./mist-backend-code-style-guide.md) 为准。
 - TypeScript 文件使用 kebab-case，Python 文件使用 snake_case。
 - 文件 basename 应反映主要导出职责，使用准确后缀：`.service`、`.controller`、`.decoder`、
   `.entity`、`.guard`、`.util`。

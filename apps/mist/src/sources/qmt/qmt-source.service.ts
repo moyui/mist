@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import { parseISO } from 'date-fns';
@@ -58,7 +58,6 @@ const QMT_EXTENSION_UPSERT_COLUMNS = [
 @Injectable()
 export class QmtSource implements ISourceFetcher<QmtResponse> {
   private readonly axios: AxiosInstance;
-  private readonly logger = new Logger(QmtSource.name);
   private readonly baseUrl: string;
 
   constructor(
@@ -116,13 +115,13 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
 
       return this.mapSymbolMarketData(formatCode, symbolData, period);
     } catch (error) {
-      this.logger.error(`QMT fetchK error: ${error.message}`);
       if (error instanceof HttpException) {
         throw error;
       }
       throw new HttpException(
-        `Failed to fetch QMT data: ${error.message}`,
+        `Failed to fetch QMT data: ${errorMessage(error)}`,
         HttpStatus.BAD_GATEWAY,
+        { cause: error },
       );
     }
   }
@@ -408,4 +407,8 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
   private isRecord(value: unknown): value is Record<string, unknown> {
     return value != null && typeof value === 'object' && !Array.isArray(value);
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

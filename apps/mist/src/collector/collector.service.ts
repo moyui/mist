@@ -96,70 +96,57 @@ export class CollectorService {
     dataSource: DataSource,
     postProcess?: (data: KData[], source: DataSource) => Promise<void>,
   ): Promise<number> {
-    try {
-      // Validate security exists
-      const security = await this.findSecurityByCode(stockCode);
-      if (!security) {
-        throw new NotFoundException(
-          `Security with code ${stockCode} not found`,
-        );
-      }
-
-      // Get the source fetcher for the specified data source
-      const sourceFetcher = this.sources.get(dataSource);
-      if (!sourceFetcher) {
-        throw new BadRequestException(
-          `Data source ${dataSource} is not available`,
-        );
-      }
-
-      // Check if period is supported
-      if (!sourceFetcher.isSupportedPeriod(period)) {
-        throw new BadRequestException(
-          `Period ${period} is not supported by data source ${dataSource}`,
-        );
-      }
-
-      // Fetch data from the source
-      const fetchParams: KFetchParams = {
-        code: stockCode,
-        formatCode: getSecurityFormatCode(security, dataSource),
-        period,
-        startDate,
-        endDate,
-      };
-
-      const kLineData = await sourceFetcher.fetchK(fetchParams);
-
-      if (kLineData.length === 0) {
-        this.logger.warn(
-          `No data returned for security ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
-        );
-        return 0;
-      }
-
-      // Save data to database
-      await this.saveFetchedKData(sourceFetcher, kLineData, security, period);
-
-      // Call post-process callback if provided
-      if (postProcess) {
-        await postProcess(
-          this.toPostProcessKData(kLineData, period),
-          dataSource,
-        );
-      }
-
-      this.logger.log(
-        `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period} from ${dataSource}`,
-      );
-      return kLineData.length;
-    } catch (error) {
-      this.logger.error(
-        `Failed to collect K-line data for ${stockCode} from ${dataSource}:`,
-        error,
-      );
-      throw error;
+    // Validate security exists
+    const security = await this.findSecurityByCode(stockCode);
+    if (!security) {
+      throw new NotFoundException(`Security with code ${stockCode} not found`);
     }
+
+    // Get the source fetcher for the specified data source
+    const sourceFetcher = this.sources.get(dataSource);
+    if (!sourceFetcher) {
+      throw new BadRequestException(
+        `Data source ${dataSource} is not available`,
+      );
+    }
+
+    // Check if period is supported
+    if (!sourceFetcher.isSupportedPeriod(period)) {
+      throw new BadRequestException(
+        `Period ${period} is not supported by data source ${dataSource}`,
+      );
+    }
+
+    // Fetch data from the source
+    const fetchParams: KFetchParams = {
+      code: stockCode,
+      formatCode: getSecurityFormatCode(security, dataSource),
+      period,
+      startDate,
+      endDate,
+    };
+
+    const kLineData = await sourceFetcher.fetchK(fetchParams);
+
+    if (kLineData.length === 0) {
+      this.logger.warn(
+        `No data returned for security ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
+      );
+      return 0;
+    }
+
+    // Save data to database
+    await this.saveFetchedKData(sourceFetcher, kLineData, security, period);
+
+    // Call post-process callback if provided
+    if (postProcess) {
+      await postProcess(this.toPostProcessKData(kLineData, period), dataSource);
+    }
+
+    this.logger.log(
+      `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period} from ${dataSource}`,
+    );
+    return kLineData.length;
   }
 
   /**
@@ -207,65 +194,55 @@ export class CollectorService {
     startDate: Date,
     endDate: Date,
   ): Promise<void> {
-    try {
-      // Validate security exists
-      const security = await this.securityRepository.findOne({
-        where: { code: stockCode },
-        relations: ['sourceConfigs'],
-      });
+    // Validate security exists
+    const security = await this.securityRepository.findOne({
+      where: { code: stockCode },
+      relations: ['sourceConfigs'],
+    });
 
-      if (!security) {
-        throw new NotFoundException(
-          `Security with code ${stockCode} not found`,
-        );
-      }
-
-      // Use configured data source instead of hardcoded EAST_MONEY
-      const dataSource = await this.getSourceForSecurity(security);
-      const sourceFetcher = this.sources.get(dataSource);
-      if (!sourceFetcher) {
-        throw new BadRequestException(
-          `Data source ${dataSource} is not available`,
-        );
-      }
-
-      // Check if period is supported
-      if (!sourceFetcher.isSupportedPeriod(period)) {
-        throw new BadRequestException(
-          `Period ${period} is not supported by data source ${dataSource}`,
-        );
-      }
-
-      // Fetch data from the source
-      const fetchParams: KFetchParams = {
-        code: stockCode,
-        formatCode: getSecurityFormatCode(security, dataSource),
-        period,
-        startDate,
-        endDate,
-      };
-
-      const kLineData = await sourceFetcher.fetchK(fetchParams);
-
-      if (kLineData.length === 0) {
-        this.logger.warn(
-          `No data returned for security ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
-        );
-        return;
-      }
-
-      // Save data to database
-      await this.saveFetchedKData(sourceFetcher, kLineData, security, period);
-
-      this.logger.log(
-        `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period}`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to collect K-line data for ${stockCode}:`,
-        error,
-      );
-      throw error;
+    if (!security) {
+      throw new NotFoundException(`Security with code ${stockCode} not found`);
     }
+
+    // Use configured data source instead of hardcoded EAST_MONEY
+    const dataSource = await this.getSourceForSecurity(security);
+    const sourceFetcher = this.sources.get(dataSource);
+    if (!sourceFetcher) {
+      throw new BadRequestException(
+        `Data source ${dataSource} is not available`,
+      );
+    }
+
+    // Check if period is supported
+    if (!sourceFetcher.isSupportedPeriod(period)) {
+      throw new BadRequestException(
+        `Period ${period} is not supported by data source ${dataSource}`,
+      );
+    }
+
+    // Fetch data from the source
+    const fetchParams: KFetchParams = {
+      code: stockCode,
+      formatCode: getSecurityFormatCode(security, dataSource),
+      period,
+      startDate,
+      endDate,
+    };
+
+    const kLineData = await sourceFetcher.fetchK(fetchParams);
+
+    if (kLineData.length === 0) {
+      this.logger.warn(
+        `No data returned for security ${stockCode}, period ${period}, from ${startDate} to ${endDate}`,
+      );
+      return;
+    }
+
+    // Save data to database
+    await this.saveFetchedKData(sourceFetcher, kLineData, security, period);
+
+    this.logger.log(
+      `Successfully collected ${kLineData.length} K-line records for ${stockCode}, period ${period}`,
+    );
   }
 }

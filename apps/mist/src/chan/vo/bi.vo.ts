@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { KVo } from '../../indicator/vo/k.vo';
-import { ApiResponseDto } from '../../dto/api-response.dto';
 import { BiType, BiStatus } from '../enums/bi.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
 import type {
@@ -42,9 +41,4 @@ export class BiTwoPhaseVo implements ChanBiTwoPhaseResult {
 
   @ApiProperty({ type: () => [BiVo] })
   phaseB!: BiVo[];
-}
-
-export class BiTwoPhaseResponseVo extends ApiResponseDto<BiTwoPhaseVo> {
-  @ApiProperty({ type: () => BiTwoPhaseVo, required: true })
-  override data!: BiTwoPhaseVo;
 }

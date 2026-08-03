@@ -3,28 +3,7 @@
 Strategy scheduler alert delivery hardens the production strategy loop by
 running scheduled scans after completed K-line collection and letting external
 consumers record alert delivery outcomes through Mist backend APIs.
-
 ## Requirements
-
-### Requirement: Schedule Shall Trigger Strategy Scans After K-Line Collection
-
-Mist schedule app SHALL run strategy scans after completed K-line collection
-windows.
-
-#### Scenario: Scheduled collection succeeds
-
-- **WHEN** a schedule collection job successfully collects K-line data for a
-  period
-- **THEN** the schedule app MUST trigger a strategy scan for that same period
-- **AND** the scan MUST use Mist's shared `StrategyScanService`
-
-#### Scenario: Scheduled collection fails
-
-- **WHEN** a schedule collection job fails before completing collection
-- **THEN** the schedule app MUST NOT trigger the strategy scan for that failed
-  collection attempt
-- **AND** it MUST log the collection failure
-
 ### Requirement: Schedule Shall Not Own Public Strategy APIs
 
 The schedule app SHALL host strategy scan jobs only and SHALL NOT expose public
@@ -36,19 +15,6 @@ strategy REST APIs.
 - **THEN** it MUST import reusable strategy providers without mounting
   `/v1/strategies`, `/v1/strategy-signals`,
   `/v1/strategy-alert-events`, or `/v1/strategy-backtests` controllers
-
-### Requirement: Scheduled Scans Shall Reuse Live Scan Semantics
-
-Scheduled strategy scans SHALL use the same rule evaluator, context builder,
-dedupe key, signal persistence, and alert event persistence as manual scans.
-
-#### Scenario: Scheduled scan matches a strategy
-
-- **WHEN** a scheduled scan finds a matching strategy context
-- **THEN** it MUST persist a `StrategySignal`
-- **AND** it MUST persist a linked pending `StrategyAlertEvent`
-- **AND** it MUST suppress duplicates with the same dedupe semantics as manual
-  scans
 
 ### Requirement: Alert Delivery State Shall Be Recorded
 

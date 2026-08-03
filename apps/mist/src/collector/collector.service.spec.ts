@@ -226,7 +226,7 @@ describe('CollectorService', () => {
       );
     });
 
-    it('should log and rethrow collection failures', async () => {
+    it('should let the outer request boundary log collection failures', async () => {
       const error = new Error('source down');
       mockEastMoneySource.fetchK.mockRejectedValue(error);
 
@@ -239,10 +239,7 @@ describe('CollectorService', () => {
         ),
       ).rejects.toThrow(error);
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(
-        'Failed to collect K-line data for 000001:',
-        error,
-      );
+      expect(loggerErrorSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -359,6 +356,7 @@ describe('CollectorService', () => {
 
       expect(mockQmtSource.fetchK).not.toHaveBeenCalled();
       expect(mockQmtSource.saveK).not.toHaveBeenCalled();
+      expect(loggerErrorSpy).not.toHaveBeenCalled();
     });
 
     it('collects and saves historical K data from QMT when requested explicitly', async () => {

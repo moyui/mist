@@ -1,22 +1,21 @@
-import { Body, Controller, Post, UseFilters } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Post } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiEnvelopeResponse } from '@app/transport/http';
 import { Throttle } from '@nestjs/throttler';
 import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { CreateChannelDto } from './dto/create-channel.dto';
-import { ChannelTwoPhaseResponseVo } from './vo/channel.vo';
-import { BiTwoPhaseResponseVo } from './vo/bi.vo';
+import { ChannelTwoPhaseVo } from './vo/channel.vo';
+import { BiTwoPhaseVo } from './vo/bi.vo';
 import { MergeKDto } from './dto/merge-k.dto';
 import { IndicatorQueryDto } from '../indicator/dto/query/indicator-query.dto';
 import { ChannelService } from './services/channel.service';
 import { KMergeService } from './services/k-merge.service';
 import { TimezoneService } from '@app/timezone';
 import { IndicatorService } from '../indicator/indicator.service';
-import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 
 @ApiTags('chan')
 @Controller('v1/chan')
-@UseFilters(AllExceptionsFilter)
 export class ChanController {
   constructor(
     private readonly chanService: ChanService,
@@ -43,10 +42,11 @@ export class ChanController {
     description:
       'Merges K-lines based on containment relationships and trend direction',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'Returns merged K-line data',
-    type: [MergeKDto],
+    type: MergeKDto,
+    isArray: true,
   })
   async postMergeK(@Body() queryDto: IndicatorQueryDto) {
     const { startDate, endDate } = this.parseQueryDateRange(queryDto);
@@ -81,11 +81,11 @@ export class ChanController {
     description:
       'Identifies and creates Bi (strokes) from K-line data using Chan Theory',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description:
       'Returns an API envelope whose data contains the two-phase Bi result { phaseA, phaseB }',
-    type: BiTwoPhaseResponseVo,
+    type: BiTwoPhaseVo,
   })
   async postIndexBi(@Body() queryDto: IndicatorQueryDto) {
     const { startDate, endDate } = this.parseQueryDateRange(queryDto);
@@ -121,7 +121,7 @@ export class ChanController {
     description:
       'Returns all fenxing (fractal) data identified from merged K-lines',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description: 'Returns array of fenxing data',
   })
@@ -159,11 +159,11 @@ export class ChanController {
     description:
       'Identifies and creates channels (central regions) from Bi data. Returns a two-phase result: phaseA (all enumerated base channels) and phaseB (merged final channels).',
   })
-  @ApiResponse({
+  @ApiEnvelopeResponse({
     status: 200,
     description:
       'Returns an API envelope whose data contains the two-phase channel result { phaseA, phaseB }',
-    type: ChannelTwoPhaseResponseVo,
+    type: ChannelTwoPhaseVo,
   })
   async postChannel(@Body() queryDto: IndicatorQueryDto) {
     const { startDate, endDate } = this.parseQueryDateRange(queryDto);

@@ -84,6 +84,42 @@
         "tsConfigPath": "libs/constants/tsconfig.lib.json"
       }
     },
+    "transport": {
+      "type": "library",
+      "root": "libs/transport",
+      "entryFile": "index",
+      "sourceRoot": "libs/transport/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/transport/tsconfig.lib.json"
+      }
+    },
+    "backtest": {
+      "type": "library",
+      "root": "libs/backtest",
+      "entryFile": "index",
+      "sourceRoot": "libs/backtest/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/backtest/tsconfig.lib.json"
+      }
+    },
+    "signal": {
+      "type": "library",
+      "root": "libs/signal",
+      "entryFile": "index",
+      "sourceRoot": "libs/signal/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/signal/tsconfig.lib.json"
+      }
+    },
+    "strategy": {
+      "type": "library",
+      "root": "libs/strategy",
+      "entryFile": "index",
+      "sourceRoot": "libs/strategy/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/strategy/tsconfig.lib.json"
+      }
+    },
     "chan": {
       "type": "application",
       "root": "apps/chan",

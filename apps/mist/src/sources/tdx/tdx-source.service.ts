@@ -131,13 +131,13 @@ export class TdxSource implements ITdxSourceFetcher {
         };
       });
     } catch (error) {
-      this.logger.error(`TDX fetchK error: ${error.message}`);
       if (error instanceof HttpException) {
         throw error;
       }
       throw new HttpException(
-        `Failed to fetch TDX data: ${error.message}`,
+        `Failed to fetch TDX data: ${errorMessage(error)}`,
         HttpStatus.BAD_GATEWAY,
+        { cause: error },
       );
     }
   }
@@ -334,4 +334,8 @@ export class TdxSource implements ITdxSourceFetcher {
 
     return payload;
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

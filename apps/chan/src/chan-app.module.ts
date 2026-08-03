@@ -13,9 +13,11 @@ import {
   Security,
   SecuritySourceConfig,
 } from '@app/shared-data';
+import { HttpTransportModule } from '@app/transport/http';
 
 @Module({
   imports: [
+    HttpTransportModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [

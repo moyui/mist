@@ -6,7 +6,6 @@ import {
   ChannelStatus,
   ChannelType,
 } from '../enums/channel.enum';
-import { ApiResponseDto } from '../../dto/api-response.dto';
 
 export class ChannelVo {
   @ApiProperty({ type: () => [BiVo] })
@@ -43,9 +42,4 @@ export class ChannelTwoPhaseVo {
 
   @ApiProperty({ type: () => [ChannelVo] })
   phaseB!: ChannelVo[];
-}
-
-export class ChannelTwoPhaseResponseVo extends ApiResponseDto<ChannelTwoPhaseVo> {
-  @ApiProperty({ type: () => ChannelTwoPhaseVo, required: true })
-  override data!: ChannelTwoPhaseVo;
 }

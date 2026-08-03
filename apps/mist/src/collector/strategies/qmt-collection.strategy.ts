@@ -30,26 +30,17 @@ export class QmtCollectionStrategy implements IDataCollectionStrategy {
     startDate: Date,
     endDate: Date,
   ): Promise<number> {
-    try {
-      const count = await this.collectorService.collectKForSource(
-        security.code,
-        period,
-        startDate,
-        endDate,
-        this.source,
-      );
-      this.logger.log(
-        `Manual collection completed for ${security.code} ${period}: ${count} records`,
-      );
-      return count;
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(
-        `Failed to collect ${security.code} ${period}: ${err.message}`,
-        err.stack,
-      );
-      throw err;
-    }
+    const count = await this.collectorService.collectKForSource(
+      security.code,
+      period,
+      startDate,
+      endDate,
+      this.source,
+    );
+    this.logger.log(
+      `Manual collection completed for ${security.code} ${period}: ${count} records`,
+    );
+    return count;
   }
 
   async collectScheduledCandle(
@@ -117,16 +108,6 @@ export class QmtCollectionStrategy implements IDataCollectionStrategy {
     this.logger.log(
       `Scheduled collection completed for ${period}: ${succeeded} succeeded, ${failed} failed`,
     );
-
-    if (failed > 0) {
-      results
-        .filter((r) => r.status === 'rejected')
-        .forEach((r) => {
-          this.logger.error(
-            `Collection failed: ${(r as PromiseRejectedResult).reason?.message || 'Unknown error'}`,
-          );
-        });
-    }
   }
 
   async start(): Promise<void> {

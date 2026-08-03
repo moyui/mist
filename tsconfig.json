@@ -33,7 +33,12 @@
       "@app/timezone": ["libs/timezone/src"],
       "@app/timezone/*": ["libs/timezone/src/*"],
       "@app/constants": ["libs/constants/src"],
-      "@app/constants/*": ["libs/constants/src/*"]
+      "@app/constants/*": ["libs/constants/src/*"],
+      "@app/transport/http": ["libs/transport/src/http/index.ts"],
+      "@app/transport/rpc": ["libs/transport/src/rpc/index.ts"],
+      "@app/backtest": ["libs/backtest/src/index.ts"],
+      "@app/signal": ["libs/signal/src/index.ts"],
+      "@app/strategy": ["libs/strategy/src/index.ts"]
     }
   },
   "include": ["apps/**/*", "libs/**/*"]
