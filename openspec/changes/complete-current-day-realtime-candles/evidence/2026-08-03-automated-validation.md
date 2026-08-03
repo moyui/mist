@@ -56,4 +56,5 @@
   datasource 既有只读接口。
 - 未人为制造 provider 异常；未自然出现的异常继续记为 `not-observed`，真实 incident 由
   `capture-realtime-provider-anomalies` 承接。
-- `REALTIME_PRODUCTIZATION_MODE` 仍必须保持 `off`，直到 5.4 与 5.5 均完成。
+- 生产默认仍保持 `off`；经 `mist-production` 审批的 5.4 HIL 窗口可显式切为 `shadow`。
+  5.4 与 5.5 均完成前禁止切为 `on`。

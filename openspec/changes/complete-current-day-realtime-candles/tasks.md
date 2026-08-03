@@ -118,4 +118,6 @@
   调用 datasource 既有只读接口，不写 MySQL。真实异常未出现时保持 `not-observed` 并链接
   `capture-realtime-provider-anomalies`，不主动制造。证明唯一 quantity profile、股/元结果和
   provider-float provenance；任一 source 未证明前不得切 `on`。
+  - 2026-08-03 已完成 harness/workflow、TDX bridge artifact health 补充和非交易时段自动化准备，见
+    `evidence/2026-08-03-shadow-hil-readiness.md`；尚无双 source 交易时段 artifact，父任务保持未完成。
 - [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。
