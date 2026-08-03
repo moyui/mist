@@ -12,11 +12,11 @@ export const ERROR_MESSAGES = {
   BI_MUST_BE_ARRAY: 'Invalid input: bi must be an array',
   BI_ARRAY_EMPTY: 'Invalid input: bi array cannot be empty',
   BI_MISSING_HIGH_LOW:
-    'Invalid bi at index {{index}}: missing highest or lowest value',
+    'Invalid bi at index {{index}}: missing high or low value',
   BI_INVALID_NUMBER_TYPE:
-    'Invalid bi at index {{index}}: highest and lowest must be numbers',
+    'Invalid bi at index {{index}}: high and low must be numbers',
   BI_HIGH_MUST_EXCEED_LOW:
-    'Invalid bi at index {{index}}: highest must be greater than lowest',
+    'Invalid bi at index {{index}}: high must be greater than low',
   BI_MISSING_FENXING:
     'Bi at index {{index}} is incomplete: missing fenxing information',
   INVALID_PERIOD: 'Invalid period specified',

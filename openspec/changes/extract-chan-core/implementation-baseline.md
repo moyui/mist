@@ -10,7 +10,8 @@
 - 不把 Chan 与 Indicator/Strategy calculation 合并成通用 analysis base；
 - 不重构 K reader、module、route ownership、gateway、deploy 或跨 app import；
 - `/v1/indicators/k` 与四个 `/v1/chan/*` response 统一使用 `high/low`，不保留 `highest/lowest` alias；
-- frontend/skills 由独立消费者批次迁移，匹配版本完成前不得部署本 backend breaking contract；
+- frontend/skills 已在独立消费者分支完成同步迁移；backend、frontend、skills 三个匹配 commit 必须作为
+  同一发布组交付，不允许只部署其中一个；
 - 现有调用接入新 core，只保留 fresh-object/Date 映射的薄 HTTP wrapper；
 - 为 Backtest、Realtime、Signal/Alert 等后续 owning change 提供直接 library 调用边界，但当前 V1 不
   开放 `chan.*`，不新增 prerequisite。
@@ -23,7 +24,15 @@
 - 初始审计基线：`master@fe56c6863cc498acbad0a6803da16c2615bb6997`
 - 当前实施基线：`master@3a07d4b725dec2c288058505c82959224281d2a3`
 - 已同步前置：归档 change `2026-08-03-fix-chan-wide-bi-distance`
-- 当前状态：pure source move、Chan wrapper 与 backend HTTP `high/low` 字段迁移已完成；未新增 migration
+- 当前状态：pure source move、Chan wrapper、backend HTTP 与匹配 frontend/skills consumer 的
+  `high/low` 字段迁移已完成；未新增 migration
+
+匹配消费者工作区：
+
+- `mist-fe`：`feat/standardize-chan-price-fields`，worktree
+  `.worktrees/standardize-chan-price-fields/mist-fe`，commit `4686f9a`；
+- `mist-skills`：`feat/standardize-chan-price-fields`，worktree
+  `.worktrees/standardize-chan-price-fields/mist-skills`，commit `3dcd8d1`。
 
 ### pure calculation 影响链
 
@@ -100,8 +109,14 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
 - 删除已无职责的 `merge-k.dto.ts`；实际 HTTP request 仍为 `IndicatorQueryDto`，route 和请求字段不变。
 - `git diff` 未触及 `libs/shared-data/src/entities/k.entity.ts`、migration 或 ChanCore algorithm source；
   MySQL 仍使用既有 `high/low` 列，`ChanCore.algorithmVersion` 仍为 1。
-- 消费者审计确认 `mist-fe/app/api/types.ts`、KPanel 与 Chan fixtures，以及 `mist-skills` 的 data-query/
-  chan-theory 文档和测试仍使用旧字段；这些仓库本批未修改，构成本 backend 的发布门禁。
+- `mist-fe` 的 API types、KPanel、live/snapshot consumer、README 和 20 份 Chan fixture 已递归迁移到
+  `high/low`；脚本逐文件证明 fixture 只发生 key rename，值、数组顺序和对象字段顺序均未改变，也未
+  添加旧字段 fallback。历史 `docs/superpowers/plans/**` 作为已完成计划证据保留原文，不参与运行时
+  contract。
+- `mist-skills` 的 data-query/chan-theory 文档、mock 与 contract tests 已迁移到 `high/low`；共享
+  `MistClient` 继续透传 backend data，没有转换或 alias。
+- 后端集中 Bi 错误文案同步改为 `high/low`；算法局部变量 `highestIndex/lowestIndex` 表达极值索引，
+  不属于 wire contract，保持不变。
 
 ### 验证记录
 
@@ -117,14 +132,24 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
   将 `mist` 映射到当前 worktree、其余仓库映射到真实兄弟仓后通过。
 - `pnpm run build:docker`：`mist`、`chan`、`realtime-subscription-hil` 三个 webpack build 通过。
 - `openspec validate --all --strict` 与 `git diff --check`：通过。
+- `mist-fe`：ESLint、`tsc --noEmit`、15 suites / 90 tests 和 Next.js production build 通过；生产
+  build 首次仅因受限网络无法下载项目既有 Geist 字体失败，允许访问 Google Fonts 后通过。
+- `mist-fe` fixture differential：20 个 JSON fixture 均为递归 `highest -> high`、`lowest -> low`
+  key-only rename；active README/fixture/application 扫描只剩明确断言旧字段不存在的 negative tests。
+- `mist-skills`：按 CI 运行 `uv run ruff check .`、`uv run pyright`、`uv run black --check .` 与
+  `uv run pytest`，全部通过（75 tests）；旧字段只存在于 negative contract assertions。
+- matching-worktree `pnpm run ci:contracts`：临时多仓 root 将 `mist`、`mist-fe`、`mist-skills` 映射到
+  本次三个 worktree，将 datasource/monitoring 映射到真实兄弟仓，验证通过。
+- 三仓 `git diff --check` 通过；原 `mist-fe` 与 `mist-skills` 主工作区保持干净。
 
 ### Residual work
 
 - Backtest/Realtime/Signal/Alert 对 ChanCore 的采用由各自 focused owning change 决定。
 - 除本次价格字段与 OpenAPI 修正外，现有 Chan route/app ownership cleanup 另开 change。
 - 公共 Indicator/K API 与 lookback 重构继续由既有独立 change 持有，本 change 不处理。
-- `mist-fe` 与 `mist-skills` 必须在独立匹配版本批次改为 `high/low` 后才能部署本 backend commit。
-- 归档门禁 4.5 等待项目负责人审阅本节 differential 与 validation evidence。
+- backend `feat/extract-chan-core`、frontend `4686f9a` 与 skills `3dcd8d1` 必须协调合并和发布；这不是
+  runtime compatibility alias，任一旧消费者与新 backend 混用都会违反契约。
+- 归档门禁 4.6 等待项目负责人审阅本节三仓 differential 与 validation evidence。
 
 ### Source move 前契约复核
 
@@ -141,5 +166,5 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
 
 source move 开始前的 pending tasks 只包含 pure core 与不改变 API 的 wrapper；随后项目负责人明确批准
 把 K/Chan HTTP `highest/lowest` 收敛为 `high/low`。该 breaking change 已先回写 proposal/design/delta
-specs/tasks，再修改 Controller/VO/OpenAPI；K reader、route owner、gateway、frontend、skills、deploy、
-Redis/MySQL persistence 与 migration 仍未进入实施范围。
+specs/tasks，再修改 Controller/VO/OpenAPI，并在再次批准后扩展到匹配 frontend/skills consumer；K
+reader、route owner、gateway、deploy、Redis/MySQL persistence 与 migration 仍未进入实施范围。
