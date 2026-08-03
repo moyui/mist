@@ -107,12 +107,16 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
 
 - `pnpm run lint:check`：通过。
 - `pnpm run typecheck`：通过。
-- `pnpm run test:ci`：通过；受限沙箱首次仅因既有 HTTP integration 无法绑定临时端口失败，允许本机
-  loopback 后全量重跑通过。
-- `pnpm run build:docker` 与 `pnpm exec nest build chancore`：通过。
-- `pnpm run ci:contracts`：通过；worktree 验证使用临时多仓 root 映射，CI 的 Chan smell target 已随
-  source move 更新到 `libs/chancore/src/internal`。
-- `openspec validate extract-chan-core --strict` 与 `git diff --check`：通过。
+- HTTP 字段定向回归：`chan-core.mapper`、`chan.service`、`chan.controller.openapi`、
+  `indicator.controller` 共 4 suites / 10 tests 通过。
+- `env TZ=UTC pnpm run test:ci`：受限沙箱首次只有 2 个既有 HTTP integration suites 因
+  `listen EPERM 0.0.0.0` 失败；允许绑定本机临时端口后全量重跑 94 suites / 719 tests 通过，另有
+  2 suites / 3 tests 按既有条件跳过。
+- `pnpm exec nest build chancore`：source move 后通过。
+- `pnpm run ci:contracts`：直接从 worktree 执行会把 `.worktrees` 误判为多仓 root；使用临时多仓 root
+  将 `mist` 映射到当前 worktree、其余仓库映射到真实兄弟仓后通过。
+- `pnpm run build:docker`：`mist`、`chan`、`realtime-subscription-hil` 三个 webpack build 通过。
+- `openspec validate --all --strict` 与 `git diff --check`：通过。
 
 ### Residual work
 

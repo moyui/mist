@@ -58,8 +58,8 @@
 
 - [x] 4.1 运行 Chan 定向、full-output differential、public barrel、pure-boundary 和 source-move API
   regression tests；HTTP 字段迁移后按 3.6/4.2 重跑 canonical contract regression。
-- [ ] 4.2 在 HTTP 字段迁移后重跑全量 lint、typecheck、test、build 和 `ci:contracts`。
+- [x] 4.2 在 HTTP 字段迁移后重跑全量 lint、typecheck、test、build 和 `ci:contracts`。
 - [x] 4.3 检索 `libs/chancore` 的 TypeORM/Redis/HTTP/Nest/env/persistence imports 和旧算法重复实现。
-- [ ] 4.4 在 HTTP 字段迁移后重跑 strict OpenSpec、`git diff --check`，记录未来 Chan strategy
+- [x] 4.4 在 HTTP 字段迁移后重跑 strict OpenSpec、`git diff --check`，记录未来 Chan strategy
   adoption、route/app cleanup、公共 Indicator/K API 重构为 residual work。
 - [ ] 4.5 向项目负责人审阅 differential 与 validation evidence 后才归档。
