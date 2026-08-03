@@ -107,10 +107,11 @@
 
 ## 5. 部署、监控与验收
 
-- [ ] 5.1 完成共享 realtime Redis Compose/env/health/startup contract，启用 AOF/noeviction，配置 queue
+- [x] 5.1 完成共享 realtime Redis Compose/env/health/startup contract，启用 AOF/noeviction，配置 queue
   limits 且模式保持 off。
-- [ ] 5.2 完成 candle/Redis/grace/discard/capacity/recovery monitoring 与低基数 tests。
-- [ ] 5.3 运行受影响仓库完整基线、strict OpenSpec、fixture SHA 和 `git diff --check`。
+- [x] 5.2 完成 candle/Redis/grace/discard/capacity/recovery monitoring 与低基数 tests。
+- [x] 5.3 运行受影响仓库完整基线、strict OpenSpec、fixture SHA 和 `git diff --check`；自动化证据见
+  `evidence/2026-08-03-automated-validation.md`。
 - [ ] 5.4 以 shadow 完成 TDX/QMT 支持交易时段、restart/AOF、capacity 和 protected-table 零写入 HIL；
   不新增 snapshot collector，直接复用 datasource/backend 已有实时输出并固定 terminal/bridge identity，
   用规范化后的 `amountDelta/volumeDelta` 与同期 price range 对照；收盘同源 historical K 由验收脚本直接
