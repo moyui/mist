@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { normalizeExternalDecimalText } from '@app/decimal';
 import { ConfigService } from '@nestjs/config';
 import {
   ISourceFetcher,
@@ -19,7 +20,6 @@ import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
-import { kDecimalFromNumber } from '../k-decimal.util';
 import { saveBaseK } from '../k-save.helper';
 
 const MARKET_TIME_ZONE = 'Asia/Shanghai';
@@ -114,14 +114,11 @@ export class EastMoneySource implements ISourceFetcher {
       const high = Number(item['最高']);
       const low = Number(item['最低']);
       const close = Number(item['收盘']);
-      const volume = kDecimalFromNumber(Number(item['成交量']), 'volume');
+      const volume = normalizeEastMoneyQuantity(item['成交量'], 'volume');
       // EastMoney missing-value semantics are outside this change; preserve
       // its existing zero-filled persistence behavior while adapting the type.
       const amount =
-        kDecimalFromNumber(
-          item['成交额'] == null ? null : Number(item['成交额']),
-          'amount',
-        ) ?? '0';
+        normalizeEastMoneyQuantity(item['成交额'] ?? null, 'amount') ?? '0';
 
       // Only create extensions when at least one field is present
       const extAmplitude = item['振幅'] ?? undefined;
@@ -192,12 +189,9 @@ export class EastMoneySource implements ISourceFetcher {
         high: Number(item.high),
         low: Number(item.low),
         close: Number(item.close),
-        volume: kDecimalFromNumber(Number(item.volume), 'volume'),
+        volume: normalizeEastMoneyQuantity(item.volume, 'volume'),
         amount:
-          kDecimalFromNumber(
-            item.amount == null ? null : Number(item.amount),
-            'amount',
-          ) ?? '0',
+          normalizeEastMoneyQuantity(item.amount ?? null, 'amount') ?? '0',
         period,
       }),
     );
@@ -276,4 +270,22 @@ export class EastMoneySource implements ISourceFetcher {
   private toNullableBigInt(value: number | undefined): bigint | null {
     return value == null ? null : BigInt(Math.round(value));
   }
+}
+
+function normalizeEastMoneyQuantity(
+  value: number | string | null,
+  fieldName: 'volume' | 'amount',
+): string | null {
+  if (value === null) return null;
+  if (typeof value === 'string') {
+    return normalizeExternalDecimalText(value);
+  }
+  if (!Number.isFinite(value)) return null;
+  if (value < 0 || Object.is(value, -0)) {
+    throw new TypeError(`EastMoney ${fieldName} must be non-negative`);
+  }
+
+  // EastMoney exposes JSON numbers. This provider-owned adapter preserves the
+  // observable value only; it does not claim to recover pre-JSON precision.
+  return normalizeExternalDecimalText(value.toString());
 }

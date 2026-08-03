@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
@@ -81,6 +81,39 @@ describe('Decimal8 pure boundary', () => {
       .map((file) => relative(repositoryRoot, file));
 
     expect(violations).toEqual([]);
+  });
+
+  it('keeps quantity parsing and comparison on the shared primitive', () => {
+    const localUtility = join(
+      repositoryRoot,
+      'apps',
+      'mist',
+      'src',
+      'sources',
+      'k-decimal.util.ts',
+    );
+    expect(existsSync(localUtility)).toBe(false);
+
+    const consumers = [
+      'apps/mist/src/sources/k-save.helper.ts',
+      'apps/mist/src/sources/tdx/tdx-source.service.ts',
+      'apps/mist/src/sources/qmt/qmt-source.service.ts',
+      'libs/shared-data/src/transformers/canonical-decimal.transformer.ts',
+      'apps/mist/src/realtime/candle/open-candle-aggregator.ts',
+      'apps/mist/src/strategy/rules/strategy-rule-evaluator.ts',
+    ];
+    for (const consumer of consumers) {
+      expect(readFileSync(join(repositoryRoot, consumer), 'utf8')).toContain(
+        "from '@app/decimal'",
+      );
+    }
+
+    const domainConsumers = consumers.slice(4);
+    const duplicateArithmetic = domainConsumers.filter((consumer) => {
+      const source = readFileSync(join(repositoryRoot, consumer), 'utf8');
+      return /\bBigInt\s*\(|DECIMAL_(?:PATTERN|SCALE)/.test(source);
+    });
+    expect(duplicateArithmetic).toEqual([]);
   });
 });
 

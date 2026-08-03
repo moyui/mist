@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import { DataSource as TypeOrmDataSource } from 'typeorm';
@@ -228,6 +229,45 @@ describe('QmtSource', () => {
     expect(rows[0]).toEqual(
       expect.objectContaining({ volume: null, amount: null }),
     );
+  });
+
+  it.each([
+    ['numeric volume', { volume: 1200, amount: '13560' }],
+    ['signed amount', { volume: '1200', amount: '+13560' }],
+    ['over-scale amount', { volume: '1200', amount: '1.000000000' }],
+  ])('rejects %s at the QMT historical adapter', async (_, quantities) => {
+    const rowKey = '20260703143000';
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        provider: 'qmt',
+        data: {
+          marketData: {
+            '600519.SH': {
+              open: { [rowKey]: 11.1 },
+              high: { [rowKey]: 11.5 },
+              low: { [rowKey]: 10.9 },
+              close: { [rowKey]: 11.3 },
+              volume: { [rowKey]: quantities.volume },
+              amount: { [rowKey]: quantities.amount },
+              stime: { [rowKey]: rowKey },
+            },
+          },
+        },
+        meta: null,
+        error: null,
+      },
+    });
+
+    await expect(
+      service.fetchK({
+        code: '600519',
+        formatCode: '600519.SH',
+        period: Period.ONE_MIN,
+        startDate: new Date('2026-07-03T09:30:00+08:00'),
+        endDate: new Date('2026-07-03T15:00:00+08:00'),
+      }),
+    ).rejects.toMatchObject({ status: HttpStatus.BAD_GATEWAY });
   });
 
   it.each([

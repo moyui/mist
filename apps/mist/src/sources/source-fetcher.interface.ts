@@ -1,5 +1,4 @@
 import { Period, Security } from '@app/shared-data';
-import type { KDecimal } from './k-decimal.util';
 
 export interface EfExtension {
   amplitude?: number;
@@ -54,8 +53,8 @@ export interface KData {
   high: number;
   low: number;
   close: number;
-  volume: KDecimal | null;
-  amount: KDecimal | null;
+  volume: string | null;
+  amount: string | null;
   period: number;
   extensions?: EfExtension | TdxExtension | QmtExtension;
 }

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { Decimal8 } from '@app/decimal';
 import {
   StrategyRuleOperator,
   StrategyRuleValidationSummary,
@@ -16,6 +17,7 @@ const ALLOWED_OPERATORS: StrategyRuleOperator[] = [
   'crossesBelow',
 ];
 const EXECUTABLE_KEYS = ['code', 'script', 'language', 'sql', 'function'];
+const DECIMAL_QUANTITY_FIELDS = new Set(['k.volume', 'k.amount']);
 
 @Injectable()
 export class StrategyRuleValidator {
@@ -102,6 +104,7 @@ export class StrategyRuleValidator {
     if (!('value' in node)) {
       throw new BadRequestException('Strategy condition value is required');
     }
+    this.assertDecimalQuantityThreshold(node);
 
     const [root] = node.field.split('.');
     if (
@@ -115,6 +118,22 @@ export class StrategyRuleValidator {
     fieldRoots.add(root);
     operators.add(node.operator as StrategyRuleOperator);
     return 1;
+  }
+
+  private assertDecimalQuantityThreshold(node: Record<string, unknown>): void {
+    if (!DECIMAL_QUANTITY_FIELDS.has(node.field as string)) return;
+    if (typeof node.value !== 'string') {
+      throw new BadRequestException(
+        `${node.field as string} strategy threshold must be a canonical decimal string`,
+      );
+    }
+    try {
+      Decimal8.parseCanonical(node.value);
+    } catch {
+      throw new BadRequestException(
+        `${node.field as string} strategy threshold must be a canonical decimal string`,
+      );
+    }
   }
 
   private assertNoExecutableKeys(node: Record<string, unknown>): void {
