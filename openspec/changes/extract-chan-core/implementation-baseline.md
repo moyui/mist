@@ -66,12 +66,17 @@ monitoring。上述边界由未来采用 ChanCore 的 Backtest/Realtime/Signal/A
 - 当前算法 service/helper/type/test inventory；
 - 完整 input/output、empty/error/numeric/mutation/version 逐项评审；
 - active Strategy/Backtest/Realtime specs 对照：当前 V1 明确不开放 `chan.*`；
+- 完整 45 根 raw K characterization：38 merged K、15 Fenxing、Bi Phase A/Phase B 各 9、Channel
+  Phase A/Phase B 各 1；fixture 使用唯一、非连续且局部非单调 ID，并逐笔证明有效宽笔端点唯一且按
+  position distance 判断；
+- `algorithmVersion=1 + input + complete outputs` SHA-256 fingerprint：
+  `7a24563a1d419c87cc151cfcd83ce42732fe59b6fc535de2d818699994964312`；
 - strict OpenSpec validation 持续通过。
 
 ### 尚未满足的实施门禁
 
-- 现有 fixtures 还不是完整 raw K → all outputs fingerprint；
-- full-output differential 尚未纳入非连续 K ID、equal-boundary、readonly 和 algorithmVersion 证据；
+- source move 后的新 ChanCore 尚未与已冻结 full-output fingerprint 做 differential；
+- equal-boundary、readonly 和 public `algorithmVersion` 的新 core 证据尚未实施；
 - pure boundary/public barrel tests 尚未实施；
 - 旧算法尚未移动，现有 wrapper 尚未接入 `@app/chancore`。
 

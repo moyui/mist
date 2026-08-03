@@ -11,7 +11,7 @@
   contract。
 - [x] 1.7 确认当前 Backtest/Realtime V1 不开放 `chan.*`，本 change 只提供未来可直接调用或薄封装的
   core，不修改相关 runtime/spec prerequisite。
-- [ ] 1.8 建立完整 raw K → merged K → Fenxing/Bi/Channel characterization fixture 与 full-output
+- [x] 1.8 建立完整 raw K → merged K → Fenxing/Bi/Channel characterization fixture 与 full-output
   fingerprint；纳入已归档 `fix-chan-wide-bi-distance` 的非连续 K ID、唯一端点和 position-distance。
 - [ ] 1.9 在 source move 前复核全部接受的 contract 已写入 design/specs，且不存在 API/K-reader/deploy
   实施项。
