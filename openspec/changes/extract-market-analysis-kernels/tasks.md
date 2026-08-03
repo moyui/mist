@@ -1,7 +1,7 @@
 ## 1. 现状与契约评审
 
-- [ ] 1.1 盘点 Indicator/Chan service、controller、DTO、entity、cross-app imports、API consumers 和 tests。
-- [ ] 1.2 为现有 Indicator 与 Chan Phase A/Phase B 建立 characterization fixtures 和输出 fingerprint。
+- [x] 1.1 盘点 Indicator/Chan service、controller、DTO、entity、cross-app imports、API consumers 和 tests。
+- [x] 1.2 为现有 Indicator 与 Chan Phase A/Phase B 建立 characterization fixtures 和输出 fingerprint。
 - [ ] 1.3 向项目负责人评审一个或多个 library、public exports、input/output types、invalid-input 和 numeric comparison。
   - [x] 1.3.1 确认 pure kernel 只按调用方提供的精确有限有序数组计算且不保留状态；strategy field
     catalog 负责窗口，当前 KDJ(9,3,3)=13、MACD(12,26,9)=130，crossover 由 adapter 提供相邻窗口。
