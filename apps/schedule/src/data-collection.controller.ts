@@ -2,7 +2,6 @@ import { Controller, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
 import { EastMoneyCollectionStrategy } from '../../mist/src/collector';
-import { StrategyScanService } from '../../mist/src/strategy/scanner/strategy-scan.service';
 import { TimezoneService } from '@app/timezone';
 import { addDays, getMonth } from 'date-fns';
 
@@ -24,7 +23,6 @@ export class DataCollectionController {
   constructor(
     private readonly strategy: EastMoneyCollectionStrategy,
     private readonly timezoneService: TimezoneService,
-    private readonly strategyScanService: StrategyScanService,
   ) {}
 
   // 1min: fire at :01, :02, ..., :59 every weekday
@@ -36,7 +34,7 @@ export class DataCollectionController {
       ))
     )
       return;
-    await this.collectAndScan(Period.ONE_MIN, '1min');
+    await this.collect(Period.ONE_MIN, '1min');
   }
 
   // 5min: fire at :01, :06, :11, ... after each 5min candle close
@@ -48,7 +46,7 @@ export class DataCollectionController {
       ))
     )
       return;
-    await this.collectAndScan(Period.FIVE_MIN, '5min');
+    await this.collect(Period.FIVE_MIN, '5min');
   }
 
   // 15min: fire at :01, :16, :31, :46 after each 15min candle close
@@ -60,7 +58,7 @@ export class DataCollectionController {
       ))
     )
       return;
-    await this.collectAndScan(Period.FIFTEEN_MIN, '15min');
+    await this.collect(Period.FIFTEEN_MIN, '15min');
   }
 
   // 30min: fire at :01, :31 after each 30min candle close
@@ -72,7 +70,7 @@ export class DataCollectionController {
       ))
     )
       return;
-    await this.collectAndScan(Period.THIRTY_MIN, '30min');
+    await this.collect(Period.THIRTY_MIN, '30min');
   }
 
   // 60min: fire at :31 after each 60min candle close (9:30→10:31, 10:30→11:31, 13:00→14:31, 14:00→15:31)
@@ -84,7 +82,7 @@ export class DataCollectionController {
       ))
     )
       return;
-    await this.collectAndScan(Period.SIXTY_MIN, '60min');
+    await this.collect(Period.SIXTY_MIN, '60min');
   }
 
   // daily: 18:00 weekdays, post-market
@@ -96,7 +94,7 @@ export class DataCollectionController {
       ))
     )
       return;
-    await this.collectAndScan(Period.DAY, 'Daily');
+    await this.collect(Period.DAY, 'Daily');
   }
 
   // weekly: Friday 18:00
@@ -108,7 +106,7 @@ export class DataCollectionController {
       ))
     )
       return;
-    await this.collectAndScan(Period.WEEK, 'Weekly');
+    await this.collect(Period.WEEK, 'Weekly');
   }
 
   // monthly: 18:00 on days 28-31 with last-trading-day-of-month check
@@ -119,26 +117,15 @@ export class DataCollectionController {
     // Only run on the last trading day of the month
     const tomorrow = addDays(now, 1);
     if (getMonth(tomorrow) === getMonth(now)) return; // not last day yet
-    await this.collectAndScan(Period.MONTH, 'Monthly');
+    await this.collect(Period.MONTH, 'Monthly');
   }
 
-  private async collectAndScan(period: Period, label: string): Promise<void> {
+  private async collect(period: Period, label: string): Promise<void> {
     try {
       await this.strategy.collectForAllSecurities(period);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`${label} collection failed: ${message}`);
-      return;
-    }
-
-    try {
-      const result = await this.strategyScanService.runScan({ period });
-      this.logger.log(
-        `${label} strategy scan completed: scannedStrategies=${result.scannedStrategies}, evaluatedContexts=${result.evaluatedContexts}, createdSignals=${result.createdSignals}, createdAlertEvents=${result.createdAlertEvents}, skippedDuplicates=${result.skippedDuplicates}`,
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`${label} strategy scan failed: ${message}`);
     }
   }
 }

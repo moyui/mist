@@ -2,7 +2,6 @@ import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { StrategyAlertEventController } from './controllers/strategy-alert-event.controller';
 import { StrategyBacktestController } from './controllers/strategy-backtest.controller';
-import { StrategyScanController } from './controllers/strategy-scan.controller';
 import { StrategySignalController } from './controllers/strategy-signal.controller';
 import { StrategyController } from './controllers/strategy.controller';
 
@@ -117,16 +116,16 @@ describe('Strategy API path registry', () => {
     );
   });
 
-  it('registers the manual strategy scan route', () => {
-    const routes = getRoutes(StrategyScanController);
+  it('does not register a manual live strategy scan route', () => {
+    const routes = [
+      ...getRoutes(StrategyController),
+      ...getRoutes(StrategySignalController),
+      ...getRoutes(StrategyAlertEventController),
+      ...getRoutes(StrategyBacktestController),
+    ];
 
-    expectRoute(routes, RequestMethod.POST, '/v1/strategy-scans/run');
-    expect(routes.map((route) => route.path)).not.toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('/api/mist'),
-        expect.stringContaining('/api/chan'),
-        expect.stringContaining('/strategy/v1'),
-      ]),
+    expect(routes.map((route) => route.path)).not.toContain(
+      '/v1/strategy-scans/run',
     );
   });
 });

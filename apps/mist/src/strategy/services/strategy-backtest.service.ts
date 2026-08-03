@@ -7,10 +7,17 @@ import {
   K,
   StrategyVersion,
 } from '@app/shared-data';
+import {
+  QuantityForwardFillProjector,
+  evaluateStrategyPlan,
+  serializeStrategyContextSnapshot,
+  type CompiledStrategyExecutionPlan,
+  type ProjectedStrategyBar,
+} from '@app/strategy';
 import { Between, In, Repository } from 'typeorm';
+import { mapKToStrategyBar } from '../adapters/k-strategy-bar.mapper';
 import { CreateBacktestRunDto } from '../dto/create-backtest-run.dto';
-import { StrategyRuleEvaluator } from '../rules/strategy-rule-evaluator';
-import { StrategyEvaluationContextBuilder } from '../scanner/strategy-evaluation-context.builder';
+import { StrategyExecutionPlanService } from '../rules/strategy-execution-plan.service';
 
 @Injectable()
 export class StrategyBacktestService {
@@ -23,8 +30,7 @@ export class StrategyBacktestService {
     private readonly signalResultRepository: Repository<BacktestSignalResult>,
     @InjectRepository(K)
     private readonly kRepository: Repository<K>,
-    private readonly contextBuilder: StrategyEvaluationContextBuilder,
-    private readonly ruleEvaluator: StrategyRuleEvaluator,
+    private readonly executionPlanService: StrategyExecutionPlanService,
   ) {}
 
   async createRun(dto: CreateBacktestRunDto): Promise<BacktestRun> {
@@ -85,6 +91,7 @@ export class StrategyBacktestService {
     await this.backtestRunRepository.save(run);
 
     try {
+      const plan = this.executionPlanService.compileStoredVersion(version);
       const rows = await this.kRepository.find({
         where: {
           security: { code: In(run.targetUniverse) },
@@ -96,16 +103,18 @@ export class StrategyBacktestService {
         order: { timestamp: 'ASC' },
       });
       const matchedSecurityCodes = new Set<string>();
+      const projector = new QuantityForwardFillProjector();
+      const windows = new Map<string, ProjectedStrategyBar[]>();
       let signalCount = 0;
 
       for (const row of rows) {
-        const context = this.contextBuilder.buildFromK(row);
-        const evaluation = this.ruleEvaluator.evaluate(
-          version.rule,
-          context as unknown as Record<string, unknown>,
-        );
+        const projected = projector.project(mapKToStrategyBar(row));
+        const window = appendToWindow(windows, projected, plan);
+        const evaluation = evaluateStrategyPlan(plan, window);
 
-        if (!evaluation.matched) continue;
+        if (evaluation.status === 'unavailable' || !evaluation.matched) {
+          continue;
+        }
 
         await this.signalResultRepository.save(
           this.signalResultRepository.create({
@@ -113,7 +122,10 @@ export class StrategyBacktestService {
             backtestRunId: run.id,
             securityCode: row.security.code,
             signalTime: row.timestamp,
-            contextSnapshot: context,
+            contextSnapshot: serializeStrategyContextSnapshot(
+              plan,
+              evaluation.context,
+            ) as Record<string, unknown>,
             ruleSnapshot: version.rule,
           }),
         );
@@ -137,4 +149,18 @@ export class StrategyBacktestService {
       throw error;
     }
   }
+}
+
+function appendToWindow(
+  windows: Map<string, ProjectedStrategyBar[]>,
+  projected: ProjectedStrategyBar,
+  plan: CompiledStrategyExecutionPlan,
+): readonly ProjectedStrategyBar[] {
+  const { rawBar } = projected;
+  const key = `${rawBar.securityId}\u0000${rawBar.source}\u0000${rawBar.period}`;
+  const window = windows.get(key) ?? [];
+  window.push(projected);
+  if (window.length > plan.requiredBarCount) window.shift();
+  windows.set(key, window);
+  return window;
 }

@@ -3,7 +3,6 @@ import type { Type } from '@nestjs/common';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { StrategyAlertEventController } from '../../mist/src/strategy/controllers/strategy-alert-event.controller';
 import { StrategyBacktestController } from '../../mist/src/strategy/controllers/strategy-backtest.controller';
-import { StrategyScanController } from '../../mist/src/strategy/controllers/strategy-scan.controller';
 import { StrategySignalController } from '../../mist/src/strategy/controllers/strategy-signal.controller';
 import { StrategyController } from '../../mist/src/strategy/controllers/strategy.controller';
 import { StrategyCoreModule } from '../../mist/src/strategy/strategy-core.module';
@@ -37,7 +36,6 @@ describe('schedule strategy module wiring', () => {
     StrategySignalController,
     StrategyAlertEventController,
     StrategyBacktestController,
-    StrategyScanController,
   ];
 
   it('keeps reusable strategy providers in StrategyCoreModule without public controllers', () => {
@@ -60,7 +58,7 @@ describe('schedule strategy module wiring', () => {
     ).toEqual(expect.arrayContaining(strategyControllers));
   });
 
-  it('imports strategy core into schedule without mounting strategy REST controllers', async () => {
+  it('does not import strategy runtime or mount strategy REST controllers', async () => {
     const ScheduleModule = await loadScheduleModule();
 
     expect(
@@ -68,7 +66,7 @@ describe('schedule strategy module wiring', () => {
         MODULE_METADATA.IMPORTS,
         ScheduleModule,
       ).map(unwrapModule),
-    ).toContain(StrategyCoreModule);
+    ).not.toContain(StrategyCoreModule);
     expect(
       getMetadataList<ModuleType>(MODULE_METADATA.CONTROLLERS, ScheduleModule),
     ).not.toEqual(expect.arrayContaining(strategyControllers));
