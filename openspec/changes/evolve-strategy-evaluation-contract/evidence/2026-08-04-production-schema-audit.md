@@ -54,9 +54,10 @@ evidence 子目录。
 
 - TDX/QMT A 股 `volume=股`、`amount=人民币元` 的 source quantity profile 尚未在本 change 中固定
   交易时段 HIL；在该证据完成前，引用量额字段的策略不得进入 realtime eligible 状态。
-- task 1.4 保持未完成，等待项目负责人确认：是否允许 schema/API 按零存量路径推进，同时继续把
-  quantity realtime eligibility 独立锁在 HIL 门禁后。
-- 未经该确认，不编写 `014` migration、entity 或公共 DTO/API 修改。
+- 项目负责人已于 2026-08-04 确认拆分门禁：schema/API 按零存量路径推进，quantity realtime
+  eligibility 独立锁在 HIL 门禁后。
+- 同次确认 `fk_strategy_signals_security` 使用 `ON DELETE RESTRICT ON UPDATE RESTRICT`。
+- 因此 task 1.4 完成；后续 migration 仍必须在执行时重新验证六表零行和精确 schema state。
 
 ## Repository evidence SHA-256
 

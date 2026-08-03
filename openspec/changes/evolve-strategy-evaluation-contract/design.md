@@ -320,6 +320,16 @@ unavailable。
 不得把旧 rule 猜成 entry/exit，也不得为绕过门禁临时删除、归档或自动改写数据。preflight 脚本、最终
 DDL、migration 编号、postflight/readback 和 repair-forward 仍须在实施阶段单独确认。
 
+2026-08-04 生产只读审计已确认 `schema_migrations` 精确应用 `001`–`013`，上述六张表均存在且均为
+零行，因此本 change 固定使用新的 forward-only `014`。最终 migration 允许直接增加 non-null、无
+database default 的 signal kind 列，不增加旧数据回填或过渡列。`strategy_signals.security_code` 直接
+替换为 `security_id`，并增加 named FK `fk_strategy_signals_security` 指向 `securities(id)`，删除与
+更新均使用 `RESTRICT`，防止已有 Signal 审计记录因 Security 维护动作被级联删除或改写。
+
+项目负责人同时确认采用拆分门禁：上述零存量证据解除 schema/entity/creation-only API 的实施门禁；
+TDX/QMT 量额 source profile 尚未完成的交易时段 HIL 只继续阻止引用 `k.volume/k.amount` 的策略进入
+realtime eligible 状态，不阻止与量额无关的 schema/API 实施，也不允许 evaluator 猜测单位。
+
 ## Risks / Trade-offs
 
 - [shared evaluator 扩展破坏现有 scan/backtest] → 同 fixture differential tests 和显式 version snapshot。
@@ -333,7 +343,8 @@ DDL、migration 编号、postflight/readback 和 repair-forward 仍须在实施�
 
 1. 先完成无数据库修改的 field/evaluator/context 设计评审。
 2. 只读审计真实 schema，并证明六张 strategy/backtest 相关表均为零；任一非零立即停止。
-3. 单独评审已确认 `StrategyVersion.signalKind`、Signal identity 的实际 DDL 与零存量失败门禁；不
+3. 使用已确认的 forward-only migration `014` 实施 `StrategyVersion.signalKind`、Signal identity、
+   `fk_strategy_signals_security` 的 `RESTRICT` 语义与零存量失败门禁；不
    增加 `entry_rule`、`exit_rule`、pairing relation 或 `lookback_bars` 列。
 4. 经用户确认后更新 design/spec，再实施 migration/API/frontend。
 5. 以共同 fixture 验证 backtest/realtime evaluator parity，再允许 `extract-backtest-runtime` 与
@@ -341,4 +352,5 @@ DDL、migration 编号、postflight/readback 和 repair-forward 仍须在实施�
 
 ## Open Questions
 
-- `securityCode` 存量 row 如何可靠映射为 `securityId`，以及审计发现孤儿/歧义时如何 repair-forward。
+- 无。生产审计确认零存量，因此 `securityCode` 不需要映射；任何迁移执行前新增的数据都会触发
+  preflight fail closed，并要求重新审计。

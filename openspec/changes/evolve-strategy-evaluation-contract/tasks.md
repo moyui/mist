@@ -12,7 +12,7 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
   signal-level backtest 和 portfolio worktree 的当前边界。
 - [x] 1.3 只读审计真实 `schema_migrations`、column/index/constraint inventory，以及 strategy
   definitions/versions/signals/AlertEvents/backtest runs/results 存量。
-- [ ] 1.4 发现任意存量、候选 migration 编号冲突或 source quantity profile 未证明时，停止 schema 或
+- [x] 1.4 发现任意存量、候选 migration 编号冲突或 source quantity profile 未证明时，停止 schema 或
   quantity-rule 实施并重新评审。
 
 ## 2. 公共 Domain Contract
