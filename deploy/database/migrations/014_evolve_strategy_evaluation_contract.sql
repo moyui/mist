@@ -174,7 +174,7 @@ SET @strategy_contract_known_state = (
 SET @assert_strategy_contract_sql = IF(
   @strategy_contract_row_count = 0 AND @strategy_contract_known_state = 1,
   'SELECT 1 AS strategy_evaluation_contract_preflight_ready',
-  'SIGNAL SQLSTATE ''45000'' SET MESSAGE_TEXT = ''Strategy evaluation migration requires zero strategy/backtest rows and an exact pre, known partial, or post schema state'''
+  'SELECT * FROM `strategy_evaluation_migration_requires_zero_rows_and_exact_schema_state`'
 );
 PREPARE stmt FROM @assert_strategy_contract_sql;
 EXECUTE stmt;
@@ -259,7 +259,7 @@ SET @assert_strategy_contract_post_sql = IF(
   @strategy_contract_post_index = 1 AND
   @strategy_contract_post_fk = 1,
   'SELECT 1 AS strategy_evaluation_contract_postflight_ready',
-  'SIGNAL SQLSTATE ''45000'' SET MESSAGE_TEXT = ''Strategy evaluation migration postflight did not reach the exact target schema'''
+  'SELECT * FROM `strategy_evaluation_migration_postflight_schema_mismatch`'
 );
 PREPARE stmt FROM @assert_strategy_contract_post_sql;
 EXECUTE stmt;

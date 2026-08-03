@@ -387,6 +387,10 @@ describe('database schema safety', () => {
     expect(migration).not.toContain('ADD UNIQUE KEY');
     expect(migration).not.toMatch(/DEFAULT\s+['"]?entry/i);
     expect(migration).not.toMatch(/\bUPDATE\s+`?strategy_/i);
+    expect(migration).not.toContain('SIGNAL SQLSTATE');
+    expect(migration).toContain(
+      'strategy_evaluation_migration_requires_zero_rows_and_exact_schema_state',
+    );
 
     expect(audit).toContain('strategy_signal_security_fk_count');
     expect(readback).toContain('unapproved_signal_unique_count');

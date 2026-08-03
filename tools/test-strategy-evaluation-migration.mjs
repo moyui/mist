@@ -76,7 +76,7 @@ try {
   }
   await assert.rejects(
     runMigrations({ env: migrationEnv(databases.blocked) }),
-    /requires zero strategy\/backtest rows/,
+    /strategy_evaluation_migration_requires_zero_rows_and_exact_schema_state/,
   );
   await assertMigrationNotRecorded(databases.blocked);
 
@@ -274,4 +274,3 @@ async function assertMigrationNotRecorded(database) {
     await connection.end();
   }
 }
-
