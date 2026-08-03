@@ -98,7 +98,7 @@ describe('RealtimeMarketDataProductService', () => {
     expect(fakeMulti.exec).toHaveBeenCalled();
   });
 
-  it('seals rolled-over bucket via finalizer', async () => {
+  it('keeps a rolled-over bucket pending for its due finalizer', async () => {
     const fakeMulti = {
       zadd: jest.fn().mockReturnThis(),
       hset: jest.fn().mockReturnThis(),
@@ -140,7 +140,8 @@ describe('RealtimeMarketDataProductService', () => {
     );
     await new Promise((r) => setTimeout(r, 30));
 
-    expect(finalizer.seal).toHaveBeenCalledTimes(1);
+    expect(finalizer.seal).not.toHaveBeenCalled();
+    expect(aggregator.candidateBuckets(1, 'tdx')).toHaveLength(2);
   });
 
   it('marks queue_overflow when the queue rejects', () => {
@@ -172,6 +173,7 @@ describe('RealtimeMarketDataProductService', () => {
       1,
       'tdx',
       'queue_overflow',
+      Date.parse('2026-07-28T01:30:00.000Z'),
     );
   });
 

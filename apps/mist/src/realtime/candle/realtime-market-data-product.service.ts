@@ -18,7 +18,7 @@ import { OpenCandleAggregator } from './open-candle-aggregator';
 import { CandleFinalizer } from './candle-finalizer';
 import { KeyedQueue } from './keyed-queue';
 import { resolveCandleBucket } from './candle-bucket.util';
-import type { ApplySnapshotOutcome } from './candle.types';
+import type { CandleBucket } from './candle.types';
 import { marketSeriesKey } from './market-series-key';
 import {
   dueKey,
@@ -123,10 +123,14 @@ export class RealtimeMarketDataProductService
       this.logger.warn(
         `Queue overflow for ${key}; marking candle queue_overflow.`,
       );
+      const bucket = snapshot.eventTime
+        ? resolveCandleBucket(snapshot.eventTime)
+        : null;
       this.aggregator.markInvalid(
         snapshot.securityId,
         snapshot.source,
         'queue_overflow',
+        bucket?.bucketStartMs,
       );
     }
   }
@@ -140,26 +144,22 @@ export class RealtimeMarketDataProductService
     const client = this.redis.client;
     if (!client) return;
 
-    // A2 (design 282): only frames within grace may mutate Node open state.
-    if (snapshot.eventTime) {
-      const bucket = resolveCandleBucket(snapshot.eventTime);
-      if (bucket && acceptedAt > bucket.bucketEndMs + this.graceMs) {
-        this.logger.debug(
-          `Late frame for ${snapshot.providerSymbol} bucket ${bucket.bucketStartMs} (acceptedAt=${acceptedAt} > cutoff=${bucket.bucketEndMs + this.graceMs}); skipping candle mutation.`,
-        );
-        return;
-      }
-    }
-
-    const outcome = this.aggregator.applySnapshot(snapshot);
+    const outcome = this.aggregator.applySnapshot(snapshot, {
+      acceptedAtMs: acceptedAt,
+      graceMs: this.graceMs,
+    });
 
     switch (outcome.kind) {
       case 'skipped':
         return;
 
       case 'opened':
-        // A1 (design 185): register due ONLY on first bucket creation.
-        await this.registerDueIfFirst(client, outcome, snapshot, acceptedAt);
+        await this.registerDueIfFirst(
+          client,
+          outcome.bucket,
+          snapshot,
+          acceptedAt,
+        );
         return;
 
       case 'updated':
@@ -167,9 +167,12 @@ export class RealtimeMarketDataProductService
         return;
 
       case 'rolled-over':
-        if (outcome.sealed) {
-          await this.finalizer.seal(client, outcome.sealed, acceptedAt);
-        }
+        await this.registerDueIfFirst(
+          client,
+          outcome.opened,
+          snapshot,
+          acceptedAt,
+        );
         return;
 
       case 'invalidated':
@@ -185,13 +188,10 @@ export class RealtimeMarketDataProductService
    */
   private async registerDueIfFirst(
     client: Redis,
-    outcome: ApplySnapshotOutcome,
+    bucket: CandleBucket,
     snapshot: CanonicalRealtimeSnapshot,
     acceptedAt: number,
   ): Promise<void> {
-    if (outcome.kind === 'skipped' || outcome.kind === 'rolled-over') return;
-    const bucket = outcome.bucket;
-
     if (acceptedAt > bucket.bucketEndMs + this.graceMs) {
       return;
     }
@@ -249,6 +249,7 @@ export class RealtimeMarketDataProductService
         snapshot.securityId,
         snapshot.source,
         'redis_due_registration_failed',
+        bucket.bucketStartMs,
       );
     }
   }
@@ -276,15 +277,23 @@ export class RealtimeMarketDataProductService
 
       this.queue.enqueue(queueKey, async () => {
         // A4 (design 283): read Redis watermark before finalizing.
-        const sealed = this.aggregator.sealCurrent(
+        const sealed = this.aggregator.freezeCandidate(
           decoded.securityId,
           decoded.source,
+          decoded.bucketStartMs,
         );
 
         if (sealed) {
           const alreadySealed = await this.isAlreadySealed(client, decoded);
           if (!alreadySealed) {
-            await this.finalizer.seal(client, sealed, now);
+            const committed = await this.finalizer.seal(client, sealed, now);
+            if (committed) {
+              this.aggregator.commitCandidate(
+                decoded.securityId,
+                decoded.source,
+                decoded.bucketStartMs,
+              );
+            }
           }
         } else {
           // A5 (design 288-289): restart lost open state → discard.

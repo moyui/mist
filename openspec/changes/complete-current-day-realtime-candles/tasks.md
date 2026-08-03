@@ -85,7 +85,7 @@
 
 - [x] 4.1 实现可注入 Clock、session bucket resolver 和 per-market-series bounded execution chain；在
   `libs/config` 增加并校验 queue per-series/global pending，证明 global>=per-series。
-- [ ] 4.2 实现按 `(securityId,source)` 隔离且按完整 candle identity 定位的 current + prior
+- [x] 4.2 实现按 `(securityId,source)` 隔离且按完整 candle identity 定位的 current + prior
   grace-pending candle aggregator、volume/amount 独立
   baseline/delta/reset、同日 null-counter hold、
   无 baseline 的 sealed null、乱序和 capacity fail-closed；覆盖 candle owner 不得跨日继承 cumulative

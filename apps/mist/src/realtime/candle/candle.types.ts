@@ -43,6 +43,7 @@ export type InvalidReason =
   | 'backend_restart_open_state_lost'
   | 'redis_due_registration_failed'
   | 'redis_finalization_failed'
+  | 'candidate_capacity_exceeded'
   | 'invalid_ohlc';
 
 /**
@@ -94,6 +95,14 @@ export interface OpenCandleState {
   // Non-negative deltas since baseline.
   volumeDelta: string | null;
   amountDelta: string | null;
+
+  // Effective preceding counters used to calculate this interval. When no
+  // preceding counter exists, the first non-null observation establishes the
+  // bucket-local zero point.
+  baselineCumulativeVolume: string | null;
+  baselineCumulativeAmount: string | null;
+  firstCumulativeVolume: string | null;
+  firstCumulativeAmount: string | null;
 
   // Cumulative totals at the moment of the last applied snapshot — used to
   // compute the next delta and to detect counter resets.
@@ -154,13 +163,15 @@ export interface SealedCandle {
  */
 export type ApplySnapshotOutcome =
   | { kind: 'opened' | 'updated'; bucket: CandleBucket }
-  | { kind: 'rolled-over'; sealed: SealedCandle; opened: CandleBucket | null }
+  | { kind: 'rolled-over'; prior: CandleBucket; opened: CandleBucket }
   | {
       kind: 'skipped';
       reason:
         | 'out_of_session'
         | 'no_event_time'
         | 'duplicate_or_late'
+        | 'late_after_grace'
+        | 'candidate_capacity_exceeded'
         | 'not_aggregation_eligible';
     }
   | { kind: 'invalidated'; reason: InvalidReason; bucket: CandleBucket };
