@@ -17,7 +17,7 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
 
 ## 2. 公共 Domain Contract
 
-- [ ] 2.1 实现 runtime-neutral canonical `StrategyBar`、`StrategyMarketDataPort`、replay/realtime
+- [x] 2.1 实现 runtime-neutral canonical `StrategyBar`、`StrategyMarketDataPort`、replay/realtime
   criteria/result types、共享纯函数 `KPriceProjector` 和 import-boundary tests；覆盖 MySQL fixed-scale
   OHLC string、Redis finite number、invalid/non-finite value，并证明不改存储、不舍入、不触碰量额；不得导入
   TypeORM、Redis、HTTP/RPC、Nest adapter 或 `apps/*` 源码。
