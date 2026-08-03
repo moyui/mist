@@ -211,6 +211,18 @@ inventing missing bars or accepting conflicting versions of one identity.
   decimal-string quantity fields as complete bars
 - **AND** the contract MUST NOT add a second incomplete result or redundant `isComplete` field
 
+#### Scenario: Historical and realtime OHLC enter one runtime window
+- **WHEN** a MySQL fixed-scale OHLC string or Redis sealed OHLC number is mapped into `StrategyBar`
+- **THEN** the adapter MUST invoke the shared `KPriceProjector` before the bar enters a window
+- **AND** every resulting OHLC value MUST be a finite JavaScript number
+- **AND** MySQL text and Redis numbers MUST NOT create separate downstream comparison or Indicator paths
+
+#### Scenario: Runtime price projection preserves storage ownership
+- **WHEN** the shared projector accepts an approved historical or realtime OHLC representation
+- **THEN** it MUST NOT round, rewrite or migrate MySQL/Redis data
+- **AND** it MUST NOT change the existing Redis sealed OHLC shape or convert exact `volume/amount` strings to
+  JavaScript number
+
 #### Scenario: Historical decimal readback uses fixed-scale text
 - **WHEN** the MySQL driver returns an exact quantity such as `"1.00000000"`
 - **THEN** the historical mapper MUST use the shared decimal boundary to normalize it once to canonical `"1"`

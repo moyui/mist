@@ -1196,6 +1196,19 @@ without exposing a public unified K API or requiring a realtime Redis dependency
 - **AND** every historical `StrategyBar` MUST carry the required `type='complete'`
 - **AND** the replay reader MUST NOT infer or synthesize realtime `incomplete` bars
 
+#### Scenario: MySQL OHLC decimals enter replay
+- **WHEN** mysql2 materializes `k.open/high/low/close` from the existing `DECIMAL(20,2)` columns as fixed-scale
+  strings
+- **THEN** `readReplayPage()` MUST apply the shared `KPriceProjector` once at the persistence boundary
+- **AND** the resulting `StrategyBar` OHLC values MUST be finite JavaScript numbers
+- **AND** the reader MUST NOT leak database strings to Indicator/evaluator code or duplicate `Number(...)`
+  coercion in a consumer
+
+#### Scenario: Historical price projection is introduced
+- **WHEN** the replay adapter adds the shared OHLC projection
+- **THEN** it MUST NOT change K-table precision, add a K migration, rewrite historical rows, enable global
+  mysql2 decimal conversion or convert `volume/amount` to JavaScript number
+
 #### Scenario: A provider-filled historical row is persisted
 - **WHEN** TDX or QMT returns a bar under its configured `fillData/fill_data=true` behavior and the existing
   writer persists that row in MySQL `k`

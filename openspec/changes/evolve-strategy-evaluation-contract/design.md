@@ -52,11 +52,21 @@ canonical `StrategyBar` 至少表达 provider-neutral security identity、精确
 `type: 'complete' | 'incomplete'`。source adapter 的单位归一和 persistence mapping 属于 runtime
 adapter，不进入公共 contract implementation。
 
+共享 Strategy library 同时单一持有显式纯函数 `KPriceProjector`，供 historical 与 realtime runtime
+adapter 在构造 `StrategyBar` 时调用。projector 把 mysql2 对 MySQL `DECIMAL(20,2)` 的 fixed-scale
+string materialization 严格转换为 finite JavaScript number；对 Redis sealed K
+提供的 number 只执行相同的 finite/runtime-price contract validation。它不得修改或回填 MySQL/Redis、
+不得舍入或改变价格精度、不得成为全局 TypeORM/mysql2 transformer，也不得处理
+`volume/amount`。runtime adapter 不得把 raw database price string 泄漏给 field catalog、Indicator、
+evaluator 或 ChanCore，也不得在各 consumer 内重复 `Number(...)`。
+
 ### 2. Field catalog 是唯一类型来源
 
 字段必须声明 path、value type、当前值计算所需的有限 `calculationBarCount`、允许 operator 和
 missing-value policy。`k.volume/k.amount` 使用 decimal；普通市场和 indicator 数值使用 finite
 number。原始 `StrategyBar` 继续保留 string/null 事实，不改写 provider/candle/persistence 证据。
+OHLC 使用 projector 产生的 number 完成比较和 Indicator 运算；只有 `volume/amount` 进入 exact
+decimal comparison/arithmetic 与 forward-fill 语义。
 
 V1 的 `k.volume/k.amount` missing policy 是 `forwardFillWithinTradingDay`。共享策略库提供显式调用的
 `QuantityForwardFillProjector`，而不是 HTTP/Nest interceptor：backtest 和 realtime 必须在构建

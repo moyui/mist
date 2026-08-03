@@ -26,6 +26,28 @@ The shared strategy domain SHALL define one runtime-neutral canonical `StrategyB
 - **AND** Signal MUST implement only the MySQL/Redis/memory realtime adapters
 - **AND** neither runtime MUST depend on the other or redefine the canonical bar, port or domain result types
 
+### Requirement: Historical And Realtime Prices Shall Share One Runtime Projection
+The shared strategy domain SHALL provide one explicit pure `KPriceProjector` for constructing finite-number OHLC
+views from the approved historical and realtime storage representations.
+
+#### Scenario: MySQL materializes an OHLC decimal as text
+- **WHEN** mysql2 returns an existing `DECIMAL(20,2)` OHLC value as fixed-scale text
+- **THEN** the runtime adapter MUST use the shared projector to produce a finite JavaScript
+  number before constructing `StrategyBar`
+- **AND** no field catalog, Indicator, evaluator or ChanCore consumer MAY receive or directly compare the database
+  string
+
+#### Scenario: Redis supplies a realtime OHLC number
+- **WHEN** a valid sealed realtime candle supplies an OHLC value as a JavaScript number
+- **THEN** the same projector MUST validate and retain that finite number without rounding or rewriting Redis
+- **AND** historical and realtime adapters MUST NOT implement separate consumer-side `Number(...)` coercions
+
+#### Scenario: Price projection ownership is inspected
+- **WHEN** the shared price projection is implemented
+- **THEN** it MUST NOT alter MySQL `DECIMAL(20,2)`, add a K-table migration or change the Redis sealed OHLC shape
+- **AND** it MUST NOT be implemented as a global TypeORM/mysql2 decimal conversion or HTTP/Nest interceptor
+- **AND** `volume/amount` MUST bypass price projection and retain their exact decimal-string-or-null contract
+
 ### Requirement: Strategy Fields Shall Come From One Typed Catalog
 Mist SHALL define one field catalog containing each allowed field path, value type, finite
 `calculationBarCount` and supported operators for backtest and realtime evaluation. Nullable fields SHALL also declare their

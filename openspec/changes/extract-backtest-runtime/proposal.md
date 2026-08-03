@@ -50,7 +50,9 @@
   原值（人民币元），非零 fractional volume 不舍入并 fail closed。TDX/QMT 的 1m 与日线必须先完成
   raw provider → MySQL exact string → canonical value 的真实 fixture/HIL，未验收前引用量额的 plan
   realtime/backtest-ineligible，但价格与 Indicator replay 不受影响。MySQL `k` 保持现有值，不在本
-  change 迁移或回填。分页不使用 OFFSET，不成为用户 lookback、HTTP/env 配置或 per-run hard limit；
+  change 迁移或回填。OHLC 继续使用现有 `DECIMAL(20,2)`；mysql2 fixed-scale price string 只能在
+  persistence boundary 通过共享 `KPriceProjector` 转成 finite number，不得直接进入 Indicator/evaluator
+  或触发全局 decimal coercion。分页不使用 OFFSET，不成为用户 lookback、HTTP/env 配置或 per-run hard limit；
   context/Indicator/projector 状态必须跨页连续。该能力不是公共 HTTP/RPC 接口，也不要求
   `apps/backtest` 连接 market Redis；本 change 不重新声明 realtime methods 或公共 bar/port types。
 - Backtest V1 把 provider 已返回并写入 MySQL 的每一行 historical K 视为权威历史事实，即使上游

@@ -182,6 +182,13 @@ TDX/QMT 各自解析 provider historical bar time 后写入，不要求原始格
 ### 6.5 K 线缺失和精度
 
 - OHLC 保持 MySQL `DECIMAL(20,2) NOT NULL`。
+- MySQL driver 可以把 OHLC `DECIMAL(20,2)` materialize 为 fixed-scale string；历史与实时的新计算链路
+  必须在进入 Chan、Indicator 或 Strategy 前复用同一个显式纯函数价格 projector：历史 fixed-scale
+  string 转为 finite JavaScript number，实时 number 只做同一契约校验。不得直接比较数据库字符串、在各
+  consumer 内重复 `Number(...)`，或用全局 TypeORM/mysql2 decimal coercion 连带转换 `volume/amount`。
+- 该价格 projector 只形成计算视图，不修改、回填、舍入或重写 MySQL/Redis OHLC，也不是 HTTP/Nest
+  interceptor。OHLC 继续使用现有 number 比较与指标运算；只有 `volume/amount` 使用 exact decimal
+  comparison/arithmetic。
 - TypeScript 未初始化 OHLC 使用进程内 `Number.NaN` sentinel。
 - 所有 writer 在 JSON、TypeORM 和 MySQL 边界前验证 OHLC 为有限数。
 - 缺失、空值、非数值或非有限 OHLC 使非空结果整批 fail closed。

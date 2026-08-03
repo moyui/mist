@@ -725,6 +725,13 @@ canonical identity、timestamp、OHLC、规范 decimal-string/null 量额和必�
 `type: 'complete' | 'incomplete'`。MySQL historical replay 映射为 `type='complete'`；公共 contract
 为 realtime derived K 保留 `incomplete`，但 backtest reader 不推断或合成 incomplete bar。
 
+MySQL `k.open/high/low/close` 保持现有 `DECIMAL(20,2) NOT NULL`，本 change 不迁移精度。mysql2
+materialize 的 fixed-scale OHLC string 只允许在 `readReplayPage()` persistence boundary 通过前置
+change 单一持有的纯函数 `KPriceProjector` 转成 finite number，再写入
+`StrategyBar`。reader 不启用全局 `decimalNumbers` 或 TypeORM transformer，不在 repository、runner、
+Indicator、evaluator 或 Chan wrapper 中复制 `Number(...)`，也不舍入、回填或改写数据库。该价格视图
+与下述量额 exact-decimal/unit mapper 是两条独立路径。
+
 V1 的历史事实边界固定在 MySQL `k`：只要 TDX/QMT provider 返回的 bar 已通过现有 decoder/writer 并
 持久化，该 row 就是 Backtest 的权威 historical bar。上游当前 `fillData/fill_data=true` 保持不变，
 本 change 不尝试判断某行是否由 provider 补齐，也不新增 `providerFilled` provenance、quality/type、

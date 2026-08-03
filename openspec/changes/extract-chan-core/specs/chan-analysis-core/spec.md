@@ -157,6 +157,9 @@ strings or `null` rather than JavaScript numbers.
 - **WHEN** the caller prepares an ordered bar for ChanCore
 - **THEN** it MUST map the complete OHLCVA value into `ChanK`
 - **AND** it MUST NOT pass an application entity or transport DTO as the library input
+- **AND** a Backtest or realtime caller MUST apply the shared `KPriceProjector` before mapping stored OHLC into
+  `ChanK`
+- **AND** ChanCore MUST NOT parse a MySQL fixed-scale price string, read Redis or own a storage migration
 - **AND** it MUST NOT coerce non-null volume or amount to a JavaScript number
 
 #### Scenario: Current Chan algorithms receive the expanded input

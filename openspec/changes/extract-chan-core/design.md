@@ -86,7 +86,9 @@ interface ChanK {
 Bi 和 Channel 的判断行为保持不变；`open/close/volume/amount` 为未来笔力度、背驰和量价算法保留。
 `volume/amount` 必须保持 canonical decimal string 或 `null`，禁止为方便计算转换成 JavaScript
 `number`。`source/period/securityId/type` 仍由 application request/query context 持有，不重复塞进每根
-`ChanK`。
+`ChanK`。Backtest/realtime 的 caller 必须使用共享 `KPriceProjector` 准备 finite-number OHLC 后再做
+薄映射；ChanCore 不读取 MySQL/Redis、不解析 fixed-scale database string，也不拥有存储迁移。现有
+Chan HTTP API 的旧读取路径不属于本 change。
 
 `mergeK` 的 library-owned 输出固定为：
 

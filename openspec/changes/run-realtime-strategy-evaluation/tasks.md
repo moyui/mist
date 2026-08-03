@@ -21,7 +21,8 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 - [ ] 2.1 只实现共享 `StrategyMarketDataPort` 的 MySQL/Redis/memory realtime adapters，不实现 replay
   method，不导入 Backtest application source。
 - [ ] 2.2 实现 source-exact historical/pre-anchor Redis seam、canonical mapping、timestamp/dedupe/conflict
-  acceptance 和 hard-bound validation；MySQL/Redis 不跨源或同日重叠。
+  acceptance、共享 `KPriceProjector` 的 MySQL string/Redis number 投影和 hard-bound validation；
+  MySQL/Redis 不跨源或同日重叠，不改变现有存储 shape 或复制消费者转换。
 - [ ] 2.3 实现按 listener/eligible-plan 分组的 shared ring window、group-max hydration、hot append、
   consumer removal 和 trading-day rollover cleanup。
 - [ ] 2.4 实现 quantity plan 的当日 pre-anchor projector seed、current finalization exactly-once 和

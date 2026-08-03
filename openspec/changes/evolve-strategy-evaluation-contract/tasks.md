@@ -18,8 +18,9 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
 ## 2. 公共 Domain Contract
 
 - [ ] 2.1 实现 runtime-neutral canonical `StrategyBar`、`StrategyMarketDataPort`、replay/realtime
-  criteria/result types 和 import-boundary tests；不得导入 TypeORM、Redis、HTTP/RPC、Nest adapter 或
-  `apps/*` 源码。
+  criteria/result types、共享纯函数 `KPriceProjector` 和 import-boundary tests；覆盖 MySQL fixed-scale
+  OHLC string、Redis finite number、invalid/non-finite value，并证明不改存储、不舍入、不触碰量额；不得导入
+  TypeORM、Redis、HTTP/RPC、Nest adapter 或 `apps/*` 源码。
 - [ ] 2.2 实现共享 field catalog、exact node-shape validator、depth/condition limits、
   `calculationBarCount` 和 compiled `requiredBarCount`。
 - [ ] 2.3 复用共享 `Decimal8` 实现 decimal create normalization、stored canonical validation、非负

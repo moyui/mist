@@ -105,6 +105,13 @@ source runtime 均可服务各自 allowlist，不表示同一证券双源合并�
 - 若 HIL 证明任一 source/period 使用不同 start/end label，实施必须暂停并回到 design/spec
   明确规范化规则，不能在 reader 中静默平移时间。
 
+historical MySQL 与 current-day Redis 的 OHLC 在存储表达上可以不同，但构造 canonical
+`StrategyBar` 时必须经过前置共享 Strategy library 的同一个纯函数 `KPriceProjector`：mysql2
+`DECIMAL(20,2)` fixed-scale string 被严格投影为 finite number；Redis sealed K
+的 number 通过同一 finite/runtime-price validation 后原值保留。projector 不改 MySQL 精度、不改变
+Redis sealed shape、不舍入或回写存储，也不处理量额。window、Indicator、evaluator 和 Chan wrapper
+不得看到 MySQL price string 或实现第二套 `Number(...)`。
+
 MySQL `DECIMAL(36,8)` readback 可能由 driver 表达为固定 scale string。historical reader 必须在构造
 canonical `StrategyBar` 前通过 candle foundation 的共享 decimal boundary 一次性把
 `"1.00000000"` 规范化为 `"1"`；Redis sealed bar 已经必须是 canonical。该 adapter seam 不允许

@@ -41,7 +41,8 @@
 - [ ] 3.1 只实现共享 `StrategyMarketDataPort.readReplayPage()` 的 MySQL adapter，使用 approved
   source-exact criteria、固定内部 page size 和 timestamp keyset pagination，不连接 market Redis。
 - [ ] 3.2 只选择构造 canonical `StrategyBar` 所需列，完成 TDX/QMT A 股 historical quantity profile
-  mapping、provider-filled row、duplicate timestamp/value 和 null 语义的 tests。
+  mapping、共享 `KPriceProjector` 的 MySQL fixed-scale OHLC 投影、provider-filled row、duplicate
+  timestamp/value 和 null 语义的 tests；不得增加 K migration、全局 decimal coercion 或消费者私有转换。
 - [ ] 3.3 实现跨页连续的 bounded context、QuantityForwardFillProjector、Indicator/evaluator state、
   group 串行执行、cooperative deadline 和实际消费 K 总量限制。
 - [ ] 3.4 实现 target resolution、`targetIssues`、无历史/全目标不可执行、unavailable 零结果和真正
