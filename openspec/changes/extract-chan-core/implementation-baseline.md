@@ -45,6 +45,10 @@ mist-fe / mist-skills
 - public barrel 只导出无状态 `ChanCore.mergeK/findFenxings/createBi/createChannels` 和签名所需
   algorithm-owned types/enums；内部 services/helpers/Nest module 不导出，不增加 speculative
   `analyze()`。
+- `ChanK` 固定为完整 `id/symbol/time/open/high/low/close/volume/amount`；量额保持 canonical decimal
+  string/null，core 使用 `high/low`，adapter 保持现有 HTTP `highest/lowest`。
+- 完整行情输入只为后续 Chan 演进留出边界；本 change 不增加笔力度、背驰、量价或 MACD 算法，
+  也不导入公共 IndicatorService/Strategy evaluator。
 - Backtest/Realtime 通过 StrategyMarketDataPort + shared evaluator 计算 KDJ/MACD，不依赖 ChanCore 或
   `/v1/indicators/*`。
 - 不创建 `@app/analysis/indicator`，不预先发明 `reference/timestampMs/ordinal` 等 Chan 字段。
@@ -62,6 +66,6 @@ mist-fe / mist-skills
 
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
 - `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
-- input/output 字段与 error/numeric/mutation/version contract 未确认。
+- output 字段与 error/numeric/mutation/version contract 未确认。
 
 以上门禁完成前不得移动 source files。

@@ -19,7 +19,10 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
 - public API 只暴露无状态 `ChanCore` 的 `mergeK`、`findFenxings`、`createBi`、`createChannels`，以及
   方法签名实际需要的 algorithm-owned types/enums；内部 services/helpers 和 Nest module 不导出，也不
   预先增加统一 `analyze()`。
-- 在移动代码前继续逐项确认输入输出字段、空值/非法输入、数值比较、mutation 和算法版本语义。
+- `ChanK` 一次定义完整的 `id/symbol/time/open/high/low/close/volume/amount` 行情输入；量额保持规范
+  十进制字符串或 `null`。本 change 不启用 MACD/力度等新算法，也不把 Strategy Indicator 实现引入
+  ChanCore。
+- 在移动代码前继续逐项确认输出字段、空值/非法输入、数值比较、mutation 和算法版本语义。
 - `/v1/chan/*` 的长期唯一 runtime owner 固定为独立部署的 `chan-api`；当前 change 不顺手删除
   `mist-backend` 中的兼容路由，后续通过独立 route migration 清理双入口。
 - 在移动 controller/module 前确认现有双入口兼容范围，以及 `chan-api` 的 TypeORM K read adapter 和
@@ -31,6 +34,8 @@ analysis base。该边界不成立：Backtest/Realtime 已由 `StrategyMarketDat
   `evolve-strategy-evaluation-contract`；本 change 不提供 Indicator base，也不是 Backtest/Realtime
   Strategy runtime 的前置依赖。
 - 当前公共 `/v1/indicators/*` 与通用 K 查询重构不属于本 change，不因 ChanCore 抽取而改名或删除。
+- 笔力度、背驰、量价分析以及 Chan-owned MACD 计算属于后续 focused change；届时从完整 `ChanK`
+  输入派生并单独固定参数、版本和输出，不向本次迁移夹带算法变化。
 
 ## Capabilities
 

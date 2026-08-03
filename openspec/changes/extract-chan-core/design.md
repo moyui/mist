@@ -64,6 +64,32 @@ library contract。
 KMerge、Bi、Channel 实现类、helpers 或 Nest module，也不为当前不存在的调用方增加统一
 `analyze()`。内部算法测试可以直接覆盖 library-internal 文件，但测试便利性不能扩大 public exports。
 
+`ChanK` 固定为完整的 raw market-bar value object：
+
+```ts
+interface ChanK {
+  id: number;
+  symbol: string;
+  time: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: string | null;
+  amount: string | null;
+}
+```
+
+完整 OHLCVA 是 Chan 自己的可演进输入边界，不表示所有字段都参与当前算法。当前 K merge、Fenxing、
+Bi 和 Channel 的判断行为保持不变；`open/close/volume/amount` 为未来笔力度、背驰和量价算法保留。
+`volume/amount` 必须保持 canonical decimal string 或 `null`，禁止为方便计算转换成 JavaScript
+`number`。`source/period/securityId/type` 仍由 application request/query context 持有，不重复塞进每根
+`ChanK`。
+
+core 使用标准 `high/low`；现有 HTTP VO 的 `highest/lowest` 由 adapter 显式映射。以后若 Chan 用
+MACD 判断笔力度，focused change 应从 `close` 派生 Chan-owned calculation 并固定参数、版本和输出；
+它不能直接导入公共 IndicatorService 或 Strategy evaluator，也不能在本次 source move 中顺手加入。
+
 adapter 负责 HTTP DTO、日期解析、source 选择、TypeORM K/Security 查询、升序与有限值校验、
 library input mapping、HTTP VO/OpenAPI 和错误映射。ChanCore 不访问数据库、Redis、HTTP、环境变量
 或 Nest controller，不写入 Chan persistence。
@@ -118,5 +144,5 @@ adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体�
 ## Open Questions
 
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
-- `ChanK` 与各输出类型的最小现有字段集合。
+- 各 ChanCore 输出类型的最小现有字段集合，以及 HTTP adapter 如何恢复当前 VO。
 - 空输入、非法有限值、当前 Channel HTTP error、mutation、算法版本和 numeric comparison 规则。

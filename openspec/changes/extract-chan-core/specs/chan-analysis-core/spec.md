@@ -42,6 +42,33 @@ The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade w
 - **THEN** ChanCore MUST NOT add a speculative `analyze` public method
 - **AND** any future combined operation MUST be reviewed as a separate contract change
 
+### Requirement: ChanCore Shall Accept Complete Raw Market Bars
+`ChanK` SHALL require `id`, `symbol`, `time`, `open`, `high`, `low`, `close`, `volume` and `amount`.
+Price fields SHALL be numbers, `time` SHALL remain a `Date`, and `volume/amount` SHALL remain canonical decimal
+strings or `null` rather than JavaScript numbers.
+
+#### Scenario: An application adapter maps a persisted K into ChanCore
+- **WHEN** the adapter prepares an ordered bar for ChanCore
+- **THEN** it MUST map the complete OHLCVA value into `ChanK`
+- **AND** it MUST NOT pass a TypeORM entity as the library input
+- **AND** it MUST NOT coerce non-null volume or amount to a JavaScript number
+
+#### Scenario: Current Chan algorithms receive the expanded input
+- **WHEN** K merge, Fenxing, Bi and Channel run during this extraction
+- **THEN** their existing decision logic and output behavior MUST remain unchanged
+- **AND** the presence of open, close, volume or amount MUST NOT silently enable a new calculation
+
+#### Scenario: A future Chan strength algorithm uses MACD or quantity
+- **WHEN** a future change defines Bi strength, divergence or volume-price analysis
+- **THEN** that change MAY derive a Chan-owned calculation from complete `ChanK` input
+- **AND** it MUST separately approve parameters, algorithm version, null handling and output contract
+- **AND** ChanCore MUST NOT import the public IndicatorService or Strategy evaluator implementation
+
+#### Scenario: The HTTP response retains legacy high and low names
+- **WHEN** a retained Chan route maps ChanCore output to its existing HTTP VO
+- **THEN** the adapter MUST map core `high/low` to the existing `highest/lowest` contract where required
+- **AND** this change MUST NOT rename the public HTTP response fields
+
 ### Requirement: ChanCore Shall Not Own Strategy Indicators Or Market Retrieval
 ChanCore SHALL NOT provide Strategy KDJ/MACD, public Indicator endpoints, a public unified K API or
 `StrategyMarketDataPort` implementations.
