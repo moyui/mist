@@ -13,7 +13,7 @@ Indicator API，也不应依赖 ChanCore。
 
 **Goals:**
 
-- 抽取只包含当前 Chan 算法的 pure ChanCore。
+- 抽取只包含当前 Chan 算法的 `libs/chancore` pure ChanCore。
 - 消除 `apps/chan` 对 `apps/mist` 业务源码的 import。
 - 保持当前 Chan 算法、HTTP URL、响应和无 persistence 行为。
 - 在 source move 前固定 route、adapter、input/output、错误和 differential contracts。
@@ -38,6 +38,17 @@ calculation，由 Backtest 与 Realtime 通过同一个 Strategy library 复用�
 公共 `/v1/indicators/*` 可以继续使用当前 IndicatorService，但它不是 Strategy engine 的计算边界。
 
 ### 2. Chan adapter 负责取数，ChanCore 只负责派生计算
+
+pure library 的落位固定为：
+
+- source root：`libs/chancore/src`；
+- Nest project key：`chancore`；
+- import path：`@app/chancore`。
+
+迁移范围包括当前 Trend、K merge、Fenxing、Bi Phase A/Phase B、Channel Phase A/Phase B、
+`bi-range.helper`、`span-merge.helper` 及算法实际使用的 enums/types。迁移后的实现必须是 plain
+TypeScript，不保留 `@Injectable()` 等 Nest 装饰器，也不能继续以 HTTP DTO/VO 或 TypeORM Entity 作为
+library contract。
 
 adapter 负责 HTTP DTO、日期解析、source 选择、TypeORM K/Security 查询、升序与有限值校验、
 library input mapping、HTTP VO/OpenAPI 和错误映射。ChanCore 不访问数据库、Redis、HTTP、环境变量
@@ -92,7 +103,6 @@ adapter、Controller、VO mapping 和 Nest module 在 `apps/chan` 内的具体�
 
 ## Open Questions
 
-- pure Chan library 的最终目录、Nest project key 和 import path。
 - `chan-api` TypeORM K read adapter 与 `/v1/indicators/k` 兼容链路如何落位。
 - library-owned input/output 的最小现有字段集合。
 - 空输入、非法有限值、当前 Channel HTTP error、mutation、算法版本和 numeric comparison 规则。

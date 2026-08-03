@@ -4,10 +4,24 @@
 ChanCore SHALL consume approved validated in-memory inputs and return deterministic merged-K, Fenxing, Bi and
 Channel outputs without accessing TypeORM, MySQL, Redis, HTTP, environment variables or Nest controllers.
 
+The implementation SHALL live under `libs/chancore`, use Nest project key `chancore`, and be imported through
+`@app/chancore`.
+
 #### Scenario: The same Chan calculation is replayed
 - **WHEN** the same approved ordered input and algorithm version are supplied
 - **THEN** ChanCore MUST return the same structure, values, enums and ordering
 - **AND** it MUST perform no external I/O or Chan persistence
+
+#### Scenario: A Chan algorithm source is moved into the library
+- **WHEN** Trend, K merge, Fenxing, Bi, Channel or a pure supporting helper is extracted
+- **THEN** the moved implementation MUST use library-owned inputs and outputs
+- **AND** it MUST NOT import application controllers, HTTP DTO/VO, TypeORM entities or Nest dependency-injection
+  decorators
+
+#### Scenario: A Chan request needs application behavior
+- **WHEN** a request requires K retrieval, date or source parsing, OpenAPI metadata, HTTP envelope or VO mapping
+- **THEN** that behavior MUST remain in an application adapter outside `libs/chancore`
+- **AND** it MUST invoke the same `@app/chancore` implementation used by every retained Chan route
 
 ### Requirement: ChanCore Shall Not Own Strategy Indicators Or Market Retrieval
 ChanCore SHALL NOT provide Strategy KDJ/MACD, public Indicator endpoints, a public unified K API or

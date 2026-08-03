@@ -9,13 +9,17 @@
   `mist-backend` 当前兼容路由，后续独立 route migration 负责 consumer audit 与删除。
 - [ ] 1.5 向项目负责人评审 `chan-api` TypeORM K read adapter、`/v1/indicators/k` 兼容链路和
   Controller/VO/Nest module 落位。
-- [ ] 1.6 向项目负责人逐项评审 pure Chan library 名称、public exports、最小 input/output、空输入、
-  invalid-input、numeric comparison、mutation 和算法版本。
-- [ ] 1.7 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
+- [x] 1.6 确认 pure library 固定为 `libs/chancore`、Nest project `chancore`、import
+  `@app/chancore`；Trend/K merge/Fenxing/Bi/Channel 与纯 helpers/enums/types 进入 library，
+  Controller/DTO/VO/K read 留在 application adapter。
+- [ ] 1.7 向项目负责人逐项评审 public exports、最小 input/output、空输入、invalid-input、numeric
+  comparison、mutation 和算法版本。
+- [ ] 1.8 将全部接受的 contract 写回 design/specs 后，才开始移动源文件。
 
 ## 2. Pure ChanCore
 
-- [ ] 2.1 建立 pure Chan library 和无 TypeORM/Redis/HTTP/Nest/env/persistence contract tests。
+- [ ] 2.1 建立 `libs/chancore`、Nest project `chancore`、`@app/chancore` alias 和无
+  TypeORM/Redis/HTTP/Nest/env/persistence contract tests。
 - [ ] 2.2 迁移 K merge、Trend、Fenxing、Bi Phase A/Phase B、Channel Phase A/Phase B 与纯 helpers，
   保持已批准的输入输出和算法语义。
 - [ ] 2.3 用 library-owned types 替代 DTO/VO/Entity 输入，adapter 显式完成双向映射。

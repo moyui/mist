@@ -9,7 +9,7 @@
 - 不再把 Chan 与 Indicator 作为共同 base；
 - Strategy KDJ/MACD 归 `evolve-strategy-evaluation-contract`；
 - 当前公共 Indicator/K API 保持现状，不进入本 change；
-- 本 change 只抽取 ChanCore 并解除 `apps/chan → apps/mist` 业务源码依赖。
+- 本 change 只抽取 `libs/chancore` 并解除 `apps/chan → apps/mist` 业务源码依赖。
 
 ### 仓库与工作区
 
@@ -39,6 +39,9 @@ mist-fe / mist-skills
 - ChanCore 与 Strategy Indicator calculation 是两个独立 owner。
 - 独立部署的 `chan-api` 是 `/v1/chan/*` 的长期唯一 runtime owner；当前 change 不删除
   `mist-backend` 兼容路由，后续由独立 route migration 清理。
+- pure library 固定为 `libs/chancore`、Nest project `chancore`、import `@app/chancore`。
+- Trend、K merge、Fenxing、Bi、Channel 和纯 helpers/enums/types 进入 ChanCore；Controller、HTTP
+  DTO/VO、OpenAPI、日期/source 解析与 TypeORM K read 留在 application adapter。
 - Backtest/Realtime 通过 StrategyMarketDataPort + shared evaluator 计算 KDJ/MACD，不依赖 ChanCore 或
   `/v1/indicators/*`。
 - 不创建 `@app/analysis/indicator`，不预先发明 `reference/timestampMs/ordinal` 等 Chan 字段。
@@ -56,6 +59,6 @@ mist-fe / mist-skills
 
 - 现有 fixtures 还不是完整 end-to-end full-output fingerprint；
 - `chan-api` K read adapter、`/v1/indicators/k` 和 Nest module 具体落位未确认；
-- pure library 名称与 input/output/error/numeric/mutation/version contract 未确认。
+- public exports 与 input/output/error/numeric/mutation/version contract 未确认。
 
 以上门禁完成前不得移动 source files。
