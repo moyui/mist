@@ -16,18 +16,28 @@ The following checks passed on 2026-08-03:
 - `pnpm typecheck`
 - `pnpm ci:contracts` with `MIST_WORKSPACE_ROOT` pointed at a temporary workspace whose `mist` entry is this
   worktree
-- `pnpm build`
-- `pnpm exec nest build chan`
-- shared HTTP/RPC/OpenAPI/boundary contract suites: 64 tests passed
+- `pnpm build:docker` (`mist`, `chan` and `realtime-subscription-hil`)
+- review-remediation focused suites: 8 suites and 95 tests passed
+- HTTP boundary integration suites: 2 suites and 10 tests passed
 - `openspec validate --all --strict --no-interactive --json`: 64/64 items passed, comprising 12 changes and 52
   stable specs
 - `git diff --check`
 
-The complete `pnpm test:ci` baseline ran 88 suites: 85 passed, 2 skipped and 1 failed; 659 tests passed and 3 were
-skipped. The only failure was the existing QMT boundary guard reporting
-`apps/mist/src/realtime/hil/realtime-subscription-hil.ts:qmt/bridge`. The same focused test fails with the same
-offender in the untouched primary worktree at commit `917b646`, so it is recorded as a pre-existing baseline
-failure rather than attributed to this change.
+The complete `pnpm test:ci` baseline is green: 87 suites passed and 2 were skipped; 665 tests passed and 3 were
+skipped. The prior QMT boundary-guard baseline failure was removed by selectively applying the test-only HIL
+exemption from the known-good `bc3a273` commit. No other `master` changes were merged into this worktree.
+
+## Review remediation
+
+- `ApiResponseDto<T>.data` is now typed as `T | null`, matching the existing `undefined -> data:null` runtime and
+  OpenAPI behavior.
+- Manual collection failures now propagate through controller, collection strategy, collector service and source
+  without lower-layer `logger.error + rethrow`; the HTTP filter emits one authoritative log. Scheduled collection
+  retains its outer task logging.
+- `RpcExceptionFilter` no longer traverses validation causes that can contain malformed raw wire values; internal
+  handler failures still retain their recursive exception/cause trace.
+- The dependency guard rejects both aliased and relative-path external deep imports into transport, backtest,
+  signal and strategy libraries while allowing their declared public barrels and library-internal relative imports.
 
 ## Residual scan
 

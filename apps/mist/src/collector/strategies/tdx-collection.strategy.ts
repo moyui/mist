@@ -37,26 +37,17 @@ export class TdxCollectionStrategy implements IDataCollectionStrategy {
     startDate: Date,
     endDate: Date,
   ): Promise<number> {
-    try {
-      const count = await this.collectorService.collectKForSource(
-        security.code,
-        period,
-        startDate,
-        endDate,
-        this.source,
-      );
-      this.logger.log(
-        `Manual collection completed for ${security.code} ${period}: ${count} records`,
-      );
-      return count;
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error(
-        `Failed to collect ${security.code} ${period}: ${err.message}`,
-        err.stack,
-      );
-      throw err;
-    }
+    const count = await this.collectorService.collectKForSource(
+      security.code,
+      period,
+      startDate,
+      endDate,
+      this.source,
+    );
+    this.logger.log(
+      `Manual collection completed for ${security.code} ${period}: ${count} records`,
+    );
+    return count;
   }
 
   /**

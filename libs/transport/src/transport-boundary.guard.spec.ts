@@ -1,7 +1,35 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 const root = process.cwd();
+type OwnedLibrary = {
+  alias: string;
+  sourceRoot: string;
+  publicAliases: ReadonlySet<string>;
+};
+
+const ownedLibraries: readonly OwnedLibrary[] = [
+  {
+    alias: '@app/transport',
+    sourceRoot: join(root, 'libs', 'transport', 'src'),
+    publicAliases: new Set(['@app/transport/http', '@app/transport/rpc']),
+  },
+  {
+    alias: '@app/backtest',
+    sourceRoot: join(root, 'libs', 'backtest', 'src'),
+    publicAliases: new Set(['@app/backtest']),
+  },
+  {
+    alias: '@app/signal',
+    sourceRoot: join(root, 'libs', 'signal', 'src'),
+    publicAliases: new Set(['@app/signal']),
+  },
+  {
+    alias: '@app/strategy',
+    sourceRoot: join(root, 'libs', 'strategy', 'src'),
+    publicAliases: new Set(['@app/strategy']),
+  },
+];
 const productionFiles = [
   ...typescriptFiles(join(root, 'apps')),
   ...typescriptFiles(join(root, 'libs')),
@@ -58,28 +86,75 @@ describe('service boundary import graph', () => {
     expect(violations).toEqual([]);
   });
 
-  it('forbids transport deep imports and old cross-app HTTP source imports', () => {
-    const violations = productionFiles.flatMap((file) =>
-      importsOf(file)
+  it('forbids external library deep imports and old cross-app HTTP source imports', () => {
+    const violations = productionFiles.flatMap((file) => {
+      const sources = importsOf(file);
+      return sources
         .filter(
           (source) =>
-            source.startsWith('@app/transport/') &&
-            source !== '@app/transport/http' &&
-            source !== '@app/transport/rpc',
+            isExternalOwnedLibraryImport(file, source) ||
+            source.includes('apps/mist/src/filters') ||
+            source.includes('apps/mist/src/interceptors') ||
+            source.includes('mist/src/filters') ||
+            source.includes('mist/src/interceptors'),
         )
-        .concat(
-          importsOf(file).filter(
-            (source) =>
-              source.includes('apps/mist/src/filters') ||
-              source.includes('apps/mist/src/interceptors') ||
-              source.includes('mist/src/filters') ||
-              source.includes('mist/src/interceptors'),
-          ),
-        )
-        .map((source) => `${relative(root, file)} -> ${source}`),
-    );
+        .map((source) => `${relative(root, file)} -> ${source}`);
+    });
 
     expect(violations).toEqual([]);
+  });
+
+  it('detects alias and relative-path attempts to bypass owned barrels', () => {
+    const appFile = join(root, 'apps', 'mist', 'src', 'adapter.ts');
+    const transportInternal = join(
+      root,
+      'libs',
+      'transport',
+      'src',
+      'rpc',
+      'rpc-envelope.ts',
+    );
+    const strategyInternal = join(
+      root,
+      'libs',
+      'strategy',
+      'src',
+      'internal.ts',
+    );
+    const transportFile = join(
+      root,
+      'libs',
+      'transport',
+      'src',
+      'rpc',
+      'rpc-decoder.ts',
+    );
+
+    expect(
+      isExternalOwnedLibraryImport(
+        appFile,
+        relativeImport(appFile, transportInternal),
+      ),
+    ).toBe(true);
+    expect(
+      isExternalOwnedLibraryImport(
+        appFile,
+        relativeImport(appFile, strategyInternal),
+      ),
+    ).toBe(true);
+    expect(
+      isExternalOwnedLibraryImport(appFile, '@app/backtest/internal'),
+    ).toBe(true);
+    expect(
+      isExternalOwnedLibraryImport(appFile, '@app/transport/rpc/internal'),
+    ).toBe(true);
+    expect(isExternalOwnedLibraryImport(appFile, '@app/backtest')).toBe(false);
+    expect(isExternalOwnedLibraryImport(appFile, '@app/transport/rpc')).toBe(
+      false,
+    );
+    expect(isExternalOwnedLibraryImport(transportFile, './rpc-envelope')).toBe(
+      false,
+    );
   });
 
   it('blocks app-to-app source imports beyond the exact legacy allowlist', () => {
@@ -187,6 +262,36 @@ function importsOf(file: string): string[] {
   return [...content.matchAll(/(?:from\s+|import\s*\()['"]([^'"]+)['"]/g)].map(
     (match) => match[1],
   );
+}
+
+function isExternalOwnedLibraryImport(file: string, source: string): boolean {
+  const aliasOwner = ownedLibraries.find(
+    (owner) => source === owner.alias || source.startsWith(`${owner.alias}/`),
+  );
+  if (aliasOwner) {
+    return !aliasOwner.publicAliases.has(source);
+  }
+
+  if (!source.startsWith('.')) return false;
+  const target = resolve(dirname(file), source);
+  const targetOwner = ownedLibraries.find((owner) =>
+    isWithinOrEqual(target, owner.sourceRoot),
+  );
+  if (!targetOwner) return false;
+  return !isWithinOrEqual(file, targetOwner.sourceRoot);
+}
+
+function isWithinOrEqual(file: string, directory: string): boolean {
+  const relativePath = relative(directory, file);
+  return (
+    relativePath === '' ||
+    (!relativePath.startsWith('..') && !isAbsolute(relativePath))
+  );
+}
+
+function relativeImport(fromFile: string, target: string): string {
+  const path = relative(dirname(fromFile), target);
+  return path.startsWith('.') ? path : `./${path}`;
 }
 
 function typescriptFiles(directory: string): string[] {

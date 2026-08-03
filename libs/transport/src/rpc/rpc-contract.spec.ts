@@ -308,6 +308,40 @@ describe('RpcExceptionFilter', () => {
       'secret invalid pattern',
     );
   });
+
+  it('does not log raw wire data echoed by a domain decoder', async () => {
+    const rawSecret = 'RAW_WIRE_SECRET';
+    const pipe = new RpcValidationPipe(() => {
+      throw new Error(`decoder echoed ${rawSecret}`);
+    });
+    let exception: unknown;
+
+    try {
+      pipe.transform({
+        meta: { correlationId: 'rpc-command-1' },
+        data: { secret: rawSecret },
+      });
+    } catch (error) {
+      exception = error;
+    }
+
+    expect(exception).toBeInstanceOf(RpcInvalidRequestException);
+    const filter = new RpcExceptionFilter();
+    const host = rpcHost(
+      {
+        meta: { correlationId: 'rpc-command-1' },
+        data: { secret: rawSecret },
+      },
+      'backtest.run.submit.v1',
+    );
+
+    await expect(lastValueFrom(filter.catch(exception, host))).rejects.toEqual({
+      status: 'error',
+      message: 'RPC_INVALID_REQUEST',
+    });
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(errorSpy.mock.calls[0])).not.toContain(rawSecret);
+  });
 });
 
 describe('RPC Nest composition', () => {

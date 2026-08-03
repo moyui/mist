@@ -144,7 +144,7 @@ ApiResponseDto<T> = {
   success: true;
   statusCode: number;
   message: string;
-  data: T;
+  data: T | null;
   timestamp: string;
   requestId: string;
   path: string;

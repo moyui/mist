@@ -32,7 +32,12 @@ export class RpcExceptionFilter implements ExceptionFilter {
       `correlationId=${readCorrelationId(data)}`,
       `code=${message}`,
     ].join(' ');
-    this.logger.error(safeContext, exceptionTrace(exception));
+    this.logger.error(
+      safeContext,
+      exception instanceof RpcInvalidRequestException
+        ? exception.stack
+        : exceptionTrace(exception),
+    );
 
     const wireError: RpcTransportErrorV1 = { status: 'error', message };
     return throwError(() => wireError);

@@ -11,7 +11,7 @@ export class ApiResponseDto<T> {
   message!: string;
 
   @ApiProperty({ nullable: true })
-  data!: T;
+  data!: T | null;
 
   @ApiProperty({ example: '2026-08-03T03:00:00.000Z' })
   timestamp!: string;

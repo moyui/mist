@@ -15,6 +15,7 @@ import { Type } from 'class-transformer';
 import { IsString, ValidateNested } from 'class-validator';
 import request from 'supertest';
 import { QueryFailedError } from 'typeorm';
+import { ApiResponseDto } from './api-response.dto';
 import { HttpBusinessRejection } from './http-business-rejection';
 import { installHttpRequestContext } from './http-request-context.middleware';
 import { HttpResponseMessage } from './http-response-message.decorator';
@@ -187,6 +188,20 @@ describe('HttpTransportModule integration', () => {
   let app: INestApplication;
   let errorSpy: jest.SpyInstance;
   let warnSpy: jest.SpyInstance;
+
+  it('models an undefined handler result as nullable success data', () => {
+    const response: ApiResponseDto<{ id: string }> = {
+      success: true,
+      statusCode: 200,
+      message: 'SUCCESS',
+      data: null,
+      timestamp: '2026-08-03T03:00:00.000Z',
+      requestId: 'http-2fc2f348-2f67-4e78-9899-bbfdb9c8d123',
+      path: '/contract/undefined',
+    };
+
+    expect(response.data).toBeNull();
+  });
 
   beforeAll(async () => {
     errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
