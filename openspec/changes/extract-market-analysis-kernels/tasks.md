@@ -7,6 +7,9 @@
     catalog 负责窗口，当前 KDJ(9,3,3)=13、MACD(12,26,9)=130，crossover 由 adapter 提供相邻窗口。
     不增加 EMA/KDJ checkpoint、状态表、无限历史读取或公共 Indicator lookback 参数；V1 strategy
     不消费 `chan.*`，未来接入另开 change。
+  - [x] 1.3.2 确认采用一个无横杠的 `libs/analysis`，只公开 `@app/analysis/indicator` 与
+    `@app/analysis/chan` 两个显式 subpath；根入口不混合导出两个算法域，library 不提供 Nest module
+    或 I/O dependency。
 - [ ] 1.4 向项目负责人评审 Chan 公共路由长期 owner；本 change 只记录结论，不擅自删路由。
 - [ ] 1.5 将接受的 contract 写回 design/specs 后，才开始移动源文件。
 

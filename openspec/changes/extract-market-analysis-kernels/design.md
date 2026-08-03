@@ -39,8 +39,31 @@ MACD kernel 不保存或恢复 EMA checkpoint，不读取窗口以前的历史�
 
 ### 2. Indicator 与 Chan 在同一 analysis 边界下保持独立子模块
 
-允许建立一个 `market-analysis` library，但 IndicatorCore 与 ChanCore 使用独立 exports，避免
-策略或 Chan 被迫加载无关依赖。
+建立一个无横杠的 `libs/analysis` library，但 IndicatorCore 与 ChanCore 使用独立 subpath exports：
+
+```text
+libs/analysis/src/
+├── indicator/
+│   ├── index.ts
+│   ├── indicator-core.ts
+│   └── indicator.types.ts
+├── chan/
+│   ├── index.ts
+│   ├── chan-core.ts
+│   └── chan.types.ts
+└── index.ts
+```
+
+- Indicator 调用方只从 `@app/analysis/indicator` 导入；
+- Chan 调用方只从 `@app/analysis/chan` 导入；
+- 根入口 `@app/analysis` 不混合 re-export 两个子模块的业务 API；
+- library 不提供 Nest module，不依赖 controller、TypeORM、HTTP、Redis、ConfigService 或环境变量；
+- backtest/realtime strategy 只允许依赖 Indicator subpath，不得通过根入口或 Chan subpath 间接使用
+  `chan.*`。
+
+单 library 统一承载市场分析纯计算的代码所有权；显式 subpath 又保持两个算法域的依赖边界，避免
+策略或 Chan 被迫加载无关实现。后续新增计算域时必须建立新的显式 subpath，不得把根入口变成
+无边界的算法 barrel。
 
 ### 3. 先做行为保持式抽取
 
@@ -69,6 +92,5 @@ ChanCore 不成为 V1 strategy 计算依赖。
 
 ## Open Questions
 
-- 使用一个 `libs/market-analysis` 还是两个独立 Nest libraries。
 - Chan 公共路由长期由 `mist-backend`、`chan-api` 或兼容迁移期双入口中的哪一种持有。
 - pure kernel 对 invalid finite input 使用 typed result 还是抛出 domain error。

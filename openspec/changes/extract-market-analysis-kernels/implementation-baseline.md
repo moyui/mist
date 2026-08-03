@@ -106,6 +106,11 @@ Chan persistence boundary 和 `chan-api` module wiring。
 
 ### 待项目负责人确认后才能移动源文件
 
-1. library 采用一个 `libs/analysis`，内部公开 `indicator` 与 `chan` 两个独立入口，还是两个 library；
-2. library-owned input/output、invalid-input domain error 和 numeric comparison 的精确定义；
-3. Chan 公共路由长期唯一 owner；本 change 无论结论如何都不删除现有 route。
+已确认：采用一个无横杠的 `libs/analysis`，只通过 `@app/analysis/indicator` 与
+`@app/analysis/chan` 两个显式 subpath 公开业务 API；根入口不混合导出两个算法域，library 不提供
+Nest module 或 I/O dependency。
+
+仍待确认：
+
+1. library-owned input/output、invalid-input domain error 和 numeric comparison 的精确定义；
+2. Chan 公共路由长期唯一 owner；本 change 无论结论如何都不删除现有 route。

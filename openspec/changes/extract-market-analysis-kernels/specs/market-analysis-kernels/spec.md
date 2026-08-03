@@ -26,6 +26,10 @@ accessing TypeORM, MySQL, Redis, HTTP, environment variables or Nest controllers
 exports instead of importing another application's internal modules or duplicating algorithms. V1 strategy
 evaluation SHALL consume Indicator exports only and SHALL NOT expose or compute `chan.*`.
 
+The shared library SHALL be owned by `libs/analysis`, with separate `@app/analysis/indicator` and
+`@app/analysis/chan` subpath exports. The root `@app/analysis` entry SHALL NOT mix both domains into one public
+business API.
+
 #### Scenario: Chan computation is used from two apps
 - **WHEN** both adapters compute the same analysis request
 - **THEN** both MUST invoke the same Chan kernel implementation
@@ -35,6 +39,11 @@ evaluation SHALL consume Indicator exports only and SHALL NOT expose or compute 
 - **WHEN** backtest or realtime compiles the approved V1 strategy catalog
 - **THEN** it MUST import the approved Indicator kernels only
 - **AND** it MUST reject `chan.*` rather than invoking ChanCore with an arbitrary fixed window
+
+#### Scenario: An application imports an analysis kernel
+- **WHEN** an Indicator or Chan adapter imports a shared calculation
+- **THEN** it MUST use its explicit analysis subpath
+- **AND** the imported library MUST NOT require a Nest module or external I/O dependency
 
 ### Requirement: Kernel Extraction Shall Preserve Existing Behavior
 This change SHALL preserve existing Indicator outputs and Chan Phase A/Phase B semantics.
