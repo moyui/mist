@@ -40,10 +40,11 @@
 | --- | --- | --- |
 | Strategy/registry Jest | 通过 | 14 suites 通过、1 MySQL suite 跳过；143 tests 通过、1 跳过 |
 | creation-only/schedule targeted Jest | 通过 | 相关 route、transaction、HIL gate、backtest、schedule tests 全部通过 |
-| non-socket backend baseline | 通过 | 103 suites 通过、2 跳过；952 tests 通过、3 跳过 |
+| backend Jest baseline | 通过 | 105 suites 通过、2 跳过；962 tests 通过、3 跳过 |
 | TypeScript | 通过 | `tsc --noEmit` |
 | Nest build | 通过 | `nest build mist` |
-| changed-file ESLint | 通过 | 无 error |
+| Schedule build | 通过 | `nest build schedule` |
+| full ESLint | 通过 | `{src,apps,libs,test}/**/*.ts` 无 error |
 | Decimal/transport boundary guards | 通过 | 已移除旧 evaluator 文件路径和 schedule→strategy legacy allowlist |
 | OpenSpec strict | 通过 | `openspec validate evolve-strategy-evaluation-contract --strict` |
 | diff check | 通过 | `git diff --check` |
@@ -52,14 +53,15 @@
 `apps/mist/.../strategy-rule-evaluator.ts`。守卫已改为检查共享 Strategy compiler、quantity projector 和
 evaluator，单独回归 4/4 通过。该问题不是跳过项。
 
-仍有两个 Supertest integration suites 在当前沙箱因 `listen EPERM: operation not permitted 0.0.0.0`
-无法进入业务断言：
+两个 Supertest integration suites 在当前沙箱首次执行时因
+`listen EPERM: operation not permitted 0.0.0.0` 无法进入业务断言：
 
 - `libs/transport/src/http/http-transport.integration.spec.ts`
 - `apps/mist/src/collector/collector-http-boundary.integration.spec.ts`
 
-因此 task 4.1 仍未完成；后续必须在允许本地 socket 的 CI/宿主环境补跑，同时还要纳入独立
-`mist-fe` 交付的完整基线。
+随后在允许本地 socket 的宿主执行相同 Jest 命令，两套 suite、10 个 tests 全部通过。因此 socket
+环境门禁已经解除，不再列为阻塞。task 4.1 仍未完成的唯一原因是还需要纳入独立 `mist-fe` 交付的
+完整基线。
 
 ## 禁止项检索结论
 
@@ -75,4 +77,3 @@ evaluator，单独回归 4/4 通过。该问题不是跳过项。
 - 独立 `mist-fe` 交付尚未合并，因此 task 3.5 未完成。
 - TDX/QMT quantity profile 的交易时段 HIL 尚未完成，量额策略不得进入 realtime eligible。
 - migration 014 仅在隔离 MySQL 8.4 通过，尚未执行生产发布。
-- 两个 socket integration suites 需要在非沙箱环境补跑。
