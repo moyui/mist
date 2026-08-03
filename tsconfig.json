@@ -38,7 +38,8 @@
       "@app/transport/rpc": ["libs/transport/src/rpc/index.ts"],
       "@app/backtest": ["libs/backtest/src/index.ts"],
       "@app/signal": ["libs/signal/src/index.ts"],
-      "@app/strategy": ["libs/strategy/src/index.ts"]
+      "@app/strategy": ["libs/strategy/src/index.ts"],
+      "@app/chancore": ["libs/chancore/src/index.ts"]
     }
   },
   "include": ["apps/**/*", "libs/**/*"]

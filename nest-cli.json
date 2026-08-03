@@ -120,6 +120,15 @@
         "tsConfigPath": "libs/strategy/tsconfig.lib.json"
       }
     },
+    "chancore": {
+      "type": "library",
+      "root": "libs/chancore",
+      "entryFile": "index",
+      "sourceRoot": "libs/chancore/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/chancore/tsconfig.lib.json"
+      }
+    },
     "chan": {
       "type": "application",
       "root": "apps/chan",

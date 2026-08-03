@@ -18,7 +18,7 @@
 
 ## 2. Pure ChanCore
 
-- [ ] 2.1 建立 `libs/chancore`、project config、`@app/chancore` alias 和 pure-boundary contract tests。
+- [x] 2.1 建立 `libs/chancore`、project config、`@app/chancore` alias 和 pure-boundary contract tests。
 - [ ] 2.2 迁移 Trend、K merge、Fenxing、Bi Phase A/Phase B、Channel Phase A/Phase B、
   `bi-range`、`span-merge` 与实际使用的 enums/types；不得保留第二份算法或恢复 K ID 距离算术。
 - [ ] 2.3 将 DTO/VO/Entity 输入替换为 readonly library-owned types；完整 `ChanK` 保持 OHLCVA、Date 和

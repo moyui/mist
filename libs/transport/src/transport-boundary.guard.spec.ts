@@ -30,6 +30,11 @@ const ownedLibraries: readonly OwnedLibrary[] = [
     sourceRoot: join(root, 'libs', 'strategy', 'src'),
     publicAliases: new Set(['@app/strategy']),
   },
+  {
+    alias: '@app/chancore',
+    sourceRoot: join(root, 'libs', 'chancore', 'src'),
+    publicAliases: new Set(['@app/chancore']),
+  },
 ];
 const productionFiles = [
   ...typescriptFiles(join(root, 'apps')),
@@ -56,9 +61,11 @@ describe('service boundary import graph', () => {
     expect(paths['@app/backtest']).toEqual(['libs/backtest/src/index.ts']);
     expect(paths['@app/signal']).toEqual(['libs/signal/src/index.ts']);
     expect(paths['@app/strategy']).toEqual(['libs/strategy/src/index.ts']);
+    expect(paths['@app/chancore']).toEqual(['libs/chancore/src/index.ts']);
     expect(paths['@app/backtest/*']).toBeUndefined();
     expect(paths['@app/signal/*']).toBeUndefined();
     expect(paths['@app/strategy/*']).toBeUndefined();
+    expect(paths['@app/chancore/*']).toBeUndefined();
   });
 
   it('keeps transport independent from domain and infrastructure libraries', () => {

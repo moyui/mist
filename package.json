@@ -136,6 +136,7 @@
       "^@app/backtest$": "<rootDir>/libs/backtest/src/index.ts",
       "^@app/signal$": "<rootDir>/libs/signal/src/index.ts",
       "^@app/strategy$": "<rootDir>/libs/strategy/src/index.ts",
+      "^@app/chancore$": "<rootDir>/libs/chancore/src/index.ts",
       "^@app/data-collector(|/.*)$": "<rootDir>/apps/mist/src/data-collector/$1"
     }
   },
