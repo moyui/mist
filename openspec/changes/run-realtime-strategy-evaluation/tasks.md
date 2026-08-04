@@ -37,10 +37,10 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 
 - [x] 3.1 增加并锁定 approved `@nestjs/bullmq`/`bullmq` 依赖、queue/prefix/job constants 和独立
   producer/reader/worker Redis connection owners；off 模式不创建策略 queue 资源。
-- [ ] 3.2 通过 candle foundation 的可失败隔离 post-commit port，为 sealed/discarded 终态实现非阻塞
+- [x] 3.2 通过 candle foundation 的可失败隔离 post-commit port，为 sealed/discarded 终态实现非阻塞
   `candle_finalized` handoff、严格 union payload、确定性 jobId 和 attempts/retention/stalled/deadline
   配置；queue failure 不回滚 market state，discarded 不传价格或原因。
-- [ ] 3.3 实现 `apps/mist` 当前交易日一次性 bounded startup compensation、稳定顺序、跨日 expiry、
+- [x] 3.3 实现 `apps/mist` 当前交易日一次性 bounded startup compensation、稳定顺序、跨日 expiry、
   out-of-order discard 和 duplicate/restart/disconnect tests；不增加持续 reconciler、retry 或 batch。
 - [x] 3.4 删除 legacy `StrategyScanController/Service`、scan DTO/result、Nest/schedule registration、
   OpenAPI 和 tests；证明不存在 manual Signal RPC、第二套 run lifecycle 或隐式 fallback。

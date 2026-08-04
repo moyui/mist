@@ -13,6 +13,7 @@ import { RealtimeCandleDiagnosticController } from './candle/realtime-candle-dia
 import { RealtimeCandleHealthService } from './candle/realtime-candle-health.service';
 import { resolveRealtimeStrategyMode } from '@app/config';
 import { RealtimeStrategyHandoffModule } from './strategy-trigger/realtime-strategy-handoff.module';
+import { RealtimeStrategyStartupCompensationService } from './strategy-trigger/realtime-strategy-startup-compensation.service';
 
 @Global()
 @Module({
@@ -33,6 +34,7 @@ import { RealtimeStrategyHandoffModule } from './strategy-trigger/realtime-strat
     RealtimeMarketDataProductService,
     RealtimeMarketObservabilityService,
     RealtimeCandleHealthService,
+    RealtimeStrategyStartupCompensationService,
   ],
   exports: [
     RealtimeSnapshotIngressService,

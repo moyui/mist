@@ -228,6 +228,61 @@ describe('CandleFinalizedJobProcessor', () => {
     ).rejects.toThrow('conflicting candle finalization identity');
   });
 
+  it('expires a prior-day job before reading market data', async () => {
+    const marketData = {
+      loadRealtimeWindow: jest.fn(),
+      resolveRealtimeObservation: jest.fn(),
+    };
+    const processor = new CandleFinalizedJobProcessor(
+      marketData,
+      () => [],
+      () => new Date('2026-08-05T01:00:00.000Z'),
+    );
+
+    await expect(
+      processor.process(
+        CANDLE_FINALIZED_JOB_NAME,
+        sealedPayload(makeBar('2026-08-04T06:44:00.000Z', 28)),
+      ),
+    ).resolves.toEqual({
+      outcome: 'expired_trading_day',
+      candidates: [],
+    });
+    expect(marketData.resolveRealtimeObservation).not.toHaveBeenCalled();
+  });
+
+  it('discards an older trigger after a newer terminal was accepted', async () => {
+    const newer = makeBar('2026-08-04T06:44:00.000Z', 28);
+    const marketData = {
+      loadRealtimeWindow: jest.fn().mockResolvedValue({ bars: [] }),
+      resolveRealtimeObservation: jest
+        .fn()
+        .mockResolvedValue({ outcome: 'sealed', bar: newer }),
+    };
+    const processor = new CandleFinalizedJobProcessor(
+      marketData,
+      () => [],
+      () => new Date('2026-08-04T07:00:00.000Z'),
+    );
+    await processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(newer));
+
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, {
+        contractVersion: 1,
+        securityId: 9,
+        source: 'tdx',
+        period: '1m',
+        triggerTime: '2026-08-04T06:43:00.000Z',
+        outcome: 'discarded',
+        triggerPrice: null,
+      }),
+    ).resolves.toEqual({
+      outcome: 'out_of_order_trigger_discarded',
+      candidates: [],
+    });
+    expect(marketData.resolveRealtimeObservation).toHaveBeenCalledTimes(1);
+  });
+
   it('reconciles window, period and episode scope after registry cutover', () => {
     const periodBuilder = {
       accept: jest.fn(),

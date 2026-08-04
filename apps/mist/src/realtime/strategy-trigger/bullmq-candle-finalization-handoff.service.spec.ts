@@ -24,4 +24,22 @@ describe('BullMqCandleFinalizationHandoffService', () => {
       removeOnFail: { age: 86_400 },
     });
   });
+
+  it('propagates a disconnected queue without retrying', async () => {
+    const queue = { add: jest.fn().mockRejectedValue(new Error('disconnect')) };
+    const service = new BullMqCandleFinalizationHandoffService(queue as never);
+
+    await expect(
+      service.publish({
+        contractVersion: 1,
+        securityId: 9,
+        source: 'tdx',
+        period: '1m',
+        triggerTime: '2026-08-04T06:44:00.000Z',
+        outcome: 'discarded',
+        triggerPrice: null,
+      }),
+    ).rejects.toThrow('disconnect');
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
 });
