@@ -125,5 +125,8 @@
     diagnostics 验证 canonical snapshot 与 candle candidate。不得把该 HIL 编排描述成生产订阅生命周期。
     backend 启动/重连 authoritative `sync_subscriptions`、desired/active 收敛与 QMT journal startup
     reconciliation 仍是独立未实现的 subscription-lifecycle gap，本 change 不顺带修复。见
-    `evidence/2026-08-04-single-subscription-recovery.md`。
+    `evidence/2026-08-04-single-subscription-recovery.md` 和
+    `evidence/2026-08-04-trading-session-hil.md`；2026-08-04 下午 TDX/QMT subscribe 与 finally
+    unsubscribe 均取得 passed artifact，且临时产品路径已从 backend/deploy 删除；QMT canonical
+    snapshot/candidate 已观察，TDX 因 native `AsOf` 缺失而没有合法 candidate，故子任务保持未完成。
 - [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。

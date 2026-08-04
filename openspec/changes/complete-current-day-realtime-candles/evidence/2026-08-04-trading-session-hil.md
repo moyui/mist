@@ -2,9 +2,83 @@
 
 ## 结论
 
-本轮在 A 股上午交易时段完成了最终候选版本部署和双 source 只读预检，但完整 HIL **未通过**。TDX 与 QMT 的 exact closed-candle key 均在 300 秒内没有新增两根 sealed 1m candle；因此 quantity profile、restart/AOF、收盘同源 historical 对账和 protected-table 前后零写入仍未取得闭环证据，task 5.4 保持未完成，模式保持 `shadow`，不得切 `on`。
+本轮在 A 股上午及下午交易时段完成了最终候选版本部署、双 source 只读预检和 datasource WebSocket
+手动订阅验证，但完整 HIL **仍未通过**。下午证据已经把上午笼统的“没有 snapshot”拆成两个不同结果：
 
-这不是 quantity rejection：两个 source 的 `quantityProfileRejections=[]`，运行时为 `seriesCount=0`、`candidateCount=0`、`sealedTotal=0`，同时 `no_snapshot` discard 持续增长。当前证据指向“bridge/transport ready，但观察窗口没有 snapshot 进入 candle aggregator”。
+- QMT 能返回合法 native/canonical snapshot，实时量额 profile 复核通过，Redis 中也存在 QMT exact closed
+  分区；但两次 full HIL 没有在 baseline 之后观察到目标标的的新 sealed candle，因此没有进入 restart/AOF、
+  historical compare 和 post protected digest。
+- TDX 能返回 fresh native/canonical snapshot，实时量额 profile 复核通过，但目标 runtime 的 native
+  `get_market_snapshot` 没有 `AsOf` 或其他 provider business time；canonical `eventTime=null`，按既定
+  fail-closed 契约不能进入 candle aggregator。
+
+因此 task 5.4 保持未完成，模式保持 `shadow`，不得切 `on`。QMT historical 本次只取得 provider fill 的
+零量额样本，不能据此完成 historical quantity profile 门禁。
+
+这不是 quantity rejection：所有下午运行均为 `quantityProfileRejections=[]`，Redis AOF 为 enabled、last
+write `ok`，策略表没有因 shadow 流程写入。当前剩余阻塞是 TDX provider time 缺失、QMT 目标标的
+baseline 后无新 exact candle，以及尚未执行的完整 restart/AOF/protected-table 后置门禁。
+
+## 下午手动订阅与 provider 数据证据
+
+### 固定候选与部署
+
+- backend 修复候选：`f545c72ca613e23634e1da4aec1d64758c6bba58`；只读取 datasource 正式
+  `AsOf`，不接受测试遗留 `DateTime`，也不使用 `capturedAt` 或当前时钟补 event time。
+- datasource：`e2094dd5ec527f18487b746549d875795f174520`。
+- monitoring：`881e593de6374e16329e446ca5694fb7aadece3e`。
+- shadow 部署：run `30881518215`，成功；未执行 migration，完整 health check 通过。
+- QMT runtime：build `mist-qmt-realtime-bridge-v2.0`，artifact `unavailable`，runtime fingerprint
+  `2c616197455b1a5009fcb21c248c099f64d3e9fc69362c745cebbd5728397f9d`。
+- TDX runtime：build `mist-tdx-realtime-bridge-v2.1`，installed artifact SHA-256
+  `750cabf97c5812423987cab70c25d385976b6edf1bad6419cf30a1bb1ddfce51`。
+
+### QMT snapshot/profile（通过）
+
+- snapshot-only run：`30882148246`，`result=snapshot-evidence-passed`。
+- identity：`securityId=1`、`600519.SH`。
+- 手动 subscribe：13:54:41 Asia/Shanghai，`result=passed`；finally unsubscribe：13:55:02，
+  `result=passed`。
+- native：`time=1785822889000`、`stime="20260804135449.000"`、`volume=28204`、
+  `amount=3773928400`。
+- canonical：`eventTime="2026-08-04T05:54:49.000Z"`、`cumulativeVolume="2820400"`、
+  `cumulativeAmount="3773928400"`、`aggregationEligible=true`。
+- 换算复核：`28204 × 100 = 2820400` 股；amount 保留 provider float 可观察元值。该结果与
+  2026-08-03 pinned `手/元` profile 一致。
+- datasource historical 只读请求成功，但 13:53–13:55 返回 provider fill 的固定价格与
+  `volume="0"`、`amount="0"`；零值不能证明非零 historical reader profile，故 historical 门禁仍未完成。
+
+QMT full runs `30880876697`（`300502.SZ`）和 `30881191518`（`600519.SH`）均成功经过
+subscribe → canonical，并在 finally 成功 unsubscribe；进程级诊断在等待期封存了 3 根 candle、due 无
+失败且无 horizon exceed。只读 preflight `30881808259` 进一步证明 Redis 中存在
+`qmt:1`、`qmt:4` 的 exact closed/watermark/manifest keys。不过 full run 的 baseline 之后没有出现目标
+exact key 的新 field，不能用别的标的的进程级 `sealedTotal` 冒充目标标的闭环。
+
+### TDX snapshot/profile 与 event-time 阻塞
+
+- native evidence run：`30881943989`。
+- identity：`securityId=9`、`600030.SH`。
+- 手动 subscribe：13:50:58 Asia/Shanghai，`result=passed`；finally unsubscribe：13:51:22，
+  `result=passed`。
+- native：`Volume="901517"`、`Amount="253641.50"`；native keys 共 26 个，其中没有 `AsOf`、
+  `DateTime` 或其他 provider business time。
+- canonical：`cumulativeVolume="90151700"`、`cumulativeAmount="2536415000"`；精确满足
+  `Volume × 100`、`Amount × 10000`，复核当前 production runtime 为 `手/万元`。
+- canonical `eventTime=null`、`aggregationEligible=false`；backend 不得使用 envelope
+  `capturedAt="2026-08-04T13:51:07+08:00"` 冒充 provider event time。因此 TDX 本轮没有合法 candidate
+  或 closed candle，这是已确认的 provider-time 门禁，不是 decoder alias 或 quantity failure。
+
+### 订阅清理
+
+本轮所有手动订阅都在 `finally` 清理，未把 HIL 编排留在产品启动路径：
+
+- QMT `300502.SZ`：run `30880876697`，13:34:21 unsubscribe passed。
+- QMT `600519.SH`：run `30881191518`，13:40:22 unsubscribe passed；run `30882148246`，
+  13:55:02 unsubscribe passed。
+- TDX `600030.SH`：run `30881943989`，13:51:22 unsubscribe passed。
+
+旧单条 probe workflow、`TDX_SUBSCRIBE_ALLOWLIST_ON_READY` 及其 deploy 配置已经删除；生产 backend
+authoritative `sync_subscriptions` 缺口仍归独立 subscription-lifecycle change，不由本 HIL 偷渡修复。
 
 ## 固定候选与运行身份
 

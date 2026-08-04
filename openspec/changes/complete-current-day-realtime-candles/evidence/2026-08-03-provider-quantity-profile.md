@@ -25,6 +25,17 @@ QMT 的 production artifact 已通过同日真实 `get_full_tick`、backend read
 其字段单位同时遵循已接受的官方股票 tick 契约。`pvolume` 仅作为本次 evidence 交叉检查，不进入 Mist
 canonical contract。
 
+## 2026-08-04 当前候选复核
+
+- TDX run `30881943989`：native `Volume="901517"`、`Amount="253641.50"`，canonical 分别为
+  `"90151700"` 股和 `"2536415000"` 元，继续支持 pinned `手/万元` profile。该 native payload 没有
+  `AsOf`，所以 profile 通过不代表 candle event-time 门禁通过。
+- QMT run `30882148246`：native `volume=28204`、`amount=3773928400`，canonical 分别为
+  `"2820400"` 股和 `"3773928400"` 元，继续支持 pinned `手/元` profile；`time/stime` 与 canonical
+  `eventTime` 一致。
+- 同次 QMT historical 只读请求只返回 provider fill 的零量额样本，不能证明 non-zero historical
+  quantity profile。historical reader 门禁继续由 owning backtest/runtime change 保持未完成。
+
 ## 历史数据与旧 fixture 边界
 
 - `mist-datasource/tests/fixtures/tdx/live_market_snapshot_600519.json` 是 2026-06-29 的 external-HTTP
