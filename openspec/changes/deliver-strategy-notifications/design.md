@@ -4,6 +4,9 @@ Mist 已持久化 PENDING AlertEvent，并允许外部调用 delivered/failed/ac
 worker。旧 stable spec 把 schedule scan 与外部 skill polling 混在同一 capability；新架构要求通知
 成为 Signal/AlertEvent 之后的独立故障域。
 
+旧 stable requirement `Schedule Shall Not Own Public Strategy APIs` 的标题仍符合边界，但正文却要求
+`apps/schedule` 承载 strategy scan jobs。若只追加“独立 worker”要求，归档后会让冲突契约并存。
+
 ## Delivery Order
 
 本 change 当前**明确延期实施**。这不是因为 Signal/AlertEvent 字段尚未定义，而是因为 candle、生产
@@ -49,6 +52,10 @@ notifier 不监听 raw market trigger，也不重新运行 strategy。消息内�
 worker 使用独立 app/runtime boundary。具体部署是否与 strategy queue 共用基础设施必须在实施前
 评审，不能从当前 Compose 推断。
 
+遗留 requirement `Schedule Shall Not Own Public Strategy APIs` 必须显式删除，不能只用新增要求覆盖。
+归档同步时，stable capability 的 Purpose 也必须重写，不再描述“completed K-line collection 后运行
+scheduled scans”。其余 delivery result、Skills consumer 和 operator acknowledgement 契约继续保留。
+
 ### 3. Channel adapter 不拥有业务状态
 
 adapter 只发送规范 envelope 并返回受控 result。delivery status 由 Mist 持久化；operator ack 不由
@@ -69,12 +76,14 @@ claim/lease、并发、重试、backoff、dead-letter、provider idempotency、�
 ## Migration Plan
 
 1. 等待 Delivery Order 的三项恢复条件满足；延期期间不启动 notification 实施。
-2. 恢复后重新审计 AlertEvent schema、现有 API、stable specs、真实 producer evidence 和渠道条件，
+2. 恢复后重新审计 AlertEvent schema、现有 API、stable Purpose/requirements、真实 producer evidence
+   和渠道条件，
    不直接沿用可能过期的当前代码假设。
 3. 与用户确认首批渠道及消费/失败语义。
-4. 更新 design/spec 后再实现 worker 与 adapter。
-5. 先 dry-run/shadow，再以测试接收端验证。
-6. 最后执行真实渠道 HIL；失败时关闭 notifier，不回滚策略事件。
+4. 更新 design/spec，以 REMOVED delta 删除 schedule scan owner 遗留 requirement 后再实现 worker 与 adapter。
+5. 归档同步时重写 stable Purpose，并检索 living spec 中不得残留 schedule scan owner 语义。
+6. 先 dry-run/shadow，再以测试接收端验证。
+7. 最后执行真实渠道 HIL；失败时关闭 notifier，不回滚策略事件。
 
 ## Open Questions
 
