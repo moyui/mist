@@ -145,27 +145,6 @@ describe.each(['qmt', 'tdx'] as const)(
   },
 );
 
-it('subscribes the TDX allowlist one symbol at a time when explicitly enabled', async () => {
-  const { client, send } = buildClient('tdx', true, 1_000, {
-    TDX_SUBSCRIBE_ALLOWLIST_ON_READY: true,
-  });
-
-  emit(client, ready('tdx'));
-  expect(JSON.parse(send.mock.calls[0][0] as string)).toEqual({
-    type: 'subscribe',
-    symbol: '300502.SZ',
-  });
-  emit(client, response('tdx', 'subscribed', { success: null }));
-  await new Promise<void>((resolve) => setImmediate(resolve));
-  expect(JSON.parse(send.mock.calls[1][0] as string)).toEqual({
-    type: 'subscribe',
-    symbol: '600030.SH',
-  });
-  emit(client, response('tdx', 'subscribed', { success: null }));
-  await new Promise<void>((resolve) => setImmediate(resolve));
-  expect(send).toHaveBeenCalledTimes(2);
-});
-
 type ControlClient = QmtRealtimeClient | TdxRealtimeClient;
 
 function buildClient(

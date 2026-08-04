@@ -120,8 +120,10 @@
   provider-float provenance；任一 source 未证明前不得切 `on`。
   - 2026-08-03 已完成 harness/workflow、TDX bridge artifact health 补充和非交易时段自动化准备，见
     `evidence/2026-08-03-shadow-hil-readiness.md`；尚无双 source 交易时段 artifact，父任务保持未完成。
-  - [ ] 5.4.1 移除 TDX 临时 `TDX_SUBSCRIBE_ALLOWLIST_ON_READY` 路径：修复 backend 启动/重连时
-    authoritative `sync_subscriptions` 调用与收敛，并修复 QMT journal startup reconciliation；验证
-    TDX/QMT desired/active/native callback 在 restart 后恢复。见
+  - [ ] 5.4.1 移除 TDX 临时 `TDX_SUBSCRIBE_ALLOWLIST_ON_READY` 产品路径和 deploy 配置；candle HIL
+    只通过 datasource 既有 WebSocket 控制接口建立并在 `finally` 清理单条订阅，再从正常 backend
+    diagnostics 验证 canonical snapshot 与 candle candidate。不得把该 HIL 编排描述成生产订阅生命周期。
+    backend 启动/重连 authoritative `sync_subscriptions`、desired/active 收敛与 QMT journal startup
+    reconciliation 仍是独立未实现的 subscription-lifecycle gap，本 change 不顺带修复。见
     `evidence/2026-08-04-single-subscription-recovery.md`。
 - [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。
