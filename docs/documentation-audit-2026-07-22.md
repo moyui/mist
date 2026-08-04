@@ -9,7 +9,6 @@
 protocol field、class 名称和产品名保留原文。以下内容不做追溯翻译或“修正”：
 
 - `openspec/changes/archive/` 历史证据；
-- `docs/superpowers/` 当时的设计与执行计划；
 - 官方网页 capture；
 - `review-*-evidence.md` 已完成审查证据；
 - generated OpenAPI JSON/summary 中的机器契约。
