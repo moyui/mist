@@ -72,7 +72,17 @@ export class BacktestRunExecutor {
   ) {}
 
   async execute(runId: number): Promise<void> {
-    const claimed = await this.claim(runId);
+    let claimed: BacktestRun | null;
+    try {
+      claimed = await this.claim(runId);
+    } catch (error) {
+      this.health.recordRunFailed('BACKTEST_DATABASE_ERROR', 0);
+      this.logger.error(
+        `Backtest run ${runId} could not be claimed`,
+        errorTrace(error),
+      );
+      return;
+    }
     if (!claimed) return;
 
     const startedAt = Date.now();
