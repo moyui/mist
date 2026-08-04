@@ -4,9 +4,7 @@ Strategy operator UX makes the accepted strategy backend contracts usable from
 `mist-fe`: operators can manage strategy definitions, inspect signals and
 alerts, acknowledge alert events, trigger manual scans, and run signal-level
 backtests without calling datasource services directly.
-
 ## Requirements
-
 ### Requirement: Strategy Workspace Shall Be Available
 
 Mist frontend SHALL provide a strategy operator workspace for backend strategy
@@ -36,20 +34,27 @@ the configured Mist API base path and version-first `/v1/*` endpoints.
 
 ### Requirement: Operators Shall Manage Strategy Definitions
 
-The strategy workspace SHALL allow operators to inspect and change strategy
-definition lifecycle state.
+The strategy workspace SHALL allow operators to create and inspect strategy definitions and change only their
+lifecycle state. Existing definition content SHALL remain read-only.
 
 #### Scenario: Strategy registry is loaded
 
 - **WHEN** strategy definitions are returned by the backend
-- **THEN** the workspace MUST show definition name, status, current version,
-  target universe, period, source, and update timestamps where available
+- **THEN** the workspace MUST show definition name, status, current version, target universe, period, source,
+  signal kind and timestamps where available
 
 #### Scenario: Strategy definition is saved
 
-- **WHEN** an operator submits valid strategy metadata and rule JSON
-- **THEN** the frontend MUST call the strategy create or update API
-- **AND** it MUST refresh the registry or selected detail after the save
+- **WHEN** an operator submits valid strategy metadata, one rule and one signal kind
+- **THEN** the frontend MUST call only the strategy create API
+- **AND** it MUST refresh the registry after creation
+
+#### Scenario: An existing strategy is selected
+
+- **WHEN** the workspace displays an existing definition
+- **THEN** its metadata, rule and signal kind MUST be read-only
+- **AND** the workspace MUST NOT expose or call a strategy update API
+- **AND** the operator MUST create a new definition for changed content
 
 #### Scenario: Strategy lifecycle action is requested
 
@@ -59,19 +64,19 @@ definition lifecycle state.
 
 ### Requirement: Strategy Rule Editing Shall Be Explicit
 
-The strategy workspace SHALL edit declarative strategy rules as explicit JSON
-and surface validation failures.
+The strategy workspace SHALL edit declarative strategy rules only while creating a new definition and SHALL
+surface validation failures.
 
 #### Scenario: Rule JSON is invalid
 
-- **WHEN** an operator submits malformed rule JSON
+- **WHEN** an operator submits malformed rule JSON in the creation form
 - **THEN** the frontend MUST block the API call
 - **AND** it MUST show a rule JSON parse error near the editor
 
 #### Scenario: Backend rejects a rule
 
-- **WHEN** the backend rejects a strategy save request
-- **THEN** the frontend MUST show the API error near the strategy editor
+- **WHEN** the backend rejects a strategy create request
+- **THEN** the frontend MUST show the API error near the creation editor
 
 ### Requirement: Operators Shall Inspect Signals And Alerts
 
@@ -130,3 +135,21 @@ portfolio-level execution simulation.
 - **WHEN** a backtest run or result is displayed
 - **THEN** the workspace MUST NOT require or render cash, positions, orders,
   fills, fees, slippage, allocation, equity curve, or portfolio return fields
+
+### Requirement: Strategy Editor Changes Shall Follow The Accepted Backend Contract
+The frontend SHALL preserve backend field types and decimal strings. It SHALL NOT expose caller-owned lookback;
+after the backend migration gate is approved it SHALL edit one rule plus one required signal kind, and SHALL NOT
+expose paired-rule fields or an existing-definition update action.
+
+#### Scenario: A new strategy contract field is proposed for the editor
+- **WHEN** the backend decision remains open
+- **THEN** the frontend MUST NOT create a provisional incompatible field
+
+#### Scenario: The accepted creation shape is exposed
+- **WHEN** the backend create API and migration for signal kind are available
+- **THEN** the creation form MUST submit exactly one `rule` and one `signalKind='entry'|'exit'`
+- **AND** it MUST NOT submit `entryRule`, `exitRule` or a pairing identifier
+
+#### Scenario: The editor renders context demand
+- **WHEN** a strategy field has an internally compiled `requiredBarCount`
+- **THEN** the editor MUST NOT offer `lookbackBars` as an editable strategy property

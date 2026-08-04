@@ -54,4 +54,4 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
   legacy PATCH/manual-scan coupling、重复 bar/port/decimal 实现和未批准字段。
 - [x] 4.3 记录自动化、环境阻塞、source quantity HIL 和 protected-table digest；未完成真实数据库与
   profile 证据前不得允许 runtime changes 依赖本 change。
-- [ ] 4.4 经项目负责人审核 schema/API/parity evidence 后归档。
+- [x] 4.4 经项目负责人审核 schema/API/parity evidence 后归档。
