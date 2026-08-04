@@ -71,6 +71,10 @@ describe('database schema safety', () => {
       '013_remove_qmt_native_period.sql',
       '7db3d388d8a01ac45031ed43c384f3acfa5fdd1ffc48e83636e9475b398c2d47',
     ],
+    [
+      '014_evolve_strategy_evaluation_contract.sql',
+      '57380491705224069516a32efcd8b7a9079d40fd0a6fe6cd0c34d18ab602e2af',
+    ],
   ]);
 
   it.each(appModulePaths)(
@@ -348,5 +352,61 @@ describe('database schema safety', () => {
     expect(entity).not.toContain('nativePeriod');
     expect(source).not.toContain('nativePeriod:');
     expect(source).toContain('period: nativePeriod');
+  });
+
+  it('evolves the zero-data strategy contract with migration 014', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/014_evolve_strategy_evaluation_contract.sql',
+    );
+    const audit = readRepoFile(
+      'deploy/database/audit-strategy-evaluation-contract.sql',
+    );
+    const readback = readRepoFile(
+      'deploy/database/readback-strategy-evaluation-contract.sql',
+    );
+    const versionEntity = readRepoFile(
+      'libs/shared-data/src/entities/strategy-version.entity.ts',
+    );
+    const signalEntity = readRepoFile(
+      'libs/shared-data/src/entities/strategy-signal.entity.ts',
+    );
+
+    expect(migration).toContain('@strategy_contract_row_count = 0');
+    expect(migration).toContain('@strategy_contract_known_state = 1');
+    expect(migration).toContain(
+      "ADD COLUMN `signal_kind` enum(''entry'',''exit'') NOT NULL AFTER `rule`",
+    );
+    expect(migration).toContain('DROP COLUMN `security_code`');
+    expect(migration).toContain('ADD COLUMN `security_id` int NOT NULL');
+    expect(migration).toContain(
+      "ADD COLUMN `signal_kind` enum(''entry'',''exit'') NOT NULL AFTER `signal_source`",
+    );
+    expect(migration).toContain(
+      'ADD CONSTRAINT `fk_strategy_signals_security`',
+    );
+    expect(migration).toContain('ON DELETE RESTRICT ON UPDATE RESTRICT');
+    expect(migration).toContain(
+      'ADD KEY `idx_strategy_signals_security_time` (`security_id`,`signal_time`)',
+    );
+    expect(migration).not.toContain('ADD UNIQUE KEY');
+    expect(migration).not.toMatch(/DEFAULT\s+['"]?entry/i);
+    expect(migration).not.toMatch(/\bUPDATE\s+`?strategy_/i);
+    expect(migration).not.toContain('SIGNAL SQLSTATE');
+    expect(migration).toContain(
+      'strategy_evaluation_migration_requires_zero_rows_and_exact_schema_state',
+    );
+
+    expect(audit).toContain('strategy_signal_security_fk_count');
+    expect(readback).toContain('unapproved_signal_unique_count');
+    expect(readback).toContain('fk_strategy_signals_security');
+    expect(versionEntity).toContain("name: 'signal_kind'");
+    expect(versionEntity).not.toMatch(/signalKind[\s\S]{0,180}default:/);
+    expect(signalEntity).toContain("name: 'security_id'");
+    expect(signalEntity).not.toContain('securityCode:');
+    expect(signalEntity).toContain(
+      "foreignKeyConstraintName: 'fk_strategy_signals_security'",
+    );
+    expect(signalEntity).toContain("onDelete: 'RESTRICT'");
+    expect(signalEntity).toContain("onUpdate: 'RESTRICT'");
   });
 });

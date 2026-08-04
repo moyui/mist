@@ -1,4 +1,6 @@
+import { Decimal8, normalizeExternalDecimalText } from '@app/decimal';
 import { CanonicalRealtimeSnapshot } from '../../../realtime/realtime.types';
+import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quantity-validation.error';
 
 export interface QmtNativeSnapshotInput {
   securityId: number;
@@ -24,8 +26,8 @@ export function convertQmtNativeSnapshot(
     eventTime,
     capturedAt: input.capturedAt,
     prices: { last, open, high, low, lastClose },
-    cumulativeVolume: optionalFiniteNumber(input.native['volume']),
-    cumulativeAmount: optionalFiniteNumber(input.native['amount']),
+    cumulativeVolume: readQmtVolume(input.native),
+    cumulativeAmount: readQmtAmount(input.native),
     quality: {
       level: 'latest-state',
       eventTimeAvailable: eventTime !== null,
@@ -36,6 +38,90 @@ export function convertQmtNativeSnapshot(
     },
     native: structuredClone(input.native),
   };
+}
+
+function readQmtVolume(native: Record<string, unknown>): string | null {
+  const value = native['volume'];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'number') {
+    throw quantityError('volume', 'invalid_type');
+  }
+  if (value < 0 || Object.is(value, -0)) {
+    throw quantityError('volume', 'negative_value');
+  }
+  if (!Number.isSafeInteger(value)) {
+    throw quantityError('volume', 'unsafe_integer');
+  }
+  return Decimal8.parseCanonical(normalizeQmtObservableNumber(value))
+    .scaleByUnit(100)
+    .formatCanonical();
+}
+
+function readQmtAmount(native: Record<string, unknown>): string | null {
+  const value = native['amount'];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw quantityError('amount', 'invalid_type');
+  }
+  if (value < 0 || Object.is(value, -0)) {
+    throw quantityError('amount', 'negative_value');
+  }
+  let observable: string;
+  try {
+    observable = expandScientificNotation(value);
+  } catch {
+    throw quantityError('amount', 'invalid_format');
+  }
+  const fraction = observable.split('.')[1] ?? '';
+  if (fraction.length > 8) {
+    throw quantityError('amount', 'precision_exceeded');
+  }
+  try {
+    return Decimal8.parseCanonical(
+      normalizeExternalDecimalText(observable),
+    ).formatCanonical();
+  } catch (error) {
+    throw quantityError(
+      'amount',
+      error instanceof RangeError ? 'out_of_range' : 'invalid_format',
+    );
+  }
+}
+
+function normalizeQmtObservableNumber(value: number): string {
+  return normalizeExternalDecimalText(expandScientificNotation(value));
+}
+
+function quantityError(
+  field: 'volume' | 'amount',
+  reason: ConstructorParameters<typeof RealtimeQuantityValidationError>[2],
+): RealtimeQuantityValidationError {
+  return new RealtimeQuantityValidationError(
+    'qmt',
+    field,
+    reason,
+    `QMT native ${field} violates the ${reason} quantity boundary`,
+  );
+}
+
+function expandScientificNotation(value: number): string {
+  const observable = value.toString();
+  if (!/[eE]/.test(observable)) return observable;
+
+  const match = /^(\d)(?:\.(\d+))?[eE]([+-]?\d+)$/.exec(observable);
+  if (!match) {
+    throw new TypeError('QMT native number has an unsupported observable form');
+  }
+  const [, integer, fraction = '', exponentText] = match;
+  const digits = `${integer}${fraction}`;
+  const decimalPosition = 1 + Number(exponentText);
+  if (decimalPosition <= 0) {
+    return `0.${'0'.repeat(-decimalPosition)}${digits}`;
+  }
+  if (decimalPosition >= digits.length) {
+    return `${digits}${'0'.repeat(decimalPosition - digits.length)}`;
+  }
+  return `${digits.slice(0, decimalPosition)}.${digits.slice(decimalPosition)}`;
 }
 
 export function resolveQmtBusinessTime(

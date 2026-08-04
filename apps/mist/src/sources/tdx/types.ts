@@ -1,5 +1,4 @@
 import type { TdxExtension } from '../source-fetcher.interface';
-import type { KDecimal } from '../k-decimal.util';
 
 export type { TdxExtension } from '../source-fetcher.interface';
 
@@ -12,8 +11,8 @@ export interface TdxResponse {
   high: number;
   low: number;
   close: number;
-  volume: KDecimal | null;
-  amount: KDecimal | null;
+  volume: string | null;
+  amount: string | null;
   extensions?: TdxExtension;
 }
 
@@ -41,8 +40,8 @@ export interface TdxNormalizedBar {
   high: number;
   low: number;
   close: number;
-  volume: KDecimal | null;
-  amount: KDecimal | null;
+  volume: string | null;
+  amount: string | null;
   provider: string;
   receivedAt: string;
   forwardFactor?: number | null;

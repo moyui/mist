@@ -1,0 +1,62 @@
+{
+    "schemaVersion":  1,
+    "capturedAt":  "2026-08-03T16:48:43.0309848+00:00",
+    "mysqlContainer":  "mist-mysql",
+    "targetTables":  [
+                         "strategy_definitions",
+                         "strategy_versions",
+                         "strategy_signals",
+                         "strategy_alert_events",
+                         "backtest_runs",
+                         "backtest_signal_results"
+                     ],
+    "missingTables":  [
+
+                      ],
+    "rowCounts":  {
+                      "backtest_runs":  0,
+                      "backtest_signal_results":  0,
+                      "strategy_alert_events":  0,
+                      "strategy_definitions":  0,
+                      "strategy_signals":  0,
+                      "strategy_versions":  0
+                  },
+    "zeroDataGatePassed":  true,
+    "requiresMigrationLedgerReview":  true,
+    "outputs":  {
+                    "schemaMigrations":  {
+                                             "file":  "schemaMigrations.tsv",
+                                             "rowCount":  13,
+                                             "sqlSha256":  "78b44d80dd590388d6e5322314bd76fc28c3e2c18ff443c1cc648be0b83b4a38"
+                                         },
+                    "tableInventory":  {
+                                           "file":  "tableInventory.tsv",
+                                           "rowCount":  6,
+                                           "sqlSha256":  "d2bc960ec8e10b2b9d4319092a75e236ae96cbb83315577750b210413b235e67"
+                                       },
+                    "rowCounts":  {
+                                      "file":  "rowCounts.tsv",
+                                      "rowCount":  6,
+                                      "sqlSha256":  "a109d01cbcfcdf1b3b1ef76c661722beb50cf1468374d3b640334b8d993a3ec0"
+                                  },
+                    "columns":  {
+                                    "file":  "columns.tsv",
+                                    "rowCount":  60,
+                                    "sqlSha256":  "f0157d09a5691d19cdc61a45759a36435dc0c0f4ead0f53ca3e38b5797ac3b8d"
+                                },
+                    "indexes":  {
+                                    "file":  "indexes.tsv",
+                                    "rowCount":  32,
+                                    "sqlSha256":  "d16044745b956538ba42cae6d35519d8893e25fdabc25f7628911086eb44a2cf"
+                                },
+                    "constraints":  {
+                                        "file":  "constraints.tsv",
+                                        "rowCount":  24,
+                                        "sqlSha256":  "ca83de122ff654e9cd76d6c1b9dda53a50263b3dfdb677156de8edd7c6140948"
+                                    },
+                    "showCreateTables":  {
+                                             "file":  "showCreateTables.tsv",
+                                             "rowCount":  105
+                                         }
+                }
+}

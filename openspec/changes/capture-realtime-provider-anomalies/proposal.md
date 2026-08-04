@@ -10,6 +10,8 @@ TDX 与 QMT 的部分失败语义只有在真实 terminal/runtime 异常发生�
 - 新增双 provider 真实异常观察流程，只在运行时自然出现异常后启动证据采集。
 - 固定 TDX snapshot 网络失败、退订未收敛、退订状态不可验证，以及 QMT native
   unsubscribe/journal/lease/callback 异常的分类与最小证据。
+- 统一承接 TDX/QMT realtime quantity 的真实缺字段、类型/scale/range 拒绝、counter
+  异常跳变和已接受单位 profile 漂移；没有自然 incident 时保持 `not-observed`。
 - 明确禁止为了命中异常分支而在 production bridge、wire、datasource route、
   Mist client 或 operator tooling 中加入 fault injection。
 - 使用脱敏 JSON/Markdown incident bundle 保存时间窗、artifact identity、当前

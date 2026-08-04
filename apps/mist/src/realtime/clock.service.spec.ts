@@ -20,12 +20,13 @@ describe('Clock', () => {
     expect(date.getTime()).toBeLessThanOrEqual(Date.now());
   });
 
-  it('can be substituted with a fake for deterministic tests', () => {
+  it('derives nowDate from an overridden now for deterministic tests', () => {
     const fixed = 1_750_000_000_000;
-    const fake: Clock = {
-      now: () => fixed,
-      nowDate: () => new Date(fixed),
-    };
+    const fake = new (class extends Clock {
+      override now(): number {
+        return fixed;
+      }
+    })();
 
     expect(fake.now()).toBe(fixed);
     expect(fake.nowDate().getTime()).toBe(fixed);

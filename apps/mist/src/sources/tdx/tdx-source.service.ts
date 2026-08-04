@@ -1,4 +1,5 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { normalizeExternalDecimalText } from '@app/decimal';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import { UtilsService, PeriodMappingService } from '@app/utils';
@@ -125,8 +126,8 @@ export class TdxSource implements ITdxSourceFetcher {
           high: bar.high,
           low: bar.low,
           close: bar.close,
-          volume: bar.volume,
-          amount: bar.amount,
+          volume: normalizeTdxBarQuantity(bar.volume),
+          amount: normalizeTdxBarQuantity(bar.amount),
           ...(extensions ? { extensions } : {}),
         };
       });
@@ -334,6 +335,10 @@ export class TdxSource implements ITdxSourceFetcher {
 
     return payload;
   }
+}
+
+function normalizeTdxBarQuantity(value: string | null): string | null {
+  return value === null ? null : normalizeExternalDecimalText(value);
 }
 
 function errorMessage(error: unknown): string {

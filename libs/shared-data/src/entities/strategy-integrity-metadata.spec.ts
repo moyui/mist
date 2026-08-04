@@ -4,6 +4,7 @@ import { BacktestSignalResult } from './backtest-signal-result.entity';
 import { StrategyAlertEvent } from './strategy-alert-event.entity';
 import { StrategyDefinition } from './strategy-definition.entity';
 import { StrategySignal } from './strategy-signal.entity';
+import { StrategyVersion } from './strategy-version.entity';
 
 describe('strategy integrity entity metadata', () => {
   const storage = getMetadataArgsStorage();
@@ -11,6 +12,7 @@ describe('strategy integrity entity metadata', () => {
   it.each([
     [StrategySignal, 'strategyDefinition', 'strategy_definition_id'],
     [StrategySignal, 'strategyVersion', 'strategy_version_id'],
+    [StrategySignal, 'security', 'security_id'],
     [StrategyAlertEvent, 'strategySignal', 'strategy_signal_id'],
     [BacktestRun, 'strategyDefinition', 'strategy_definition_id'],
     [BacktestRun, 'strategyVersion', 'strategy_version_id'],
@@ -97,5 +99,71 @@ describe('strategy integrity entity metadata', () => {
         unique: true,
       }),
     );
+  });
+
+  it('maps the approved strategy signal-kind columns without defaults', () => {
+    for (const [target, propertyName] of [
+      [StrategyVersion, 'signalKind'],
+      [StrategySignal, 'signalKind'],
+    ] as const) {
+      const column = storage.columns.find(
+        (candidate) =>
+          candidate.target === target &&
+          candidate.propertyName === propertyName,
+      );
+
+      expect(column).toBeDefined();
+      expect(column?.options.name).toBe('signal_kind');
+      expect(column?.options.type).toBe('enum');
+      expect(column?.options.nullable).not.toBe(true);
+      expect(column?.options.default).toBeUndefined();
+    }
+  });
+
+  it('uses canonical Security identity with a named restrictive foreign key', () => {
+    const securityJoin = storage.joinColumns.find(
+      (joinColumn) =>
+        joinColumn.target === StrategySignal &&
+        joinColumn.propertyName === 'security',
+    );
+    const securityRelation = storage.relations.find(
+      (relation) =>
+        relation.target === StrategySignal &&
+        relation.propertyName === 'security',
+    );
+    const securityIndex = storage.indices.find(
+      (index) =>
+        index.target === StrategySignal &&
+        index.name === 'idx_strategy_signals_security_time',
+    );
+
+    expect(securityJoin).toEqual(
+      expect.objectContaining({
+        name: 'security_id',
+        foreignKeyConstraintName: 'fk_strategy_signals_security',
+      }),
+    );
+    expect(securityRelation?.options).toEqual(
+      expect.objectContaining({
+        onDelete: 'RESTRICT',
+        onUpdate: 'RESTRICT',
+      }),
+    );
+    expect(securityIndex).toEqual(
+      expect.objectContaining({
+        columns: ['securityId', 'signalTime'],
+        unique: false,
+      }),
+    );
+  });
+
+  it('does not retain StrategySignal.securityCode metadata', () => {
+    expect(
+      storage.columns.find(
+        (column) =>
+          column.target === StrategySignal &&
+          column.propertyName === 'securityCode',
+      ),
+    ).toBeUndefined();
   });
 });

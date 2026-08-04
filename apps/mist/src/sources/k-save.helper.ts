@@ -1,6 +1,6 @@
+import { Decimal8 } from '@app/decimal';
 import { DataSource, K, Period, Security } from '@app/shared-data';
 import { EntityManager, In } from 'typeorm';
-import { KDecimal, normalizeKDecimal } from './k-decimal.util';
 
 export const K_UPSERT_COLUMNS = [
   'open',
@@ -23,8 +23,8 @@ export interface BaseKInput {
   high: number;
   low: number;
   close: number;
-  volume: KDecimal | null;
-  amount: KDecimal | null;
+  volume: string | null;
+  amount: string | null;
 }
 
 const REQUIRED_PRICE_FIELDS = ['open', 'high', 'low', 'close'] as const;
@@ -68,8 +68,8 @@ export async function saveBaseK(
       high: d.high,
       low: d.low,
       close: d.close,
-      volume: normalizeKDecimal(d.volume, 'volume'),
-      amount: normalizeKDecimal(d.amount, 'amount'),
+      volume: assertCanonicalQuantity(d.volume),
+      amount: assertCanonicalQuantity(d.amount),
     }),
   );
   const kValues = kEntities.map((k) => ({
@@ -104,4 +104,9 @@ export async function saveBaseK(
   });
 
   return new Map(savedKs.map((k) => [k.timestamp.getTime(), k]));
+}
+
+function assertCanonicalQuantity(value: string | null): string | null {
+  if (value === null) return null;
+  return Decimal8.parseCanonical(value).formatCanonical();
 }

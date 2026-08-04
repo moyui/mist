@@ -31,8 +31,15 @@ fields, while realtime persistence SHALL reuse the existing AlertEvent dedupe co
 - **THEN** the resulting live Signal row MUST store `securityId` and `signalKind`
 - **AND** it MUST NOT retain a `securityCode` compatibility column or dual write
 - **AND** it MUST NOT add a second composite unique to `strategy_signals`
+- **AND** `securityId` MUST reference `securities(id)` through named constraint
+  `fk_strategy_signals_security` using `ON DELETE RESTRICT ON UPDATE RESTRICT`
 
 #### Scenario: Production identity data cannot be mapped safely
 - **WHEN** a stored `securityCode` is missing, ambiguous or cannot be mapped to one canonical `securityId`
 - **THEN** migration implementation MUST stop before destructive DDL
 - **AND** a repair-forward plan MUST be reviewed instead of guessing or preserving a compatibility alias
+
+#### Scenario: A Security with persisted live Signals is removed or renumbered
+- **WHEN** maintenance attempts to delete or update the referenced `securities.id`
+- **THEN** `fk_strategy_signals_security` MUST reject the operation
+- **AND** Signal and AlertEvent audit evidence MUST NOT be cascade-deleted through Security ownership

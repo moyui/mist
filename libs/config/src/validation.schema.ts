@@ -1,4 +1,8 @@
 import * as Joi from 'joi';
+import {
+  REALTIME_CANDLE_GRACE_LIMITS,
+  REALTIME_CANDLE_QUEUE_LIMITS,
+} from './realtime-candle.config';
 
 /**
  * Common environment variable validation schema
@@ -35,99 +39,137 @@ export const appEnvSchema = Joi.object({
 /**
  * Mist app-specific environment variable validation
  */
-export const mistEnvSchema = commonEnvSchema.append({
-  PORT: Joi.number().port().default(8001),
-  redis_server_host: Joi.string().hostname().default('localhost'),
-  redis_server_port: Joi.number().port().default(6379),
-  redis_server_db: Joi.number().default(0),
+export const mistEnvSchema = commonEnvSchema
+  .append({
+    PORT: Joi.number().port().default(8001),
+    redis_server_host: Joi.string().hostname().default('localhost'),
+    redis_server_port: Joi.number().port().default(6379),
+    redis_server_db: Joi.number().default(0),
 
-  // Data source configuration
-  // Accepts enum values ('ef', 'tdx', 'qmt') or enum keys ('EAST_MONEY', 'TDX', 'QMT')
-  DEFAULT_DATA_SOURCE: Joi.string()
-    .valid('ef', 'tdx', 'qmt', 'EAST_MONEY', 'TDX', 'QMT')
-    .default('ef')
-    .description('Default data source for queries (enum value or key)'),
+    // Data source configuration
+    // Accepts enum values ('ef', 'tdx', 'qmt') or enum keys ('EAST_MONEY', 'TDX', 'QMT')
+    DEFAULT_DATA_SOURCE: Joi.string()
+      .valid('ef', 'tdx', 'qmt', 'EAST_MONEY', 'TDX', 'QMT')
+      .default('ef')
+      .description('Default data source for queries (enum value or key)'),
 
-  // TDX data source configuration
-  TDX_BASE_URL: Joi.string()
-    .uri()
-    .optional()
-    .description('TDX data source base URL (mist-datasource service)'),
+    // TDX data source configuration
+    TDX_BASE_URL: Joi.string()
+      .uri()
+      .optional()
+      .description('TDX data source base URL (mist-datasource service)'),
 
-  // WebSocket client identification for multi-connection support
-  // Each data source has its own WebSocket endpoint and client ID
-  TDX_WS_CLIENT_ID: Joi.string()
-    .default('mist-backend-tdx')
-    .description('WebSocket client ID for TDX data source connection'),
+    // WebSocket client identification for multi-connection support
+    // Each data source has its own WebSocket endpoint and client ID
+    TDX_WS_CLIENT_ID: Joi.string()
+      .default('mist-backend-tdx')
+      .description('WebSocket client ID for TDX data source connection'),
 
-  TDX_WS_RECONNECT_DELAY_MS: Joi.number()
-    .integer()
-    .positive()
-    .default(5000)
-    .description('TDX WebSocket reconnect delay in milliseconds'),
+    TDX_WS_RECONNECT_DELAY_MS: Joi.number()
+      .integer()
+      .positive()
+      .default(5000)
+      .description('TDX WebSocket reconnect delay in milliseconds'),
 
-  TDX_WS_HEARTBEAT_INTERVAL_MS: Joi.number()
-    .integer()
-    .positive()
-    .default(30000)
-    .description('TDX WebSocket heartbeat interval in milliseconds'),
+    TDX_WS_HEARTBEAT_INTERVAL_MS: Joi.number()
+      .integer()
+      .positive()
+      .default(30000)
+      .description('TDX WebSocket heartbeat interval in milliseconds'),
 
-  TDX_REALTIME_MODE: Joi.string()
-    .valid('off', 'builtin')
-    .default('builtin')
-    .description('TDX realtime mode: builtin (default) or off for rollback'),
+    TDX_REALTIME_MODE: Joi.string()
+      .valid('off', 'builtin')
+      .default('builtin')
+      .description('TDX realtime mode: builtin (default) or off for rollback'),
 
-  TDX_REALTIME_ALLOWLIST: Joi.string()
-    .allow('')
-    .default('')
-    .description('Comma-separated exact formatCodes for TDX realtime (max 5)'),
+    TDX_REALTIME_ALLOWLIST: Joi.string()
+      .allow('')
+      .default('')
+      .description(
+        'Comma-separated exact formatCodes for TDX realtime (max 5)',
+      ),
 
-  // QMT historical bars datasource configuration
-  QMT_BASE_URL: Joi.string()
-    .uri()
-    .optional()
-    .description('QMT data source base URL (mist-qmt-datasource service)'),
+    // QMT historical bars datasource configuration
+    QMT_BASE_URL: Joi.string()
+      .uri()
+      .optional()
+      .description('QMT data source base URL (mist-qmt-datasource service)'),
 
-  // QMT realtime streaming uses the same production mode contract as TDX.
-  QMT_WS_CLIENT_ID: Joi.string()
-    .default('mist-backend-qmt')
-    .description('WebSocket client ID for QMT realtime data source connection'),
+    // QMT realtime streaming uses the same production mode contract as TDX.
+    QMT_WS_CLIENT_ID: Joi.string()
+      .default('mist-backend-qmt')
+      .description(
+        'WebSocket client ID for QMT realtime data source connection',
+      ),
 
-  QMT_WS_RECONNECT_DELAY_MS: Joi.number()
-    .integer()
-    .positive()
-    .default(5000)
-    .description('QMT WebSocket reconnect delay in milliseconds'),
+    QMT_WS_RECONNECT_DELAY_MS: Joi.number()
+      .integer()
+      .positive()
+      .default(5000)
+      .description('QMT WebSocket reconnect delay in milliseconds'),
 
-  QMT_REALTIME_MODE: Joi.string()
-    .valid('off', 'builtin')
-    .default('builtin')
-    .description('QMT realtime mode: builtin (default) or off for rollback'),
+    QMT_REALTIME_MODE: Joi.string()
+      .valid('off', 'builtin')
+      .default('builtin')
+      .description('QMT realtime mode: builtin (default) or off for rollback'),
 
-  QMT_REALTIME_ALLOWLIST: Joi.string()
-    .allow('')
-    .default('')
-    .description('Comma-separated exact QMT formatCodes for realtime (max 5)'),
+    QMT_REALTIME_ALLOWLIST: Joi.string()
+      .allow('')
+      .default('')
+      .description(
+        'Comma-separated exact QMT formatCodes for realtime (max 5)',
+      ),
 
-  // ===== B1: current-day realtime market data productization =====
-  // Market-data Redis lives in a physically separate instance
-  // (mist-realtime-redis) from any future notification queue Redis
-  // (mist-queue-redis). Empty URL keeps the product path disabled.
-  MIST_REALTIME_REDIS_URL: Joi.string()
-    .uri()
-    .allow('')
-    .default('')
-    .description(
-      'Physically-isolated Redis URL for current-day realtime candles; empty = disabled (memory-only)',
-    ),
+    // ===== B1: current-day realtime market data productization =====
+    // Single-node V1 may share this persistent Redis endpoint with realtime
+    // BullMQ. Market state and queue state still require separate prefixes,
+    // client owners and capacity observations.
+    MIST_REALTIME_REDIS_URL: Joi.string()
+      .uri()
+      .allow('')
+      .default('')
+      .description(
+        'Persistent Redis URL for current-day realtime candles; empty = disabled (memory-only)',
+      ),
 
-  REALTIME_PRODUCTIZATION_MODE: Joi.string()
-    .valid('off', 'shadow', 'on')
-    .default('off')
-    .description(
-      'off=memory-only (default); shadow=aggregate+write Redis but hide from query; on=expose Redis-backed current-day query',
-    ),
-});
+    REALTIME_PRODUCTIZATION_MODE: Joi.string()
+      .valid('off', 'shadow', 'on')
+      .default('off')
+      .description(
+        'off=memory-only (default); shadow=aggregate+write Redis but hide from query; on=expose Redis-backed current-day query',
+      ),
+
+    REALTIME_CANDLE_GRACE_MS: Joi.number()
+      .integer()
+      .min(REALTIME_CANDLE_GRACE_LIMITS.min)
+      .max(REALTIME_CANDLE_GRACE_LIMITS.max)
+      .default(REALTIME_CANDLE_GRACE_LIMITS.default),
+
+    REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES: Joi.number()
+      .integer()
+      .min(REALTIME_CANDLE_QUEUE_LIMITS.perSeries.min)
+      .max(REALTIME_CANDLE_QUEUE_LIMITS.perSeries.max)
+      .default(REALTIME_CANDLE_QUEUE_LIMITS.perSeries.default),
+
+    REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL: Joi.number()
+      .integer()
+      .min(REALTIME_CANDLE_QUEUE_LIMITS.global.min)
+      .max(REALTIME_CANDLE_QUEUE_LIMITS.global.max)
+      .default(REALTIME_CANDLE_QUEUE_LIMITS.global.default),
+  })
+  .custom((value: Record<string, unknown>, helpers) => {
+    const perSeries = value[
+      'REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES'
+    ] as number;
+    const global = value['REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL'] as number;
+    if (global < perSeries) {
+      return helpers.message({
+        custom:
+          'REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL must be greater than or equal to REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES',
+      });
+    }
+    return value;
+  }, 'realtime candle queue limit relationship');
 
 /**
  * Chan app-specific environment variable validation

@@ -1,11 +1,19 @@
-import { DataSource, SecuritySourceConfig } from '@app/shared-data';
+import {
+  DataSource,
+  SecuritySourceConfig,
+  SecurityType,
+} from '@app/shared-data';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { RealtimeSecurityAllowlistService } from './realtime-security-allowlist.service';
 
 function repositoryReturning(
-  rows: Array<{ formatCode: string; securityId: number }>,
+  rows: Array<{
+    formatCode: string;
+    securityId: number;
+    securityType: SecurityType;
+  }>,
 ) {
   const builder = {
     innerJoin: jest.fn(),
@@ -28,7 +36,11 @@ function repositoryReturning(
 describe('RealtimeSecurityAllowlistService', () => {
   it('binds a source-specific exact formatCode to one active security identity', async () => {
     const { repository, builder } = repositoryReturning([
-      { formatCode: '600030.SH', securityId: 7 },
+      {
+        formatCode: '600030.SH',
+        securityId: 7,
+        securityType: SecurityType.STOCK,
+      },
     ]);
     const service = new RealtimeSecurityAllowlistService(
       new ConfigService({ TDX_REALTIME_ALLOWLIST: '600030.SH' }),
@@ -43,6 +55,24 @@ describe('RealtimeSecurityAllowlistService', () => {
       'BINARY cfg.format_code = :formatCode',
       { formatCode: '600030.SH' },
     );
+  });
+
+  it('rejects a non-stock before provider quantity conversion', async () => {
+    const { repository } = repositoryReturning([
+      {
+        formatCode: '000300.SH',
+        securityId: 8,
+        securityType: SecurityType.INDEX,
+      },
+    ]);
+    const service = new RealtimeSecurityAllowlistService(
+      new ConfigService({ TDX_REALTIME_ALLOWLIST: '000300.SH' }),
+      repository,
+    );
+
+    await expect(
+      service.initialize(DataSource.TDX, 'TDX_REALTIME_ALLOWLIST'),
+    ).rejects.toThrow(/support STOCK only/);
   });
 
   it('fails closed for duplicate requested formatCodes', async () => {

@@ -1,23 +1,23 @@
 /**
  * Per-key serial Promise queue with bounded concurrency and overflow tracking.
  *
- * B1 design (lines 53-70) mandates a `Map<securityId, Promise<void>>` keyed
+ * B1 design mandates a `Map<securityId:source, Promise<void>>` keyed
  * serial queue so that:
- *  - snapshots for the same security are processed strictly in order
+ *  - snapshots for the same market series are processed strictly in order
  *    (transport acceptance order, not async I/O completion order);
- *  - different securities can wait on Redis I/O in parallel;
+ *  - different market series can wait on Redis I/O in parallel;
  *  - the finalizer (due scanner) enters the SAME keyed queue, so a finalize
  *    task never races a snapshot update for the same key;
  *  - a failed task does not break the chain for subsequent tasks.
  *
- * Overflow handling: when per-key or global pending limits are exceeded, the
+ * Overflow handling: when per-series or global pending limits are exceeded, the
  * task is NOT executed. The caller receives `false` from {@link enqueue} and
  * must mark the affected candle `queue_overflow` (design line 64). We never
  * silently coalesce snapshots.
  */
 export interface KeyedQueueOptions {
-  /** Max pending tasks per key before overflow. */
-  maxPendingPerKey: number;
+  /** Max pending tasks per market series before overflow. */
+  maxPendingPerSeries: number;
   /** Max pending tasks across all keys before overflow. */
   maxPendingGlobal: number;
 }
@@ -35,11 +35,13 @@ export class KeyedQueue {
   private overflowCount = 0;
   private accepting = true;
 
-  constructor(private readonly options: KeyedQueueOptions) {}
+  constructor(private readonly options: KeyedQueueOptions) {
+    assertQueueOptions(options);
+  }
 
   /**
    * Enqueue a task for a key. Returns `false` if the task was rejected due to
-   * overflow (per-key or global); the caller must handle the overflow case.
+   * overflow (per-series or global); the caller must handle the overflow case.
    *
    * A rejected task is never executed — it is simply dropped. This matches
    * design line 64: "overflow 禁止 snapshot coalescing; 受影响 candle 标记
@@ -49,7 +51,7 @@ export class KeyedQueue {
     if (!this.accepting) return false;
 
     const perKey = this.pendingCount.get(key) ?? 0;
-    if (perKey >= this.options.maxPendingPerKey) {
+    if (perKey >= this.options.maxPendingPerSeries) {
       this.overflowCount++;
       return false;
     }
@@ -113,5 +115,25 @@ export class KeyedQueue {
       pendingByKey,
       overflowCount: this.overflowCount,
     };
+  }
+}
+
+function assertQueueOptions(options: KeyedQueueOptions): void {
+  if (
+    !Number.isInteger(options.maxPendingPerSeries) ||
+    options.maxPendingPerSeries < 1
+  ) {
+    throw new RangeError('maxPendingPerSeries must be a positive integer');
+  }
+  if (
+    !Number.isInteger(options.maxPendingGlobal) ||
+    options.maxPendingGlobal < 1
+  ) {
+    throw new RangeError('maxPendingGlobal must be a positive integer');
+  }
+  if (options.maxPendingGlobal < options.maxPendingPerSeries) {
+    throw new RangeError(
+      'maxPendingGlobal must be greater than or equal to maxPendingPerSeries',
+    );
   }
 }

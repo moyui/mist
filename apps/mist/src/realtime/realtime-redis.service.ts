@@ -26,9 +26,9 @@ export const REALTIME_REDIS_CLIENT = Symbol('REALTIME_REDIS_CLIENT');
  *   within the timeout so the per-symbol keyed queue never stalls forever.
  * - explicit connect/command timeouts.
  *
- * This service owns the ONLY ioredis client for market data. A future
- * notification change will deploy a physically separate `mist-queue-redis`;
- * the two must never share an instance or logical DB.
+ * This service owns a dedicated market-data ioredis client. The single-node
+ * deployment may share the Redis endpoint with BullMQ, but it must use a
+ * separate client and the market-only `mist:realtime:v1` key namespace.
  *
  * When `REALTIME_PRODUCTIZATION_MODE=off` (default) the client is never
  * created and {@link isAvailable} returns false — ingress stays memory-only,
@@ -107,6 +107,11 @@ export class RealtimeRedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
+    this.disconnectOwned();
+  }
+
+  /** Idempotent disconnect used after the candle owner drains admitted work. */
+  disconnectOwned(): void {
     if (this.ownedClient) {
       this.ownedClient.disconnect();
       this.ownedClient = null;

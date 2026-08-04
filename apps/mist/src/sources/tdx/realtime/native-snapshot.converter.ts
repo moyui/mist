@@ -1,4 +1,6 @@
+import { Decimal8, normalizeExternalDecimalText } from '@app/decimal';
 import { CanonicalRealtimeSnapshot } from '../../../realtime/realtime.types';
+import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quantity-validation.error';
 
 export interface TdxNativeSnapshotInput {
   securityId: number;
@@ -26,8 +28,8 @@ export function convertTdxNativeSnapshot(
     eventTime,
     capturedAt: input.capturedAt,
     prices: { last, open, high, low, lastClose },
-    cumulativeVolume: readTdxNativeNumber(input.native, ['Volume', 'volume']),
-    cumulativeAmount: readTdxNativeNumber(input.native, ['Amount', 'amount']),
+    cumulativeVolume: readTdxNativeQuantity(input.native, 'Volume', 100),
+    cumulativeAmount: readTdxNativeQuantity(input.native, 'Amount', 10_000),
     quality: {
       level: 'latest-state',
       eventTimeAvailable: eventTime !== null,
@@ -38,6 +40,80 @@ export function convertTdxNativeSnapshot(
     },
     native: structuredClone(input.native),
   };
+}
+
+function readTdxNativeQuantity(
+  native: Record<string, unknown>,
+  field: 'Volume' | 'Amount',
+  factor: 100 | 10_000,
+): string | null {
+  rejectNonExactQuantityKey(native, field);
+  if (!(field in native) || native[field] === null) return null;
+  const value = native[field];
+  if (typeof value !== 'string') {
+    throw quantityError(
+      field,
+      'invalid_type',
+      `TDX native ${field} must be a decimal string`,
+    );
+  }
+  const match = /^([0-9]+)(?:\.([0-9]+))?$/.exec(value);
+  if (!match) {
+    throw quantityError(
+      field,
+      'invalid_format',
+      `TDX native ${field} must be unsigned fixed-point text`,
+    );
+  }
+  if ((match[2]?.length ?? 0) > 8) {
+    throw quantityError(
+      field,
+      'precision_exceeded',
+      `TDX native ${field} exceeds 8 fractional digits`,
+    );
+  }
+  try {
+    const normalized = normalizeExternalDecimalText(value);
+    return Decimal8.parseCanonical(normalized)
+      .scaleByUnit(factor)
+      .formatCanonical();
+  } catch (error) {
+    throw quantityError(
+      field,
+      error instanceof RangeError ? 'out_of_range' : 'invalid_format',
+      `TDX native ${field} is outside the canonical Decimal8 boundary`,
+    );
+  }
+}
+
+function rejectNonExactQuantityKey(
+  native: Record<string, unknown>,
+  exactField: 'Volume' | 'Amount',
+): void {
+  const normalizedField = exactField.toLowerCase();
+  const alias = Object.keys(native).find(
+    (key) => key !== exactField && key.toLowerCase() === normalizedField,
+  );
+  if (alias !== undefined) {
+    throw quantityError(
+      exactField,
+      'unexpected_key',
+      `TDX native quantity must use exact key ${exactField}, got ${alias}`,
+    );
+  }
+}
+
+function quantityError(
+  field: 'Volume' | 'Amount',
+  reason: ConstructorParameters<typeof RealtimeQuantityValidationError>[2],
+  message: string,
+): RealtimeQuantityValidationError {
+  return new RealtimeQuantityValidationError(
+    'tdx',
+    field === 'Volume' ? 'volume' : 'amount',
+    reason,
+    message,
+  );
 }
 
 export function readTdxNativeNumber(

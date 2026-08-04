@@ -1,0 +1,13 @@
+001_init_core_tables.sql	2026-06-28 11:40:02.062559
+002_add_tdx_vol_in_stock.sql	2026-06-28 11:40:03.262547
+003_security_code_identity.sql	2026-06-30 13:36:49.861978
+004_k_extension_ef_outer_volume_bigint.sql	2026-07-04 07:36:38.879288
+005_rename_mqmt_to_qmt.sql	2026-07-06 08:01:47.150904
+006_strategy_platform_core.sql	2026-07-08 00:02:30.056306
+007_k_volume_amount_exact_decimal.sql	2026-07-29 04:30:22.928836
+008_remove_k_extension_full_code.sql	2026-07-29 04:30:24.626489
+009_strategy_database_integrity.sql	2026-07-29 11:57:26.243009
+010_normalize_managed_column_names.sql	2026-07-29 11:57:28.096651
+011_normalize_audit_timestamp_names.sql	2026-07-29 11:57:29.796470
+012_remove_qmt_effective_dividend_type.sql	2026-07-29 16:01:04.474510
+013_remove_qmt_native_period.sql	2026-07-29 16:18:18.091905

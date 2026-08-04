@@ -12,8 +12,9 @@ interface RecordedCommand {
 
 interface FakeChain {
   hset: jest.Mock;
+  hdel: jest.Mock;
   zrem: jest.Mock;
-  expire: jest.Mock;
+  expireat: jest.Mock;
   exec: jest.Mock;
 }
 
@@ -28,12 +29,16 @@ function makeFakeRedis(): {
       commands.push({ cmd: 'hset', args });
       return chain;
     }),
+    hdel: jest.fn((...args: unknown[]) => {
+      commands.push({ cmd: 'hdel', args });
+      return chain;
+    }),
     zrem: jest.fn((...args: unknown[]) => {
       commands.push({ cmd: 'zrem', args });
       return chain;
     }),
-    expire: jest.fn((...args: unknown[]) => {
-      commands.push({ cmd: 'expire', args });
+    expireat: jest.fn((...args: unknown[]) => {
+      commands.push({ cmd: 'expireat', args });
       return chain;
     }),
     exec: jest.fn(async () => []),
@@ -48,7 +53,6 @@ function makeSealed(overrides: Partial<SealedCandle> = {}): SealedCandle {
     source: 'tdx',
     providerSymbol: '600030.SH',
     securityId: 1,
-    securityCode: '600030',
     session: 'morning',
     bucketStartMs: Date.parse('2026-07-28T01:30:00.000Z'),
     bucketEndMs: Date.parse('2026-07-28T01:31:00.000Z'),
@@ -56,10 +60,10 @@ function makeSealed(overrides: Partial<SealedCandle> = {}): SealedCandle {
     high: 12,
     low: 9,
     close: 11,
-    volume: 100,
-    amount: 1100,
-    closingCumulativeVolume: 5000,
-    closingCumulativeAmount: 55000,
+    volume: '100',
+    amount: '1100',
+    closingCumulativeVolume: '5000',
+    closingCumulativeAmount: '55000',
     closingSnapshot: null,
     firstEventTime: '2026-07-28T01:30:00+08:00',
     lastEventTime: '2026-07-28T01:30:45+08:00',
@@ -104,7 +108,7 @@ describe('CandleFinalizer', () => {
       h: 12,
       l: 9,
       c: 11,
-      v: 100,
+      v: '100',
       q: 'provisional',
     });
 
@@ -120,7 +124,7 @@ describe('CandleFinalizer', () => {
     const zrem = fake.commands.find((c) => c.cmd === 'zrem');
     expect(zrem).toBeDefined();
     expect(zrem!.args[0]).toContain(':candle:1m:due');
-    expect(zrem!.args[1]).toBe(`1:tdx:600030.SH:${candle.bucketStartMs}`);
+    expect(zrem!.args[1]).toBe(`1:tdx:${candle.bucketStartMs}`);
 
     // Manifest recorded.
     const manifest = fake.commands.find(
@@ -128,9 +132,42 @@ describe('CandleFinalizer', () => {
     );
     expect(manifest).toBeDefined();
 
-    // EXPIRE on closed, watermark, manifest (3 expire calls).
-    const expires = fake.commands.filter((c) => c.cmd === 'expire');
-    expect(expires.length).toBe(3);
+    // EXPIREAT on closed, watermark, manifest and the exact market due key.
+    const expires = fake.commands.filter((c) => c.cmd === 'expireat');
+    expect(expires).toHaveLength(4);
+    expect(new Set(expires.map((command) => command.args[1]))).toEqual(
+      new Set([Date.parse('2026-07-29T00:00:00+08:00') / 1_000]),
+    );
+  });
+
+  it('preserves null quantities without serializing the string null', async () => {
+    const fake = makeFakeRedis();
+    fake.chain.exec.mockResolvedValue([]);
+    fake.multi.mockReturnValue(fake.chain);
+    const candle = makeSealed({
+      volume: null,
+      amount: null,
+      closingCumulativeVolume: null,
+      closingCumulativeAmount: null,
+    });
+
+    expect(
+      await new CandleFinalizer().seal(fake as any, candle, candle.bucketEndMs),
+    ).toBe(true);
+    const closedHset = fake.commands.find(
+      (command) =>
+        command.cmd === 'hset' &&
+        String(command.args[0]).includes(':candle:1m:closed'),
+    );
+    const record = JSON.parse(closedHset!.args[2] as string);
+    expect(record).toMatchObject({ v: null, a: null, cv: null, ca: null });
+    const deletedFields = fake.commands
+      .filter((command) => command.cmd === 'hdel')
+      .map((command) => command.args[1]);
+    expect(deletedFields).toEqual([
+      'closingCumulativeVolume',
+      'closingCumulativeAmount',
+    ]);
   });
 
   it('does NOT write closed record for an invalid candle (discarded)', async () => {
@@ -174,7 +211,8 @@ describe('CandleFinalizer', () => {
     fake.multi.mockReturnValue(fake.chain);
 
     const finalizer = new CandleFinalizer();
-    const ok = await finalizer.seal(fake as any, makeSealed(), Date.now());
+    const candle = makeSealed();
+    const ok = await finalizer.seal(fake as any, candle, candle.bucketEndMs);
 
     expect(ok).toBe(false);
   });
@@ -185,26 +223,105 @@ describe('CandleFinalizer', () => {
     fake.multi.mockReturnValue(fake.chain);
 
     const finalizer = new CandleFinalizer();
-    const ok = await finalizer.seal(fake as any, makeSealed(), Date.now());
+    const candle = makeSealed();
+    const ok = await finalizer.seal(fake as any, candle, candle.bucketEndMs);
 
     expect(ok).toBe(false);
   });
 
-  it('computes a positive TTL even when now is past the target', async () => {
+  it('rejects a write after the Shanghai D+1 midnight expiry', async () => {
     const fake = makeFakeRedis();
     fake.chain.exec.mockResolvedValue([]);
     fake.multi.mockReturnValue(fake.chain);
 
     const finalizer = new CandleFinalizer();
     const candle = makeSealed();
-    // nowMs far in the future — TTL should floor at 1, not go negative.
-    const farFuture = candle.bucketEndMs + 999_999_999_999;
+    await expect(
+      finalizer.seal(
+        fake as any,
+        candle,
+        Date.parse('2026-07-29T00:00:00+08:00'),
+      ),
+    ).resolves.toBe(false);
+    expect(fake.multi).not.toHaveBeenCalled();
+  });
 
-    await finalizer.seal(fake as any, candle, farFuture);
+  it('rejects an oversized sealed record before opening a Redis transaction', async () => {
+    const fake = makeFakeRedis();
+    const candle = makeSealed({
+      closingSnapshot: {
+        securityId: 1,
+        providerSymbol: '600030.SH',
+        source: 'tdx',
+        eventTime: '2026-07-28T09:30:59+08:00',
+        capturedAt: 'x'.repeat(3_000),
+        price: 11,
+        cumulativeVolume: '5000',
+        cumulativeAmount: '55000',
+        quality: {
+          level: 'latest-state',
+          eventTimeAvailable: true,
+          aggregationEligible: true,
+          partialPrices: false,
+        },
+      },
+    });
 
-    const expires = fake.commands.filter((c) => c.cmd === 'expire');
-    for (const e of expires) {
-      expect(e.args[1]).toBeGreaterThanOrEqual(1);
-    }
+    await expect(
+      new CandleFinalizer().seal(fake as any, candle, candle.bucketEndMs),
+    ).resolves.toBe(false);
+    expect(fake.multi).not.toHaveBeenCalled();
+  });
+
+  it('commits a no-snapshot discard with manifest and no closed record', async () => {
+    const fake = makeFakeRedis();
+    fake.chain.exec.mockResolvedValue([]);
+    fake.multi.mockReturnValue(fake.chain);
+    const bucketStartMs = Date.parse('2026-07-28T01:30:00.000Z');
+
+    const finalizer = new CandleFinalizer();
+    await expect(
+      finalizer.discardDue(
+        fake as any,
+        {
+          securityId: 1,
+          source: 'tdx',
+          bucketStartMs,
+        },
+        'no_snapshot',
+        bucketStartMs + 65_000,
+      ),
+    ).resolves.toBe(true);
+
+    expect(
+      fake.commands.find(
+        (command) =>
+          command.cmd === 'hset' &&
+          String(command.args[0]).includes(':candle:1m:closed'),
+      ),
+    ).toBeUndefined();
+    expect(
+      fake.commands.find(
+        (command) =>
+          command.cmd === 'hset' &&
+          String(command.args[0]).includes(':candle:1m:watermark'),
+      )?.args[1],
+    ).toMatchObject({
+      outcome: 'discarded',
+      invalidReason: 'no_snapshot',
+    });
+    expect(
+      fake.commands.find(
+        (command) =>
+          command.cmd === 'hset' &&
+          String(command.args[0]).includes(':manifest'),
+      ),
+    ).toBeDefined();
+    expect(finalizer.diagnostics()).toMatchObject({
+      discardTotals: [{ reason: 'no_snapshot', total: 1 }],
+      finalizationFailureTotal: 0,
+      recordLimitBreachTotal: 0,
+    });
+    expect(finalizer.diagnostics().maxManifestBytes).toBeGreaterThan(0);
   });
 });

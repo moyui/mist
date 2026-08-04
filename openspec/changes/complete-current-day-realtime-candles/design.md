@@ -119,13 +119,14 @@ provider-native 与 Mist canonical 是两个明确阶段：
 - QMT realtime `volume` 按官方股票 tick 契约为非负安全整数“手”，adapter 精确乘以 `100` 后输出
   股；`amount` 为非负有限 provider float“元”，adapter 只规范化 wire 上可观察到的值，不声称恢复
   provider 已丢失的十进制精度；
-- TDX realtime `Volume/Amount` 必须保持 native decimal string。当前官方文档把 `Volume` 描述为
-  “总手”，但仓库已有真实 runtime fixture 的 `Amount / Volume` 又表现为“股/元”，因此实施不得
-  根据值动态猜测单位，也不得在 HIL 前写死未经证明的换算因子；
-- TDX 目标 runtime 必须以固定 terminal/bridge identity、连续 snapshot 和同源 historical close
-  对照，确认其 quantity profile 是“手/万元”还是“股/元”。确认后 adapter 使用唯一固定 profile：
-  前者执行 `volume × 100`、`amount × 10000`，后者执行 identity；profile 变化视为破坏性 provider
-  contract 变化，必须重新评审和 HIL；
+- TDX realtime `Volume/Amount` 必须保持 native decimal string。2026-07-23 production promotion 的
+  pinned `mist-tdx-bridge-v1.1` artifact 已证明目标 runtime profile 为“手/万元”：同一 snapshot 的
+  `Average="28.44"`、`Volume="576508"`、`Amount="163965.55"`，按 `volume × 100` 股和
+  `amount × 10000` 元换算后的累计均价与 `Average` 一致。adapter 因此固定执行这两个精确缩放；禁止
+  运行时按值猜测或在不同 snapshot 间切换 profile；
+- 仓库内 2026-06-29 的旧 external-HTTP fixture 来自不同 artifact/入口且表现为“股/元”，只保留为
+  历史事实，不能覆盖当前 pinned production runtime contract。未来 bridge/runtime identity 变化时，
+  quantity profile 必须重新走 HIL 和 reviewed OpenSpec delta；
 - 本 change 不修改或回填 MySQL `k.volume/amount`。historical provider-native unit 到统一
   `StrategyBar` 股/元的转换由 backtest/realtime market-data reader owning changes 持有。
 
@@ -149,10 +150,12 @@ provenance；同一 source/runtime 不允许混用多个 quantity profile。V1 �
   policy 不属于 candle aggregation，也不得被表述为 cumulative counter 未变化。显式 canonical `"0"` 始终是已
   确认的零区间量额。
 
-上述“counter 没有更新”是本 change 的明确 V1 canonical 缺失语义；TDX/QMT 真实交易时段 HIL 必须
-分别证明 native 缺字段/null 确实符合该假设。若真实 provider 会在有成交时遗漏 counter update，必须
-暂停 `on` 并回到 provider/candle contract；策略投影层的 interval forward fill 不能用来掩盖错误 cumulative
-counter 假设或把后续跳变量静默归入错误 bucket。
+上述“counter 没有更新”是本 change 的明确 V1 canonical 缺失语义。已有正常路径 evidence 足以实现
+adapter；当前未自然出现的缺字段/null/非法分布由 deterministic negative tests 覆盖，并登记到
+`capture-realtime-provider-anomalies` 的 dormant incident gate，不作为实现阻塞。最终 shadow/HIL 继续
+观测真实缺失与跳变；若 provider 会在有成交时遗漏 counter update，必须暂停 `on` 并通过 reviewed
+OpenSpec delta 修正 provider/candle contract。策略投影层的 interval forward fill 不能掩盖错误
+cumulative counter 假设或把后续跳变量静默归入错误 bucket。
 
 外部 decimal text 与 canonical decimal string 是两个阶段。允许执行规范化的边界输入仅接受
 `^[0-9]+(?:\.[0-9]{1,8})?$` 形式的 ASCII 无符号 fixed-point 文本，不接受空白、`+`、`-`、指数、
@@ -191,9 +194,11 @@ cumulative counter 必须先 compare：当前值小于 baseline 时走 reset 分
 
 V1 除上述精确非负整数单位缩放外，不提供任意 multiplication、division、average、ratio 或 rounding，
 因此不引入 decimal third-party dependency。未来 VWAP、比例或其他需要舍入策略的计算必须由 focused
-change 定义 scale/rounding 后再评估 `big.js` 等库。当前 app-local `k-decimal.util.ts` 只是待提取/
-替换的实现候选，不能作为其他 app 的共享 API；最终共享 library 的目录和命名在实现 preflight 中
-单独确认，market、strategy 和 realtime period builder 不得各自复制 parser/comparator。
+change 定义 scale/rounding 后再评估 `big.js` 等库。当前 app-local `k-decimal.util.ts` 只是待替换的
+实现候选，不能作为其他 app 的共享 API。实现 preflight 已确认共享 primitive 位于 pure
+`libs/decimal`、Nest project `decimal`，且只通过精确 alias `@app/decimal` 导入；该 library 不提供 Nest
+module，不导入 TypeORM、Redis、HTTP、env 或其他 Mist application/library。market、strategy 和 realtime
+period builder 不得各自复制 parser/comparator。
 
 ### 4. Redis commit 与下游完全隔离
 
@@ -221,14 +226,20 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
 `off` 保持 memory-only；`shadow` 写入隔离 Redis 以校准 grace/capacity；`on` 仅在自动化、双 source
 交易时段 HIL、restart/AOF recovery 和 rollback evidence 全部通过后启用。
 
+交易时段 HIL 不增加第三套 snapshot 采集器，也不要求为了验收重新实现 datasource 能力。正常 realtime
+证据直接读取 datasource/backend 已有的 typed frame、health、bounded diagnostics 和 candle 输出。收盘后的
+同源 K 对照可以由验收脚本直接调用 datasource 既有只读 historical endpoint；该调用只生成 HIL evidence，
+不写 MySQL，也不改变产品运行时“跨日历史从 MySQL provider-history boundary 读取”的所有权。缺字段、
+非法值、counter 跳变或 profile drift 没有自然出现时继续标记 `not-observed`，统一链接
+`capture-realtime-provider-anomalies`，不得为完成本 change 主动制造异常。
+
 ## Risks / Trade-offs
 
 - [grace 过短丢弃迟到数据] → 先 shadow 采样并经用户确认具体值。
 - [Redis 故障导致状态不确定] → candidate 在固定 hard horizon 内按 exact identity 幂等重试；到期
   fail closed、暴露 `finalization_horizon_exceeded`，不生成 guessed/discarded candle。
-- [量额 provider 单位或 runtime profile 不清] → canonical 先固定股/元；使用固定 artifact、连续
-  snapshot、`amountDelta/volumeDelta` 与同源 historical close HIL 证明 adapter profile，未确认的
-  source/security 不得进入 candle productization。
+- [bridge/runtime 变化导致量额 profile 漂移] → 当前 adapter 固定使用已接受的 production artifact
+  profile；部署 identity 变化后以 shadow/HIL 重新校验，禁止运行时猜测或自动切换。
 - [内存或 Redis 无界增长] → 所有 collection、record、retention 和 command 都必须有硬上限。
 - [共享 Redis 日切误删 BullMQ] → 只使用 market-owned exact keys 与各 key 的绝对到期点，禁止
   database-wide、prefix-wide 或 wildcard cleanup。
@@ -242,10 +253,12 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
 1. 逐项评审 exact-decimal、identity、bucket、grace、discard 和 capacity。
 2. 以 mode off 完成代码与跨仓契约。
 3. 部署 market Redis，保持 mode off。
-4. shadow 完成双 source 支持交易时段、quantity profile、股/元换算及 historical seam 证据。
+4. shadow 复用 datasource/backend 现有实时输出复核双 source quantity profile 与股/元换算，并通过
+   datasource 只读 historical endpoint 获取收盘同源 K 对照；真实异常未出现时链接
+   `capture-realtime-provider-anomalies` 并保持 `not-observed`。
 5. 用户审核 evidence 后决定是否切 on。
 6. 回滚优先切 off，保留 Redis volume 和诊断证据。
 
 ## Open Questions
 
-- TDX 目标 runtime 的唯一 quantity profile，以及 QMT historical bar quantity profile 的 HIL 结果。
+- 无实现前置问题。QMT historical bar 的 reader 单位转换仍由其 owning change 评审，不属于本 change。

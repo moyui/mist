@@ -21,6 +21,6 @@ export class Clock {
 
   /** Current wall-clock time as a JS Date. Convenience for `new Date(now())`. */
   nowDate(): Date {
-    return new Date();
+    return new Date(this.now());
   }
 }

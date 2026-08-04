@@ -6,5 +6,6 @@ export * from './enums/security-type.enum';
 export * from './enums/strategy-alert-status.enum';
 export * from './enums/strategy-rule-schema-version.enum';
 export * from './enums/strategy-signal-source.enum';
+export * from './enums/strategy-signal-kind.enum';
 export * from './enums/strategy-status.enum';
 export * from './enums/backtest-run-status.enum';

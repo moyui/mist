@@ -9,10 +9,7 @@ import {
   StrategySignal,
   StrategyVersion,
 } from '@app/shared-data';
-import { StrategyEvaluationContextBuilder } from './scanner/strategy-evaluation-context.builder';
-import { StrategyScanService } from './scanner/strategy-scan.service';
-import { StrategyRuleEvaluator } from './rules/strategy-rule-evaluator';
-import { StrategyRuleValidator } from './rules/strategy-rule-validator';
+import { StrategyExecutionPlanService } from './rules/strategy-execution-plan.service';
 import { StrategyAlertEventService } from './services/strategy-alert-event.service';
 import { StrategyBacktestService } from './services/strategy-backtest.service';
 import { StrategyDefinitionService } from './services/strategy-definition.service';
@@ -29,14 +26,11 @@ const strategyEntities = [
 ];
 
 const strategyProviders = [
-  StrategyRuleValidator,
-  StrategyRuleEvaluator,
-  StrategyEvaluationContextBuilder,
+  StrategyExecutionPlanService,
   StrategyDefinitionService,
   StrategySignalService,
   StrategyAlertEventService,
   StrategyBacktestService,
-  StrategyScanService,
 ];
 
 @Module({

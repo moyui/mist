@@ -254,3 +254,52 @@ The audit count must be `1` before migration and `0` afterward. Deploy migration
 Do not run the previous application against the post-013 schema. Take a
 database backup before migration; rollback requires that backup and the
 previous backend SHA.
+
+## Strategy evaluation contract migration
+
+Migration `014_evolve_strategy_evaluation_contract.sql` is authorized only by
+the 2026-08-04 production inventory that proved migrations 001-013 and zero
+rows in all six strategy/backtest tables. Immediately before deployment, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-strategy-evaluation-contract.sql
+```
+
+Every relevant row count must still be zero. If any row exists, stop before
+DDL; do not infer signal kind, map security codes, delete rows, add a default,
+or introduce a compatibility column.
+
+Migration 014 adds non-null, no-default `signal_kind` to
+`strategy_versions`, replaces live `strategy_signals.security_code` with
+canonical `security_id`, and adds non-null, no-default `signal_kind` to live
+Signals. `fk_strategy_signals_security` references `securities(id)` with
+`ON DELETE RESTRICT ON UPDATE RESTRICT`. The existing Signal indexes are
+retargeted to `security_id`; no Signal composite unique is added and
+`uq_strategy_alert_events_dedupe_key` remains the alert dedupe owner.
+
+MySQL DDL commits per table. Migration 014 therefore accepts only the exact
+pre-migration state, the known repair-forward state where the
+`strategy_versions` ALTER committed but `strategy_signals` remains unchanged,
+or the exact post-migration state. If the runner fails between the two ALTERs,
+fix the environmental cause and rerun the same migration; it completes the
+remaining table and records 014. Any other mixed state fails closed and
+requires a new audited repair-forward decision.
+
+After the migration runner records 014, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/readback-strategy-evaluation-contract.sql
+```
+
+Every `*_ready` value must be `1`; `retired_security_code_count` and
+`unapproved_signal_unique_count` must be `0`; the migration-ledger result must
+contain exactly `014_evolve_strategy_evaluation_contract.sql`. Retain the
+readback and both `SHOW CREATE TABLE` results with release evidence.
+
+The schema is intentionally incompatible with the previous backend. Deploy
+migration 014 together with the matching backend and frontend release; do not
+run old and new application versions against the same schema. Take and verify
+a backup first. Rollback requires restoring that backup together with the
+previous backend/frontend SHAs; application-image rollback alone is invalid.

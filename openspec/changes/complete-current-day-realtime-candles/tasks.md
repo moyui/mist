@@ -1,10 +1,14 @@
 ## 1. Provider 与量额评审门禁
 
-- [ ] 1.1 记录 TDX/QMT realtime quantity 的真实样本、单位、类型、缺失和异常分布。
+- [x] 1.1 记录 TDX/QMT realtime quantity 的真实样本、单位、类型、缺失和异常分布。
   - [x] 1.1.1 确认 A 股 canonical quantity 固定为 `volume=股`、`amount=人民币元`；realtime provider
     adapter 在进入 canonical snapshot 前换算，MySQL `k` 不在本 change 迁移或回填。QMT realtime
-    volume 按手精确乘 `100`、amount 保留 provider-float 可观察元值；TDX runtime profile 必须由
-    固定 artifact 的交易时段 HIL 在“手/万元”与“股/元”之间证明，禁止运行时按值猜测。
+    volume 按手精确乘 `100`、amount 保留 provider-float 可观察元值；2026-07-23 pinned production
+    artifacts 已确认 TDX string“手/万元”和 QMT integer/float“手/元”，证据见
+    `evidence/2026-08-03-provider-quantity-profile.md`，禁止运行时按值猜测。
+  - [x] 1.1.2 当前未自然出现的缺字段/null/非法/profile-drift 分布记录为 `not-observed`；用 deterministic
+    negative tests 验证 fail closed，并由 `capture-realtime-provider-anomalies` 统一承接后续真实 incident，
+    不为验收制造异常，也不阻塞 3.2 实现。
 - [x] 1.2 向项目负责人评审 canonical decimal grammar、precision/scale、TDX numeric rejection 和 QMT provider-float provenance。
   - [x] 1.2.1 确认内部统一使用 scale=8、与 `DECIMAL(36,8)` 同范围的 `Decimal8(bigint)`；V1 只允许
     parse/format/compare/add/subtract、经评审的非负整数单位缩放和范围检查，`×100/×10000` 只服务
@@ -63,51 +67,57 @@
 
 ## 3. Exact Decimal 与 Canonical Contract
 
-- [ ] 3.1 在待确认目录的共享 library 中实现 `Decimal8`：以原生 `bigint` 保存 scale=8 定点值，提供
+- [x] 3.1 在 pure `libs/decimal`（project `decimal`、import `@app/decimal`）中实现 `Decimal8`：以原生
+  `bigint` 保存 scale=8 定点值，提供
   parse/format/compare/add/subtract 和受限非负整数单位缩放，强制 `DECIMAL(36,8)` 输入与结果范围；
   只允许 provider profile 的 `×100/×10000`，不提供任意乘除/舍入，不新增
   third-party decimal dependency。实现独立 external-text normalize 与 strict canonical parse；原始
   scale 必须在裁剪尾随零前检查，并覆盖 whitespace/sign/exponent/locale/Unicode/省略位/负零测试。
-- [ ] 3.2 更新 canonical snapshot quantity 类型及 TDX/QMT provider-specific converters；canonical
+- [x] 3.2 更新 canonical snapshot quantity 类型及 TDX/QMT provider-specific converters；canonical
   输出统一为股/元，缺失/null 与非法已出现值分流，非 A 股 STOCK 不套用股票换算因子。
-- [ ] 3.3 同步 OpenAPI、negative tests、四仓 fixture 和 SHA sidecars。
-- [ ] 3.4 将 app-local `k-decimal.util.ts` 的合法消费者迁移到共享 primitive，并证明 candle、strategy
+- [x] 3.3 同步 OpenAPI、negative tests、四仓 fixture 和 SHA sidecars。
+- [x] 3.4 将 app-local `k-decimal.util.ts` 的合法消费者迁移到共享 primitive，并证明 candle、strategy
   evaluator 与 period builder 不存在重复 parser/comparator；检索并拒绝量额路径中的 `Number(...)`、
   `String(number)`、`BigInt(number)`、raw bigint JSON 和隐式 number/bigint 混算；修复现有 utility
   先裁剪尾随零再检查 scale、接受 trim/sign 以及 number compatibility 的契约偏差。
 
 ## 4. Node Candle 与 Redis Seal
 
-- [ ] 4.1 实现可注入 Clock、session bucket resolver 和 per-market-series bounded execution chain；在
+- [x] 4.1 实现可注入 Clock、session bucket resolver 和 per-market-series bounded execution chain；在
   `libs/config` 增加并校验 queue per-series/global pending，证明 global>=per-series。
-- [ ] 4.2 实现按 `(securityId,source)` 隔离且按完整 candle identity 定位的 current + prior
+- [x] 4.2 实现按 `(securityId,source)` 隔离且按完整 candle identity 定位的 current + prior
   grace-pending candle aggregator、volume/amount 独立
   baseline/delta/reset、同日 null-counter hold、
   无 baseline 的 sealed null、乱序和 capacity fail-closed；覆盖 candle owner 不得跨日继承 cumulative
   baseline，也不得在 sealing 时用前一根 K 覆盖 raw null；rollover 不提交 prior bucket，跨 bucket
   late frame 不得回滚 current bucket。
-- [ ] 4.3 实现 snapshot-driven 与 active-listener expected-bucket due registration/scanner、valid/discarded
+- [x] 4.3 实现 snapshot-driven 与 active-listener expected-bucket due registration/scanner、valid/discarded
   finalizer 和 atomic Redis state transition；覆盖完全无 snapshot、listener 中途增删与 restart gap；
   finalizer 必须精确匹配 due bucket，commit 失败保留 immutable candidate 并按秒重试，hard horizon 到期
   只记录基础设施 gap，不写 discarded 或 post-commit trigger；due/replay Redis command 固定 batch 64，
   禁止 unlimited range/KEYS/wildcard scan，并检查 sealed/due/manifest byte bounds。
-- [ ] 4.4 实现 bounded manifest replay、上海 D+1 00:00 exact-key expiry、Node trading-day rollover 和
+- [x] 4.4 实现 bounded manifest replay、上海 D+1 00:00 exact-key expiry、Node trading-day rollover 和
   restart/open-state diagnostics；证明 Redis/manifest identity 包含 securityId/source、不含 providerSymbol，
   prior-day/other-source state 不被读取且 BullMQ namespace 不受影响；覆盖 terminal+stale due、
   due+restart loss、无证据 recovery gap 和 mid-bucket restart。
-- [ ] 4.5 将可失败隔离的 candle sink 接到 latest-memory acceptance 之后，证明无策略或 MySQL 副作用。
-- [ ] 4.6 实现简单 shutdown 顺序：停止 scanner/registration/new task，按现有 Redis command timeout
+- [x] 4.5 将可失败隔离的 candle sink 接到 latest-memory acceptance 之后，证明无策略或 MySQL 副作用。
+- [x] 4.6 实现简单 shutdown 顺序：停止 scanner/registration/new task，按现有 Redis command timeout
   best-effort drain admitted queue，再断开 owned Redis；不得 force-seal、删 unfinished due 或增加专用
   shutdown 配置/事件。
 
 ## 5. 部署、监控与验收
 
-- [ ] 5.1 完成共享 realtime Redis Compose/env/health/startup contract，启用 AOF/noeviction，配置 queue
+- [x] 5.1 完成共享 realtime Redis Compose/env/health/startup contract，启用 AOF/noeviction，配置 queue
   limits 且模式保持 off。
-- [ ] 5.2 完成 candle/Redis/grace/discard/capacity/recovery monitoring 与低基数 tests。
-- [ ] 5.3 运行受影响仓库完整基线、strict OpenSpec、fixture SHA 和 `git diff --check`。
+- [x] 5.2 完成 candle/Redis/grace/discard/capacity/recovery monitoring 与低基数 tests。
+- [x] 5.3 运行受影响仓库完整基线、strict OpenSpec、fixture SHA 和 `git diff --check`；自动化证据见
+  `evidence/2026-08-03-automated-validation.md`。
 - [ ] 5.4 以 shadow 完成 TDX/QMT 支持交易时段、restart/AOF、capacity 和 protected-table 零写入 HIL；
-  固定 terminal/bridge identity，连续记录 snapshot，用规范化后的 `amountDelta/volumeDelta` 与同期
-  price range、收盘同源 historical K 对照，证明唯一 quantity profile、股/元结果和 provider-float
-  provenance。任一 source 未证明前不得切 `on`。
+  不新增 snapshot collector，直接复用 datasource/backend 已有实时输出并固定 terminal/bridge identity，
+  用规范化后的 `amountDelta/volumeDelta` 与同期 price range 对照；收盘同源 historical K 由验收脚本直接
+  调用 datasource 既有只读接口，不写 MySQL。真实异常未出现时保持 `not-observed` 并链接
+  `capture-realtime-provider-anomalies`，不主动制造。证明唯一 quantity profile、股/元结果和
+  provider-float provenance；任一 source 未证明前不得切 `on`。
+  - 2026-08-03 已完成 harness/workflow、TDX bridge artifact health 补充和非交易时段自动化准备，见
+    `evidence/2026-08-03-shadow-hil-readiness.md`；尚无双 source 交易时段 artifact，父任务保持未完成。
 - [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。

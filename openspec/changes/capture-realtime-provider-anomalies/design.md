@@ -16,6 +16,8 @@ native/journal/lease/callback 的现场异常。
 
 - 为 TDX/QMT 真实异常提供一致的触发、只读采集、脱敏归档和恢复复盘流程。
 - 保留 provider-specific 原始边界，同时输出稳定的 incident 分类。
+- 为 realtime quantity 的真实缺失、非法值、counter 跳变和固定 profile 漂移保留同一 dormant
+  capture owner，不在 candle change 中制造异常。
 - 明确真实现场证据、deterministic test 和推断之间的区别。
 - 在不阻塞当前正常路径发布的前提下，积累未来修正 provider contract 所需证据。
 
@@ -58,9 +60,11 @@ bounded log 或 operator 已观察到真实异常后，操作员才启动只读�
 ### 3. provider-specific 分类不合并成一个通用 native state
 
 TDX incident 分别分类 snapshot delivery failure、post-list still subscribed、
-post-list unavailable。QMT 分别分类 unsubscribe return、journal durability、
-lease/owner fence、callback/queue anomaly。共同层只统一 evidence envelope，
-不统一 handle/list 语义。
+post-list unavailable 和 quantity contract deviation。QMT 分别分类 unsubscribe
+return、journal durability、lease/owner fence、callback/queue anomaly 和 quantity
+contract deviation。quantity 只记录 source、field、类型/grammar/scale/range/profile/
+counter 类别、artifact identity 与时间窗，不保存完整 raw snapshot 或把两个 provider
+强行映射为相同 native 字段。共同层只统一 evidence envelope，不统一 handle/list 语义。
 
 ### 4. 当前发布只记录 deferred gate
 

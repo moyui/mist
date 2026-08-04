@@ -1,0 +1,24 @@
+backtest_runs	fk_backtest_runs_definition	FOREIGN KEY	strategy_definition_id	strategy_definitions	id
+backtest_runs	fk_backtest_runs_version	FOREIGN KEY	strategy_version_id	strategy_versions	id
+backtest_runs	PRIMARY	PRIMARY KEY	id	<NULL>	<NULL>
+backtest_signal_results	fk_backtest_signal_results_run	FOREIGN KEY	backtest_run_id	backtest_runs	id
+backtest_signal_results	PRIMARY	PRIMARY KEY	id	<NULL>	<NULL>
+backtest_signal_results	uq_backtest_signal_results_run_security_time	UNIQUE	backtest_run_id	<NULL>	<NULL>
+backtest_signal_results	uq_backtest_signal_results_run_security_time	UNIQUE	security_code	<NULL>	<NULL>
+backtest_signal_results	uq_backtest_signal_results_run_security_time	UNIQUE	signal_time	<NULL>	<NULL>
+strategy_alert_events	fk_strategy_alert_events_signal	FOREIGN KEY	strategy_signal_id	strategy_signals	id
+strategy_alert_events	PRIMARY	PRIMARY KEY	id	<NULL>	<NULL>
+strategy_alert_events	uq_strategy_alert_events_dedupe_key	UNIQUE	dedupe_key	<NULL>	<NULL>
+strategy_definitions	chk_strategy_definitions_enabled_version	CHECK	<NULL>	<NULL>	<NULL>
+strategy_definitions	fk_strategy_definitions_current_version	FOREIGN KEY	id	strategy_versions	strategy_definition_id
+strategy_definitions	fk_strategy_definitions_current_version	FOREIGN KEY	current_version_id	strategy_versions	id
+strategy_definitions	PRIMARY	PRIMARY KEY	id	<NULL>	<NULL>
+strategy_signals	fk_strategy_signals_definition	FOREIGN KEY	strategy_definition_id	strategy_definitions	id
+strategy_signals	fk_strategy_signals_version	FOREIGN KEY	strategy_version_id	strategy_versions	id
+strategy_signals	PRIMARY	PRIMARY KEY	id	<NULL>	<NULL>
+strategy_versions	fk_strategy_versions_definition	FOREIGN KEY	strategy_definition_id	strategy_definitions	id
+strategy_versions	PRIMARY	PRIMARY KEY	id	<NULL>	<NULL>
+strategy_versions	uq_strategy_versions_definition_id	UNIQUE	strategy_definition_id	<NULL>	<NULL>
+strategy_versions	uq_strategy_versions_definition_id	UNIQUE	id	<NULL>	<NULL>
+strategy_versions	uq_strategy_versions_definition_version	UNIQUE	strategy_definition_id	<NULL>	<NULL>
+strategy_versions	uq_strategy_versions_definition_version	UNIQUE	version_number	<NULL>	<NULL>

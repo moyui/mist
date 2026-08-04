@@ -39,7 +39,9 @@ export class TdxRealtimeDiagnosticController {
   getSymbol(@Param('formatCode') formatCode: string, @Req() req: Request) {
     requireRealtimeDiagnosticLoopback(req);
     const entry = this.allowlist.resolve(formatCode);
-    const debug = entry ? this.ingress.read(entry.securityId) : null;
+    const debug = entry
+      ? this.ingress.readSeries(entry.securityId, 'tdx')
+      : null;
     if (!debug) {
       throw new NotFoundException(`no realtime snapshot for ${formatCode}`);
     }

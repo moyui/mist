@@ -16,10 +16,11 @@
   不执行 subscription mutation、断网、进程替换或 provider 调用。
 - [ ] 2.2 `[mist-deploy]` 实现 TDX incident collector，分别记录 snapshot
   delivery failure、fresh native-list still-present 和 native-list
-  unavailable 三种边界。
+  unavailable，以及 quantity type/grammar/scale/range/profile/counter deviation；quantity 只保留
+  bounded 分类，不保存完整 native snapshot。
 - [ ] 2.3 `[mist-deploy]` 实现 QMT incident collector，分别记录 exact native
   result、registry bucket、journal/retained-recovery 摘要、owner fence 和
-  callback/queue bounded diagnostic。
+  callback/queue bounded diagnostic，以及 quantity type/finiteness/range/profile/counter deviation。
 - [ ] 2.4 `[mist-deploy tests]` 证明 collector 在没有真实触发时只输出
   `not-observed`，且源码与 workflow 不包含 fault plan、chaos switch、journal
   corruption、network block 或 subscription mutation。

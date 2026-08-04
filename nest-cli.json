@@ -129,6 +129,15 @@
         "tsConfigPath": "libs/chancore/tsconfig.lib.json"
       }
     },
+    "decimal": {
+      "type": "library",
+      "root": "libs/decimal",
+      "entryFile": "index",
+      "sourceRoot": "libs/decimal/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/decimal/tsconfig.lib.json"
+      }
+    },
     "chan": {
       "type": "application",
       "root": "apps/chan",

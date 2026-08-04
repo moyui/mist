@@ -28,7 +28,9 @@ export class QmtRealtimeDiagnosticController {
   getSymbol(@Param('formatCode') formatCode: string, @Req() request: Request) {
     requireRealtimeDiagnosticLoopback(request);
     const entry = this.allowlist.resolve(formatCode);
-    const value = entry ? this.ingress.read(entry.securityId) : null;
+    const value = entry
+      ? this.ingress.readSeries(entry.securityId, 'qmt')
+      : null;
     if (!value) {
       throw new NotFoundException(`no realtime snapshot for ${formatCode}`);
     }

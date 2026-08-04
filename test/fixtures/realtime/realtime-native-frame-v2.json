@@ -19,8 +19,8 @@
             "Max": 31.4,
             "Min": 30.98,
             "LastClose": 31.0,
-            "Volume": 123456,
-            "Amount": 3862500,
+            "Volume": "123456",
+            "Amount": "3862500",
             "DateTime": "2026-07-25 10:00:00",
             "ErrorId": 0
           }
@@ -43,7 +43,7 @@
             "low": 532.1,
             "lastClose": 536.8,
             "volume": 12345,
-            "amount": 6678914
+            "amount": 6678914.25
           }
         }
       }

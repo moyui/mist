@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { normalizeExternalDecimalText } from '@app/decimal';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import { parseISO } from 'date-fns';
@@ -13,7 +14,6 @@ import {
   Security,
 } from '@app/shared-data';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
-import { normalizeKDecimal } from '../k-decimal.util';
 import {
   ISourceFetcher,
   KFetchParams,
@@ -333,7 +333,12 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     if (value == null) {
       return null;
     }
-    return normalizeKDecimal(value as string, fieldName);
+    if (typeof value !== 'string') {
+      throw new TypeError(
+        `QMT historical ${fieldName} must be a decimal string`,
+      );
+    }
+    return normalizeExternalDecimalText(value);
   }
 
   private readValue(

@@ -79,4 +79,41 @@ describe('mistEnvSchema data source configuration', () => {
     expect(value.TDX_REALTIME_ALLOWLIST).toBe('');
     expect(value.QMT_REALTIME_ALLOWLIST).toBe('');
   });
+
+  it('owns the realtime candle grace and queue defaults', () => {
+    const { error, value } = mistEnvSchema.validate(baseEnv);
+
+    expect(error).toBeUndefined();
+    expect(value.REALTIME_CANDLE_GRACE_MS).toBe(5_000);
+    expect(value.REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES).toBe(8);
+    expect(value.REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL).toBe(256);
+  });
+
+  it.each([
+    ['REALTIME_CANDLE_GRACE_MS', 999],
+    ['REALTIME_CANDLE_GRACE_MS', 30_001],
+    ['REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES', 0],
+    ['REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES', 257],
+    ['REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL', 15],
+    ['REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL', 4_097],
+  ])('rejects out-of-range %s=%s', (name, invalidValue) => {
+    const { error } = mistEnvSchema.validate({
+      ...baseEnv,
+      [name]: invalidValue,
+    });
+
+    expect(error?.message).toContain(name);
+  });
+
+  it('rejects a global pending limit lower than the per-series limit', () => {
+    const { error } = mistEnvSchema.validate({
+      ...baseEnv,
+      REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES: 32,
+      REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL: 16,
+    });
+
+    expect(error?.message).toContain(
+      'REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL must be greater than or equal to REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES',
+    );
+  });
 });

@@ -12,6 +12,7 @@ import { DataSource } from '../enums/data-source.enum';
 import { Period } from '../enums/period.enum';
 import { KExtensionEf } from './k-extension-ef.entity';
 import { KExtensionQmt } from './k-extension-qmt.entity';
+import { canonicalDecimalTransformer } from '../transformers/canonical-decimal.transformer';
 import { KExtensionTdx } from './k-extension-tdx.entity';
 import { Security } from './security.entity';
 
@@ -85,6 +86,7 @@ export class K {
     precision: 36,
     scale: 8,
     nullable: true,
+    transformer: canonicalDecimalTransformer,
     comment: '成交量',
   })
   volume: string | null = null;
@@ -94,6 +96,7 @@ export class K {
     precision: 36,
     scale: 8,
     nullable: true,
+    transformer: canonicalDecimalTransformer,
     comment: '成交额',
   })
   amount: string | null = null;

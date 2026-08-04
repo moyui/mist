@@ -544,10 +544,56 @@ describe('TdxSource', () => {
         high: 10.3,
         low: 10.0,
         close: 10.2,
-        volume: '1200.12500000',
-        amount: '12345.60000000',
+        volume: '1200.125',
+        amount: '12345.6',
       });
     });
+
+    it.each([
+      ['numeric volume', { volume: 1200 }],
+      ['signed amount', { amount: '+12345.6' }],
+      ['over-scale volume', { volume: '1.000000000' }],
+    ])(
+      'rejects %s before producing a canonical historical K',
+      async (_, invalid) => {
+        mockAxiosPost.mockResolvedValueOnce({
+          data: {
+            ok: true,
+            provider: 'tdx',
+            data: {
+              bars: [
+                {
+                  symbol: '600519.SH',
+                  period: '1m',
+                  barTime: '2026-06-26T09:31:00+08:00',
+                  open: 10.1,
+                  high: 10.3,
+                  low: 10,
+                  close: 10.2,
+                  volume: '1200',
+                  amount: '12345.6',
+                  provider: 'tdx',
+                  receivedAt: '2026-06-26T09:31:02+08:00',
+                  ...invalid,
+                },
+              ],
+            },
+            meta: null,
+            error: null,
+          },
+        });
+
+        await expect(
+          service.fetchK({
+            code: '600519',
+            formatCode: '600519.SH',
+            period: Period.ONE_MIN,
+            startDate: new Date('2026-06-26T00:00:00+08:00'),
+            endDate: new Date('2026-06-26T23:59:59+08:00'),
+          }),
+        ).rejects.toMatchObject({ status: HttpStatus.BAD_GATEWAY });
+      },
+    );
 
     it('normalizes 60 minute bars to the native TDX 1h token', async () => {
       mockAxiosPost.mockResolvedValueOnce({

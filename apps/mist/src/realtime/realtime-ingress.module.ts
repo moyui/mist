@@ -8,10 +8,14 @@ import { RealtimeRedisService } from './realtime-redis.service';
 import { OpenCandleAggregator } from './candle/open-candle-aggregator';
 import { CandleFinalizer } from './candle/candle-finalizer';
 import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
+import { RealtimeMarketObservabilityService } from './realtime-market-observability.service';
+import { RealtimeCandleDiagnosticController } from './candle/realtime-candle-diagnostic.controller';
+import { RealtimeCandleHealthService } from './candle/realtime-candle-health.service';
 
 @Global()
 @Module({
   imports: [TypeOrmModule.forFeature([SecuritySourceConfig])],
+  controllers: [RealtimeCandleDiagnosticController],
   providers: [
     RealtimeSnapshotIngressService,
     RealtimeSecurityAllowlistService,
@@ -20,12 +24,15 @@ import { RealtimeMarketDataProductService } from './candle/realtime-market-data-
     OpenCandleAggregator,
     CandleFinalizer,
     RealtimeMarketDataProductService,
+    RealtimeMarketObservabilityService,
+    RealtimeCandleHealthService,
   ],
   exports: [
     RealtimeSnapshotIngressService,
     RealtimeSecurityAllowlistService,
     Clock,
     RealtimeRedisService,
+    RealtimeMarketObservabilityService,
   ],
 })
 export class RealtimeIngressModule {}

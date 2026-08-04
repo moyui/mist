@@ -6,12 +6,17 @@ import {
   Security,
   SecuritySourceConfig,
   SecurityStatus,
+  SecurityType,
 } from '@app/shared-data';
 import { Repository } from 'typeorm';
 
 export interface RealtimeAllowlistEntry {
   formatCode: string;
   securityId: number;
+}
+
+interface ResolvedRealtimeAllowlistRow extends RealtimeAllowlistEntry {
+  securityType: SecurityType;
 }
 
 @Injectable()
@@ -114,14 +119,21 @@ export class RealtimeSecurityAllowlistService {
       .select([
         'cfg.security_id AS securityId',
         'cfg.format_code AS formatCode',
+        'sec.type AS securityType',
       ])
-      .getRawMany<RealtimeAllowlistEntry>();
+      .getRawMany<ResolvedRealtimeAllowlistRow>();
 
     if (rows.length !== 1) {
       throw new BadRequestException(
         `${source} allowlist entry '${formatCode}' matched ${rows.length} records (expected exactly 1); realtime runtime fails closed`,
       );
     }
-    return rows[0];
+    const [row] = rows;
+    if (row.securityType !== SecurityType.STOCK) {
+      throw new BadRequestException(
+        `${source} allowlist entry '${formatCode}' resolves to unsupported security type ${row.securityType}; realtime candle quantities support STOCK only`,
+      );
+    }
+    return { securityId: row.securityId, formatCode: row.formatCode };
   }
 }

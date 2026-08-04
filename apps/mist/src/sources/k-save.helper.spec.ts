@@ -153,4 +153,36 @@ describe('saveBaseK', () => {
 
     expect(insertBuilder.execute).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['01', '1.0', '+1', '-0', '1.000000000'])(
+    'rejects non-canonical quantity %s before persistence',
+    async (volume) => {
+      const manager = {
+        create: jest.fn(),
+        createQueryBuilder: jest.fn(() => insertBuilder),
+        find: jest.fn(),
+      } as any;
+
+      await expect(
+        saveBaseK(
+          manager,
+          [
+            {
+              timestamp: new Date('2026-07-04T09:30:00.000Z'),
+              open: 10,
+              high: 11,
+              low: 9,
+              close: 10.5,
+              volume,
+              amount: null,
+            },
+          ],
+          { id: 42 } as Security,
+          DataSource.TDX,
+          Period.ONE_MIN,
+        ),
+      ).rejects.toThrow('canonical unsigned Decimal8 string');
+      expect(manager.create).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,7 +1,7 @@
 import { KeyedQueue } from './keyed-queue';
 
 describe('KeyedQueue', () => {
-  const opts = { maxPendingPerKey: 2, maxPendingGlobal: 5 };
+  const opts = { maxPendingPerSeries: 2, maxPendingGlobal: 5 };
 
   it('runs tasks for the same key strictly in order (serial)', async () => {
     const q = new KeyedQueue(opts);
@@ -58,7 +58,10 @@ describe('KeyedQueue', () => {
   });
 
   it('rejects tasks exceeding per-key limit and counts overflow', () => {
-    const q = new KeyedQueue({ maxPendingPerKey: 1, maxPendingGlobal: 10 });
+    const q = new KeyedQueue({
+      maxPendingPerSeries: 1,
+      maxPendingGlobal: 10,
+    });
     q.enqueue('X', async () => new Promise(() => {}));
 
     const accepted = q.enqueue('X', async () => {});
@@ -67,7 +70,10 @@ describe('KeyedQueue', () => {
   });
 
   it('rejects tasks exceeding global limit', () => {
-    const q = new KeyedQueue({ maxPendingPerKey: 10, maxPendingGlobal: 1 });
+    const q = new KeyedQueue({
+      maxPendingPerSeries: 1,
+      maxPendingGlobal: 1,
+    });
     q.enqueue('k1', async () => new Promise(() => {}));
     const accepted = q.enqueue('k2', async () => {});
     expect(accepted).toBe(false);
@@ -115,5 +121,22 @@ describe('KeyedQueue', () => {
     await q.drain();
     expect(q.getStats().pendingGlobal).toBe(0);
     expect(q.getStats().pendingByKey['C']).toBeUndefined();
+  });
+
+  it('rejects invalid or contradictory limits at construction', () => {
+    expect(
+      () =>
+        new KeyedQueue({
+          maxPendingPerSeries: 2,
+          maxPendingGlobal: 1,
+        }),
+    ).toThrow('maxPendingGlobal must be greater than or equal');
+    expect(
+      () =>
+        new KeyedQueue({
+          maxPendingPerSeries: 0,
+          maxPendingGlobal: 16,
+        }),
+    ).toThrow('maxPendingPerSeries must be a positive integer');
   });
 });

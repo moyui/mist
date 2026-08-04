@@ -4,10 +4,68 @@ import { QmtRealtimeStore } from '../sources/qmt/realtime/realtime.store';
 import { TdxRealtimeClient } from '../sources/tdx/realtime/realtime.client';
 import { TdxRealtimeStore } from '../sources/tdx/realtime/realtime.store';
 import { RealtimeSnapshotIngressService } from './realtime-snapshot-ingress.service';
+import type { CanonicalRealtimeSnapshot } from './realtime.types';
 
 const capturedAt = new Date().toISOString();
 
 describe('formal realtime schema-v2 ingress contract', () => {
+  it('retains independent latest state for the same security across sources', () => {
+    const ingress = new RealtimeSnapshotIngressService();
+    const tdx = canonicalSnapshot('tdx', 7);
+    const qmt = canonicalSnapshot('qmt', 7);
+
+    ingress.handleSnapshot(tdx);
+    ingress.handleSnapshot(qmt);
+
+    expect(ingress.readSeries(7, 'tdx')).toBe(tdx);
+    expect(ingress.readSeries(7, 'qmt')).toBe(qmt);
+    expect(ingress.read(7)).toBe(qmt);
+  });
+
+  it('drops prior-day source projections before accepting a new trading day', () => {
+    const ingress = new RealtimeSnapshotIngressService();
+    const prior = canonicalSnapshot('tdx', 7);
+    prior.eventTime = '2026-07-28T14:59:00+08:00';
+    const current = canonicalSnapshot('qmt', 7);
+    current.eventTime = '2026-07-29T09:30:00+08:00';
+
+    ingress.handleSnapshot(prior);
+    ingress.handleSnapshot(current);
+
+    expect(ingress.readSeries(7, 'tdx')).toBeNull();
+    expect(ingress.readSeries(7, 'qmt')).toBe(current);
+    expect(ingress.read(7)).toBe(current);
+  });
+
+  it('publishes latest-memory state before invoking the optional candle sink', () => {
+    const product = {
+      handleSnapshot: jest.fn((snapshot: CanonicalRealtimeSnapshot) => {
+        expect(ingress.readSeries(snapshot.securityId, snapshot.source)).toBe(
+          snapshot,
+        );
+      }),
+    };
+    const ingress = new RealtimeSnapshotIngressService(product as never);
+    const snapshot = canonicalSnapshot('tdx', 7);
+
+    expect(ingress.handleSnapshot(snapshot)).toBe(snapshot);
+    expect(product.handleSnapshot).toHaveBeenCalledWith(snapshot);
+  });
+
+  it('keeps latest-memory acceptance when the optional candle sink fails', () => {
+    const product = {
+      handleSnapshot: jest.fn(() => {
+        throw new Error('REDIS_UNAVAILABLE');
+      }),
+    };
+    const ingress = new RealtimeSnapshotIngressService(product as never);
+    const snapshot = canonicalSnapshot('tdx', 7);
+
+    expect(() => ingress.handleSnapshot(snapshot)).not.toThrow();
+    expect(ingress.readSeries(7, 'tdx')).toBe(snapshot);
+    expect(ingress.read(7)).toBe(snapshot);
+  });
+
   it('funnels a TDX one-entry native map through the common ingress', () => {
     const store = new TdxRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
@@ -237,5 +295,28 @@ function qmtNative(lastPrice: number) {
     lastClose: 12,
     volume: 10,
     amount: 100,
+  };
+}
+
+function canonicalSnapshot(
+  source: 'tdx' | 'qmt',
+  securityId: number,
+): CanonicalRealtimeSnapshot {
+  return {
+    source,
+    securityId,
+    providerSymbol: source === 'tdx' ? '600030.SH' : '600030.SZ',
+    eventTime: capturedAt,
+    capturedAt,
+    prices: { last: 10, open: 10, high: 10, low: 10, lastClose: 9 },
+    cumulativeVolume: '100',
+    cumulativeAmount: '1000',
+    quality: {
+      level: 'latest-state',
+      eventTimeAvailable: true,
+      aggregationEligible: true,
+      partialPrices: false,
+    },
+    native: {},
   };
 }

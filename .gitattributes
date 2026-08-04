@@ -1,0 +1,2 @@
+# Production audit TSV files preserve empty trailing fields from the captured artifact.
+openspec/changes/evolve-strategy-evaluation-contract/evidence/2026-08-04-production-schema-audit/*.tsv -whitespace

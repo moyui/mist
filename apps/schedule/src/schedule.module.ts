@@ -1,14 +1,4 @@
-import {
-  BacktestRun,
-  BacktestSignalResult,
-  Security,
-  K,
-  SecuritySourceConfig,
-  StrategyAlertEvent,
-  StrategyDefinition,
-  StrategySignal,
-  StrategyVersion,
-} from '@app/shared-data';
+import { Security, K, SecuritySourceConfig } from '@app/shared-data';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
@@ -16,7 +6,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { scheduleEnvSchema } from '@app/config';
 import { DataCollectionController } from './data-collection.controller';
 import { HistoricalCollectorModule } from '../../mist/src/collector/historical-collector.module';
-import { StrategyCoreModule } from '../../mist/src/strategy/strategy-core.module';
 import { TimezoneModule } from '@app/timezone';
 import * as path from 'path';
 
@@ -49,17 +38,7 @@ import * as path from 'path';
           timezone: '+08:00',
           synchronize: false,
           logging: configService.get('NODE_ENV') !== 'production',
-          entities: [
-            Security,
-            K,
-            SecuritySourceConfig,
-            StrategyDefinition,
-            StrategyVersion,
-            StrategySignal,
-            StrategyAlertEvent,
-            BacktestRun,
-            BacktestSignalResult,
-          ],
+          entities: [Security, K, SecuritySourceConfig],
           poolSize: 10,
           connectorPackage: 'mysql2',
           extra: {
@@ -71,7 +50,6 @@ import * as path from 'path';
     }),
     NestScheduleModule.forRoot(),
     HistoricalCollectorModule,
-    StrategyCoreModule,
     TimezoneModule,
   ],
   controllers: [DataCollectionController],

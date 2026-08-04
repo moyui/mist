@@ -11,8 +11,8 @@ export interface EfMinuteVo {
   最低: number;
   涨跌幅?: number;
   涨跌额?: number;
-  成交量: number;
-  成交额: number;
+  成交量: number | string;
+  成交额: number | string;
   振幅?: number;
   换手率?: number;
 }
@@ -26,6 +26,6 @@ export interface EfDailyVo {
   close: number;
   high: number;
   low: number;
-  volume: number;
-  amount: number;
+  volume: number | string;
+  amount: number | string;
 }
