@@ -84,5 +84,8 @@ export class SignalAppModule {}
 /** Off mode deliberately omits every Redis and BullMQ provider. */
 export function signalRealtimeModulesForMode(mode: RealtimeStrategyMode) {
   if (mode === 'off') return [];
-  return [SignalRealtimeModule];
+  if (mode === 'shadow') return [SignalRealtimeModule];
+  throw new Error(
+    'REALTIME_STRATEGY_MODE=on is unavailable until live persistence is assembled',
+  );
 }

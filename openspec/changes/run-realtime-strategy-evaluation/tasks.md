@@ -21,9 +21,9 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 
 ## 2. Realtime Market Data Adapters
 
-- [ ] 2.1 只实现共享 `StrategyMarketDataPort` 的 MySQL/Redis/memory realtime adapters，不实现 replay
+- [x] 2.1 只实现共享 `StrategyMarketDataPort` 的 MySQL/Redis/memory realtime adapters，不实现 replay
   method，不导入 Backtest application source。
-- [ ] 2.2 实现 source-exact historical/pre-anchor Redis seam、canonical mapping、timestamp/dedupe/conflict
+- [x] 2.2 实现 source-exact historical/pre-anchor Redis seam、canonical mapping、timestamp/dedupe/conflict
   acceptance、共享 `KPriceProjector` 的 MySQL string/Redis number 投影和 hard-bound validation；
   MySQL/Redis 不跨源或同日重叠，不改变现有存储 shape 或复制消费者转换。
 - [ ] 2.3 实现按 listener/eligible-plan 分组的 shared ring window、group-max hydration、hot append、
@@ -35,28 +35,28 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 
 ## 3. Trigger 与 Handoff
 
-- [ ] 3.1 增加并锁定 approved `@nestjs/bullmq`/`bullmq` 依赖、queue/prefix/job constants 和独立
+- [x] 3.1 增加并锁定 approved `@nestjs/bullmq`/`bullmq` 依赖、queue/prefix/job constants 和独立
   producer/reader/worker Redis connection owners；off 模式不创建策略 queue 资源。
 - [ ] 3.2 通过 candle foundation 的可失败隔离 post-commit port，为 sealed/discarded 终态实现非阻塞
   `candle_finalized` handoff、严格 union payload、确定性 jobId 和 attempts/retention/stalled/deadline
   配置；queue failure 不回滚 market state，discarded 不传价格或原因。
 - [ ] 3.3 实现 `apps/mist` 当前交易日一次性 bounded startup compensation、稳定顺序、跨日 expiry、
   out-of-order discard 和 duplicate/restart/disconnect tests；不增加持续 reconciler、retry 或 batch。
-- [ ] 3.4 删除 legacy `StrategyScanController/Service`、scan DTO/result、Nest/schedule registration、
+- [x] 3.4 删除 legacy `StrategyScanController/Service`、scan DTO/result、Nest/schedule registration、
   OpenAPI 和 tests；证明不存在 manual Signal RPC、第二套 run lifecycle 或隐式 fallback。
 - [ ] 3.5 与独立前端项目建立 breaking release gate，删除 manual live-scan consumer；本 change 不直接
   修改前端代码。
 
 ## 4. Signal Runtime 与 Evaluation
 
-- [ ] 4.1 新建单实例 Hybrid Nest project `signal`、`apps/signal`、`SignalAppModule`、HTTP health、TCP
+- [x] 4.1 新建单实例 Hybrid Nest project `signal`、`apps/signal`、`SignalAppModule`、HTTP health、TCP
   registry-refresh 和 BullMQ worker，共享唯一 registry/window/analysis/episode state owner；新建
   `libs/signal/src/contracts`，单一持有 Signal control-plane pattern/command/result/error/decoder，
   caller/handler 统一从 exact `@app/signal` root barrel 导入，不得放入 transport、strategy 或 app
   source；禁止 wildcard/deep import、contract 导入 transport/Nest/TypeORM/Redis 或重复 raw pattern。
 - [ ] 4.2 实现 immutable registry refresh/commit、listener eligibility、source-aware group creation、
   disable/version in-flight race 和 bounded structural cleanup。
-- [ ] 4.3 实现 A 股 session 对齐的 1/5/15/30/60m period builder；从 sealed 1m 生成同形 complete 或
+- [x] 4.3 实现 A 股 session 对齐的 1/5/15/30/60m period builder；从 sealed 1m 生成同形 complete 或
   incomplete StrategyBar，零可用组成 K 时不产出，迟到 K 不修订终态。
 - [ ] 4.4 接入共享 QuantityForwardFillProjector、Strategy-owned Indicator calculations、context builder/evaluator/serializer，
   覆盖 KDJ 13/14、MACD 130/131、restart parity 和多策略同组只计算一次。

@@ -5,10 +5,13 @@ describe('signal realtime module assembly', () => {
     expect(signalRealtimeModulesForMode('off')).toEqual([]);
   });
 
-  it.each(['shadow', 'on'] as const)(
-    'assembles the single realtime module in %s mode',
-    (mode) => {
-      expect(signalRealtimeModulesForMode(mode)).toHaveLength(1);
-    },
-  );
+  it('assembles the single realtime module in shadow mode', () => {
+    expect(signalRealtimeModulesForMode('shadow')).toHaveLength(1);
+  });
+
+  it('fails bootstrap before on can silently behave like shadow', () => {
+    expect(() => signalRealtimeModulesForMode('on')).toThrow(
+      'live persistence is assembled',
+    );
+  });
 });
