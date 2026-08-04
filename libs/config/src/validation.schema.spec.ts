@@ -1,4 +1,4 @@
-import { mistEnvSchema } from './validation.schema';
+import { backtestEnvSchema, mistEnvSchema } from './validation.schema';
 
 const baseEnv = {
   mysql_server_host: 'localhost',
@@ -115,5 +115,34 @@ describe('mistEnvSchema data source configuration', () => {
     expect(error?.message).toContain(
       'REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL must be greater than or equal to REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES',
     );
+  });
+});
+
+describe('backtestEnvSchema runtime limits', () => {
+  it('provides approved listener and admission defaults', () => {
+    const { error, value } = backtestEnvSchema.validate(baseEnv);
+    expect(error).toBeUndefined();
+    expect(value.PORT).toBe(8004);
+    expect(value.BACKTEST_RPC_PORT).toBe(8005);
+    expect(value.BACKTEST_QUEUE_CAPACITY).toBe(8);
+    expect(value.BACKTEST_CONCURRENCY).toBe(2);
+    expect(value.BACKTEST_RUN_TIMEOUT_MS).toBe(1_800_000);
+    expect(value.BACKTEST_MAX_BARS_PER_RUN).toBe(10_000_000);
+  });
+
+  it('rejects equal listener ports and out-of-range limits', () => {
+    expect(
+      backtestEnvSchema.validate({ ...baseEnv, PORT: 8005 }).error?.message,
+    ).toContain('PORT and BACKTEST_RPC_PORT');
+    expect(
+      backtestEnvSchema.validate({ ...baseEnv, BACKTEST_QUEUE_CAPACITY: 65 })
+        .error?.message,
+    ).toContain('BACKTEST_QUEUE_CAPACITY');
+    expect(
+      backtestEnvSchema.validate({
+        ...baseEnv,
+        BACKTEST_RUN_TIMEOUT_MS: 59_999,
+      }).error?.message,
+    ).toContain('BACKTEST_RUN_TIMEOUT_MS');
   });
 });

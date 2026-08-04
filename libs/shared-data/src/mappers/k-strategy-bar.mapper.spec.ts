@@ -23,10 +23,22 @@ describe('mapKToStrategyBar', () => {
     });
   });
 
-  it('does not scale QMT amount without a source-specific factor', () => {
+  it('maps QMT lots to shares and preserves amount in yuan', () => {
     const k = makeK();
     k.source = DataSource.QMT;
-    expect(mapKToStrategyBar(k).amount).toBe('12.345');
+    expect(mapKToStrategyBar(k)).toMatchObject({
+      volume: '10000',
+      amount: '12.345',
+    });
+  });
+
+  it('fails closed for fractional QMT lots', () => {
+    const k = makeK();
+    k.source = DataSource.QMT;
+    k.volume = '100.5';
+    expect(() => mapKToStrategyBar(k)).toThrow(
+      'QMT historical volume must be an integral lot count',
+    );
   });
 
   it('accepts selected scalar securityId when the relation is not loaded', () => {

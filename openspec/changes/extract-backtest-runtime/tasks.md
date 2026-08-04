@@ -6,26 +6,26 @@
 
 ## 1. 前置与基线
 
-- [ ] 1.1 确认 `standardize-service-boundary-contracts` 和 `evolve-strategy-evaluation-contract` 已通过
+- [x] 1.1 确认 `standardize-service-boundary-contracts` 和 `evolve-strategy-evaluation-contract` 已通过
   验收；`extract-chan-core` 不属于 Backtest 前置依赖。
-- [ ] 1.2 记录 `mist`、`mist-deploy`、`mist-monitoring` 的 branch、HEAD、dirty/worktree、Compose、
+- [x] 1.2 记录 `mist`、`mist-deploy`、`mist-monitoring` 的 branch、HEAD、dirty/worktree、Compose、
   active changes 和现有同步 Backtest 影响链。
-- [ ] 1.3 运行现有 Backtest controller/service、schema integrity 和完整 backend 基线，区分自动化通过
+- [x] 1.3 运行现有 Backtest controller/service、schema integrity 和完整 backend 基线，区分自动化通过
   与环境阻塞。
 - [ ] 1.4 只读审计真实 `schema_migrations`、BacktestRun/BacktestSignalResult 存量、物理列、named
   constraints 和 index；候选 migration 编号或无存量假设不成立时停止 DDL。
 
 ## 2. Runtime、RPC 与 Admission
 
-- [ ] 2.1 新建 Nest project `backtest`、`apps/backtest`、`BacktestAppModule` 和独立 bootstrap/build，
+- [x] 2.1 新建 Nest project `backtest`、`apps/backtest`、`BacktestAppModule` 和独立 bootstrap/build，
   不注册公共策略 API或导入 `apps/mist`/`apps/signal` 源码。
-- [ ] 2.2 新建单词命名的 `libs/backtest` domain library，在 `src/contracts` 单一持有 Backtest
+- [x] 2.2 新建单词命名的 `libs/backtest` domain library，在 `src/contracts` 单一持有 Backtest
   pattern/command/error code/decoder；caller/handler 从 `@app/backtest` 导入，并与 approved
   `@app/transport/rpc` envelope、correlation 和 exception boundary 装配。不得把 contract 放入
   `libs/strategy`、`libs/transport` 或任一 app source；仅提供 exact root barrel alias，禁止 wildcard、
   external deep import、domain contract 导入 transport/Nest/TypeORM/Redis 或 caller/handler 重复 raw
   pattern。
-- [ ] 2.3 在 `libs/config` 实现并注入已批准的 Backtest ports、capacity、concurrency、command/run
+- [x] 2.3 在 `libs/config` 实现并注入已批准的 Backtest ports、capacity、concurrency、command/run
   deadline 和 bar-limit 配置；业务代码不得直接读取 `process.env`。
 - [ ] 2.4 实现单实例 PENDING 原子领取、active/waiting admission、幂等重复 command、bounded queue 和
   queue-full/error mapping；同一 run 使用自动清理的 keyed admission chain，dedupe 早于 capacity，
