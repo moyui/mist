@@ -163,6 +163,17 @@ export const mistEnvSchema = commonEnvSchema
     SIGNAL_RPC_HOST: Joi.string().hostname().default('signal'),
     SIGNAL_RPC_PORT: Joi.number().port().default(9010),
 
+    BACKTEST_RPC_HOST: Joi.string().hostname().default('127.0.0.1'),
+    BACKTEST_RPC_PORT: Joi.number().port().default(8005),
+    BACKTEST_HEALTH_URL: Joi.string()
+      .uri({ scheme: ['http', 'https'] })
+      .default('http://127.0.0.1:8004/health'),
+    BACKTEST_COMMAND_TIMEOUT_MS: Joi.number()
+      .integer()
+      .min(500)
+      .max(30_000)
+      .default(3_000),
+
     REALTIME_CANDLE_GRACE_MS: Joi.number()
       .integer()
       .min(REALTIME_CANDLE_GRACE_LIMITS.min)
@@ -242,6 +253,37 @@ export const signalEnvSchema = commonEnvSchema.append({
     .positive()
     .default(30_000),
 });
+
+/**
+ * Backtest owns the historical replay runtime and its internal TCP command
+ * listener.  These limits are process admission/deadline controls, not
+ * public request parameters.
+ */
+export const backtestEnvSchema = commonEnvSchema
+  .append({
+    PORT: Joi.number().port().default(8004),
+    BACKTEST_RPC_PORT: Joi.number().port().default(8005),
+    BACKTEST_QUEUE_CAPACITY: Joi.number().integer().min(1).max(64).default(8),
+    BACKTEST_CONCURRENCY: Joi.number().integer().min(1).max(8).default(2),
+    BACKTEST_RUN_TIMEOUT_MS: Joi.number()
+      .integer()
+      .min(60_000)
+      .max(86_400_000)
+      .default(1_800_000),
+    BACKTEST_MAX_BARS_PER_RUN: Joi.number()
+      .integer()
+      .min(10_000)
+      .max(50_000_000)
+      .default(10_000_000),
+  })
+  .custom((value: Record<string, unknown>, helpers) => {
+    if (value.PORT === value.BACKTEST_RPC_PORT) {
+      return helpers.message({
+        custom: 'PORT and BACKTEST_RPC_PORT must be different',
+      });
+    }
+    return value;
+  }, 'backtest listener port relationship');
 
 export type RealtimeStrategyMode = 'off' | 'shadow' | 'on';
 
