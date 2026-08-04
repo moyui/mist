@@ -521,8 +521,28 @@ type SignalHealthVo = {
       | 'unavailable'
       | 'failed'
       | null;
+    lastPersistenceOutcome:
+      | 'created'
+      | 'duplicate_skipped'
+      | 'failed'
+      | null;
     activeEpisodeCount: number;
     lastFailureCode: string | null;
+  };
+  runtime: {
+    processStartedAt: string;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+    rssBytes: number;
+    heapHighWaterBytes: number;
+    gcCount: number;
+    gcPauseSeconds: number;
+    consumerRemovalCount: number;
+    tradingDayRolloverCount: number;
+    lastCleanupOutcome:
+      | 'consumer_removed'
+      | 'trading_day_rolled_over'
+      | null;
   };
 };
 ```
@@ -560,6 +580,10 @@ type SignalHealthVo = {
   PING、BullMQ `getJobCounts()`、key scan、used-memory 或 AOF 查询，也不修改状态。waiting/retained job
   depth、shared Redis capacity/AOF 和跨进程 queue health 继续由 `mist-monitoring` 的独立 bounded probe
   持有；
+- `runtime` 由进程内 sampler 与 GC observer 更新；health request 只读取最近 snapshot，不在请求路径
+  采样或修改 high-water。`processStartedAt` 只用于关联进程重启，不推断重启原因；heap growth、AOF
+  growth 和 queue drain throughput 由 monitoring 对累计值/时序 gauge 使用 `rate`/区间差分计算，不增加
+  strategy、security、job 或 timestamp label；
 - Compose healthcheck 只验证 HTTP 200 和 typed root contract，不把 nested realtime failure 变成容器
   restart 信号；monitoring 必须解析 nested state 并单独告警。
 
@@ -924,6 +948,10 @@ V1 不追求 candle 与 queue 的事务一致性。market sealed/discarded commi
 - 如果 enqueue 失败后进程未重启、补偿本身失败，或停机跨过交易日，漏掉的 realtime trigger
   保持漏失，不进行历史补发。
 
+`apps/mist` 的 candle health 额外保存 process-local handoff observation：live enqueue
+`success|failed` counter/last outcome 与 startup compensation `not_enabled|completed|failed`、submitted
+count 必须分开；两者都不得描述成 reconciliation。该 observation 只读已有内存，不查询 BullMQ。
+
 #### 7.3 V1 接受自然积压，不实现 backlog cap 或 batch
 
 基于当前单机部署和少量 listener，V1 不设置 `REALTIME_STRATEGY_QUEUE_MAX_BACKLOG`、Redis
@@ -944,6 +972,13 @@ lock、达到阈值丢弃或 BullMQ rate limit：
   batch、清理或物理拆分，不能在运行代码中临时加阈值；
 - shadow/HIL 必须记录实际 listener 数、每日 job 数、峰值 waiting、Redis memory/AOF 与 drain
   throughput；没有容量证据不得把“当前未设置上限”描述成已证明无限安全。
+
+`mist-monitoring` 使用单独 `kind=redis, strategy_redis=true` 的 bounded probe。它只向
+`mist-realtime-redis:6379` 发送固定命令：`INFO memory`、`INFO persistence`、
+`CONFIG GET maxmemory-policy`，以及固定 `mist-bullmq:strategy-trigger` namespace 下的
+`LLEN wait`、`LLEN active`、`ZCARD completed`、`ZCARD failed`；禁止 `KEYS`、`SCAN`、wildcard、
+可配置 queue name 或任何写命令。probe failure 使用独立 component name，不能折叠成 Signal HTTP
+failure。`processedCount` 的时序 rate 表示进程 drain throughput，不能冒充 Redis queue depth。
 
 #### 7.4 跨日 waiting job 过期
 

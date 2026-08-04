@@ -79,7 +79,7 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 
 - [x] 6.1 增加 Signal build/Compose/PowerShell/env/start order、内部 HTTP/TCP、共享 Redis connection、
   TypeORM bootstrap 和 graceful shutdown；模式默认 off，gateway 不暴露 Signal route。
-- [ ] 6.2 实现 typed scoped health/diagnostics 和 trigger/context/window/evaluation/episode/persistence、
+- [x] 6.2 实现 typed scoped health/diagnostics 和 trigger/context/window/evaluation/episode/persistence、
   queue、heap/GC、Redis memory/AOF/drain throughput 低基数 monitoring/contracts。
 - [ ] 6.3 运行受影响仓库完整基线、真实 MySQL/Redis tests、strict OpenSpec、退役路径检索和
   `git diff --check`。

@@ -29,6 +29,8 @@ unavailable, analysis, episode and persistence outcomes without changing transpo
 - **WHEN** monitoring needs waiting/active/retained job depth, Redis used memory or AOF growth
 - **THEN** it MUST use its separately bounded queue/Redis probe rather than require Signal `/health` to query them
 - **AND** a failure of that probe MUST remain distinguishable from Signal root HTTP failure
+- **AND** the probe MUST use only fixed queue keys plus bounded `INFO`/`CONFIG GET maxmemory-policy` reads
+- **AND** it MUST NOT use `KEYS`, `SCAN`, wildcard keys or Redis write commands
 
 #### Scenario: Signal window capacity evidence is collected
 - **WHEN** shadow evidence is gathered for promotion
@@ -37,6 +39,8 @@ unavailable, analysis, episode and persistence outcomes without changing transpo
 - **AND** evidence MUST distinguish stable listener-bound growth from continued unbounded growth
 - **AND** it MUST expose consumer-removal and trading-day cleanup outcomes plus memory-pressure process restarts
 - **AND** it MUST NOT claim a configured aggregate memory budget, numeric bar cap or automatic capacity recovery
+- **AND** process start time MAY be used to correlate restarts but MUST NOT infer memory pressure as the cause without
+  matching runtime evidence
 
 #### Scenario: Strategy evaluation is degraded
 - **WHEN** market transport and candle sealing remain healthy
