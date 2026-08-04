@@ -18,6 +18,34 @@ export class SignalHealthStateService {
     lastRefreshOutcome: null,
     lastFailureCode: null,
   };
+  private marketData: SignalHealthVo['marketData'] = {
+    state: this.realtimeMode === 'off' ? 'off' : 'ready',
+    lastTriggerTime: null,
+    lastAcceptedAt: null,
+    windowGroupCount: 0,
+    rawBarCount: 0,
+    derivedBarCount: 0,
+    lastFailureCode: null,
+  };
+  private queue: SignalHealthVo['queue'] = {
+    state: this.realtimeMode === 'off' ? 'off' : 'ready',
+    workerRunning: false,
+    concurrency: 1,
+    activeCount: 0,
+    processedCount: 0,
+    failedCount: 0,
+    lastProcessedAt: null,
+    lastOutcome: null,
+    lastFailureCode: null,
+  };
+  private evaluation: SignalHealthVo['evaluation'] = {
+    state: this.realtimeMode === 'off' ? 'off' : 'idle',
+    lastEvaluatedAt: null,
+    lastOutcome: null,
+    lastPersistenceOutcome: null,
+    activeEpisodeCount: 0,
+    lastFailureCode: null,
+  };
 
   recordRegistrySuccess(
     generation: number,
@@ -45,40 +73,122 @@ export class SignalHealthStateService {
     };
   }
 
+  recordWorkerRunning(running: boolean): void {
+    this.queue = { ...this.queue, workerRunning: running };
+  }
+
+  recordJobStarted(): void {
+    this.queue = {
+      ...this.queue,
+      state: 'ready',
+      activeCount: this.queue.activeCount + 1,
+    };
+    this.evaluation = { ...this.evaluation, state: 'running' };
+  }
+
+  recordJobSucceeded(input: {
+    acceptedAt: string;
+    outcome: Exclude<SignalHealthVo['queue']['lastOutcome'], 'failed' | null>;
+    acceptedTriggerTime: string | null;
+    evaluated: boolean;
+    windowGroupCount: number;
+    rawBarCount: number;
+    derivedBarCount: number;
+    activeEpisodeCount: number;
+    evaluationOutcome: Exclude<
+      SignalHealthVo['evaluation']['lastOutcome'],
+      'failed'
+    >;
+    persistenceOutcome: SignalHealthVo['evaluation']['lastPersistenceOutcome'];
+  }): void {
+    this.queue = {
+      ...this.queue,
+      activeCount: Math.max(0, this.queue.activeCount - 1),
+      processedCount: this.queue.processedCount + 1,
+      lastProcessedAt: input.acceptedAt,
+      lastOutcome: input.outcome,
+      lastFailureCode: null,
+    };
+    if (input.acceptedTriggerTime !== null) {
+      this.marketData = {
+        ...this.marketData,
+        state: 'ready',
+        lastTriggerTime: input.acceptedTriggerTime,
+        lastAcceptedAt: input.acceptedAt,
+        windowGroupCount: input.windowGroupCount,
+        rawBarCount: input.rawBarCount,
+        derivedBarCount: input.derivedBarCount,
+        lastFailureCode: null,
+      };
+    }
+    this.evaluation = {
+      ...this.evaluation,
+      state: 'idle',
+      ...(input.evaluated
+        ? {
+            lastEvaluatedAt: input.acceptedAt,
+            lastOutcome: input.evaluationOutcome,
+            lastPersistenceOutcome: input.persistenceOutcome,
+          }
+        : {}),
+      activeEpisodeCount: input.activeEpisodeCount,
+      lastFailureCode: null,
+    };
+  }
+
+  recordJobFailed(input: {
+    failureCode: string;
+    failedAt: string;
+    acceptedTriggerTime: string | null;
+    evaluationStarted: boolean;
+    windowGroupCount: number;
+    rawBarCount: number;
+    derivedBarCount: number;
+    activeEpisodeCount: number;
+    persistenceOutcome: SignalHealthVo['evaluation']['lastPersistenceOutcome'];
+  }): void {
+    this.queue = {
+      ...this.queue,
+      state: 'error',
+      activeCount: Math.max(0, this.queue.activeCount - 1),
+      processedCount: this.queue.processedCount + 1,
+      failedCount: this.queue.failedCount + 1,
+      lastProcessedAt: input.failedAt,
+      lastOutcome: 'failed',
+      lastFailureCode: input.failureCode,
+    };
+    if (input.acceptedTriggerTime !== null) {
+      this.marketData = {
+        ...this.marketData,
+        lastTriggerTime: input.acceptedTriggerTime,
+        lastAcceptedAt: input.failedAt,
+        windowGroupCount: input.windowGroupCount,
+        rawBarCount: input.rawBarCount,
+        derivedBarCount: input.derivedBarCount,
+      };
+    }
+    this.evaluation = input.evaluationStarted
+      ? {
+          ...this.evaluation,
+          state: 'error',
+          lastEvaluatedAt: input.failedAt,
+          lastOutcome: 'failed',
+          lastPersistenceOutcome: input.persistenceOutcome,
+          activeEpisodeCount: input.activeEpisodeCount,
+          lastFailureCode: input.failureCode,
+        }
+      : { ...this.evaluation, state: 'idle' };
+  }
+
   snapshot(): SignalHealthVo {
-    const off = this.realtimeMode === 'off';
     return {
       status: 'ok',
       instance: 'signal',
       realtimeMode: this.realtimeMode,
       registry: { ...this.registry },
-      marketData: {
-        state: off ? 'off' : 'ready',
-        lastTriggerTime: null,
-        lastAcceptedAt: null,
-        windowGroupCount: 0,
-        rawBarCount: 0,
-        derivedBarCount: 0,
-        lastFailureCode: null,
-      },
-      queue: {
-        state: off ? 'off' : 'ready',
-        workerRunning: !off,
-        concurrency: 1,
-        activeCount: 0,
-        processedCount: 0,
-        failedCount: 0,
-        lastProcessedAt: null,
-        lastOutcome: null,
-        lastFailureCode: null,
-      },
-      evaluation: {
-        state: off ? 'off' : 'idle',
-        lastEvaluatedAt: null,
-        lastOutcome: null,
-        activeEpisodeCount: 0,
-        lastFailureCode: null,
-      },
+      marketData: { ...this.marketData },
+      queue: { ...this.queue },
+      evaluation: { ...this.evaluation },
     };
   }
 }

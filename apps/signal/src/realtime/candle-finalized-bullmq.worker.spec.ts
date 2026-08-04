@@ -5,10 +5,29 @@ import { SignalRuntimeMutex } from '../signal-runtime-mutex.service';
 describe('CandleFinalizedBullMqWorker', () => {
   it('delegates the BullMQ job to the strict signal processor', async () => {
     const result = { outcome: 'completed', candidates: [] } as const;
-    const processor = { process: jest.fn().mockResolvedValue(result) };
+    const processor = {
+      process: jest.fn().mockResolvedValue(result),
+      diagnostics: jest.fn().mockReturnValue({
+        groupCount: 1,
+        rawBarCount: 1,
+        derivedBarCount: 0,
+        activeEpisodeCount: 0,
+        lastOutcome: 'evaluated_not_matched',
+        lastPersistenceOutcome: null,
+        acceptedTriggerTime: '2026-08-04T06:44:00.000Z',
+        evaluationStarted: true,
+        evaluated: true,
+      }),
+    };
+    const health = {
+      recordJobStarted: jest.fn(),
+      recordJobSucceeded: jest.fn(),
+      recordJobFailed: jest.fn(),
+    };
     const worker = new CandleFinalizedBullMqWorker(
       processor as never,
       new SignalRuntimeMutex(),
+      health as never,
     );
     const data = {
       contractVersion: 1,
@@ -27,5 +46,7 @@ describe('CandleFinalizedBullMqWorker', () => {
       CANDLE_FINALIZED_JOB_NAME,
       data,
     );
+    expect(health.recordJobStarted).toHaveBeenCalledTimes(1);
+    expect(health.recordJobSucceeded).toHaveBeenCalledTimes(1);
   });
 });

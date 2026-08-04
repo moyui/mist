@@ -44,6 +44,11 @@ export interface ShadowStrategyCandidate {
 }
 
 export class RealtimeStrategyEvaluationService {
+  private lastOutcome:
+    | 'evaluated_matched'
+    | 'evaluated_not_matched'
+    | 'unavailable'
+    | null = null;
   constructor(
     private readonly marketData: StrategyRealtimeMarketDataPort,
     private readonly windows = new SharedStrategyWindowStore(),
@@ -89,6 +94,12 @@ export class RealtimeStrategyEvaluationService {
         projected,
         analysis,
       );
+      this.lastOutcome =
+        outcome.status === 'unavailable'
+          ? 'unavailable'
+          : outcome.matched
+            ? 'evaluated_matched'
+            : 'evaluated_not_matched';
       const identity: RealtimeEpisodeIdentity = {
         definitionId: execution.definitionId,
         versionId: execution.versionId,
@@ -129,6 +140,15 @@ export class RealtimeStrategyEvaluationService {
   reset(): void {
     this.windows.reset();
     this.episodes.reset();
+    this.lastOutcome = null;
+  }
+
+  diagnostics() {
+    return Object.freeze({
+      ...this.windows.diagnostics(),
+      activeEpisodeCount: this.episodes.activeCount,
+      lastOutcome: this.lastOutcome,
+    });
   }
 
   retainRegistryScopes(

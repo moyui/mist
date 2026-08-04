@@ -47,6 +47,11 @@ export interface SignalHealthVo {
       | 'unavailable'
       | 'failed'
       | null;
+    lastPersistenceOutcome:
+      | 'created'
+      | 'duplicate_skipped'
+      | 'failed'
+      | null;
     activeEpisodeCount: number;
     lastFailureCode: string | null;
   };

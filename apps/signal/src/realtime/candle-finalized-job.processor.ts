@@ -46,6 +46,13 @@ interface FinalizationCursor {
 export class CandleFinalizedJobProcessor {
   private readonly cursors = new Map<string, FinalizationCursor>();
   private activeTradingDay: string | null = null;
+  private lastPersistenceOutcome:
+    | LiveStrategyPersistenceOutcome
+    | 'failed'
+    | null = null;
+  private lastJobAcceptedTriggerTime: string | null = null;
+  private lastJobEvaluationStarted = false;
+  private lastJobEvaluated = false;
 
   constructor(
     private readonly marketData: StrategyRealtimeMarketDataPort,
@@ -67,6 +74,10 @@ export class CandleFinalizedJobProcessor {
     jobName: string,
     data: unknown,
   ): Promise<CandleFinalizedJobResult> {
+    this.lastJobAcceptedTriggerTime = null;
+    this.lastJobEvaluationStarted = false;
+    this.lastJobEvaluated = false;
+    this.lastPersistenceOutcome = null;
     const deadlineAt = this.now().getTime() + this.jobTimeoutMs;
     if (jobName !== CANDLE_FINALIZED_JOB_NAME) {
       throw new TypeError(`unsupported strategy trigger job: ${jobName}`);
@@ -131,25 +142,36 @@ export class CandleFinalizedJobProcessor {
       outcome: trigger.outcome,
       bar: sealedBar,
     });
+    this.lastJobAcceptedTriggerTime = trigger.timestamp.toISOString();
 
     const candidates: ShadowStrategyCandidate[] = [];
     for (const bar of emitted) {
+      this.lastJobEvaluationStarted = true;
       const evaluated = await this.runStage(
         deadlineAt,
         'analysis_evaluation',
         () => this.evaluation.evaluate(bar, executionPlans),
       );
+      this.lastJobEvaluated = true;
       for (const candidate of evaluated) {
         if (this.mode === 'on') {
           if (!this.persistence) {
             throw new Error('on-mode live strategy persistence is unavailable');
           }
-          await this.runStage(
-            deadlineAt,
-            'persistence',
-            async (): Promise<LiveStrategyPersistenceOutcome> =>
-              this.persistence!.persist(candidate),
-          );
+          try {
+            await this.runStage(
+              deadlineAt,
+              'persistence',
+              async (): Promise<LiveStrategyPersistenceOutcome> => {
+                const outcome = await this.persistence!.persist(candidate);
+                this.lastPersistenceOutcome = outcome;
+                return outcome;
+              },
+            );
+          } catch (error) {
+            this.lastPersistenceOutcome = 'failed';
+            throw error;
+          }
         }
         this.evaluation.activate(candidate);
         candidates.push(candidate);
@@ -158,6 +180,18 @@ export class CandleFinalizedJobProcessor {
     return Object.freeze({
       outcome: 'completed',
       candidates: Object.freeze(candidates),
+    });
+  }
+
+  diagnostics() {
+    const evaluation = this.evaluation.diagnostics();
+    return Object.freeze({
+      ...evaluation,
+      lastOutcome: this.lastJobEvaluated ? evaluation.lastOutcome : null,
+      lastPersistenceOutcome: this.lastPersistenceOutcome,
+      acceptedTriggerTime: this.lastJobAcceptedTriggerTime,
+      evaluationStarted: this.lastJobEvaluationStarted,
+      evaluated: this.lastJobEvaluated,
     });
   }
 

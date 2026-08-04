@@ -53,9 +53,96 @@ describe('SignalHealthStateService', () => {
         state: 'off',
         lastEvaluatedAt: null,
         lastOutcome: null,
+        lastPersistenceOutcome: null,
         activeEpisodeCount: 0,
         lastFailureCode: null,
       },
+    });
+  });
+
+  it('records bounded process-local worker and evaluation aggregates', () => {
+    process.env.REALTIME_STRATEGY_MODE = 'shadow';
+    const state = new SignalHealthStateService();
+    state.recordWorkerRunning(true);
+    state.recordJobStarted();
+    state.recordJobSucceeded({
+      acceptedAt: '2026-08-04T06:44:01.000Z',
+      outcome: 'completed',
+      acceptedTriggerTime: '2026-08-04T06:44:00.000Z',
+      evaluated: true,
+      windowGroupCount: 2,
+      rawBarCount: 14,
+      derivedBarCount: 1,
+      activeEpisodeCount: 1,
+      evaluationOutcome: 'evaluated_matched',
+      persistenceOutcome: null,
+    });
+
+    expect(state.snapshot()).toMatchObject({
+      marketData: {
+        windowGroupCount: 2,
+        rawBarCount: 14,
+        derivedBarCount: 1,
+      },
+      queue: {
+        workerRunning: true,
+        activeCount: 0,
+        processedCount: 1,
+        failedCount: 0,
+        lastOutcome: 'completed',
+      },
+      evaluation: {
+        state: 'idle',
+        lastOutcome: 'evaluated_matched',
+        activeEpisodeCount: 1,
+      },
+    });
+  });
+
+  it('does not report expired jobs as accepted market data', () => {
+    process.env.REALTIME_STRATEGY_MODE = 'shadow';
+    const state = new SignalHealthStateService();
+    state.recordJobStarted();
+    state.recordJobSucceeded({
+      acceptedAt: '2026-08-04T06:44:01.000Z',
+      outcome: 'expired_trading_day',
+      acceptedTriggerTime: null,
+      evaluated: false,
+      windowGroupCount: 0,
+      rawBarCount: 0,
+      derivedBarCount: 0,
+      activeEpisodeCount: 0,
+      evaluationOutcome: null,
+      persistenceOutcome: null,
+    });
+
+    expect(state.snapshot()).toMatchObject({
+      marketData: { lastTriggerTime: null, lastAcceptedAt: null },
+      queue: { processedCount: 1, lastOutcome: 'expired_trading_day' },
+      evaluation: { lastEvaluatedAt: null, lastOutcome: null },
+    });
+  });
+
+  it('counts a failed terminal job without fabricating market acceptance', () => {
+    process.env.REALTIME_STRATEGY_MODE = 'shadow';
+    const state = new SignalHealthStateService();
+    state.recordJobStarted();
+    state.recordJobFailed({
+      failureCode: 'INVALID_REALTIME_STRATEGY_JOB',
+      failedAt: '2026-08-04T06:44:01.000Z',
+      acceptedTriggerTime: null,
+      evaluationStarted: false,
+      windowGroupCount: 0,
+      rawBarCount: 0,
+      derivedBarCount: 0,
+      activeEpisodeCount: 0,
+      persistenceOutcome: null,
+    });
+
+    expect(state.snapshot()).toMatchObject({
+      marketData: { lastTriggerTime: null, lastAcceptedAt: null },
+      queue: { processedCount: 1, failedCount: 1, lastOutcome: 'failed' },
+      evaluation: { state: 'idle', lastOutcome: null },
     });
   });
 

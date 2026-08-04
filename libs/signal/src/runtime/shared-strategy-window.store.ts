@@ -94,6 +94,26 @@ export class SharedStrategyWindowStore {
   get groupCount(): number {
     return this.groups.size;
   }
+
+  diagnostics(): Readonly<{
+    groupCount: number;
+    rawBarCount: number;
+    derivedBarCount: number;
+  }> {
+    let rawBarCount = 0;
+    let derivedBarCount = 0;
+    for (const group of this.groups.values()) {
+      for (const bar of group.projectedBars) {
+        if (bar.rawBar.period === 1) rawBarCount += 1;
+        else derivedBarCount += 1;
+      }
+    }
+    return Object.freeze({
+      groupCount: this.groups.size,
+      rawBarCount,
+      derivedBarCount,
+    });
+  }
 }
 
 function buildGroup(
