@@ -7,12 +7,21 @@ import {
   signalEnvSchema,
   type RealtimeStrategyMode,
 } from '@app/config';
-import { StrategyDefinition, StrategyVersion } from '@app/shared-data';
+import {
+  K,
+  KExtensionEf,
+  KExtensionQmt,
+  KExtensionTdx,
+  Security,
+  SecuritySourceConfig,
+  StrategyDefinition,
+  StrategyVersion,
+} from '@app/shared-data';
 import * as path from 'node:path';
 import { SignalHealthController } from './signal-health.controller';
-import { SignalHealthStateService } from './signal-health-state.service';
 import { SignalRegistryController } from './signal-registry.controller';
-import { SignalRegistryService } from './signal-registry.service';
+import { SignalRealtimeModule } from './realtime/signal-realtime.module';
+import { SignalRegistryModule } from './signal-registry.module';
 
 @Module({
   imports: [
@@ -44,7 +53,16 @@ import { SignalRegistryService } from './signal-registry.service';
           timezone: '+08:00',
           synchronize: false,
           logging: configService.get('NODE_ENV') !== 'production',
-          entities: [StrategyDefinition, StrategyVersion],
+          entities: [
+            K,
+            KExtensionEf,
+            KExtensionTdx,
+            KExtensionQmt,
+            Security,
+            SecuritySourceConfig,
+            StrategyDefinition,
+            StrategyVersion,
+          ],
           poolSize: 10,
           connectorPackage: 'mysql2' as const,
           extra: {
@@ -54,20 +72,17 @@ import { SignalRegistryService } from './signal-registry.service';
       },
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([StrategyDefinition, StrategyVersion]),
+    SignalRegistryModule,
     ...signalRealtimeModulesForMode(
       resolveRealtimeStrategyMode(process.env.REALTIME_STRATEGY_MODE),
     ),
   ],
   controllers: [SignalHealthController, SignalRegistryController],
-  providers: [SignalHealthStateService, SignalRegistryService],
 })
 export class SignalAppModule {}
 
-/** Prevent enabled modes from starting before their Redis/Worker graph exists. */
+/** Off mode deliberately omits every Redis and BullMQ provider. */
 export function signalRealtimeModulesForMode(mode: RealtimeStrategyMode) {
   if (mode === 'off') return [];
-  throw new Error(
-    `REALTIME_STRATEGY_MODE=${mode} is unavailable until the Signal realtime module is assembled`,
-  );
+  return [SignalRealtimeModule];
 }

@@ -6,11 +6,9 @@ describe('signal realtime module assembly', () => {
   });
 
   it.each(['shadow', 'on'] as const)(
-    'fails bootstrap before listeners for incomplete %s assembly',
+    'assembles the single realtime module in %s mode',
     (mode) => {
-      expect(() => signalRealtimeModulesForMode(mode)).toThrow(
-        'is unavailable until the Signal realtime module is assembled',
-      );
+      expect(signalRealtimeModulesForMode(mode)).toHaveLength(1);
     },
   );
 });

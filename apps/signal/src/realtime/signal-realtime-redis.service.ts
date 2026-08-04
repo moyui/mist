@@ -1,11 +1,19 @@
-import { Inject, Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  Optional,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 export const SIGNAL_MARKET_REDIS_CLIENT = Symbol('SIGNAL_MARKET_REDIS_CLIENT');
 
 @Injectable()
-export class SignalRealtimeRedisService implements OnModuleDestroy {
+export class SignalRealtimeRedisService
+  implements OnModuleInit, OnModuleDestroy
+{
   private ownedClient: Redis | null = null;
 
   constructor(
@@ -15,7 +23,7 @@ export class SignalRealtimeRedisService implements OnModuleDestroy {
     private readonly injectedClient?: Redis,
   ) {}
 
-  async connect(): Promise<void> {
+  async onModuleInit(): Promise<void> {
     if (this.injectedClient) return;
     const url = this.config.get<string>('MIST_REALTIME_REDIS_URL') ?? '';
     if (url.length === 0) {

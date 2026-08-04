@@ -34,7 +34,10 @@ export class CandleFinalizedJobProcessor {
 
   constructor(
     private readonly marketData: StrategyRealtimeMarketDataPort,
-    private readonly executionPlans: () => readonly RealtimeStrategyExecutionPlan[],
+    private readonly executionPlans: (
+      securityId: number,
+      source: 'tdx' | 'qmt',
+    ) => readonly RealtimeStrategyExecutionPlan[],
     private readonly now: () => Date,
     private readonly periodBuilder = new RealtimePeriodBuilder(),
     private readonly evaluation = new RealtimeStrategyEvaluationService(
@@ -65,6 +68,10 @@ export class CandleFinalizedJobProcessor {
       this.periodBuilder.reset();
       this.evaluation.reset();
     }
+    const executionPlans = this.executionPlans(
+      trigger.securityId,
+      trigger.source,
+    );
 
     const cursorKey = `${trigger.securityId}\u0000${trigger.source}`;
     const triggerMs = trigger.timestamp.getTime();
@@ -100,9 +107,7 @@ export class CandleFinalizedJobProcessor {
 
     const candidates: ShadowStrategyCandidate[] = [];
     for (const bar of emitted) {
-      candidates.push(
-        ...(await this.evaluation.evaluate(bar, this.executionPlans())),
-      );
+      candidates.push(...(await this.evaluation.evaluate(bar, executionPlans)));
     }
     return Object.freeze({
       outcome: 'completed',

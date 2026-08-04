@@ -1,13 +1,21 @@
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  DataSource,
+  Security,
   StrategyDefinition,
   StrategyRuleSchemaVersion,
   StrategyStatus,
 } from '@app/shared-data';
-import { compileStoredStrategyRule } from '@app/strategy';
-import { Repository } from 'typeorm';
-import type { SignalRegistryRefreshV1 } from '@app/signal';
+import {
+  compileStoredStrategyRule,
+  type StrategyRealtimeSource,
+} from '@app/strategy';
+import { In, Repository } from 'typeorm';
+import type {
+  RealtimeStrategyExecutionPlan,
+  SignalRegistryRefreshV1,
+} from '@app/signal';
 import { SignalHealthStateService } from './signal-health-state.service';
 import type {
   SignalRegistryDefinition,
@@ -23,27 +31,82 @@ export class SignalRegistryService implements OnApplicationBootstrap {
     definitions: toImmutableMap<number, SignalRegistryDefinition>([]),
   });
   private cutoverTail: Promise<void> = Promise.resolve();
+  private initialization: Promise<void> | null = null;
 
   constructor(
     @InjectRepository(StrategyDefinition)
     private readonly definitions: Repository<StrategyDefinition>,
+    @InjectRepository(Security)
+    private readonly securities: Repository<Security>,
     private readonly healthState: SignalHealthStateService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    await this.initialize();
+  }
+
+  initialize(): Promise<void> {
+    this.initialization ??= this.loadInitialRegistry();
+    return this.initialization;
+  }
+
+  private async loadInitialRegistry(): Promise<void> {
     const definitions = await this.definitions.find({
       where: { status: StrategyStatus.ENABLED },
       relations: { currentVersion: true },
       order: { id: 'ASC' },
     });
+    const securityIds = await this.resolveSecurityIds(
+      definitions.flatMap((definition) => definition.targetUniverse),
+    );
     const compiled = definitions.map((definition) =>
-      compileRegistryDefinition(definition),
+      compileRegistryDefinition(definition, securityIds),
     );
     this.publish(new Map(compiled.map((item) => [item.definitionId, item])));
   }
 
   capture(): SignalRegistrySnapshot {
     return this.current;
+  }
+
+  executionPlansFor(
+    securityId: number,
+    source: StrategyRealtimeSource,
+  ): readonly RealtimeStrategyExecutionPlan[] {
+    const snapshot = this.current;
+    const plans = [...snapshot.definitions.values()]
+      .filter(
+        (definition) =>
+          definition.securityIds.has(securityId) &&
+          definition.sources.includes(source as DataSource),
+      )
+      .flatMap((definition) =>
+        definition.periods
+          .filter(
+            (period) =>
+              period === 1 ||
+              period === 5 ||
+              period === 15 ||
+              period === 30 ||
+              period === 60,
+          )
+          .map((period) =>
+            Object.freeze({
+              definitionId: definition.definitionId,
+              versionId: definition.versionId,
+              source,
+              period,
+              plan: definition.executionPlan,
+            }),
+          ),
+      )
+      .sort(
+        (left, right) =>
+          left.definitionId - right.definitionId ||
+          left.versionId - right.versionId ||
+          left.period - right.period,
+      );
+    return Object.freeze(plans);
   }
 
   refreshDefinition(
@@ -59,9 +122,12 @@ export class SignalRegistryService implements OnApplicationBootstrap {
           const next = new Map(this.current.definitions);
           let action: SignalRegistryRefreshV1['action'] = 'removed';
           if (definition?.status === StrategyStatus.ENABLED) {
+            const securityIds = await this.resolveSecurityIds(
+              definition.targetUniverse,
+            );
             next.set(
               strategyDefinitionId,
-              compileRegistryDefinition(definition),
+              compileRegistryDefinition(definition, securityIds),
             );
             action = 'upserted';
           } else {
@@ -104,6 +170,22 @@ export class SignalRegistryService implements OnApplicationBootstrap {
       new Date().toISOString(),
     );
   }
+
+  private async resolveSecurityIds(
+    codes: readonly string[],
+  ): Promise<ReadonlyMap<string, number>> {
+    const unique = [...new Set(codes)].sort();
+    if (unique.length === 0) return new Map();
+    const rows = await this.securities.find({
+      where: { code: In(unique) },
+      order: { code: 'ASC' },
+    });
+    const resolved = new Map(rows.map((row) => [row.code, row.id]));
+    if (unique.some((code) => !resolved.has(code))) {
+      throw new Error('Enabled strategy target universe is unresolved');
+    }
+    return resolved;
+  }
 }
 
 function toImmutableMap<K, V>(
@@ -143,6 +225,7 @@ function toImmutableMap<K, V>(
 
 function compileRegistryDefinition(
   definition: StrategyDefinition,
+  securityIdsByCode: ReadonlyMap<string, number>,
 ): SignalRegistryDefinition {
   const version = definition.currentVersion;
   if (!version || definition.currentVersionId !== version.id) {
@@ -164,8 +247,41 @@ function compileRegistryDefinition(
     versionId: version.id,
     signalKind: version.signalKind,
     targetUniverse: Object.freeze([...definition.targetUniverse]),
+    securityIds: toImmutableSet(
+      definition.targetUniverse.map((code) => securityIdsByCode.get(code)!),
+    ),
     periods: Object.freeze([...definition.periods]),
     sources: Object.freeze([...definition.sources]),
     executionPlan,
   });
+}
+
+function toImmutableSet<T>(values: Iterable<T>): ReadonlySet<T> {
+  const data = new Set(values);
+  return Object.freeze({
+    get size() {
+      return data.size;
+    },
+    has(value: T) {
+      return data.has(value);
+    },
+    entries() {
+      return data.entries();
+    },
+    keys() {
+      return data.keys();
+    },
+    values() {
+      return data.values();
+    },
+    forEach(
+      callback: (value: T, valueAgain: T, set: ReadonlySet<T>) => void,
+      thisArg?: unknown,
+    ) {
+      data.forEach((value) => callback.call(thisArg, value, value, this));
+    },
+    [Symbol.iterator]() {
+      return data[Symbol.iterator]();
+    },
+  } satisfies ReadonlySet<T>);
 }

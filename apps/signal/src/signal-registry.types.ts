@@ -6,6 +6,7 @@ export interface SignalRegistryDefinition {
   readonly versionId: number;
   readonly signalKind: StrategySignalKind;
   readonly targetUniverse: readonly string[];
+  readonly securityIds: ReadonlySet<number>;
   readonly periods: readonly Period[];
   readonly sources: readonly DataSource[];
   readonly executionPlan: CompiledStrategyExecutionPlan;

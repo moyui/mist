@@ -1,6 +1,7 @@
 import {
   DataSource,
   Period,
+  Security,
   StrategyDefinition,
   StrategyRuleSchemaVersion,
   StrategySignalKind,
@@ -29,7 +30,11 @@ describe('SignalRegistryService', () => {
       findOne: jest.fn(),
     } as unknown as Repository<StrategyDefinition>;
     const health = new SignalHealthStateService();
-    const registry = new SignalRegistryService(repository, health);
+    const registry = new SignalRegistryService(
+      repository,
+      securityRepository(),
+      health,
+    );
 
     await registry.onApplicationBootstrap();
 
@@ -52,6 +57,7 @@ describe('SignalRegistryService', () => {
     } as unknown as Repository<StrategyDefinition>;
     const registry = new SignalRegistryService(
       repository,
+      securityRepository(),
       new SignalHealthStateService(),
     );
     await registry.onApplicationBootstrap();
@@ -77,7 +83,11 @@ describe('SignalRegistryService', () => {
       findOne: jest.fn().mockResolvedValue(invalid),
     } as unknown as Repository<StrategyDefinition>;
     const health = new SignalHealthStateService();
-    const registry = new SignalRegistryService(repository, health);
+    const registry = new SignalRegistryService(
+      repository,
+      securityRepository(),
+      health,
+    );
     await registry.onApplicationBootstrap();
     const captured = registry.capture();
 
@@ -92,6 +102,16 @@ describe('SignalRegistryService', () => {
     });
   });
 });
+
+function securityRepository(): Repository<Security> {
+  return {
+    find: jest
+      .fn()
+      .mockResolvedValue([
+        Object.assign(new Security(), { id: 9, code: '000001.SZ' }),
+      ]),
+  } as unknown as Repository<Security>;
+}
 
 function definition(id: number, versionId: number): StrategyDefinition {
   const version = Object.assign(new StrategyVersion(), {
