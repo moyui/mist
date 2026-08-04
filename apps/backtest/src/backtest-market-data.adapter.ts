@@ -34,7 +34,7 @@ export class BacktestMarketDataAdapter implements StrategyReplayMarketDataPort {
         'k.amount',
       ])
       .addSelect('k.securityId')
-      .where('k.security_id = :securityId', {
+      .where('k.securityId = :securityId', {
         securityId: criteria.securityId,
       })
       .andWhere('k.source = :source', { source: criteria.source })

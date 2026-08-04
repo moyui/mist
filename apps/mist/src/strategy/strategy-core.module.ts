@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   BacktestRun,
   BacktestSignalResult,
-  K,
   StrategyAlertEvent,
   StrategyDefinition,
   StrategySignal,
@@ -11,10 +10,13 @@ import {
 } from '@app/shared-data';
 import { StrategyExecutionPlanService } from './rules/strategy-execution-plan.service';
 import { StrategyAlertEventService } from './services/strategy-alert-event.service';
-import { StrategyBacktestService } from './services/strategy-backtest.service';
+import { BacktestRunCommandService } from './services/backtest-run-command.service';
+import { BacktestRunQueryService } from './services/backtest-run-query.service';
 import { StrategyDefinitionService } from './services/strategy-definition.service';
 import { StrategySignalService } from './services/strategy-signal.service';
 import { SignalRegistryRpcModule } from './runtime/signal-registry-rpc.module';
+import { BacktestRpcModule } from './runtime/backtest-rpc.module';
+import { BacktestStartupCompensationService } from './runtime/backtest-startup-compensation.service';
 
 const strategyEntities = [
   StrategyDefinition,
@@ -23,7 +25,6 @@ const strategyEntities = [
   StrategyAlertEvent,
   BacktestRun,
   BacktestSignalResult,
-  K,
 ];
 
 const strategyProviders = [
@@ -31,13 +32,16 @@ const strategyProviders = [
   StrategyDefinitionService,
   StrategySignalService,
   StrategyAlertEventService,
-  StrategyBacktestService,
+  BacktestRunCommandService,
+  BacktestRunQueryService,
+  BacktestStartupCompensationService,
 ];
 
 @Module({
   imports: [
     TypeOrmModule.forFeature(strategyEntities),
     SignalRegistryRpcModule,
+    BacktestRpcModule,
   ],
   providers: strategyProviders,
   exports: strategyProviders,

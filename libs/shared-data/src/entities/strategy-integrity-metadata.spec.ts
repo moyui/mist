@@ -99,6 +99,29 @@ describe('strategy integrity entity metadata', () => {
         unique: true,
       }),
     );
+    expect(
+      storage.indices.find(
+        (index) =>
+          index.target === BacktestSignalResult &&
+          index.name === 'idx_backtest_signal_results_run_time_id',
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        columns: ['backtestRunId', 'signalTime', 'id'],
+        unique: false,
+      }),
+    );
+  });
+
+  it('requires non-null target issue metadata on every backtest run', () => {
+    const column = storage.columns.find(
+      (candidate) =>
+        candidate.target === BacktestRun &&
+        candidate.propertyName === 'targetIssues',
+    );
+    expect(column).toBeDefined();
+    expect(column?.options.name).toBe('target_issues');
+    expect(column?.options.nullable).not.toBe(true);
   });
 
   it('maps the approved strategy signal-kind columns without defaults', () => {
