@@ -1,0 +1,64 @@
+{
+  "result": "blocked-no-snapshot",
+  "tradingDay": "20260804",
+  "mode": "shadow",
+  "candidates": {
+    "deploy": "c1a803ff895bdb40ffa4e1adf4c557b8e4a64f14",
+    "backend": "21b46d3ce6a39e05dd7aee100bf2ee94e55278fe",
+    "datasource": "e2094dd5ec527f18487b746549d875795f174520",
+    "monitoring": "881e593de6374e16329e446ca5694fb7aadece3e"
+  },
+  "deploymentRun": 30872115915,
+  "artifactInspectionRun": 30870745531,
+  "sources": {
+    "tdx": {
+      "preflightRun": 30872226421,
+      "fullRun": 30872465907,
+      "securityId": 9,
+      "providerSymbol": "600030.SH",
+      "closedKey": "mist:realtime:v1:day:20260804:tdx:9:candle:1m:closed",
+      "bridgeBuildId": "mist-tdx-realtime-bridge-v2.1",
+      "bridgeArtifactSha256": "750cabf97c5812423987cab70c25d385976b6edf1bad6419cf30a1bb1ddfce51",
+      "seriesCount": 0,
+      "candidateCount": 0,
+      "sealedTotal": 0,
+      "noSnapshotDiscardTotal": 20,
+      "quantityProfileRejections": [],
+      "failure": "Timed out waiting for 2 new sealed candle(s) at the exact market key."
+    },
+    "qmt": {
+      "preflightRun": 30872332428,
+      "fullRun": 30872791011,
+      "securityId": 4,
+      "providerSymbol": "300502.SZ",
+      "closedKey": "mist:realtime:v1:day:20260804:qmt:4:candle:1m:closed",
+      "bridgeBuildId": "mist-qmt-realtime-bridge-v2.0",
+      "bridgeArtifactSha256": "unavailable",
+      "bridgeRuntimeFingerprint": "55d14d2377c2d8701cbf95a212b9d6f2e198c5a7dc3b1fbf5433d156ce7da652",
+      "seriesCount": 0,
+      "candidateCount": 0,
+      "sealedTotal": 0,
+      "noSnapshotDiscardTotal": 44,
+      "quantityProfileRejections": [],
+      "failure": "Timed out waiting for 2 new sealed candle(s) at the exact market key."
+    }
+  },
+  "redis": {
+    "available": true,
+    "aofEnabled": true,
+    "aofLastWriteStatus": "ok",
+    "maxmemoryPolicy": "noeviction"
+  },
+  "protectedTablePreDigest": {
+    "k": { "rowCount": 4375, "contentDigest": "a98a37cc63674f388c069c3b334c83b6ed8bd518e9debeaaaeca1a7543109ed1" },
+    "k_extensions_tdx": { "rowCount": 4371, "contentDigest": "14ea3bf826ac9fc1014afe1681aef976ebd2af70efc63c6edd170606c8cfe0fd" },
+    "k_extensions_qmt": { "rowCount": 4, "contentDigest": "54b91bea01f301feddbcf154c666b339fc8a6c36a72329d0a427adda3ccdc8ea" },
+    "strategy_signals": { "rowCount": 0, "contentDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+    "strategy_alert_events": { "rowCount": 0, "contentDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }
+  },
+  "postDigestCaptured": false,
+  "restartAofReached": false,
+  "historicalComparisonReached": false,
+  "quantityProfileProven": false,
+  "productionOnEligible": false
+}
