@@ -146,3 +146,13 @@ describe('backtestEnvSchema runtime limits', () => {
     ).toContain('BACKTEST_RUN_TIMEOUT_MS');
   });
 });
+
+describe('mistEnvSchema backtest client defaults', () => {
+  it('uses loopback defaults for local execution', () => {
+    const { error, value } = mistEnvSchema.validate(baseEnv);
+    expect(error).toBeUndefined();
+    expect(value.BACKTEST_RPC_HOST).toBe('127.0.0.1');
+    expect(value.BACKTEST_HEALTH_URL).toBe('http://127.0.0.1:8004/health');
+    expect(value.BACKTEST_COMMAND_TIMEOUT_MS).toBe(3_000);
+  });
+});

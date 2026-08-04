@@ -43,11 +43,11 @@ export class StrategyBacktestController {
   @ApiEnvelopeResponse({ status: 202, type: BacktestRunReceiptVo })
   @ApiTechnicalErrorResponse({
     status: 400,
-    codes: [
-      'VALIDATION_ERROR',
-      'NOT_FOUND',
-      'BACKTEST_QUANTITY_PROFILE_UNAVAILABLE',
-    ],
+    codes: ['VALIDATION_ERROR', 'NOT_FOUND'],
+  })
+  @ApiTechnicalErrorResponse({
+    status: 409,
+    codes: ['BACKTEST_QUANTITY_PROFILE_UNAVAILABLE'],
   })
   @ApiTechnicalErrorResponse({
     status: 429,

@@ -114,14 +114,6 @@ export class BacktestRunCommandService {
         run.id,
         `BACKTEST_${result.error.code.toUpperCase()}`,
       );
-      if (!failed) {
-        throw new BacktestCommandHttpException(
-          500,
-          'INTERNAL_ERROR',
-          'Internal Server Error',
-          run.id,
-        );
-      }
       if (
         failed === BacktestRunStatus.RUNNING ||
         failed === BacktestRunStatus.COMPLETED ||
@@ -219,17 +211,28 @@ export class BacktestRunCommandService {
     runId: number,
     errorMessage: string,
   ): Promise<PendingFailureStatus> {
-    const result = await this.runRepository.update(
-      { id: runId, status: BacktestRunStatus.PENDING },
-      {
-        status: BacktestRunStatus.FAILED,
-        completedAt: new Date(),
-        errorMessage,
-      },
-    );
-    if (result.affected === 1) return BacktestRunStatus.FAILED;
-    const current = await this.runRepository.findOne({ where: { id: runId } });
-    return current?.status ?? 'missing';
+    try {
+      const result = await this.runRepository.update(
+        { id: runId, status: BacktestRunStatus.PENDING },
+        {
+          status: BacktestRunStatus.FAILED,
+          completedAt: new Date(),
+          errorMessage,
+        },
+      );
+      if (result.affected === 1) return BacktestRunStatus.FAILED;
+      const current = await this.runRepository.findOne({
+        where: { id: runId },
+      });
+      return current?.status ?? 'missing';
+    } catch {
+      throw new BacktestCommandHttpException(
+        500,
+        'INTERNAL_ERROR',
+        'Internal Server Error',
+        runId,
+      );
+    }
   }
 }
 

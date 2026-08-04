@@ -155,11 +155,11 @@ export const mistEnvSchema = commonEnvSchema
     SIGNAL_RPC_HOST: Joi.string().hostname().default('signal'),
     SIGNAL_RPC_PORT: Joi.number().port().default(9010),
 
-    BACKTEST_RPC_HOST: Joi.string().hostname().default('backtest'),
+    BACKTEST_RPC_HOST: Joi.string().hostname().default('127.0.0.1'),
     BACKTEST_RPC_PORT: Joi.number().port().default(8005),
     BACKTEST_HEALTH_URL: Joi.string()
       .uri({ scheme: ['http', 'https'] })
-      .default('http://backtest:8004/health'),
+      .default('http://127.0.0.1:8004/health'),
     BACKTEST_COMMAND_TIMEOUT_MS: Joi.number()
       .integer()
       .min(500)

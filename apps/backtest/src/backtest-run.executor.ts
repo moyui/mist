@@ -22,6 +22,7 @@ import {
 import { DataSource as TypeOrmDataSource, In, Repository } from 'typeorm';
 import { BacktestMarketDataAdapter } from './backtest-market-data.adapter';
 import { BacktestRunFailure } from './backtest-run-error';
+import { BacktestHealthStateService } from './backtest-health-state.service';
 
 const BACKTEST_CALCULATION_BATCH_SIZE = 100;
 const BACKTEST_RESULT_BATCH_SIZE = 100;
@@ -67,16 +68,21 @@ export class BacktestRunExecutor {
     private readonly marketData: BacktestMarketDataAdapter,
     private readonly dataSource: TypeOrmDataSource,
     private readonly config: ConfigService,
+    private readonly health: BacktestHealthStateService,
   ) {}
 
   async execute(runId: number): Promise<void> {
     const claimed = await this.claim(runId);
     if (!claimed) return;
 
+    const startedAt = Date.now();
     try {
       await this.replay(claimed);
+      this.health.recordRunCompleted(Date.now() - startedAt);
     } catch (error) {
-      await this.failAndCleanup(runId, classifyFailure(error));
+      const failure = classifyFailure(error);
+      this.health.recordRunFailed(failure.code, Date.now() - startedAt);
+      await this.failAndCleanup(runId, failure);
       this.logger.error(`Backtest run ${runId} failed`, errorTrace(error));
     }
   }
@@ -94,7 +100,7 @@ export class BacktestRunExecutor {
     if (run.source !== DataSource.TDX && run.source !== DataSource.QMT) {
       throw new BacktestRunFailure('BACKTEST_SOURCE_UNSUPPORTED');
     }
-    if (run.targetUniverse.length === 0) {
+    if (!Array.isArray(run.targetUniverse) || run.targetUniverse.length === 0) {
       throw new BacktestRunFailure('BACKTEST_TARGET_UNIVERSE_EMPTY');
     }
 
@@ -118,9 +124,18 @@ export class BacktestRunExecutor {
       this.config.get<number>('BACKTEST_MAX_BARS_PER_RUN') ?? 10_000_000;
     const budget = new ReplayBudget(maxBars, Date.now() + timeoutMs);
 
+    if (run.targetUniverse.some((code) => typeof code !== 'string')) {
+      throw new BacktestRunFailure('BACKTEST_TARGET_UNIVERSE_EMPTY');
+    }
     const normalizedTargets = [
       ...new Set(run.targetUniverse.map(normalizeCode)),
     ];
+    if (
+      normalizedTargets.length === 0 ||
+      normalizedTargets.some((code) => code.length === 0)
+    ) {
+      throw new BacktestRunFailure('BACKTEST_TARGET_UNIVERSE_EMPTY');
+    }
     const securities = await this.securityRepository.find({
       where: { code: In(normalizedTargets) },
     });
@@ -165,15 +180,20 @@ export class BacktestRunExecutor {
     }
     await this.flushResults(results);
 
-    if (issues.length > 0) {
-      run.targetIssues = uniqueIssues(issues);
+    const completed = await this.runRepository.update(
+      { id: run.id, status: BacktestRunStatus.RUNNING },
+      {
+        status: BacktestRunStatus.COMPLETED,
+        targetIssues: uniqueIssues(issues),
+        signalCount,
+        matchedSecurityCount: matchedCodes.size,
+        completedAt: new Date(),
+        errorMessage: null,
+      },
+    );
+    if (completed.affected !== 1) {
+      throw new BacktestRunFailure('BACKTEST_DATABASE_ERROR');
     }
-    run.status = BacktestRunStatus.COMPLETED;
-    run.signalCount = signalCount;
-    run.matchedSecurityCount = matchedCodes.size;
-    run.completedAt = new Date();
-    run.errorMessage = null;
-    await this.runRepository.save(run);
   }
 
   private async replaySecurity(
@@ -190,7 +210,7 @@ export class BacktestRunExecutor {
     const projector = new QuantityForwardFillProjector();
     const windows: ProjectedStrategyBar[] = [];
     let afterTimestamp: Date | undefined;
-    let hasBars = false;
+    let hasPublicBars = false;
     const replayStart = replayStartFor(run, plan);
     const replayEnd = new Date(run.endDate.getTime());
     while (true) {
@@ -204,7 +224,7 @@ export class BacktestRunExecutor {
       });
       for (const bar of page.bars) {
         budget.consume();
-        hasBars = true;
+        if (bar.timestamp >= run.startDate) hasPublicBars = true;
         const projected = projector.project(bar);
         windows.push(projected);
         if (windows.length > plan.requiredBarCount) windows.shift();
@@ -232,24 +252,31 @@ export class BacktestRunExecutor {
       if (!page.nextAfterTimestamp) break;
       afterTimestamp = page.nextAfterTimestamp;
     }
-    return { hasBars };
+    return { hasBars: hasPublicBars };
   }
 
   private async flushResults(results: BacktestSignalResult[]): Promise<void> {
     if (results.length === 0) return;
     const pending = results.splice(0, results.length);
+    const startedAt = Date.now();
     // TypeORM's JSON DeepPartial type rejects Record<string, unknown> even
     // though it is the entity's declared JSON boundary; keep this cast local
     // to the batch writer rather than weakening the entity contract.
-    await this.resultRepository.insert(
-      pending.map((result) => ({
-        backtestRunId: result.backtestRunId,
-        securityCode: result.securityCode,
-        signalTime: result.signalTime,
-        contextSnapshot: result.contextSnapshot,
-        ruleSnapshot: result.ruleSnapshot,
-      })) as never,
-    );
+    try {
+      await this.resultRepository.insert(
+        pending.map((result) => ({
+          backtestRunId: result.backtestRunId,
+          securityCode: result.securityCode,
+          signalTime: result.signalTime,
+          contextSnapshot: result.contextSnapshot,
+          ruleSnapshot: result.ruleSnapshot,
+        })) as never,
+      );
+      this.health.recordResultBatch(pending.length, Date.now() - startedAt);
+    } catch (error) {
+      this.health.recordResultBatchFailure(Date.now() - startedAt);
+      throw error;
+    }
   }
 
   private async failAndCleanup(

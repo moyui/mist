@@ -12,6 +12,8 @@ export class BacktestAdmissionService {
   private readonly active = new Set<number>();
   private readonly waiting: number[] = [];
   private readonly waitingSet = new Set<number>();
+  private readonly waitingEnqueuedAt = new Map<number, number>();
+  private readonly activeStartedAt = new Map<number, number>();
   private ready = false;
   private readonly concurrency: number;
   private readonly capacity: number;
@@ -32,19 +34,27 @@ export class BacktestAdmissionService {
   }
 
   accept(runId: number): BacktestAdmissionResult {
-    if (!this.ready) return { accepted: false, code: 'not_ready' };
+    if (!this.ready) {
+      this.health.recordCommand('not_ready');
+      return { accepted: false, code: 'not_ready' };
+    }
     if (this.active.has(runId) || this.waitingSet.has(runId)) {
+      this.health.recordCommand('accepted');
       return { accepted: true };
     }
     if (this.active.size >= this.concurrency) {
       if (this.waiting.length >= this.capacity) {
+        this.health.recordCommand('queue_full');
         return { accepted: false, code: 'queue_full' };
       }
       this.waiting.push(runId);
       this.waitingSet.add(runId);
+      this.waitingEnqueuedAt.set(runId, Date.now());
+      this.health.recordCommand('accepted');
       this.publishCounts();
       return { accepted: true };
     }
+    this.health.recordCommand('accepted');
     this.start(runId);
     return { accepted: true };
   }
@@ -59,12 +69,15 @@ export class BacktestAdmissionService {
 
   private start(runId: number): void {
     this.active.add(runId);
+    this.activeStartedAt.set(runId, Date.now());
     this.publishCounts();
     void this.executor.execute(runId).finally(() => {
       this.active.delete(runId);
+      this.activeStartedAt.delete(runId);
       const next = this.waiting.shift();
       if (next !== undefined) {
         this.waitingSet.delete(next);
+        this.waitingEnqueuedAt.delete(next);
         this.start(next);
       } else {
         this.publishCounts();
@@ -73,6 +86,19 @@ export class BacktestAdmissionService {
   }
 
   private publishCounts(): void {
-    this.health.setCounts(this.active.size, this.waiting.length);
+    this.health.setCounts(
+      this.active.size,
+      this.waiting.length,
+      oldest(this.activeStartedAt),
+      oldest(this.waitingEnqueuedAt),
+    );
   }
+}
+
+function oldest(values: ReadonlyMap<number, number>): number | null {
+  let oldestValue: number | null = null;
+  for (const value of values.values()) {
+    if (oldestValue === null || value < oldestValue) oldestValue = value;
+  }
+  return oldestValue;
 }

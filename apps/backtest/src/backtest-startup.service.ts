@@ -64,6 +64,7 @@ export class BacktestStartupService implements OnApplicationBootstrap {
           errorMessage: 'BACKTEST_STARTUP_QUEUE_FULL',
         },
       );
+      this.health.recordStartupFailure('queue_full');
     }
     this.admission.setReady(true);
     this.health.setCounts(0, 0);

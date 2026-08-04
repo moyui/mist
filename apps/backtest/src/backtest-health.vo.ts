@@ -8,5 +8,22 @@ export interface BacktestHealthVo {
     readonly waitingCount: number;
     readonly concurrency: number;
     readonly queueCapacity: number;
+    readonly observations: {
+      readonly commandAcceptedCount: number;
+      readonly commandQueueFullCount: number;
+      readonly commandNotReadyCount: number;
+      readonly startupQueueFullCount: number;
+      readonly startupUnavailableCount: number;
+      readonly runCompletedCount: number;
+      readonly runFailedCount: number;
+      readonly resultBatchCount: number;
+      readonly resultRowCount: number;
+      readonly resultBatchFailureCount: number;
+      readonly lastRunDurationSeconds: number | null;
+      readonly lastResultBatchDurationSeconds: number | null;
+      readonly oldestActiveAgeSeconds: number | null;
+      readonly oldestWaitingAgeSeconds: number | null;
+      readonly lastFailureClass: string | null;
+    };
   };
 }

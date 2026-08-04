@@ -14,6 +14,14 @@ describe('strategy evaluation production preflight', () => {
     ),
     'utf8',
   );
+  const backtestAudit = readFileSync(
+    join(process.cwd(), 'deploy/database/audit-backtest-runtime.sql'),
+    'utf8',
+  );
+  const backtestReadback = readFileSync(
+    join(process.cwd(), 'deploy/database/readback-backtest-runtime.sql'),
+    'utf8',
+  );
   const targetTables = [
     'strategy_definitions',
     'strategy_versions',
@@ -69,5 +77,24 @@ describe('strategy evaluation production preflight', () => {
     expect(readback).toContain("`references_rows`.`UPDATE_RULE` = 'RESTRICT'");
     expect(readback).toContain('SHOW CREATE TABLE `strategy_versions`');
     expect(readback).toContain('SHOW CREATE TABLE `strategy_signals`');
+  });
+
+  it('keeps Backtest schema preflight/readback read-only and explicit', () => {
+    for (const sql of [backtestAudit, backtestReadback]) {
+      expect(sql).toContain('backtest_runs');
+      expect(sql).toContain('backtest_signal_results');
+      expect(sql).not.toMatch(
+        /^\s*(?:ALTER|CREATE|DELETE|DROP|INSERT|RENAME|REPLACE|TRUNCATE|UPDATE)\b/im,
+      );
+    }
+    expect(backtestAudit).toContain('FROM `schema_migrations`');
+    expect(backtestAudit).toContain('SHOW CREATE TABLE `backtest_runs`');
+    expect(backtestReadback).toContain('backtest_target_issues_ready');
+    expect(backtestReadback).toContain(
+      'idx_backtest_signal_results_run_time_id',
+    );
+    expect(backtestReadback).toContain(
+      'uq_backtest_signal_results_run_security_time',
+    );
   });
 });
