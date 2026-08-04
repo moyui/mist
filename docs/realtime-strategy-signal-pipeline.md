@@ -29,9 +29,9 @@ TDX / QMT native data
 
 | 边界 | Owner |
 |---|---|
-| 公共 HTTP 与内部 RPC envelope | `standardize-service-boundary-contracts` / `libs/transport` |
+| 公共 HTTP 与内部 RPC envelope | `service-boundary-contracts` stable spec / `libs/transport` |
 | realtime snapshot、open/sealed candle、market Redis、Decimal8 | `complete-current-day-realtime-candles` |
-| Chan 纯计算（不进入 V1 Strategy） | `extract-chan-core` |
+| Chan 纯计算（不进入 V1 Strategy） | `chan-analysis-core` / `libs/chancore` |
 | StrategyBar、StrategyMarketDataPort、KDJ/MACD、field catalog、validator/evaluator/context | `evolve-strategy-evaluation-contract` |
 | MySQL replay adapter 与 Backtest lifecycle | `extract-backtest-runtime` / `apps/backtest` |
 | realtime adapters、window、episode、Signal/AlertEvent transaction | `run-realtime-strategy-evaluation` / `apps/signal` |
@@ -42,41 +42,40 @@ Backtest 与 Signal 共享 domain contract，但不得互相导入 application s
 ## 3. 实施顺序
 
 ```text
-standardize-service-boundary-contracts
-       │
-       ├───────────────┐
-       ▼               ▼
-complete-current-   extract-market-
-day-realtime-       analysis-kernels
-candles                 │
-       └───────┬────────┘
-               ▼
-evolve-strategy-evaluation-contract
-       ┌───────┴────────┐
-       ▼                ▼
-extract-backtest-   run-realtime-
-runtime             strategy-evaluation
+service-boundary-contracts + analysis libraries  (stable)
                          │
+          ┌──────────────┴──────────────┐
+          ▼                             ▼
+complete-current-day-       evolve-strategy-
+realtime-candles             evaluation-contract
+          └──────────────┬──────────────┘
                          ▼
-              deliver-strategy-notifications
+          ┌──────────────┴──────────────┐
+          ▼                             ▼
+extract-backtest-runtime     run-realtime-strategy-evaluation
+                                            │
+                                            ▼
+                              deliver-strategy-notifications
 ```
 
 实际交付一次只推进一个 change：
 
-1. 当前下一项是 `standardize-service-boundary-contracts`。
-2. 随后对账并完成已有 candle/Redis 代码，再抽取 Indicator/Chan kernels。
-3. 两个基础能力验收后实现共享 strategy evaluation contract。
-4. Backtest 与 Signal 可独立实施；默认先用确定性历史回放验证 evaluator，再接 realtime。
-5. Signal 稳定产生 PENDING AlertEvent 后才启动通知投递。
+1. `service-boundary-contracts`、HTTP consumer hardening、ChanCore 与共享 strategy evaluation library
+   已进入 stable/current code，不再作为待创建基础 change。
+2. 对账完成 `complete-current-day-realtime-candles` 与 `evolve-strategy-evaluation-contract` 的剩余验收门禁。
+3. 两个基础能力验收后，`extract-backtest-runtime` 与 `run-realtime-strategy-evaluation` 可独立实施；
+   默认先用确定性历史回放验证 evaluator，再接 realtime。
+4. Signal 稳定产生 PENDING AlertEvent 后才启动 `deliver-strategy-notifications`。
 
 ## 4. 当前代码事实
 
-- `apps/mist` 仍持有同步 signal-level backtest、legacy manual scan、strategy registry、Indicator 和
-  Chan 适配代码。
+- `apps/mist` 仍持有同步 signal-level backtest、legacy manual scan 和 strategy registry；公共 API
+  尚未切到独立 Backtest/Signal application。
 - candle/Redis foundation 已有部分实现和测试；`complete-current-day-realtime-candles` 的工作是按新
   契约审计、修正并完成 HIL，不是盲目重写。
-- `libs/transport`、`apps/backtest`、`apps/signal` 当前尚不存在。
-- Backtest/Signal change 中已勾选的多数项目是设计确认，不代表产品代码完成。
+- `libs/transport`、`libs/decimal`、`libs/chancore`、`libs/strategy`、`libs/backtest` 和 `libs/signal`
+  已存在；`apps/backtest`、`apps/signal` 尚不存在。
+- active change 中已勾选的设计、公共 library 或验证 task 不代表独立 runtime app 已完成。
 - safety stash 和旧 feature worktree 只作逐文件参考；不得整体恢复、继承旧 task 状态或直接移植
   过期 migration。
 
@@ -93,11 +92,12 @@ runtime             strategy-evaluation
 ## 6. 文档读取顺序
 
 1. 当前系统真相：`openspec/specs/`。
-2. 当前正在实施的唯一 change：`openspec/changes/<change>/`。
-3. 跨项目质量规则：`docs/project-quality-governance-guide.md`。
-4. 后端错误与风格：`docs/backend-error-handling-governance-guide.md`、
+2. 当前交付所聚焦的 change：`openspec/changes/<change>/`。
+3. 开发流程与规范导航：`docs/governance/README.md`。
+4. 跨项目质量规则：`docs/project-quality-governance-guide.md`。
+5. 后端错误与风格：`docs/backend-error-handling-governance-guide.md`、
    `docs/mist-backend-code-style-guide.md`。
-5. `openspec/changes/archive/` 只保存历史证据，不作为当前实现来源。
+6. `openspec/changes/archive/` 只保存历史证据，不作为当前实现来源。
 
 每次切换 change 时，只更新本文的“当前下一项”和真实代码状态；不得把 child design 的详细常量复制
 回本文。

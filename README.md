@@ -25,7 +25,7 @@ apps/
 libs/                   配置、共享数据、时区与工具
 deploy/database/        SQL migrations
 deploy/docker/          镜像内 Docker 契约
-docs/                   当前运行手册与集成说明
+docs/                   规范中心、living guides、当前运行手册与集成说明
 openspec/               产品规范、living roadmap 与历史归档
 tools/                  迁移、契约和维护脚本
 ```
@@ -92,6 +92,7 @@ Windows 用户会话
 
 ## 文档入口
 
+- [Mist 规范中心与开发手册](docs/governance/README.md)
 - [项目质量常驻治理指南](docs/project-quality-governance-guide.md)
 - [生产基线验证](docs/production-baseline-verification.md)
 - [跨仓库文档盘点](docs/documentation-audit-2026-07-22.md)

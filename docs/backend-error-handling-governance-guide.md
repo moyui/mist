@@ -35,9 +35,12 @@ OpenSpec change 修正；本指南本身不授权顺手改变已有公共契约�
 
 本指南与以下文档共同使用：
 
+- `docs/governance/README.md`：Mist 规范中心和按任务选择的最小文档集；
 - `docs/project-quality-governance-guide.md`：项目级质量、数据链路、数据库和发布门禁；
-- `standardize-service-boundary-contracts` change：HTTP/RPC 公共 envelope、request identity 和
-  transport owner；
+- `docs/governance/runtime-and-observability-governance-guide.md`：worker、realtime、health、metrics、
+  retry 和 HIL 的长期运行边界；
+- `service-boundary-contracts` stable spec 与 `libs/transport`：HTTP/RPC 公共 envelope、request
+  identity 和 transport owner；
 - 具体业务 change：定义其领域错误码、幂等语义、空结果、部分结果、超时和恢复策略。
 
 不得因为本指南建议统一错误处理，就在没有 OpenSpec 的情况下破坏现有 HTTP、RPC、OpenAPI、
@@ -288,7 +291,7 @@ Provider、datasource 和其他服务边界：
 禁止仅根据异常类名或“看起来可重试”就把未知错误映射为 `429/502/503`。
 
 公共 envelope、typed error data、requestId/correlationId 和 message 规则由
-`standardize-service-boundary-contracts` change 所有。本指南不复制其 TypeScript contract。
+`service-boundary-contracts` stable spec 与 `libs/transport` 所有。本指南不复制其 TypeScript contract。
 
 ## 9. 日志、持久化与可观测性
 

@@ -17,7 +17,10 @@
 
 本指南与以下文档共同使用：
 
+- `docs/governance/README.md`：Mist 规范中心和开发手册；
 - `docs/project-quality-governance-guide.md`：项目质量、公共契约、数据库和发布门禁；
+- `docs/governance/contract-and-data-governance-guide.md`：跨仓契约、identity/time、provider、missing
+  value、migration 和 fixture 边界；
 - `docs/backend-error-handling-governance-guide.md`：后端错误分类、传播和安全出口；
 - stable OpenSpec 与已确认的 active change：具体业务语义和公共契约。
 

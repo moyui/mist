@@ -20,6 +20,16 @@
 本指南是日常检查入口，不替代具体功能的 stable OpenSpec、active change、数据库 migration、
 provider 官方契约或生产证据。
 
+Mist 的统一规范导航、开发流程和 OpenSpec 提炼映射见
+[`governance/README.md`](./governance/README.md) 与
+[`governance/development-handbook.md`](./governance/development-handbook.md)。
+
+公共 HTTP/RPC/WS、provider/canonical/persistence 数据边界另外遵循
+[`governance/contract-and-data-governance-guide.md`](./governance/contract-and-data-governance-guide.md)。
+
+Realtime、worker、queue、health、metrics、deployment 和 HIL 另外遵循
+[`governance/runtime-and-observability-governance-guide.md`](./governance/runtime-and-observability-governance-guide.md)。
+
 Mist 后端的错误分类、TypeORM 异常传播、HTTP/RPC 出口以及 worker/realtime 失败边界，另外遵循
 [`backend-error-handling-governance-guide.md`](./backend-error-handling-governance-guide.md)。
 
@@ -418,6 +428,10 @@ mist/docs/project-quality-governance-guide.md
 ## 14. 维护规则
 
 - 新的跨项目治理结论先写入对应 stable spec，再更新本指南摘要。
+- 新 stable/active spec 中可跨 change 复用的规则按
+  [`governance/openspec-and-documentation-governance-guide.md`](./governance/openspec-and-documentation-governance-guide.md)
+  提炼，并登记到
+  [`governance/spec-derived-governance-map.md`](./governance/spec-derived-governance-map.md)。
 - 本指南只记录当前仍有效的规则；一次性执行记录留在 audit/change report。
 - 规则被替代时直接更新本指南，并在 active change 中说明 breaking impact。
 - 至少在重大跨仓发布、数据库 migration 或 OpenSpec 批量归档后复核一次。
