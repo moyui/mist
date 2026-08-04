@@ -81,7 +81,7 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
   TypeORM bootstrap 和 graceful shutdown；模式默认 off，gateway 不暴露 Signal route。
 - [x] 6.2 实现 typed scoped health/diagnostics 和 trigger/context/window/evaluation/episode/persistence、
   queue、heap/GC、Redis memory/AOF/drain throughput 低基数 monitoring/contracts。
-- [ ] 6.3 运行受影响仓库完整基线、真实 MySQL/Redis tests、strict OpenSpec、退役路径检索和
+- [x] 6.3 运行受影响仓库完整基线、真实 MySQL/Redis tests、strict OpenSpec、退役路径检索和
   `git diff --check`。
 - [ ] 6.4 以 shadow 完成支持交易时段 restart、missing/duplicate/conflict、listener-bound memory、
   1/5/15/30/60 timestamp seam 和 TDX/QMT realtime/historical quantity profile HIL。
