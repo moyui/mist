@@ -58,3 +58,16 @@
   `capture-realtime-provider-anomalies` 承接。
 - 生产默认仍保持 `off`；经 `mist-production` 审批的 5.4 HIL 窗口可显式切为 `shadow`。
   5.4 与 5.5 均完成前禁止切为 `on`。
+
+## 2026-08-04 真实样本离线回放增量
+
+- 新增 TDX run `30885030432` 与 QMT run `30882148246` 的脱敏 native fixture，并保留 evidence run id。
+- `realtime-live-sample-replay.spec.ts` 自动覆盖 schema-v2 wire、decoder、canonical、ingress、candle、
+  freeze 和 Redis compact record 命令；同时覆盖重复 frame 抑制、source-specific event time 与精确量额。
+- 定向相关基线：6 个 test suites、82 个 tests 全部通过；`npm run typecheck`、增量 ESLint 与
+  `git diff --check` 通过。实现 commit：`466ac84`。
+- `npm run test:ci` 全量基线在允许本机临时端口的环境中通过：106 个 test suites 通过、2 个跳过；
+  970 个 tests 通过、3 个跳过。沙箱内首次运行仍只有两个既有 HTTP integration suites 因
+  `listen EPERM 0.0.0.0` 失败，按同一源码原样在沙箱外重跑即通过。
+- 该回放不替代 task 5.4 的真实 Redis/AOF restart、历史对账或 protected-table post digest；生产模式仍
+  保持 `shadow`。

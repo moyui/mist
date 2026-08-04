@@ -123,7 +123,7 @@
   provider-float provenance；任一 source 未证明前不得切 `on`。
   - 2026-08-03 已完成 harness/workflow、TDX bridge artifact health 补充和非交易时段自动化准备，见
     `evidence/2026-08-03-shadow-hil-readiness.md`；尚无双 source 交易时段 artifact，父任务保持未完成。
-  - [ ] 5.4.1 移除 TDX 临时 `TDX_SUBSCRIBE_ALLOWLIST_ON_READY` 产品路径和 deploy 配置；candle HIL
+  - [x] 5.4.1 移除 TDX 临时 `TDX_SUBSCRIBE_ALLOWLIST_ON_READY` 产品路径和 deploy 配置；candle HIL
     只通过 datasource 既有 WebSocket 控制接口建立并在 `finally` 清理单条订阅，再从正常 backend
     diagnostics 验证 canonical snapshot 与 candle candidate。不得把该 HIL 编排描述成生产订阅生命周期。
     backend 启动/重连 authoritative `sync_subscriptions`、desired/active 收敛与 QMT journal startup
@@ -132,6 +132,8 @@
     `evidence/2026-08-04-trading-session-hil.md`；2026-08-04 下午 TDX/QMT subscribe 与 finally
     unsubscribe 均取得 passed artifact，且临时产品路径已从 backend/deploy 删除；QMT canonical
     snapshot/candidate 已观察；TDX native 没有 business time 后，项目负责人已接受 `capturedAt` 口径，
-    backend 实现见 `fe6f989`。该候选尚未部署并重跑 TDX candidate/sealed/restart/AOF HIL，故子任务保持
-    未完成。
+    backend 实现见 `fe6f989`。最终候选已由 deploy run `30884565901` 以 `shadow` 完整健康部署，TDX run
+    `30885030432` 观察到合法 canonical snapshot 和 target candidate。该子任务只拥有临时订阅编排清理与
+    canonical/candidate 证明，故现标记完成；target exact sealed、restart/AOF、historical compare 和 protected
+    post digest 仍由父任务 5.4 保持未完成。
 - [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。

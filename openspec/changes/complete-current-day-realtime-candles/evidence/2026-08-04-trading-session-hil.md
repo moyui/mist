@@ -3,34 +3,72 @@
 ## 结论
 
 本轮在 A 股上午及下午交易时段完成了最终候选版本部署、双 source 只读预检和 datasource WebSocket
-手动订阅验证，但完整 HIL **仍未通过**。下午证据已经把上午笼统的“没有 snapshot”拆成两个不同结果：
+手动订阅验证。最终 backend `3503b25143324f5520541bab657ad7d8b6d158af` 已由 deploy run
+`30884565901` 以 `shadow` 完整健康部署；模式没有切 `on`。
 
-- QMT 能返回合法 native/canonical snapshot，实时量额 profile 复核通过，Redis 中也存在 QMT exact closed
-  分区；但两次 full HIL 没有在 baseline 之后观察到目标标的的新 sealed candle，因此没有进入 restart/AOF、
-  historical compare 和 post protected digest。
-- TDX 能返回 fresh native/canonical snapshot，实时量额 profile 复核通过，但目标 runtime 的 native
-  `get_market_snapshot` 没有 `AsOf` 或其他 provider business time；canonical `eventTime=null`，按既定
-  fail-closed 契约不能进入 candle aggregator。
+- QMT run `30882148246` 返回合法 native/canonical snapshot，实时量额 profile 复核通过；此前 Redis
+  中也观察到 QMT exact closed 分区，但 full HIL 没有在 baseline 之后证明目标标的新增 exact sealed
+  field，不能用进程级 `sealedTotal` 或其他标的 key 代替。
+- TDX 改用 `capturedAt` 后，run `30885030432` 返回合法 native/canonical snapshot，并在 backend
+  diagnostics 中观察到 target `seriesCount=1`、`candidateCount=1`，不再卡在 event-time。该 run 等待两根
+  target exact sealed candle 超时，未进入 restart/AOF 和后续门禁。只读 run `30885813279` 枚举到目标
+  closed key，但 exact `HGETALL` 为空，因此 key 存在也不能算 sealed-record 证明。
 
-因此 task 5.4 保持未完成，模式保持 `shadow`，不得切 `on`。QMT historical 本次只取得 provider fill 的
-零量额样本，不能据此完成 historical quantity profile 门禁。
+因此手动订阅清理与双 source canonical/candidate 子门禁 5.4.1 已完成，父任务 5.4 仍未通过。目标标的
+exact sealed record、受控 restart/AOF、非零 historical quantity profile 和最终 protected-table post
+digest 必须保留为下一个真实交易窗口/收盘后门禁。生产继续保持 `shadow`，不得切 `on`。
 
-## HIL 后续评审决策（尚未复验）
+## 收盘前最终 TDX 候选复验
+
+- backend：`3503b25143324f5520541bab657ad7d8b6d158af`，包含 TDX `capturedAt` event-time 修复；
+  datasource：`e2094dd5ec527f18487b746549d875795f174520`；monitoring：
+  `881e593de6374e16329e446ca5694fb7aadece3e`。
+- 部署 run `30884565901` 完整健康通过。部署时发现 monitoring 可变 `latest` 只做本地 inspect、不主动
+  pull，曾误用旧镜像；最终固定 immutable tag `sha-881e593` 后通过。该部署问题不改变 candle 数据结论。
+- run `30884701054`：手动 subscribe/canonical 通过，但验收脚本在盘中错误强制要求 completed
+  historical bar；harness 后续改为“接口失败仍失败、盘中无 completed bar 记录 deferred”。
+- run `30885030432`：14:44:30 subscribe passed，14:50:21 finally unsubscribe passed；native
+  `Volume="1139801"`、`Amount="320452.16"`，没有 provider time；canonical
+  `eventTime=capturedAt="2026-08-04T14:44:37+08:00"`、`cumulativeVolume="113980100"`、
+  `cumulativeAmount="3204521600"`、`aggregationEligible=true`。target candidate 已观察，未观察 quantity
+  rejection；historical 记录为 `available=false, unavailableReason="no_completed_bar"`。
+- run `30885813279` 是不建立订阅、不重启的只读 preflight。它证明 exact key 枚举逻辑能定位
+  `mist:realtime:v1:day:20260804:tdx:9:candle:1m:closed`，同时证明该 Hash 当时没有 field；不得把该结果
+  写成 target candle 已封存。
+
+## 真实样本离线回放
+
+为避免下一交易日前阻塞代码验证，commit `466ac84` 固化了两个已脱敏真实样本：TDX run
+`30885030432` 与 QMT run `30882148246`。Jest 自动化逐个回放
+`schema-v2 wire -> provider decoder -> canonical snapshot -> ingress -> OpenCandleAggregator ->
+CandleFinalizer Redis MULTI commands`，并验证：
+
+- TDX `eventTime` 精确等于 envelope `capturedAt`；QMT `eventTime` 精确来自一致的 native
+  `time/stime`。
+- TDX `手/万元` 与 QMT `手/元` 分别生成预期的 canonical 股/元十进制字符串。
+- 同一 wire frame 重复回放得到 `duplicate_or_late`，不会二次修改 candle。
+- 单样本没有同日上一 committed baseline，所以首根区间 `v/a=null`；closing cumulative `cv/ca` 仍按
+  真实值进入 compact sealed record。这是契约预期，不伪造一分钟 delta。
+
+该自动化只证明确定性代码路径，不连接真实 Redis，也不证明 terminal ownership、真实订阅生命周期、
+AOF 重启恢复、目标 exact Hash 可见性、历史对账或 protected-table post digest。上述门禁仍归 task 5.4。
+
+## TDX event-time 评审决策与较早运行结果
 
 项目负责人根据同一 TDX native 样本确认：当前 runtime 没有可读取的 provider business-time 字段，
 V1 接受 datasource capture-time 口径。backend commit `fe6f989` 已删除 TDX native `AsOf` 读取，固定把
 schema-v2 decoder 已校验的 `capturedAt` 映射为 canonical `eventTime`；QMT native time 规则不变。
 
-这个提交当前只有定向测试、typecheck 和提交钩子证据，尚未部署或重跑交易时段 HIL。因此下文
-`f545c72`、`eventTime=null` 和“无 candidate”仍是当时生产运行的真实历史结果，不能改写成通过；必须用
-新 backend 候选取得 TDX candidate、sealed candle、restart/AOF 和 protected-table post digest 后才能
-完成 task 5.4。
+该提交随后已按上文最终候选完成部署并证明 canonical/candidate。下文 `f545c72`、`eventTime=null` 和
+“无 candidate”仍是修复前生产运行的真实历史结果，不能改写成通过；sealed candle、restart/AOF 和
+protected-table post digest 仍必须由后续真实 HIL 完成。
 
-这不是 quantity rejection：所有下午运行均为 `quantityProfileRejections=[]`，Redis AOF 为 enabled、last
-write `ok`，策略表没有因 shadow 流程写入。当前剩余阻塞是 TDX provider time 缺失、QMT 目标标的
-baseline 后无新 exact candle，以及尚未执行的完整 restart/AOF/protected-table 后置门禁。
+这些较早失败不是 quantity rejection：所有下午运行均为 `quantityProfileRejections=[]`，Redis AOF 为
+enabled、last write `ok`，策略表没有因 shadow 流程写入。TDX provider-time 缺失已由最终候选采用
+`capturedAt` 解决；当前剩余阻塞是双 source 目标标的 baseline 后 exact sealed 证明，以及尚未执行的完整
+restart/AOF/historical/protected-table 后置门禁。
 
-## 下午手动订阅与 provider 数据证据
+## 较早的下午手动订阅与 provider 数据证据
 
 ### 固定候选与部署
 
