@@ -44,7 +44,7 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
   out-of-order discard 和 duplicate/restart/disconnect tests；不增加持续 reconciler、retry 或 batch。
 - [x] 3.4 删除 legacy `StrategyScanController/Service`、scan DTO/result、Nest/schedule registration、
   OpenAPI 和 tests；证明不存在 manual Signal RPC、第二套 run lifecycle 或隐式 fallback。
-- [ ] 3.5 与独立前端项目建立 breaking release gate，删除 manual live-scan consumer；本 change 不直接
+- [x] 3.5 与独立前端项目建立 breaking release gate，删除 manual live-scan consumer；本 change 不直接
   修改前端代码。
 
 ## 4. Signal Runtime 与 Evaluation
