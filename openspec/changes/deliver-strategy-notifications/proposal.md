@@ -12,6 +12,8 @@
 - 保持策略规则和 Signal 生成归 Mist strategy runtime 所有；AstrBot/WeCom 等渠道不得执行策略。
 - 将 delivery status 与 operator acknowledgement 分开。
 - 不复用 `apps/schedule` 作为 notification owner。
+- 显式移除 stable capability 中“`apps/schedule` 承载 strategy scan jobs”的遗留 requirement；归档同步时
+  重写其 Purpose，保留 delivery result、Skills consumer 和 acknowledgement 契约。
 - 首批渠道、消费方式、并发 claim、超时、失败语义、幂等、重试、dead-letter、凭据和 HIL 均为
   实施前逐项评审项；本 proposal 不预先授权新增数据库字段或严格状态机。
 
@@ -23,7 +25,8 @@
 
 ### Modified Capabilities
 
-- `strategy-scheduler-alert-delivery`: 以独立 notification worker 替代 schedule/临时外部消费者的投递所有权。
+- `strategy-scheduler-alert-delivery`: 删除 schedule scan owner 遗留语义；保留 delivery result、Skills
+  consumer 和 acknowledgement 契约，并由独立 notification worker 接管主动投递。
 - `monitoring-health-alerts`: 增加 notification consumption、channel result 和 delivery failure 观测。
 - `windows-docker-appliance`: 仅在渠道和运行时评审确认后增加 notification worker 部署边界。
 

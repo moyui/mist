@@ -31,7 +31,7 @@ lifecycle state. Existing definition content SHALL remain read-only.
 - **THEN** the workspace MUST show definition name, status, current version, target universe, period, source,
   signal kind and timestamps where available
 
-#### Scenario: A strategy definition is created
+#### Scenario: Strategy definition is saved
 
 - **WHEN** an operator submits valid strategy metadata, one rule and one signal kind
 - **THEN** the frontend MUST call only the strategy create API

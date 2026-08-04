@@ -139,7 +139,7 @@ exactly one version with each new definition and SHALL NOT expose a definition-c
 - **AND** the definition MUST reference that version as its current version
 - **AND** all three writes MUST commit or roll back together
 
-#### Scenario: A strategy content update is attempted
+#### Scenario: A strategy is updated
 
 - **WHEN** a client attempts to change an existing definition's metadata, rule or signal kind
 - **THEN** the backend MUST NOT expose `PATCH /v1/strategies/:id` or another content-update route

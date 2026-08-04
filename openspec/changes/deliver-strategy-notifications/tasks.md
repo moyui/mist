@@ -5,7 +5,9 @@
   1.2–5.4 全部暂停，不创建 notification 实施 worktree，不修改代码/schema/deploy/monitoring，不申请或
   接入生产渠道凭据；seeded fixture、旧 manual scan 或字段存在只能用于未来开发，不能满足恢复门禁。
 - [ ] 1.2 恢复后重新审计 AlertEvent/Signal schema、delivery APIs、stable specs、真实 producer evidence、
-  notification worktree 和真实部署状态；不得把当前审计结论视为届时仍然有效。
+  notification worktree 和真实部署状态；尤其核对 stable Purpose 与
+  `Schedule Shall Not Own Public Strategy APIs` 正文中的 schedule scan owner 遗留语义，不得把当前
+  审计结论视为届时仍然有效。
 - [ ] 1.3 建立 AlertEvent → claim → template → channel → result → monitoring/deploy 影响链。
 
 ## 2. 渠道与消费语义逐项评审门禁
@@ -15,7 +17,8 @@
 - [ ] 2.3 向项目负责人评审 timeout、幂等、retry/backoff、dead-letter、人工重放和部分成功语义。
 - [ ] 2.4 向项目负责人评审现有 AlertEvent schema 是否足够及任何 migration/兼容/回滚方案。
 - [ ] 2.5 向项目负责人评审 notification worker app、queue/Redis、secrets、health 和 deploy topology。
-- [ ] 2.6 将全部接受结论写回 design/specs；未确认前不得实现 worker、schema 或渠道 adapter。
+- [ ] 2.6 将全部接受结论写回 design/specs；必须使用 REMOVED delta 删除 schedule scan owner 遗留
+  requirement，并约束归档同步时重写 stable Purpose；未确认前不得实现 worker、schema 或渠道 adapter。
 
 ## 3. Notification Core 与 Adapter
 
@@ -32,7 +35,9 @@
 
 ## 5. 验证与真实渠道 HIL
 
-- [ ] 5.1 运行受影响仓库完整基线、真实 MySQL/queue、strict OpenSpec 和 `git diff --check`。
+- [ ] 5.1 运行受影响仓库完整基线、真实 MySQL/queue、strict OpenSpec 和 `git diff --check`；检索 active
+  change 与 living spec，确认 schedule scan owner 语义不会继续生效。
 - [ ] 5.2 使用受控测试接收端验证 dry-run/shadow、duplicate 和 result writeback。
 - [ ] 5.3 在凭据脱敏条件下完成首批真实渠道 success/failure/restart HIL。
-- [ ] 5.4 向项目负责人逐项审阅 HIL、retry/partial-failure 和 rollback evidence 后才归档。
+- [ ] 5.4 向项目负责人逐项审阅 HIL、retry/partial-failure、rollback evidence，以及 stable Purpose/
+  requirement 同步结果后才归档。
