@@ -1,0 +1,31 @@
+## 1. Contract handoff gate
+
+- [ ] 1.1 Record `mist-fe` branch/HEAD/dirty/worktree state and preserve unrelated work; confirm this implementation is isolated from backend lifecycle branches.
+- [ ] 1.2 Verify `integrate-production-realtime-subscription-lifecycle` task 1.4 is complete and obtain the approved OpenAPI, success/error examples, state table and SHA-256 values; pause if any required field is still provisional.
+- [ ] 1.3 Copy the approved artifacts into `__fixtures__/contracts/realtime-subscriptions/` with SHA-256 sidecars and add offline digest tests that fail on one-sided changes.
+
+## 2. Typed API client
+
+- [ ] 2.1 Replace legacy realtime source value `mqmt` with exact backend `qmt` in affected frontend types and fixtures; add negative tests proving `mqmt` is not silently accepted or remapped.
+- [ ] 2.2 Add runtime-checked types/client methods for bounded `GET/POST /v1/realtime-subscriptions` through `/api/mist`, including cursor/nullability, `sourceCapacities`, provider evidence, convergence and expected business rejection codes.
+- [ ] 2.3 Add one-code `GET /v1/securities/:code/sources` client preserving `formatCode`, filtering only enabled `tdx|qmt` for presentation without all-Security or N+1 discovery.
+- [ ] 2.4 Add existing Security activate/deactivate PUT clients using the data-returning envelope parser for HTTP 200/`data=null`; distinguish malformed envelope, expected rejection, validation and dependency/network failure.
+- [ ] 2.5 Add client contract tests for exact paths, encoded canonical code, query bounds, `active=null`, unknown enum/shape rejection, capacity summary, PUT null data, request ID and fixture examples.
+
+## 3. Operator page
+
+- [ ] 3.1 Add an operator-visible navigation entry and `/settings/realtime-subscriptions` route with loading, empty, malformed-contract and dependency-error boundaries.
+- [ ] 3.2 Implement explicit cursor pagination without unbounded fetch, inferred larger limit or stale page response overwrite.
+- [ ] 3.3 Implement new ACTIVE STOCK initialization with exact `tdx|qmt` source/provider symbol input and read-only routing identity after success.
+- [ ] 3.4 Implement existing binding as canonical-code input, one-Security sources lookup, read-only `formatCode` provider-symbol display and ID-only POST.
+- [ ] 3.5 Render Security status/computed desired separately from `active=true|false|null`, convergence, bounded reason and distinct TDX native-list/QMT durable-registry evidence.
+- [ ] 3.6 Implement per-row pending/conflicting-action guard, stale-response fencing and bounded inventory refresh after successful POST/PUT.
+- [ ] 3.7 Use pagination-independent `sourceCapacities.activeAssignmentCount` for interaction guard while preserving backend `REALTIME_ACTIVE_CAPACITY_REACHED` as race authority.
+- [ ] 3.8 Add Chinese guidance for intraday pending, nighttime activation, deferred removal, drifted/unknown and QMT blocked recovery; expose no desired checkbox, raw control, assignment delete, source switch or recovery mutation.
+
+## 4. Frontend validation and handoff
+
+- [ ] 4.1 Add API/component tests for both initialization modes, visible navigation, cursor pages, global capacity independent of current page, immutable fields, concurrent PUT prevention, stale response fencing and every convergence/evidence state.
+- [ ] 4.2 Run `pnpm lint`, `pnpm typecheck`, repository unit tests and production build; report pre-existing failures separately and do not bypass the actual lint-staged contract.
+- [ ] 4.3 Test against the matched backend contract/image, record frontend/backend SHAs and fixture digests, and verify no request reaches raw datasource control paths.
+- [ ] 4.4 Reconcile every requirement/task, run `git diff --check` and strict OpenSpec validation, then hand off the isolated `mist-fe` commit/branch without modifying lifecycle OpenSpec or backend repositories.
