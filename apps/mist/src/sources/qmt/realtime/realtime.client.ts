@@ -5,6 +5,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DataSource } from '@app/shared-data';
 import WebSocket from 'ws';
 import {
   decodeRealtimeNativeMapMessage,
@@ -23,6 +24,7 @@ import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quan
 import { convertQmtNativeSnapshot } from './native-snapshot.converter';
 import { QmtRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
 import { QmtRealtimeStore } from './realtime.store';
+import { RealtimeSubscriptionRuntimeRegistry } from '../../../realtime-subscriptions/realtime-subscription-runtime.registry';
 
 type ControlRequest =
   | { type: 'sync_subscriptions'; symbols: string[] }
@@ -55,6 +57,7 @@ export class QmtRealtimeClient
   private shuttingDown = false;
   private transportReady = false;
   private pendingControl: PendingControl | null = null;
+  private connectionId = 0;
 
   constructor(
     config: ConfigService,
@@ -65,6 +68,8 @@ export class QmtRealtimeClient
     private readonly ingress?: RealtimeSnapshotIngressService,
     @Optional()
     private readonly observability?: RealtimeMarketObservabilityService,
+    @Optional()
+    private readonly subscriptionRuntime?: RealtimeSubscriptionRuntimeRegistry,
   ) {
     const baseUrl =
       config.get<string>('QMT_BASE_URL') ?? 'http://127.0.0.1:9002';
@@ -83,6 +88,7 @@ export class QmtRealtimeClient
   }
 
   onModuleInit(): void {
+    this.subscriptionRuntime?.registerControl(DataSource.QMT, this);
     this.connect();
   }
 
@@ -91,6 +97,7 @@ export class QmtRealtimeClient
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.settleDisconnected();
+    this.subscriptionRuntime?.unregisterControl(DataSource.QMT, this);
     this.ws?.close();
   }
 
@@ -183,6 +190,7 @@ export class QmtRealtimeClient
 
   private connect(): void {
     if (this.shuttingDown) return;
+    const connectionId = ++this.connectionId;
     this.ws = new WebSocket(this.wsUrl);
     this.ws.on('open', () => {
       this.transportReady = false;
@@ -200,6 +208,10 @@ export class QmtRealtimeClient
     });
     this.ws.on('close', () => {
       this.transportReady = false;
+      this.subscriptionRuntime?.observeDisconnected(
+        DataSource.QMT,
+        connectionId,
+      );
       this.store.markDisconnected();
       this.settleDisconnected();
       if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
@@ -259,6 +271,10 @@ export class QmtRealtimeClient
     this.transportReady = true;
     this.store.markConnected();
     this.store.clearError();
+    this.subscriptionRuntime?.observeAcceptedReady(
+      DataSource.QMT,
+      this.connectionId,
+    );
   }
 
   private handleSnapshot(message: Record<string, unknown>): void {
@@ -292,7 +308,7 @@ export class QmtRealtimeClient
         );
         continue;
       }
-      const allowlistEntry = this.allowlist.resolve(providerSymbol);
+      const allowlistEntry = this.allowlist.resolveEffective(providerSymbol);
       if (!allowlistEntry) {
         this.store.recordReject(
           'symbolNotAuthorized',

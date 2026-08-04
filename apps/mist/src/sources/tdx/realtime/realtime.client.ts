@@ -5,6 +5,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DataSource } from '@app/shared-data';
 import WebSocket from 'ws';
 import {
   decodeRealtimeNativeMapMessage,
@@ -23,6 +24,7 @@ import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quan
 import { convertTdxNativeSnapshot } from './native-snapshot.converter';
 import { TdxRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
 import { TdxRealtimeStore } from './realtime.store';
+import { RealtimeSubscriptionRuntimeRegistry } from '../../../realtime-subscriptions/realtime-subscription-runtime.registry';
 
 type ControlRequest =
   | { type: 'sync_subscriptions'; symbols: string[] }
@@ -63,6 +65,7 @@ export class TdxRealtimeClient
   private shuttingDown = false;
   private transportReady = false;
   private pendingControl: PendingControl | null = null;
+  private connectionId = 0;
 
   constructor(
     config: ConfigService,
@@ -73,6 +76,8 @@ export class TdxRealtimeClient
     private readonly ingress?: RealtimeSnapshotIngressService,
     @Optional()
     private readonly observability?: RealtimeMarketObservabilityService,
+    @Optional()
+    private readonly subscriptionRuntime?: RealtimeSubscriptionRuntimeRegistry,
   ) {
     const baseUrl =
       config.get<string>('TDX_BASE_URL') ?? 'http://127.0.0.1:9001';
@@ -91,6 +96,7 @@ export class TdxRealtimeClient
   }
 
   onModuleInit(): void {
+    this.subscriptionRuntime?.registerControl(DataSource.TDX, this);
     this.connect();
   }
 
@@ -99,6 +105,7 @@ export class TdxRealtimeClient
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.settleDisconnected();
+    this.subscriptionRuntime?.unregisterControl(DataSource.TDX, this);
     this.ws?.close();
   }
 
@@ -191,6 +198,7 @@ export class TdxRealtimeClient
 
   private connect(): void {
     if (this.shuttingDown) return;
+    const connectionId = ++this.connectionId;
     this.ws = new WebSocket(this.wsUrl);
     this.ws.on('open', () => {
       this.transportReady = false;
@@ -208,6 +216,10 @@ export class TdxRealtimeClient
     });
     this.ws.on('close', () => {
       this.transportReady = false;
+      this.subscriptionRuntime?.observeDisconnected(
+        DataSource.TDX,
+        connectionId,
+      );
       this.store.markDisconnected();
       this.settleDisconnected();
       if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
@@ -267,6 +279,10 @@ export class TdxRealtimeClient
     this.transportReady = true;
     this.store.markConnected();
     this.store.clearError();
+    this.subscriptionRuntime?.observeAcceptedReady(
+      DataSource.TDX,
+      this.connectionId,
+    );
   }
 
   private handleSnapshot(message: Record<string, unknown>): void {
@@ -300,7 +316,7 @@ export class TdxRealtimeClient
       );
       return;
     }
-    const allowlistEntry = this.allowlist.resolve(providerSymbol);
+    const allowlistEntry = this.allowlist.resolveEffective(providerSymbol);
     if (!allowlistEntry) {
       this.store.recordReject(
         'symbolNotAuthorized',

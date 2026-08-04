@@ -20,6 +20,10 @@ export class TdxRealtimeAllowlistResolver implements OnModuleInit {
     return this.shared.resolve(DataSource.TDX, formatCode);
   }
 
+  resolveEffective(formatCode: string): AllowlistEntry | null {
+    return this.shared.resolveEffective(DataSource.TDX, formatCode);
+  }
+
   isAuthorized(formatCode: string): boolean {
     return this.shared.isAuthorized(DataSource.TDX, formatCode);
   }

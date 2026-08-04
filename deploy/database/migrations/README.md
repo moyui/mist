@@ -303,3 +303,49 @@ migration 014 together with the matching backend and frontend release; do not
 run old and new application versions against the same schema. Take and verify
 a backup first. Rollback requires restoring that backup together with the
 previous backend/frontend SHAs; application-image rollback alone is invalid.
+
+## Realtime subscription assignment migration
+
+Migration `015_add_realtime_subscription_assignments.sql` is authorized by the
+2026-08-04 lifecycle preflight that proved production migration history through
+014, the exact `securities` and `security_source_configs` schema, 9 Securities,
+13 source configs, no orphan/duplicate/invalid enabled realtime config, and no
+existing assignment table. Immediately before deployment, take a verified
+backup and run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/audit-realtime-subscription-assignments.sql
+```
+
+Stop if migration history no longer ends at 014, the target assignment table
+already exists in an unknown shape, or the named source-config composite unique
+exists with different columns. Do not import legacy env allowlists, infer a
+realtime source from historical priority, add a desired column, or create
+assignment rows in this migration.
+
+Migration 015 first adds named unique
+`uq_security_source_configs_id_security(id, security_id)` and source-local lock
+index `idx_security_source_configs_source(source)` in one ALTER, then creates
+`realtime_subscription_assignments`. Each Security and source config is unique;
+the composite source-config FK proves the config belongs to the same Security.
+All assignment FKs use `RESTRICT` for update/delete.
+
+MySQL DDL commits per table. If the first ALTER commits and CREATE TABLE fails,
+fix the environmental cause and rerun 015: the exact partial state is accepted
+and the table is created. If the exact post-state exists but the runner did not
+record the migration, rerun records 015 after postflight. Any differently named,
+partial or mismatched schema fails closed and requires a new audited
+repair-forward decision; do not edit 015 after it has been applied.
+
+After the migration runner records 015, run:
+
+```bash
+mysql -h <host> -P <port> -u <user> -p <database> \
+  < deploy/database/readback-realtime-subscription-assignments.sql
+```
+
+Every `*_ready` value must be 1; orphan/cross-Security and ineligible counts must
+be zero. Retain the complete ledger, readback and `SHOW CREATE TABLE` output.
+Application rollback leaves migration 015 and assignment rows in place and
+sets lifecycle mode off. It must not drop the table or delete routing facts.

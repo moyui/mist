@@ -15,6 +15,10 @@ import { DataSource } from '../enums/data-source.enum';
 @Index('uq_security_source_configs_security_source', ['securityId', 'source'], {
   unique: true,
 })
+@Index('uq_security_source_configs_id_security', ['id', 'securityId'], {
+  unique: true,
+})
+@Index('idx_security_source_configs_source', ['source'])
 export class SecuritySourceConfig {
   @PrimaryGeneratedColumn()
   id!: number;

@@ -70,4 +70,18 @@ export class RealtimeSnapshotIngressService {
   readSeries(securityId: number, source: RealtimeSource) {
     return this.latestBySeries.get(marketSeriesKey(securityId, source)) ?? null;
   }
+
+  removeSeries(securityId: number, source: RealtimeSource): void {
+    this.latestBySeries.delete(marketSeriesKey(securityId, source));
+    if (this.latestBySecurity.get(securityId)?.source === source) {
+      this.latestBySecurity.delete(securityId);
+    }
+    if (
+      ![...this.latestBySeries.keys()].some((key) =>
+        key.startsWith(`${securityId}:`),
+      )
+    ) {
+      this.tradingDayBySecurity.delete(securityId);
+    }
+  }
 }

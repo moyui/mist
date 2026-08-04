@@ -7,6 +7,7 @@ import { KExtensionTdx } from './k-extension-tdx.entity';
 import { K } from './k.entity';
 import { SecuritySourceConfig } from './security-source-config.entity';
 import { Security } from './security.entity';
+import { RealtimeSubscriptionAssignment } from './realtime-subscription-assignment.entity';
 import { StrategyAlertEvent } from './strategy-alert-event.entity';
 import { StrategyDefinition } from './strategy-definition.entity';
 import { StrategySignal } from './strategy-signal.entity';
@@ -15,6 +16,7 @@ import { StrategyVersion } from './strategy-version.entity';
 const creationTargets = [
   Security,
   SecuritySourceConfig,
+  RealtimeSubscriptionAssignment,
   K,
   KExtensionEf,
   KExtensionTdx,
@@ -30,6 +32,7 @@ const creationTargets = [
 const mutableTargets = [
   Security,
   SecuritySourceConfig,
+  RealtimeSubscriptionAssignment,
   K,
   KExtensionEf,
   KExtensionTdx,

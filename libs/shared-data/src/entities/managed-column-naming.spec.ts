@@ -4,12 +4,15 @@ import { KExtensionQmt } from './k-extension-qmt.entity';
 import { KExtensionTdx } from './k-extension-tdx.entity';
 import { K } from './k.entity';
 import { SecuritySourceConfig } from './security-source-config.entity';
+import { RealtimeSubscriptionAssignment } from './realtime-subscription-assignment.entity';
 
 describe('managed physical column naming metadata', () => {
   const storage = getMetadataArgsStorage();
 
   it.each([
     [SecuritySourceConfig, 'formatCode', 'format_code'],
+    [RealtimeSubscriptionAssignment, 'securityId', 'security_id'],
+    [RealtimeSubscriptionAssignment, 'sourceConfigId', 'source_config_id'],
     [K, 'securityId', 'security_id'],
     [KExtensionEf, 'changePct', 'change_pct'],
     [KExtensionEf, 'changeAmt', 'change_amt'],

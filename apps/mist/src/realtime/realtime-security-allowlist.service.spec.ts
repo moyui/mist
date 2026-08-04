@@ -86,4 +86,53 @@ describe('RealtimeSecurityAllowlistService', () => {
       service.initialize(DataSource.QMT, 'QMT_REALTIME_ALLOWLIST'),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('starts empty in lifecycle on mode and separates assigned control from effective ingress', async () => {
+    const { repository } = repositoryReturning([]);
+    const service = new RealtimeSecurityAllowlistService(
+      new ConfigService({
+        REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
+        TDX_REALTIME_ALLOWLIST: '',
+      }),
+      repository,
+    );
+
+    await service.initialize(DataSource.TDX, 'TDX_REALTIME_ALLOWLIST');
+    expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    expect(service.list(DataSource.TDX)).toEqual([]);
+
+    service.replaceAssigned(DataSource.TDX, [
+      { formatCode: '600030.SH', securityId: 7 },
+      { formatCode: '300502.SZ', securityId: 8 },
+    ]);
+    expect(service.resolve(DataSource.TDX, '300502.SZ')).toEqual({
+      formatCode: '300502.SZ',
+      securityId: 8,
+    });
+    expect(service.resolveEffective(DataSource.TDX, '300502.SZ')).toBeNull();
+
+    service.replaceEffective(DataSource.TDX, ['600030.SH', 'UNASSIGNED.SH']);
+    expect(service.list(DataSource.TDX)).toEqual([
+      { formatCode: '600030.SH', securityId: 7 },
+    ]);
+    expect(service.resolveEffective(DataSource.TDX, '300502.SZ')).toBeNull();
+
+    expect(service.replaceEffective(DataSource.TDX, [])).toEqual([
+      { formatCode: '600030.SH', securityId: 7 },
+    ]);
+  });
+
+  it('rejects one provider symbol mapped to different assigned securities', () => {
+    const { repository } = repositoryReturning([]);
+    const service = new RealtimeSecurityAllowlistService(
+      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      repository,
+    );
+    expect(() =>
+      service.replaceAssigned(DataSource.QMT, [
+        { formatCode: '300502.SZ', securityId: 7 },
+        { formatCode: '300502.SZ', securityId: 8 },
+      ]),
+    ).toThrow(BadRequestException);
+  });
 });

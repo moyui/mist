@@ -4,17 +4,21 @@ import { SecurityService } from './security.service';
 import {
   Security,
   SecuritySourceConfig,
+  RealtimeSubscriptionAssignment,
   SecurityStatus,
   SecurityType,
 } from '@app/shared-data';
 import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { DataSource } from '@app/shared-data';
+import { DataSource as TypeOrmDataSource } from 'typeorm';
+import { HttpBusinessRejection } from '@app/transport/http';
 import {
   BadRequestException,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { RealtimeSubscriptionLifecycleCoordinator } from '../realtime-subscriptions/realtime-subscription-lifecycle.coordinator';
 
 describe('SecurityService', () => {
   let service: SecurityService;
@@ -27,17 +31,73 @@ describe('SecurityService', () => {
     create: jest.fn((entity) => entity),
   };
 
+  const mockAssignmentRepository = {
+    findOne: jest.fn(),
+  };
+
+  const mockLifecycleCoordinator = {
+    refreshDesiredState: jest.fn().mockResolvedValue(undefined),
+    requestIncrementalReconciliation: jest.fn(),
+  };
+
+  const mockManager = {
+    findOne: jest.fn((entity, options) => {
+      const withoutLock = { ...options };
+      delete withoutLock.lock;
+      if (entity === Security) {
+        return mockSecurityRepository.findOne(withoutLock);
+      }
+      if (entity === SecuritySourceConfig) {
+        return mockSourceConfigRepository.findOne(withoutLock);
+      }
+      if (entity === RealtimeSubscriptionAssignment) {
+        return mockAssignmentRepository.findOne(withoutLock);
+      }
+      throw new Error('Unexpected entity');
+    }),
+    create: jest.fn((entity, value) => {
+      if (entity === Security) return mockSecurityRepository.create(value);
+      if (entity === SecuritySourceConfig) {
+        return mockSourceConfigRepository.create(value);
+      }
+      return value;
+    }),
+    save: jest.fn((value) => {
+      if (value && 'source' in value) {
+        return mockSourceConfigRepository.save(value);
+      }
+      return mockSecurityRepository.save(value);
+    }),
+    delete: jest.fn((entity, criteria) => {
+      if (entity === SecuritySourceConfig) {
+        return mockSourceConfigRepository.delete(criteria);
+      }
+      throw new Error('Unexpected delete entity');
+    }),
+    getRepository: jest.fn(),
+    update: jest.fn(),
+  };
+
+  const mockTypeOrmDataSource = {
+    transaction: jest.fn((callback) => callback(mockManager)),
+  };
+
   const mockSourceConfigRepository = {
     findOne: jest.fn(),
     find: jest.fn(),
     save: jest.fn(),
     create: jest.fn((entity) => entity),
+    delete: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SecurityService,
+        {
+          provide: TypeOrmDataSource,
+          useValue: mockTypeOrmDataSource,
+        },
         {
           provide: getRepositoryToken(Security),
           useValue: mockSecurityRepository,
@@ -46,6 +106,14 @@ describe('SecurityService', () => {
           provide: getRepositoryToken(SecuritySourceConfig),
           useValue: mockSourceConfigRepository,
         },
+        {
+          provide: getRepositoryToken(RealtimeSubscriptionAssignment),
+          useValue: mockAssignmentRepository,
+        },
+        {
+          provide: RealtimeSubscriptionLifecycleCoordinator,
+          useValue: mockLifecycleCoordinator,
+        },
       ],
     }).compile();
 
@@ -53,6 +121,7 @@ describe('SecurityService', () => {
     mockSecurityRepository.create.mockImplementation((entity) => entity);
     mockSourceConfigRepository.create.mockImplementation((entity) => entity);
     mockSourceConfigRepository.findOne.mockResolvedValue(null);
+    mockAssignmentRepository.findOne.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -357,6 +426,76 @@ describe('SecurityService', () => {
         }),
       );
     });
+
+    it('rejects provider identity changes after assignment', async () => {
+      const security = { id: 1, code: '600000' } as Security;
+      const sourceConfig = {
+        id: 10,
+        securityId: 1,
+        source: DataSource.TDX,
+        formatCode: '600000.SH',
+        priority: 10,
+        enabled: true,
+      } as SecuritySourceConfig;
+      mockSecurityRepository.findOne.mockResolvedValue(security);
+      mockSourceConfigRepository.findOne.mockResolvedValue(sourceConfig);
+      mockAssignmentRepository.findOne.mockResolvedValue(
+        Object.assign(new RealtimeSubscriptionAssignment(), {
+          id: 8,
+          securityId: 1,
+          sourceConfigId: 10,
+        }),
+      );
+
+      const result = await service.addSecuritySource({
+        code: '600000',
+        source: DataSource.TDX,
+        formatCode: '600001.SH',
+      });
+
+      expect(result).toBeInstanceOf(HttpBusinessRejection);
+      expect(result).toMatchObject({
+        code: 'REALTIME_SOURCE_LOCKED',
+        data: { assignmentId: 8, securityId: 1, securitySourceConfigId: 10 },
+      });
+      expect(mockSourceConfigRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('permits priority-only updates after assignment', async () => {
+      const security = { id: 1, code: '600000' } as Security;
+      const sourceConfig = {
+        id: 10,
+        securityId: 1,
+        source: DataSource.TDX,
+        formatCode: '600000.SH',
+        priority: 10,
+        enabled: true,
+      } as SecuritySourceConfig;
+      mockSecurityRepository.findOne.mockResolvedValue(security);
+      mockSourceConfigRepository.findOne.mockResolvedValue(sourceConfig);
+      mockAssignmentRepository.findOne.mockResolvedValue(
+        Object.assign(new RealtimeSubscriptionAssignment(), {
+          id: 8,
+          securityId: 1,
+          sourceConfigId: 10,
+        }),
+      );
+
+      const result = await service.addSecuritySource({
+        code: '600000',
+        source: DataSource.TDX,
+        priority: 20,
+      });
+
+      expect(result).toBe(security);
+      expect(mockSourceConfigRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          formatCode: '600000.SH',
+          priority: 20,
+          enabled: true,
+        }),
+      );
+    });
   });
 
   describe('findSecurityByCode', () => {
@@ -532,6 +671,10 @@ describe('SecurityService', () => {
 
   describe('deactivateSecurity', () => {
     it('should deactivate existing stock', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue({
+        id: 1,
+        code: '000001',
+      } as Security);
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
       await service.deactivateSecurity('000001.SH');
@@ -540,9 +683,40 @@ describe('SecurityService', () => {
         { code: '000001' },
         { status: SecurityStatus.SUSPENDED },
       );
+      expect(
+        mockLifecycleCoordinator.requestIncrementalReconciliation,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('refreshes desired state without requesting provider convergence for an assigned stock', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue({
+        id: 1,
+        code: '000001',
+      } as Security);
+      mockAssignmentRepository.findOne.mockResolvedValue(
+        Object.assign(new RealtimeSubscriptionAssignment(), {
+          id: 8,
+          securityId: 1,
+          sourceConfigId: 10,
+          sourceConfig: Object.assign(new SecuritySourceConfig(), {
+            source: DataSource.QMT,
+          }),
+        }),
+      );
+      mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
+
+      await service.deactivateSecurity('000001.SH');
+
+      expect(mockLifecycleCoordinator.refreshDesiredState).toHaveBeenCalledWith(
+        DataSource.QMT,
+      );
+      expect(
+        mockLifecycleCoordinator.requestIncrementalReconciliation,
+      ).not.toHaveBeenCalled();
     });
 
     it('should throw not found exception if stock does not exist', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue(null);
       mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
 
       await expect(service.deactivateSecurity('000001.SH')).rejects.toThrow(
@@ -553,22 +727,145 @@ describe('SecurityService', () => {
 
   describe('activateSecurity', () => {
     it('should activate existing stock', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue({
+        id: 1,
+        code: '000001',
+        status: SecurityStatus.SUSPENDED,
+      } as Security);
       mockSecurityRepository.update.mockResolvedValue({ affected: 1 });
 
       await service.activateSecurity('000001.SH');
 
       expect(mockSecurityRepository.update).toHaveBeenCalledWith(
-        { code: '000001' },
+        { id: 1 },
         { status: SecurityStatus.ACTIVE },
       );
     });
 
     it('should throw not found exception if stock does not exist', async () => {
-      mockSecurityRepository.update.mockResolvedValue({ affected: 0 });
+      mockSecurityRepository.findOne.mockResolvedValue(null);
 
       await expect(service.activateSecurity('000001.SH')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('rejects assigned activation when source capacity is full', async () => {
+      mockSecurityRepository.findOne.mockResolvedValue({
+        id: 1,
+        code: '000001',
+        status: SecurityStatus.SUSPENDED,
+      } as Security);
+      mockAssignmentRepository.findOne.mockResolvedValue(
+        Object.assign(new RealtimeSubscriptionAssignment(), {
+          id: 8,
+          securityId: 1,
+          sourceConfigId: 10,
+          sourceConfig: Object.assign(new SecuritySourceConfig(), {
+            source: DataSource.QMT,
+          }),
+        }),
+      );
+      const lockBuilder = {
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      const countBuilder = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(5),
+      };
+      mockManager.getRepository.mockImplementation((entity) => ({
+        createQueryBuilder: () =>
+          entity === SecuritySourceConfig ? lockBuilder : countBuilder,
+      }));
+
+      const result = await service.activateSecurity('000001');
+
+      expect(result).toBeInstanceOf(HttpBusinessRejection);
+      expect(result).toMatchObject({
+        code: 'REALTIME_ACTIVE_CAPACITY_REACHED',
+        data: { source: DataSource.QMT, activeAssignmentCount: 5, limit: 5 },
+      });
+      expect(lockBuilder.setLock).toHaveBeenCalledWith('pessimistic_write');
+      expect(mockManager.update).not.toHaveBeenCalled();
+      expect(
+        mockLifecycleCoordinator.requestIncrementalReconciliation,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('requests add-only convergence only after an assigned activation commits', async () => {
+      const security = {
+        id: 1,
+        code: '000001',
+        status: SecurityStatus.SUSPENDED,
+      } as Security;
+      mockSecurityRepository.findOne.mockResolvedValue(security);
+      mockAssignmentRepository.findOne.mockResolvedValue(
+        Object.assign(new RealtimeSubscriptionAssignment(), {
+          id: 8,
+          securityId: 1,
+          sourceConfigId: 10,
+          sourceConfig: Object.assign(new SecuritySourceConfig(), {
+            source: DataSource.TDX,
+          }),
+        }),
+      );
+      const lockBuilder = {
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      const countBuilder = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(4),
+      };
+      mockManager.getRepository.mockImplementation((entity) => ({
+        createQueryBuilder: () =>
+          entity === SecuritySourceConfig ? lockBuilder : countBuilder,
+      }));
+
+      await service.activateSecurity('000001');
+
+      expect(mockManager.update).toHaveBeenCalledWith(
+        Security,
+        { id: 1 },
+        { status: SecurityStatus.ACTIVE },
+      );
+      expect(mockLifecycleCoordinator.refreshDesiredState).toHaveBeenCalledWith(
+        DataSource.TDX,
+      );
+      expect(
+        mockLifecycleCoordinator.requestIncrementalReconciliation,
+      ).toHaveBeenCalledWith(DataSource.TDX);
+    });
+  });
+
+  describe('deleteSecuritySource', () => {
+    it('rejects deleting a source config owned by an assignment', async () => {
+      mockSourceConfigRepository.findOne.mockResolvedValue({
+        id: 10,
+        securityId: 1,
+      } as SecuritySourceConfig);
+      mockAssignmentRepository.findOne.mockResolvedValue(
+        Object.assign(new RealtimeSubscriptionAssignment(), {
+          id: 8,
+          securityId: 1,
+          sourceConfigId: 10,
+        }),
+      );
+
+      const result = await service.deleteSecuritySource(10, 1);
+
+      expect(result).toBeInstanceOf(HttpBusinessRejection);
+      expect(result).toMatchObject({ code: 'REALTIME_SOURCE_LOCKED' });
+      expect(mockSourceConfigRepository.delete).not.toHaveBeenCalled();
     });
   });
 });

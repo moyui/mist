@@ -24,6 +24,10 @@ export class QmtRealtimeAllowlistResolver implements OnModuleInit {
     return this.shared.resolve(DataSource.QMT, formatCode);
   }
 
+  resolveEffective(formatCode: string): QmtRealtimeAllowlistEntry | null {
+    return this.shared.resolveEffective(DataSource.QMT, formatCode);
+  }
+
   get entriesList(): readonly QmtRealtimeAllowlistEntry[] {
     return this.shared.list(DataSource.QMT);
   }

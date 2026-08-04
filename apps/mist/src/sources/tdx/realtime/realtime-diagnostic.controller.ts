@@ -38,7 +38,7 @@ export class TdxRealtimeDiagnosticController {
   @Get(':formatCode')
   getSymbol(@Param('formatCode') formatCode: string, @Req() req: Request) {
     requireRealtimeDiagnosticLoopback(req);
-    const entry = this.allowlist.resolve(formatCode);
+    const entry = this.allowlist.resolveEffective(formatCode);
     const debug = entry
       ? this.ingress.readSeries(entry.securityId, 'tdx')
       : null;

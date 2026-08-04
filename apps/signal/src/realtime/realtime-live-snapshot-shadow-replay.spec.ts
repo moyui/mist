@@ -220,14 +220,16 @@ function makeClient(
   fixture: RealtimeLiveSnapshotFixture,
   ingress: RealtimeSnapshotIngressService,
 ): TdxRealtimeClient | QmtRealtimeClient {
+  const resolve = (candidate: string) =>
+    candidate === fixture.providerSymbol
+      ? {
+          formatCode: fixture.providerSymbol,
+          securityId: fixture.securityId,
+        }
+      : null;
   const allowlist = {
-    resolve: (candidate: string) =>
-      candidate === fixture.providerSymbol
-        ? {
-            formatCode: fixture.providerSymbol,
-            securityId: fixture.securityId,
-          }
-        : null,
+    resolve,
+    resolveEffective: resolve,
     entriesList: [
       {
         formatCode: fixture.providerSymbol,

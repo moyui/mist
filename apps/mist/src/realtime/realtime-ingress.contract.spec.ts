@@ -66,6 +66,20 @@ describe('formal realtime schema-v2 ingress contract', () => {
     expect(ingress.read(7)).toBe(snapshot);
   });
 
+  it('cleans only the removed effective source from common latest state', () => {
+    const ingress = new RealtimeSnapshotIngressService();
+    const tdx = canonicalSnapshot('tdx', 7);
+    const qmt = canonicalSnapshot('qmt', 8);
+    ingress.handleSnapshot(tdx);
+    ingress.handleSnapshot(qmt);
+
+    ingress.removeSeries(7, 'tdx');
+
+    expect(ingress.readSeries(7, 'tdx')).toBeNull();
+    expect(ingress.read(7)).toBeNull();
+    expect(ingress.readSeries(8, 'qmt')).toBe(qmt);
+  });
+
   it('funnels a TDX one-entry native map through the common ingress', () => {
     const store = new TdxRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();
@@ -270,13 +284,15 @@ function frame(provider: 'tdx' | 'qmt', native: Record<string, unknown>) {
 }
 
 function resolver(entries: Record<string, number>) {
+  const resolve = (providerSymbol: string) => {
+    const securityId = entries[providerSymbol];
+    return securityId === undefined
+      ? null
+      : { formatCode: providerSymbol, securityId };
+  };
   return {
-    resolve: (providerSymbol: string) => {
-      const securityId = entries[providerSymbol];
-      return securityId === undefined
-        ? null
-        : { formatCode: providerSymbol, securityId };
-    },
+    resolve,
+    resolveEffective: resolve,
     entriesList: Object.entries(entries).map(([formatCode, securityId]) => ({
       formatCode,
       securityId,

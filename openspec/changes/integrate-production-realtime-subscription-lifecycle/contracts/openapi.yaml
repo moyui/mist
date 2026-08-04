@@ -1,0 +1,212 @@
+openapi: 3.0.3
+info:
+  title: Mist realtime subscription frozen fragment
+  version: 1.0.0
+paths:
+  /v1/realtime-subscriptions:
+    get:
+      parameters:
+        - { name: afterId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Bounded assignment page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RealtimeSubscriptionPageEnvelope' }
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InitializeRealtimeSubscriptionDto' }
+      responses:
+        '201':
+          description: Assignment initialized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RealtimeSubscriptionEnvelope' }
+        '200':
+          description: Expected business rejection
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RealtimeSubscriptionBusinessError' }
+  /v1/securities/{code}/sources:
+    get:
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string, pattern: '^[0-9]{6}$' } }
+      responses:
+        '200':
+          description: Existing bounded one-Security source lookup
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecuritySourcesEnvelope' }
+  /v1/securities/{code}/activate:
+    put:
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string, pattern: '^[0-9]{6}$' } }
+      responses:
+        '200':
+          description: Idempotent desired activation or expected capacity rejection; refresh inventory for convergence
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/NullSuccessEnvelope' }
+                  - { $ref: '#/components/schemas/RealtimeSubscriptionBusinessError' }
+  /v1/securities/{code}/deactivate:
+    put:
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string, pattern: '^[0-9]{6}$' } }
+      responses:
+        '200':
+          description: Idempotent desired deactivation; never immediate unsubscribe
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NullSuccessEnvelope' }
+components:
+  schemas:
+    RealtimeSource:
+      type: string
+      enum: [tdx, qmt]
+    SecurityPublicStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED, DELISTED]
+    ActiveEvidence:
+      type: string
+      enum: [tdx_native_list, qmt_durable_registry]
+    Convergence:
+      type: string
+      enum: [converged, pending, drifted, blocked, unknown]
+    ConvergenceReason:
+      type: string
+      enum: [lifecycle_disabled, transport_not_ready, readback_stale, control_outcome_unknown, desired_missing_active, awaiting_full_reset, control_failed, qmt_reconciliation_required, qmt_journal_unhealthy, source_capacity_blocked]
+    NewRealtimeSubscriptionDto:
+      type: object
+      additionalProperties: false
+      required: [mode, securityCode, securityName, securityType, source, providerSymbol]
+      properties:
+        mode: { type: string, enum: [new] }
+        securityCode: { type: string, pattern: '^[0-9]{6}$' }
+        securityName: { type: string, minLength: 1, maxLength: 100 }
+        securityType: { type: string, enum: [STOCK] }
+        source: { $ref: '#/components/schemas/RealtimeSource' }
+        providerSymbol: { type: string, pattern: '^[0-9]{6}\.(SH|SZ|BJ)$' }
+    ExistingRealtimeSubscriptionDto:
+      type: object
+      additionalProperties: false
+      required: [mode, securitySourceConfigId]
+      properties:
+        mode: { type: string, enum: [existing] }
+        securitySourceConfigId: { type: integer, minimum: 1 }
+    InitializeRealtimeSubscriptionDto:
+      oneOf:
+        - { $ref: '#/components/schemas/NewRealtimeSubscriptionDto' }
+        - { $ref: '#/components/schemas/ExistingRealtimeSubscriptionDto' }
+      discriminator:
+        propertyName: mode
+        mapping:
+          new: '#/components/schemas/NewRealtimeSubscriptionDto'
+          existing: '#/components/schemas/ExistingRealtimeSubscriptionDto'
+    RealtimeSubscriptionVo:
+      type: object
+      additionalProperties: false
+      required: [assignmentId, securityId, securitySourceConfigId, securityCode, securityName, securityType, securityStatus, source, providerSymbol, desired, active, activeEvidence, convergence, convergenceReason, deferredRemovalReason, createdAt, updatedAt]
+      properties:
+        assignmentId: { type: integer, minimum: 1 }
+        securityId: { type: integer, minimum: 1 }
+        securitySourceConfigId: { type: integer, minimum: 1 }
+        securityCode: { type: string, pattern: '^[0-9]{6}$' }
+        securityName: { type: string }
+        securityType: { type: string, enum: [STOCK] }
+        securityStatus: { $ref: '#/components/schemas/SecurityPublicStatus' }
+        source: { $ref: '#/components/schemas/RealtimeSource' }
+        providerSymbol: { type: string, pattern: '^[0-9]{6}\.(SH|SZ|BJ)$' }
+        desired: { type: boolean }
+        active: { type: boolean, nullable: true }
+        activeEvidence:
+          allOf: [{ $ref: '#/components/schemas/ActiveEvidence' }]
+          nullable: true
+        convergence: { $ref: '#/components/schemas/Convergence' }
+        convergenceReason:
+          allOf: [{ $ref: '#/components/schemas/ConvergenceReason' }]
+          nullable: true
+        deferredRemovalReason: { type: string, enum: [awaiting_full_reset], nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SourceCapacityVo:
+      type: object
+      additionalProperties: false
+      required: [source, activeAssignmentCount, limit]
+      properties:
+        source: { $ref: '#/components/schemas/RealtimeSource' }
+        activeAssignmentCount: { type: integer, minimum: 0 }
+        limit: { type: integer, enum: [5] }
+    RealtimeSubscriptionPageVo:
+      type: object
+      additionalProperties: false
+      required: [items, nextAfterId, sourceCapacities]
+      properties:
+        items: { type: array, maxItems: 100, items: { $ref: '#/components/schemas/RealtimeSubscriptionVo' } }
+        nextAfterId: { type: integer, minimum: 1, nullable: true }
+        sourceCapacities:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items: { $ref: '#/components/schemas/SourceCapacityVo' }
+    SecuritySourceVo:
+      type: object
+      additionalProperties: false
+      required: [id, securityId, source, formatCode, priority, enabled]
+      properties:
+        id: { type: integer, minimum: 1 }
+        securityId: { type: integer, minimum: 1 }
+        source: { type: string, enum: [ef, tdx, qmt] }
+        formatCode: { type: string }
+        priority: { type: integer }
+        enabled: { type: boolean }
+    SuccessEnvelopeBase:
+      type: object
+      required: [success, statusCode, message, data, timestamp, requestId, path]
+      properties:
+        success: { type: boolean, enum: [true] }
+        statusCode: { type: integer }
+        message: { type: string }
+        timestamp: { type: string, format: date-time }
+        requestId: { type: string }
+        path: { type: string }
+    RealtimeSubscriptionEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessEnvelopeBase' }
+        - type: object
+          properties: { data: { $ref: '#/components/schemas/RealtimeSubscriptionVo' } }
+    RealtimeSubscriptionPageEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessEnvelopeBase' }
+        - type: object
+          properties: { data: { $ref: '#/components/schemas/RealtimeSubscriptionPageVo' } }
+    SecuritySourcesEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessEnvelopeBase' }
+        - type: object
+          properties: { data: { type: array, items: { $ref: '#/components/schemas/SecuritySourceVo' } } }
+    NullSuccessEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessEnvelopeBase' }
+        - type: object
+          properties: { data: { nullable: true, enum: [null] } }
+    RealtimeSubscriptionBusinessError:
+      type: object
+      additionalProperties: false
+      required: [success, statusCode, code, message, data, timestamp, requestId, path]
+      properties:
+        success: { type: boolean, enum: [false] }
+        statusCode: { type: integer, enum: [200] }
+        code:
+          type: string
+          enum: [REALTIME_SOURCE_LOCKED, REALTIME_ACTIVE_CAPACITY_REACHED, REALTIME_ASSIGNMENT_EXISTS, REALTIME_SECURITY_EXISTS, REALTIME_SOURCE_CONFIG_NOT_FOUND, REALTIME_SECURITY_NOT_ELIGIBLE, REALTIME_SOURCE_CONFIG_NOT_ELIGIBLE]
+        message: { type: string }
+        data: { type: object }
+        timestamp: { type: string, format: date-time }
+        requestId: { type: string }
+        path: { type: string }

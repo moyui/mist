@@ -22,7 +22,11 @@ interface ResolvedRealtimeAllowlistRow extends RealtimeAllowlistEntry {
 @Injectable()
 export class RealtimeSecurityAllowlistService {
   private readonly logger = new Logger(RealtimeSecurityAllowlistService.name);
-  private readonly entries = new Map<
+  private readonly assignedEntries = new Map<
+    DataSource.TDX | DataSource.QMT,
+    Map<string, RealtimeAllowlistEntry>
+  >();
+  private readonly effectiveEntries = new Map<
     DataSource.TDX | DataSource.QMT,
     Map<string, RealtimeAllowlistEntry>
   >();
@@ -37,12 +41,19 @@ export class RealtimeSecurityAllowlistService {
     source: DataSource.TDX | DataSource.QMT,
     environmentName: 'TDX_REALTIME_ALLOWLIST' | 'QMT_REALTIME_ALLOWLIST',
   ): Promise<void> {
-    if (this.entries.has(source)) return;
+    if (this.assignedEntries.has(source)) return;
+    if (
+      this.config.get<string>('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE') === 'on'
+    ) {
+      this.assignedEntries.set(source, new Map());
+      this.effectiveEntries.set(source, new Map());
+      return;
+    }
     const requested = this.parse(environmentName);
     const resolved = new Map<string, RealtimeAllowlistEntry>();
     for (const formatCode of requested) {
       const entry = await this.resolveExact(source, formatCode);
-      for (const [otherSource, otherEntries] of this.entries) {
+      for (const [otherSource, otherEntries] of this.assignedEntries) {
         if (
           otherSource !== source &&
           [...otherEntries.values()].some(
@@ -59,7 +70,8 @@ export class RealtimeSecurityAllowlistService {
         `${source} allowlist resolved: ${formatCode} -> securityId=${entry.securityId}`,
       );
     }
-    this.entries.set(source, resolved);
+    this.assignedEntries.set(source, resolved);
+    this.effectiveEntries.set(source, new Map(resolved));
     if (requested.length === 0) {
       this.logger.warn(
         `${environmentName} is empty; realtime subscriptions remain empty`,
@@ -71,20 +83,63 @@ export class RealtimeSecurityAllowlistService {
     source: DataSource.TDX | DataSource.QMT,
     formatCode: string,
   ): boolean {
-    return this.entries.get(source)?.has(formatCode) ?? false;
+    return this.assignedEntries.get(source)?.has(formatCode) ?? false;
   }
 
   list(
     source: DataSource.TDX | DataSource.QMT,
   ): readonly RealtimeAllowlistEntry[] {
-    return [...(this.entries.get(source)?.values() ?? [])];
+    return [...(this.effectiveEntries.get(source)?.values() ?? [])];
   }
 
   resolve(
     source: DataSource.TDX | DataSource.QMT,
     formatCode: string,
   ): RealtimeAllowlistEntry | null {
-    return this.entries.get(source)?.get(formatCode) ?? null;
+    return this.assignedEntries.get(source)?.get(formatCode) ?? null;
+  }
+
+  resolveEffective(
+    source: DataSource.TDX | DataSource.QMT,
+    formatCode: string,
+  ): RealtimeAllowlistEntry | null {
+    return this.effectiveEntries.get(source)?.get(formatCode) ?? null;
+  }
+
+  replaceAssigned(
+    source: DataSource.TDX | DataSource.QMT,
+    entries: readonly RealtimeAllowlistEntry[],
+  ): void {
+    this.assignedEntries.set(source, exactEntryMap(entries));
+    const active = this.effectiveEntries.get(source) ?? new Map();
+    this.effectiveEntries.set(
+      source,
+      new Map(
+        [...active].filter(
+          ([formatCode, entry]) =>
+            this.assignedEntries.get(source)?.get(formatCode)?.securityId ===
+            entry.securityId,
+        ),
+      ),
+    );
+  }
+
+  replaceEffective(
+    source: DataSource.TDX | DataSource.QMT,
+    activeSymbols: readonly string[],
+  ): readonly RealtimeAllowlistEntry[] {
+    const assigned = this.assignedEntries.get(source) ?? new Map();
+    const next = new Map<string, RealtimeAllowlistEntry>();
+    for (const formatCode of activeSymbols) {
+      const entry = assigned.get(formatCode);
+      if (entry) next.set(formatCode, entry);
+    }
+    const previous = this.effectiveEntries.get(source) ?? new Map();
+    const removed = [...previous.entries()]
+      .filter(([formatCode]) => !next.has(formatCode))
+      .map(([, entry]) => entry);
+    this.effectiveEntries.set(source, next);
+    return removed;
   }
 
   private parse(environmentName: string): string[] {
@@ -136,4 +191,18 @@ export class RealtimeSecurityAllowlistService {
     }
     return { securityId: row.securityId, formatCode: row.formatCode };
   }
+}
+
+function exactEntryMap(entries: readonly RealtimeAllowlistEntry[]) {
+  const result = new Map<string, RealtimeAllowlistEntry>();
+  for (const entry of entries) {
+    const existing = result.get(entry.formatCode);
+    if (existing && existing.securityId !== entry.securityId) {
+      throw new BadRequestException(
+        `realtime provider symbol '${entry.formatCode}' maps to multiple securities`,
+      );
+    }
+    result.set(entry.formatCode, entry);
+  }
+  return result;
 }

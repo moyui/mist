@@ -1,0 +1,56 @@
+name: Test Realtime Subscription Assignment Migration
+
+on:
+  push:
+    paths:
+      - "deploy/database/**"
+      - "tools/run-migrations.mjs"
+      - "tools/test-realtime-subscription-assignment-migration.mjs"
+      - ".github/workflows/test-realtime-subscription-assignment-migration.yml"
+  pull_request:
+    paths:
+      - "deploy/database/**"
+      - "tools/run-migrations.mjs"
+      - "tools/test-realtime-subscription-assignment-migration.mjs"
+      - ".github/workflows/test-realtime-subscription-assignment-migration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mysql-contract:
+    name: Verify migration 015 on MySQL 8.4
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: mist-test-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pmist-test-root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9.15.3
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Verify realtime assignment migration
+        env:
+          MIST_TEST_MYSQL_URL: mysql://root:mist-test-root@127.0.0.1:3306/mysql
+        run: node tools/test-realtime-subscription-assignment-migration.mjs

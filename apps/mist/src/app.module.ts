@@ -5,6 +5,7 @@ import {
   KExtensionQmt,
   Security,
   SecuritySourceConfig,
+  RealtimeSubscriptionAssignment,
   StrategyDefinition,
   StrategyVersion,
   StrategySignal,
@@ -29,6 +30,7 @@ import { mistEnvSchema } from '@app/config';
 import { StrategyModule } from './strategy/strategy.module';
 import { HttpTransportModule } from '@app/transport/http';
 import { RealtimeIngressModule } from './realtime/realtime-ingress.module';
+import { RealtimeSubscriptionModule } from './realtime-subscriptions/realtime-subscription.module';
 
 @Module({
   imports: [
@@ -73,6 +75,7 @@ import { RealtimeIngressModule } from './realtime/realtime-ingress.module';
             KExtensionQmt,
             Security,
             SecuritySourceConfig,
+            RealtimeSubscriptionAssignment,
             StrategyDefinition,
             StrategyVersion,
             StrategySignal,
@@ -91,6 +94,7 @@ import { RealtimeIngressModule } from './realtime/realtime-ingress.module';
     }),
     HistoricalCollectorModule,
     RealtimeIngressModule,
+    RealtimeSubscriptionModule,
     ...tdxRealtimeModulesForMode(process.env.TDX_REALTIME_MODE),
     ...qmtRealtimeModulesForMode(process.env.QMT_REALTIME_MODE),
     IndicatorModule,

@@ -176,11 +176,13 @@ function makeClient(
 }
 
 function resolver(providerSymbol: string, securityId: number) {
+  const resolve = (candidate: string) =>
+    candidate === providerSymbol
+      ? { formatCode: providerSymbol, securityId }
+      : null;
   return {
-    resolve: (candidate: string) =>
-      candidate === providerSymbol
-        ? { formatCode: providerSymbol, securityId }
-        : null,
+    resolve,
+    resolveEffective: resolve,
     entriesList: [{ formatCode: providerSymbol, securityId }],
   };
 }

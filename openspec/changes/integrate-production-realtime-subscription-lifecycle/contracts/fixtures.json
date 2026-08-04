@@ -1,0 +1,183 @@
+{
+  "newRequest": {
+    "mode": "new",
+    "securityCode": "600519",
+    "securityName": "贵州茅台",
+    "securityType": "STOCK",
+    "source": "qmt",
+    "providerSymbol": "600519.SH"
+  },
+  "existingRequest": {
+    "mode": "existing",
+    "securitySourceConfigId": 17
+  },
+  "created": {
+    "success": true,
+    "statusCode": 201,
+    "message": "SUCCESS",
+    "data": {
+      "assignmentId": 8,
+      "securityId": 1,
+      "securitySourceConfigId": 17,
+      "securityCode": "600519",
+      "securityName": "贵州茅台",
+      "securityType": "STOCK",
+      "securityStatus": "ACTIVE",
+      "source": "qmt",
+      "providerSymbol": "600519.SH",
+      "desired": true,
+      "active": null,
+      "activeEvidence": null,
+      "convergence": "unknown",
+      "convergenceReason": "lifecycle_disabled",
+      "deferredRemovalReason": null,
+      "createdAt": "2026-08-04T15:00:00.000Z",
+      "updatedAt": "2026-08-04T15:00:00.000Z"
+    },
+    "timestamp": "2026-08-04T15:00:00.010Z",
+    "requestId": "http-fixture-created",
+    "path": "/v1/realtime-subscriptions"
+  },
+  "page": {
+    "success": true,
+    "statusCode": 200,
+    "message": "SUCCESS",
+    "data": {
+      "items": [
+        {
+          "assignmentId": 8,
+          "securityId": 1,
+          "securitySourceConfigId": 17,
+          "securityCode": "600519",
+          "securityName": "贵州茅台",
+          "securityType": "STOCK",
+          "securityStatus": "SUSPENDED",
+          "source": "qmt",
+          "providerSymbol": "600519.SH",
+          "desired": false,
+          "active": true,
+          "activeEvidence": "qmt_durable_registry",
+          "convergence": "drifted",
+          "convergenceReason": "awaiting_full_reset",
+          "deferredRemovalReason": "awaiting_full_reset",
+          "createdAt": "2026-08-04T15:00:00.000Z",
+          "updatedAt": "2026-08-04T15:05:00.000Z"
+        }
+      ],
+      "nextAfterId": null,
+      "sourceCapacities": [
+        { "source": "tdx", "activeAssignmentCount": 2, "limit": 5 },
+        { "source": "qmt", "activeAssignmentCount": 1, "limit": 5 }
+      ]
+    },
+    "timestamp": "2026-08-04T15:05:00.010Z",
+    "requestId": "http-fixture-page",
+    "path": "/v1/realtime-subscriptions"
+  },
+  "securitySources": {
+    "success": true,
+    "statusCode": 200,
+    "message": "SUCCESS",
+    "data": [
+      {
+        "id": 17,
+        "securityId": 1,
+        "source": "qmt",
+        "formatCode": "600519.SH",
+        "priority": 10,
+        "enabled": true
+      }
+    ],
+    "timestamp": "2026-08-04T15:06:00.000Z",
+    "requestId": "http-fixture-sources",
+    "path": "/v1/securities/600519/sources"
+  },
+  "activateSuccess": {
+    "success": true,
+    "statusCode": 200,
+    "message": "SUCCESS",
+    "data": null,
+    "timestamp": "2026-08-04T15:07:00.000Z",
+    "requestId": "http-fixture-activate",
+    "path": "/v1/securities/600519/activate"
+  },
+  "deactivateSuccess": {
+    "success": true,
+    "statusCode": 200,
+    "message": "SUCCESS",
+    "data": null,
+    "timestamp": "2026-08-04T15:08:00.000Z",
+    "requestId": "http-fixture-deactivate",
+    "path": "/v1/securities/600519/deactivate"
+  },
+  "sourceLocked": {
+    "success": false,
+    "statusCode": 200,
+    "code": "REALTIME_SOURCE_LOCKED",
+    "message": "Realtime source is locked by an assignment",
+    "data": { "assignmentId": 8, "securityId": 1, "securitySourceConfigId": 17 },
+    "timestamp": "2026-08-04T15:09:00.000Z",
+    "requestId": "http-fixture-locked",
+    "path": "/v1/security-sources"
+  },
+  "capacityReached": {
+    "success": false,
+    "statusCode": 200,
+    "code": "REALTIME_ACTIVE_CAPACITY_REACHED",
+    "message": "Realtime active capacity reached",
+    "data": { "source": "qmt", "activeAssignmentCount": 5, "limit": 5 },
+    "timestamp": "2026-08-04T15:10:00.000Z",
+    "requestId": "http-fixture-capacity",
+    "path": "/v1/realtime-subscriptions"
+  },
+  "assignmentExists": {
+    "success": false,
+    "statusCode": 200,
+    "code": "REALTIME_ASSIGNMENT_EXISTS",
+    "message": "Realtime assignment already exists",
+    "data": { "assignmentId": 8, "securityId": 1 },
+    "timestamp": "2026-08-04T15:11:00.000Z",
+    "requestId": "http-fixture-exists",
+    "path": "/v1/realtime-subscriptions"
+  },
+  "securityExists": {
+    "success": false,
+    "statusCode": 200,
+    "code": "REALTIME_SECURITY_EXISTS",
+    "message": "Security already exists",
+    "data": { "securityId": 1, "securityCode": "600519" },
+    "timestamp": "2026-08-04T15:11:10.000Z",
+    "requestId": "http-fixture-security-exists",
+    "path": "/v1/realtime-subscriptions"
+  },
+  "sourceConfigNotFound": {
+    "success": false,
+    "statusCode": 200,
+    "code": "REALTIME_SOURCE_CONFIG_NOT_FOUND",
+    "message": "Source config was not found",
+    "data": { "securitySourceConfigId": 999999 },
+    "timestamp": "2026-08-04T15:11:30.000Z",
+    "requestId": "http-fixture-source-not-found",
+    "path": "/v1/realtime-subscriptions"
+  },
+  "securityNotEligible": {
+    "success": false,
+    "statusCode": 200,
+    "code": "REALTIME_SECURITY_NOT_ELIGIBLE",
+    "message": "Security is not eligible for realtime assignment",
+    "data": { "securityId": 4, "reason": "security_not_stock" },
+    "timestamp": "2026-08-04T15:12:00.000Z",
+    "requestId": "http-fixture-security-ineligible",
+    "path": "/v1/realtime-subscriptions"
+  },
+  "sourceConfigNotEligible": {
+    "success": false,
+    "statusCode": 200,
+    "code": "REALTIME_SOURCE_CONFIG_NOT_ELIGIBLE",
+    "message": "Source config is not eligible for realtime assignment",
+    "data": { "securitySourceConfigId": 19, "reason": "source_disabled" },
+    "timestamp": "2026-08-04T15:13:00.000Z",
+    "requestId": "http-fixture-source-ineligible",
+    "path": "/v1/realtime-subscriptions"
+  }
+}

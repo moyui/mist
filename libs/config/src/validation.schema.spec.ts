@@ -80,6 +80,47 @@ describe('mistEnvSchema data source configuration', () => {
     expect(value.QMT_REALTIME_ALLOWLIST).toBe('');
   });
 
+  it('defaults production subscription lifecycle off', () => {
+    const { error, value } = mistEnvSchema.validate(baseEnv);
+
+    expect(error).toBeUndefined();
+    expect(value.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE).toBe('off');
+  });
+
+  it('accepts lifecycle on only with both legacy allowlists empty', () => {
+    const accepted = mistEnvSchema.validate({
+      ...baseEnv,
+      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
+      TDX_REALTIME_ALLOWLIST: '',
+      QMT_REALTIME_ALLOWLIST: '   ',
+    });
+    expect(accepted.error).toBeUndefined();
+    expect(accepted.value.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE).toBe('on');
+
+    for (const [name, value] of [
+      ['TDX_REALTIME_ALLOWLIST', '600030.SH'],
+      ['QMT_REALTIME_ALLOWLIST', '600519.SH'],
+    ] as const) {
+      const rejected = mistEnvSchema.validate({
+        ...baseEnv,
+        REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
+        [name]: value,
+      });
+      expect(rejected.error?.message).toContain(name);
+      expect(rejected.error?.message).toContain(
+        'REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on',
+      );
+    }
+  });
+
+  it('rejects unsupported lifecycle modes', () => {
+    const { error } = mistEnvSchema.validate({
+      ...baseEnv,
+      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'shadow',
+    });
+    expect(error?.message).toContain('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE');
+  });
+
   it('owns the realtime candle grace and queue defaults', () => {
     const { error, value } = mistEnvSchema.validate(baseEnv);
 

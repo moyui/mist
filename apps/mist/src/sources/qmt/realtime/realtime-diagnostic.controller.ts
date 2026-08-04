@@ -27,7 +27,7 @@ export class QmtRealtimeDiagnosticController {
   @Get(':formatCode')
   getSymbol(@Param('formatCode') formatCode: string, @Req() request: Request) {
     requireRealtimeDiagnosticLoopback(request);
-    const entry = this.allowlist.resolve(formatCode);
+    const entry = this.allowlist.resolveEffective(formatCode);
     const value = entry
       ? this.ingress.readSeries(entry.securityId, 'qmt')
       : null;

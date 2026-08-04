@@ -75,6 +75,10 @@ describe('database schema safety', () => {
       '014_evolve_strategy_evaluation_contract.sql',
       '57380491705224069516a32efcd8b7a9079d40fd0a6fe6cd0c34d18ab602e2af',
     ],
+    [
+      '015_add_realtime_subscription_assignments.sql',
+      '0ffd99dcc5de4c9d2d1c77c9d2c60e13286e1bbc67eb2dc58f49f43f46070793',
+    ],
   ]);
 
   it.each(appModulePaths)(
@@ -408,5 +412,56 @@ describe('database schema safety', () => {
     );
     expect(signalEntity).toContain("onDelete: 'RESTRICT'");
     expect(signalEntity).toContain("onUpdate: 'RESTRICT'");
+  });
+
+  it('adds immutable realtime routing assignments with migration 015', () => {
+    const migration = readRepoFile(
+      'deploy/database/migrations/015_add_realtime_subscription_assignments.sql',
+    );
+    const audit = readRepoFile(
+      'deploy/database/audit-realtime-subscription-assignments.sql',
+    );
+    const readback = readRepoFile(
+      'deploy/database/readback-realtime-subscription-assignments.sql',
+    );
+
+    expect(migration).toContain(
+      'CREATE TABLE IF NOT EXISTS `realtime_subscription_assignments`',
+    );
+    expect(migration).toContain(
+      'UNIQUE KEY `uq_security_source_configs_id_security` (`id`,`security_id`)',
+    );
+    expect(migration).toContain(
+      'KEY `idx_security_source_configs_source` (`source`)',
+    );
+    expect(migration).toContain(
+      'UNIQUE KEY `uq_realtime_subscription_assignments_security` (`security_id`)',
+    );
+    expect(migration).toContain(
+      'UNIQUE KEY `uq_realtime_subscription_assignments_source_config` (`source_config_id`)',
+    );
+    expect(migration).toContain(
+      'CONSTRAINT `fk_realtime_subscription_assignments_security`',
+    );
+    expect(migration).toContain(
+      'CONSTRAINT `fk_realtime_subscription_assignments_source_config`',
+    );
+    expect(migration).toContain('ON DELETE RESTRICT ON UPDATE RESTRICT');
+    expect(migration).not.toMatch(/\bdesired\b/i);
+    expect(migration).not.toMatch(
+      /\bINSERT\s+INTO\s+`realtime_subscription_assignments`/i,
+    );
+    expect(migration).not.toContain('SIGNAL SQLSTATE');
+    expect(migration).toContain(
+      'realtime_assignment_migration_requires_exact_known_schema_state',
+    );
+
+    expect(audit).toContain('`schema_migrations`');
+    expect(audit).toContain('`information_schema`.`COLUMNS`');
+    expect(audit).toContain('`information_schema`.`STATISTICS`');
+    expect(audit).toContain('`information_schema`.`KEY_COLUMN_USAGE`');
+    expect(readback).toContain('015_add_realtime_subscription_assignments.sql');
+    expect(readback).toContain('orphan_or_cross_security_assignment_count');
+    expect(readback).toContain('ineligible_assignment_count');
   });
 });

@@ -13,12 +13,17 @@ import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import {
   ApiEnvelopeResponse,
   ApiTechnicalErrorResponse,
+  HttpBusinessRejection,
 } from '@app/transport/http';
 import { Security } from '@app/shared-data';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
 import { DeleteSecuritySourceDto } from './dto/delete-security-source.dto';
 import { InitSecurityDto } from './dto/init-security.dto';
 import { SecurityService } from './security.service';
+import {
+  RealtimeActiveCapacityDataVo,
+  RealtimeSourceLockedDataVo,
+} from '../realtime-subscriptions/vo/realtime-subscription-error-data.vo';
 
 @ApiTags('securities v1')
 @Controller('v1')
@@ -86,6 +91,9 @@ export class SecurityV1AliasController {
     status: 200,
     description: 'Source successfully updated',
     type: Security,
+    businessErrors: [
+      { code: 'REALTIME_SOURCE_LOCKED', dataType: RealtimeSourceLockedDataVo },
+    ],
   })
   @ApiTechnicalErrorResponse({
     status: 404,
@@ -94,7 +102,7 @@ export class SecurityV1AliasController {
   })
   async addSecuritySource(
     @Body() addSecuritySourceDto: AddSecuritySourceDto,
-  ): Promise<Security> {
+  ): Promise<Security | HttpBusinessRejection<string, object>> {
     return await this.securityService.addSecuritySource(addSecuritySourceDto);
   }
 
@@ -104,6 +112,9 @@ export class SecurityV1AliasController {
   @ApiEnvelopeResponse({
     status: 200,
     description: 'Source configuration deleted',
+    businessErrors: [
+      { code: 'REALTIME_SOURCE_LOCKED', dataType: RealtimeSourceLockedDataVo },
+    ],
   })
   @ApiTechnicalErrorResponse({
     status: 404,
@@ -112,8 +123,11 @@ export class SecurityV1AliasController {
   })
   async deleteSecuritySource(
     @Body() dto: DeleteSecuritySourceDto,
-  ): Promise<void> {
-    await this.securityService.deleteSecuritySource(dto.id, dto.securityId);
+  ): Promise<void | HttpBusinessRejection<string, object>> {
+    return await this.securityService.deleteSecuritySource(
+      dto.id,
+      dto.securityId,
+    );
   }
 
   @Get('securities/:code/sources')
@@ -171,13 +185,21 @@ export class SecurityV1AliasController {
   @ApiEnvelopeResponse({
     status: 200,
     description: 'Security successfully activated',
+    businessErrors: [
+      {
+        code: 'REALTIME_ACTIVE_CAPACITY_REACHED',
+        dataType: RealtimeActiveCapacityDataVo,
+      },
+    ],
   })
   @ApiTechnicalErrorResponse({
     status: 404,
     description: 'Security not found',
     codes: ['NOT_FOUND'],
   })
-  async activateSecurity(@Param('code') code: string): Promise<void> {
-    await this.securityService.activateSecurity(code);
+  async activateSecurity(
+    @Param('code') code: string,
+  ): Promise<void | HttpBusinessRejection<string, object>> {
+    return await this.securityService.activateSecurity(code);
   }
 }

@@ -3,29 +3,47 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource as TypeOrmDataSource, Repository } from 'typeorm';
 import {
   Security,
   SecuritySourceConfig,
+  RealtimeSubscriptionAssignment,
   SecurityStatus,
   DataSource,
 } from '@app/shared-data';
+import { HttpBusinessRejection } from '@app/transport/http';
 import {
   isValidSecuritySourceFormatCode,
   normalizeSecurityCode,
 } from '@app/utils';
 import { InitSecurityDto } from './dto/init-security.dto';
 import { AddSecuritySourceDto } from './dto/add-security-source.dto';
+import {
+  REALTIME_ACTIVE_CAPACITY_LIMIT,
+  REALTIME_SUBSCRIPTION_SOURCES,
+  RealtimeSubscriptionSource,
+} from '../realtime-subscriptions/realtime-subscription.constants';
+import {
+  RealtimeActiveCapacityDataVo,
+  RealtimeSourceLockedDataVo,
+} from '../realtime-subscriptions/vo/realtime-subscription-error-data.vo';
+import { RealtimeSubscriptionLifecycleCoordinator } from '../realtime-subscriptions/realtime-subscription-lifecycle.coordinator';
 
 @Injectable()
 export class SecurityService {
   constructor(
+    private readonly dataSource: TypeOrmDataSource,
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
     @InjectRepository(SecuritySourceConfig)
     private readonly sourceConfigRepository: Repository<SecuritySourceConfig>,
+    @InjectRepository(RealtimeSubscriptionAssignment)
+    private readonly assignmentRepository: Repository<RealtimeSubscriptionAssignment>,
+    @Optional()
+    private readonly lifecycleCoordinator?: RealtimeSubscriptionLifecycleCoordinator,
   ) {}
 
   formatCode(code: string): string {
@@ -60,66 +78,82 @@ export class SecurityService {
 
   async addSecuritySource(
     addSecuritySourceDto: AddSecuritySourceDto,
-  ): Promise<Security> {
+  ): Promise<Security | HttpBusinessRejection<string, object>> {
     const formattedCode = this.formatCode(addSecuritySourceDto.code);
+    return await this.dataSource.transaction(async (manager) => {
+      const security = await manager.findOne(Security, {
+        where: { code: formattedCode },
+      });
+      if (!security) {
+        throw new NotFoundException(
+          `Security with code ${formattedCode} not found`,
+        );
+      }
 
-    const security = await this.securityRepository.findOne({
-      where: { code: formattedCode },
-    });
-
-    if (!security) {
-      throw new NotFoundException(
-        `Security with code ${formattedCode} not found`,
-      );
-    }
-
-    const existingSourceConfig = await this.sourceConfigRepository.findOne({
-      where: {
-        securityId: security.id,
-        source: addSecuritySourceDto.source,
-      },
-    });
-    const formatCode =
-      addSecuritySourceDto.formatCode?.trim() ??
-      existingSourceConfig?.formatCode.trim() ??
-      '';
-    const enabled =
-      addSecuritySourceDto.enabled ?? existingSourceConfig?.enabled ?? true;
-    const priority =
-      addSecuritySourceDto.priority ?? existingSourceConfig?.priority ?? 0;
-
-    if (
-      enabled &&
-      !isValidSecuritySourceFormatCode(addSecuritySourceDto.source, formatCode)
-    ) {
-      const expected =
-        addSecuritySourceDto.source === DataSource.TDX ||
-        addSecuritySourceDto.source === DataSource.QMT
-          ? 'a six-digit provider symbol ending in .SH, .SZ, or .BJ'
-          : 'a non-empty provider symbol';
-      throw new BadRequestException(
-        `Enabled ${addSecuritySourceDto.source} source requires formatCode to be ${expected}`,
-      );
-    }
-
-    const sourceConfig = existingSourceConfig
-      ? Object.assign(existingSourceConfig, {
-          formatCode,
-          priority,
-          enabled,
-        })
-      : this.sourceConfigRepository.create({
-          security,
+      const existingSourceConfig = await manager.findOne(SecuritySourceConfig, {
+        where: {
           securityId: security.id,
           source: addSecuritySourceDto.source,
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const formatCode =
+        addSecuritySourceDto.formatCode?.trim() ??
+        existingSourceConfig?.formatCode.trim() ??
+        '';
+      const enabled =
+        addSecuritySourceDto.enabled ?? existingSourceConfig?.enabled ?? true;
+      const priority =
+        addSecuritySourceDto.priority ?? existingSourceConfig?.priority ?? 0;
+
+      if (
+        enabled &&
+        !isValidSecuritySourceFormatCode(
+          addSecuritySourceDto.source,
           formatCode,
-          priority,
-          enabled,
-        });
+        )
+      ) {
+        const expected =
+          addSecuritySourceDto.source === DataSource.TDX ||
+          addSecuritySourceDto.source === DataSource.QMT
+            ? 'a six-digit provider symbol ending in .SH, .SZ, or .BJ'
+            : 'a non-empty provider symbol';
+        throw new BadRequestException(
+          `Enabled ${addSecuritySourceDto.source} source requires formatCode to be ${expected}`,
+        );
+      }
 
-    await this.sourceConfigRepository.save(sourceConfig);
+      if (existingSourceConfig) {
+        const assignment = await manager.findOne(
+          RealtimeSubscriptionAssignment,
+          { where: { sourceConfigId: existingSourceConfig.id } },
+        );
+        const changesLockedIdentity =
+          assignment &&
+          (formatCode !== existingSourceConfig.formatCode.trim() ||
+            enabled !== existingSourceConfig.enabled);
+        if (assignment && changesLockedIdentity) {
+          return this.sourceLocked(assignment);
+        }
+      }
 
-    return security;
+      const sourceConfig = existingSourceConfig
+        ? Object.assign(existingSourceConfig, {
+            formatCode,
+            priority,
+            enabled,
+          })
+        : manager.create(SecuritySourceConfig, {
+            security,
+            securityId: security.id,
+            source: addSecuritySourceDto.source,
+            formatCode,
+            priority,
+            enabled,
+          });
+      await manager.save(sourceConfig);
+      return security;
+    });
   }
 
   async findSecurityByCode(code: string): Promise<Security> {
@@ -195,6 +229,19 @@ export class SecurityService {
   async deactivateSecurity(code: string): Promise<void> {
     const formattedCode = this.formatCode(code);
 
+    const security = await this.securityRepository.findOne({
+      where: { code: formattedCode },
+    });
+    if (!security) {
+      throw new NotFoundException(
+        `Security with code ${formattedCode} not found`,
+      );
+    }
+    const assignment = await this.assignmentRepository.findOne({
+      where: { securityId: security.id },
+      relations: { sourceConfig: true },
+    });
+
     const result = await this.securityRepository.update(
       { code: formattedCode },
       { status: SecurityStatus.SUSPENDED },
@@ -205,33 +252,139 @@ export class SecurityService {
         `Security with code ${formattedCode} not found`,
       );
     }
+    if (assignment) {
+      const source = assignment.sourceConfig.source;
+      if (!this.isRealtimeSource(source)) {
+        throw new Error('Assigned realtime source is invalid');
+      }
+      await this.lifecycleCoordinator?.refreshDesiredState(source);
+    }
   }
 
-  async activateSecurity(code: string): Promise<void> {
+  async activateSecurity(
+    code: string,
+  ): Promise<void | HttpBusinessRejection<string, object>> {
     const formattedCode = this.formatCode(code);
-
-    const result = await this.securityRepository.update(
-      { code: formattedCode },
-      { status: SecurityStatus.ACTIVE },
-    );
-
-    if (result.affected === 0) {
+    const security = await this.securityRepository.findOne({
+      where: { code: formattedCode },
+    });
+    if (!security) {
       throw new NotFoundException(
         `Security with code ${formattedCode} not found`,
       );
     }
+
+    const assignment = await this.assignmentRepository.findOne({
+      where: { securityId: security.id },
+      relations: { sourceConfig: true },
+    });
+    if (!assignment) {
+      await this.securityRepository.update(
+        { id: security.id },
+        { status: SecurityStatus.ACTIVE },
+      );
+      return;
+    }
+    const source = assignment.sourceConfig.source;
+    if (!this.isRealtimeSource(source)) {
+      throw new Error('Assigned realtime source is invalid');
+    }
+
+    const transition = await this.dataSource.transaction(async (manager) => {
+      await manager
+        .getRepository(SecuritySourceConfig)
+        .createQueryBuilder('source_config')
+        .setLock('pessimistic_write')
+        .where('source_config.source = :source', { source })
+        .orderBy('source_config.id', 'ASC')
+        .getMany();
+      const lockedSecurity = await manager.findOne(Security, {
+        where: { id: security.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!lockedSecurity) {
+        throw new NotFoundException(
+          `Security with code ${formattedCode} not found`,
+        );
+      }
+      if (lockedSecurity.status === SecurityStatus.ACTIVE) return false;
+
+      const activeAssignmentCount = await manager
+        .getRepository(RealtimeSubscriptionAssignment)
+        .createQueryBuilder('realtime_assignment')
+        .innerJoin('realtime_assignment.security', 'active_security')
+        .innerJoin('realtime_assignment.sourceConfig', 'active_source_config')
+        .where('active_security.status = :active', {
+          active: SecurityStatus.ACTIVE,
+        })
+        .andWhere('active_source_config.source = :source', { source })
+        .getCount();
+      if (activeAssignmentCount >= REALTIME_ACTIVE_CAPACITY_LIMIT) {
+        return new HttpBusinessRejection(
+          'REALTIME_ACTIVE_CAPACITY_REACHED',
+          'Realtime active capacity reached',
+          {
+            source,
+            activeAssignmentCount,
+            limit: REALTIME_ACTIVE_CAPACITY_LIMIT,
+          } satisfies RealtimeActiveCapacityDataVo,
+        );
+      }
+      await manager.update(
+        Security,
+        { id: lockedSecurity.id },
+        { status: SecurityStatus.ACTIVE },
+      );
+      return true;
+    });
+    if (transition instanceof HttpBusinessRejection) return transition;
+    if (transition) {
+      await this.lifecycleCoordinator?.refreshDesiredState(source);
+      this.lifecycleCoordinator?.requestIncrementalReconciliation(source);
+    }
   }
 
-  async deleteSecuritySource(id: number, securityId: number): Promise<void> {
-    const result = await this.sourceConfigRepository.delete({
-      id,
-      securityId,
+  async deleteSecuritySource(
+    id: number,
+    securityId: number,
+  ): Promise<void | HttpBusinessRejection<string, object>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const sourceConfig = await manager.findOne(SecuritySourceConfig, {
+        where: { id, securityId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!sourceConfig) {
+        throw new NotFoundException(
+          `Source config with id ${id} and securityId ${securityId} not found`,
+        );
+      }
+      const assignment = await manager.findOne(RealtimeSubscriptionAssignment, {
+        where: { sourceConfigId: id },
+      });
+      if (assignment) return this.sourceLocked(assignment);
+      await manager.delete(SecuritySourceConfig, { id, securityId });
     });
+  }
 
-    if (result.affected === 0) {
-      throw new NotFoundException(
-        `Source config with id ${id} and securityId ${securityId} not found`,
-      );
-    }
+  private sourceLocked(
+    assignment: RealtimeSubscriptionAssignment,
+  ): HttpBusinessRejection<string, object> {
+    return new HttpBusinessRejection(
+      'REALTIME_SOURCE_LOCKED',
+      'Realtime source is locked by an assignment',
+      {
+        assignmentId: assignment.id,
+        securityId: assignment.securityId,
+        securitySourceConfigId: assignment.sourceConfigId,
+      } satisfies RealtimeSourceLockedDataVo,
+    );
+  }
+
+  private isRealtimeSource(
+    source: DataSource,
+  ): source is RealtimeSubscriptionSource {
+    return REALTIME_SUBSCRIPTION_SOURCES.includes(
+      source as RealtimeSubscriptionSource,
+    );
   }
 }

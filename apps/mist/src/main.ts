@@ -40,6 +40,10 @@ All HTTP endpoints return responses in a unified format with \`success\`, \`stat
     .addTag('indicator', 'Technical Indicators - MACD, RSI, KDJ, K-line data')
     .addTag('chan', 'Chan Theory Analysis - Merge K, Bi, Fenxing, Channel')
     .addTag('security v1', 'Security management endpoints (v1)')
+    .addTag(
+      'realtime subscriptions v1',
+      'Immutable realtime routing assignments and convergence inventory',
+    )
     .addServer('http://localhost:8001', 'Local development')
     .build();
 

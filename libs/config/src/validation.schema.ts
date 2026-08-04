@@ -120,6 +120,14 @@ export const mistEnvSchema = commonEnvSchema
         'Comma-separated exact QMT formatCodes for realtime (max 5)',
       ),
 
+    REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: Joi.string()
+      .trim()
+      .valid('off', 'on')
+      .default('off')
+      .description(
+        'off=assignment management only; on=ACTIVE assignments are the sole production subscription authority',
+      ),
+
     // ===== B1: current-day realtime market data productization =====
     // Single-node V1 may share this persistent Redis endpoint with realtime
     // BullMQ. Market state and queue state still require separate prefixes,
@@ -183,6 +191,17 @@ export const mistEnvSchema = commonEnvSchema
         custom:
           'REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL must be greater than or equal to REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES',
       });
+    }
+    if (value['REALTIME_SUBSCRIPTION_LIFECYCLE_MODE'] === 'on') {
+      const conflicts = [
+        'TDX_REALTIME_ALLOWLIST',
+        'QMT_REALTIME_ALLOWLIST',
+      ].filter((name) => String(value[name] ?? '').trim().length > 0);
+      if (conflicts.length > 0) {
+        return helpers.message({
+          custom: `REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on conflicts with non-empty ${conflicts.join(', ')}`,
+        });
+      }
     }
     return value;
   }, 'realtime candle queue limit relationship');
