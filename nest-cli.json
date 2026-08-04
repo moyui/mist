@@ -102,7 +102,7 @@
         "tsConfigPath": "libs/transport/tsconfig.lib.json"
       }
     },
-    "backtest": {
+    "backtest-lib": {
       "type": "library",
       "root": "libs/backtest",
       "entryFile": "index",
