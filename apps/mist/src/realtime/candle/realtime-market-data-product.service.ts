@@ -1,8 +1,10 @@
 import {
   Injectable,
+  Inject,
   Logger,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -39,6 +41,11 @@ import {
   REALTIME_REDIS_RECORD_LIMITS,
   assertRealtimeRedisBytes,
 } from '../realtime-redis.constants';
+import type { CandleFinalizedTriggerV1 } from '@app/signal';
+import {
+  CANDLE_FINALIZATION_HANDOFF_PORT,
+  type CandleFinalizationHandoffPort,
+} from '../strategy-trigger/candle-finalization-handoff.port';
 
 /** Due scanner interval. Design: "每秒扫描". */
 const DUE_SCAN_INTERVAL_MS = 1_000;
@@ -95,6 +102,9 @@ export class RealtimeMarketDataProductService
     private readonly aggregator: OpenCandleAggregator,
     private readonly finalizer: CandleFinalizer,
     private readonly allowlist: RealtimeSecurityAllowlistService,
+    @Optional()
+    @Inject(CANDLE_FINALIZATION_HANDOFF_PORT)
+    private readonly finalizationHandoff?: CandleFinalizationHandoffPort,
   ) {
     const rawMode =
       this.config.get<string>('REALTIME_PRODUCTIZATION_MODE') ?? 'off';
@@ -650,6 +660,15 @@ export class RealtimeMarketDataProductService
           decoded.bucketStartMs,
         );
         this.clearDueTracking(member);
+        this.publishFinalization(
+          sealed.validity === 'valid'
+            ? this.sealedTrigger(sealed)
+            : this.discardedTrigger(
+                sealed.securityId,
+                sealed.source,
+                sealed.bucketStartMs,
+              ),
+        );
       }
       return;
     }
@@ -663,7 +682,60 @@ export class RealtimeMarketDataProductService
       reason,
       now,
     );
-    if (committed) this.clearDueTracking(member);
+    if (committed) {
+      this.clearDueTracking(member);
+      this.publishFinalization(
+        this.discardedTrigger(
+          decoded.securityId,
+          decoded.source,
+          decoded.bucketStartMs,
+        ),
+      );
+    }
+  }
+
+  private sealedTrigger(candle: {
+    securityId: number;
+    source: RealtimeSource;
+    bucketStartMs: number;
+    close: number;
+  }): CandleFinalizedTriggerV1 {
+    return Object.freeze({
+      contractVersion: 1,
+      securityId: candle.securityId,
+      source: candle.source,
+      period: '1m',
+      triggerTime: new Date(candle.bucketStartMs).toISOString(),
+      outcome: 'sealed',
+      triggerPrice: candle.close,
+    });
+  }
+
+  private discardedTrigger(
+    securityId: number,
+    source: RealtimeSource,
+    bucketStartMs: number,
+  ): CandleFinalizedTriggerV1 {
+    return Object.freeze({
+      contractVersion: 1,
+      securityId,
+      source,
+      period: '1m',
+      triggerTime: new Date(bucketStartMs).toISOString(),
+      outcome: 'discarded',
+      triggerPrice: null,
+    });
+  }
+
+  private publishFinalization(trigger: CandleFinalizedTriggerV1): void {
+    if (!this.finalizationHandoff) return;
+    void this.finalizationHandoff.publish(trigger).catch((error: unknown) => {
+      this.logger.error(
+        `Realtime strategy handoff failed after candle commit for securityId=${trigger.securityId} source=${trigger.source} triggerTime=${trigger.triggerTime}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    });
   }
 
   private async releaseAtHardHorizon(

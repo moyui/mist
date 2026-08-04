@@ -430,6 +430,7 @@ describe('RealtimeMarketDataProductService', () => {
       discardDue: jest.fn().mockResolvedValue(true),
     } as any;
     const aggregator = new OpenCandleAggregator();
+    const handoff = { publish: jest.fn().mockResolvedValue(undefined) };
     const service = new RealtimeMarketDataProductService(
       makeConfig('shadow'),
       { now: () => clockMs } as any,
@@ -437,6 +438,7 @@ describe('RealtimeMarketDataProductService', () => {
       aggregator,
       finalizer,
       allowlist,
+      handoff,
     );
 
     await scanAndDrain(service);
@@ -459,6 +461,75 @@ describe('RealtimeMarketDataProductService', () => {
       clockMs,
     );
     expect(aggregator.peekCandidate(1, 'tdx', clockMs - 65_000)).toBeNull();
+    expect(handoff.publish).toHaveBeenCalledWith({
+      contractVersion: 1,
+      securityId: 1,
+      source: 'tdx',
+      period: '1m',
+      triggerTime: new Date(
+        Date.parse('2026-07-28T01:30:00.000Z'),
+      ).toISOString(),
+      outcome: 'discarded',
+      triggerPrice: null,
+    });
+  });
+
+  it('publishes sealed only after the candle commit succeeds', async () => {
+    const harness = makeRedisHarness();
+    const aggregator = new OpenCandleAggregator();
+    const bucketStartMs = Date.parse('2026-07-28T01:30:00.000Z');
+    aggregator.applySnapshot(
+      makeSnapshot({ eventTime: sh(9, 30), cumulativeVolume: '100' }),
+    );
+    const finalizer = {
+      seal: jest.fn().mockResolvedValue(true),
+      discardDue: jest.fn(),
+    } as any;
+    const handoff = { publish: jest.fn().mockResolvedValue(undefined) };
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow'),
+      { now: () => bucketStartMs + 65_000 } as any,
+      harness.redis,
+      aggregator,
+      finalizer,
+      emptyAllowlist,
+      handoff,
+    );
+    const member = `1:tdx:${bucketStartMs}`;
+    const process = (
+      service as unknown as {
+        processDueMember: (
+          client: unknown,
+          tradingDay: string,
+          member: string,
+          decoded: {
+            securityId: number;
+            source: 'tdx';
+            bucketStartMs: number;
+          },
+          now: number,
+        ) => Promise<void>;
+      }
+    ).processDueMember.bind(service);
+
+    await process(
+      harness.client,
+      '20260728',
+      member,
+      { securityId: 1, source: 'tdx', bucketStartMs },
+      bucketStartMs + 65_000,
+    );
+
+    expect(finalizer.seal).toHaveBeenCalledTimes(1);
+    expect(handoff.publish).toHaveBeenCalledWith({
+      contractVersion: 1,
+      securityId: 1,
+      source: 'tdx',
+      period: '1m',
+      triggerTime: new Date(bucketStartMs).toISOString(),
+      outcome: 'sealed',
+      triggerPrice: 10,
+    });
   });
 
   it('retries the same immutable candidate after finalizer failure', async () => {
