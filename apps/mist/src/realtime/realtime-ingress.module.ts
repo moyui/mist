@@ -11,10 +11,17 @@ import { RealtimeMarketDataProductService } from './candle/realtime-market-data-
 import { RealtimeMarketObservabilityService } from './realtime-market-observability.service';
 import { RealtimeCandleDiagnosticController } from './candle/realtime-candle-diagnostic.controller';
 import { RealtimeCandleHealthService } from './candle/realtime-candle-health.service';
+import { resolveRealtimeStrategyMode } from '@app/config';
+import { RealtimeStrategyHandoffModule } from './strategy-trigger/realtime-strategy-handoff.module';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([SecuritySourceConfig])],
+  imports: [
+    TypeOrmModule.forFeature([SecuritySourceConfig]),
+    ...realtimeStrategyHandoffModulesForMode(
+      resolveRealtimeStrategyMode(process.env.REALTIME_STRATEGY_MODE),
+    ),
+  ],
   controllers: [RealtimeCandleDiagnosticController],
   providers: [
     RealtimeSnapshotIngressService,
@@ -36,3 +43,9 @@ import { RealtimeCandleHealthService } from './candle/realtime-candle-health.ser
   ],
 })
 export class RealtimeIngressModule {}
+
+export function realtimeStrategyHandoffModulesForMode(
+  mode: 'off' | 'shadow' | 'on',
+) {
+  return mode === 'off' ? [] : [RealtimeStrategyHandoffModule];
+}

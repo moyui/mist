@@ -14,6 +14,7 @@ import type { CompiledStrategyExecutionPlan } from '@app/strategy';
 import { Repository } from 'typeorm';
 import { CreateStrategyDefinitionDto } from '../dto/create-strategy-definition.dto';
 import { StrategyExecutionPlanService } from '../rules/strategy-execution-plan.service';
+import { SignalRegistryRpcClient } from '../runtime/signal-registry-rpc.client';
 
 @Injectable()
 export class StrategyDefinitionService {
@@ -23,6 +24,7 @@ export class StrategyDefinitionService {
     @InjectRepository(StrategyVersion)
     private readonly versionRepository: Repository<StrategyVersion>,
     private readonly executionPlanService: StrategyExecutionPlanService,
+    private readonly signalRegistry: SignalRegistryRpcClient,
   ) {}
 
   async create(dto: CreateStrategyDefinitionDto): Promise<StrategyDefinition> {
@@ -89,7 +91,7 @@ export class StrategyDefinitionService {
   }
 
   async enable(id: number): Promise<StrategyDefinition> {
-    return await this.definitionRepository.manager.transaction(
+    const definition = await this.definitionRepository.manager.transaction(
       async (manager) => {
         const definitionRepository = manager.getRepository(StrategyDefinition);
         const versionRepository = manager.getRepository(StrategyVersion);
@@ -106,15 +108,21 @@ export class StrategyDefinitionService {
         return await definitionRepository.save(definition);
       },
     );
+    await this.signalRegistry.refresh(definition.id);
+    return definition;
   }
 
   async disable(id: number): Promise<StrategyDefinition> {
-    const definition = await this.findByIdWithRepository(
-      this.definitionRepository,
-      id,
+    const definition = await this.definitionRepository.manager.transaction(
+      async (manager) => {
+        const repository = manager.getRepository(StrategyDefinition);
+        const current = await this.findByIdWithRepository(repository, id);
+        current.status = StrategyStatus.DISABLED;
+        return await repository.save(current);
+      },
     );
-    definition.status = StrategyStatus.DISABLED;
-    return await this.definitionRepository.save(definition);
+    await this.signalRegistry.refresh(definition.id);
+    return definition;
   }
 
   async listVersions(strategyDefinitionId: number): Promise<StrategyVersion[]> {

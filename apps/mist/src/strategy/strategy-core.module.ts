@@ -14,6 +14,7 @@ import { StrategyAlertEventService } from './services/strategy-alert-event.servi
 import { StrategyBacktestService } from './services/strategy-backtest.service';
 import { StrategyDefinitionService } from './services/strategy-definition.service';
 import { StrategySignalService } from './services/strategy-signal.service';
+import { SignalRegistryRpcModule } from './runtime/signal-registry-rpc.module';
 
 const strategyEntities = [
   StrategyDefinition,
@@ -34,7 +35,10 @@ const strategyProviders = [
 ];
 
 @Module({
-  imports: [TypeOrmModule.forFeature(strategyEntities)],
+  imports: [
+    TypeOrmModule.forFeature(strategyEntities),
+    SignalRegistryRpcModule,
+  ],
   providers: strategyProviders,
   exports: strategyProviders,
 })

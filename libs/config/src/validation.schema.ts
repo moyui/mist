@@ -146,6 +146,9 @@ export const mistEnvSchema = commonEnvSchema
         'off=registry only; shadow=evaluate without strategy persistence; on=enable live signal persistence',
       ),
 
+    SIGNAL_RPC_HOST: Joi.string().hostname().default('signal'),
+    SIGNAL_RPC_PORT: Joi.number().port().default(9010),
+
     REALTIME_CANDLE_GRACE_MS: Joi.number()
       .integer()
       .min(REALTIME_CANDLE_GRACE_LIMITS.min)

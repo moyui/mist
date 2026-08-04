@@ -77,10 +77,18 @@ describe('StrategyDefinitionService', () => {
       }
     });
     definitionRepository.manager = { transaction };
+    const signalRegistry = {
+      refresh: jest.fn().mockImplementation(async (strategyDefinitionId) => ({
+        strategyDefinitionId,
+        registryGeneration: 1,
+        action: 'upserted',
+      })),
+    };
     const service = new StrategyDefinitionService(
       definitionRepository as any,
       versionRepository as any,
       new StrategyExecutionPlanService(),
+      signalRegistry as any,
     );
 
     return {
@@ -90,6 +98,7 @@ describe('StrategyDefinitionService', () => {
       definitionRepository,
       versionRepository,
       transaction,
+      signalRegistry,
     };
   };
 
@@ -162,7 +171,7 @@ describe('StrategyDefinitionService', () => {
   });
 
   it('enables and disables a price strategy without changing versions', async () => {
-    const { service, versions } = createHarness();
+    const { service, versions, signalRegistry } = createHarness();
     const strategy = await service.create(createDto);
 
     await expect(service.enable(strategy.id)).resolves.toMatchObject({
@@ -174,6 +183,21 @@ describe('StrategyDefinitionService', () => {
       currentVersionId: 1,
     });
     expect(versions).toHaveLength(1);
+    expect(signalRegistry.refresh).toHaveBeenNthCalledWith(1, strategy.id);
+    expect(signalRegistry.refresh).toHaveBeenNthCalledWith(2, strategy.id);
+  });
+
+  it('keeps committed status when runtime refresh is unavailable', async () => {
+    const { service, definitions, signalRegistry } = createHarness();
+    const strategy = await service.create(createDto);
+    signalRegistry.refresh.mockRejectedValueOnce(
+      new Error('Signal service is unavailable'),
+    );
+
+    await expect(service.enable(strategy.id)).rejects.toThrow(
+      'Signal service is unavailable',
+    );
+    expect(definitions[0].status).toBe(StrategyStatus.ENABLED);
   });
 
   it('keeps quantity strategies out of realtime registration before source HIL', async () => {
