@@ -11,6 +11,15 @@ export {
 } from './contracts/candle-finalized-trigger.contract';
 export type { CandleFinalizedTriggerV1 } from './contracts/candle-finalized-trigger.contract';
 export {
+  SIGNAL_REGISTRY_REFRESH_PATTERN,
+  decodeRefreshSignalRegistryCommandV1,
+  decodeSignalRegistryRefreshV1,
+} from './contracts/signal-registry-refresh.contract';
+export type {
+  RefreshSignalRegistryCommandV1,
+  SignalRegistryRefreshV1,
+} from './contracts/signal-registry-refresh.contract';
+export {
   REALTIME_STRATEGY_PERIODS,
   RealtimePeriodBuilder,
 } from './runtime/realtime-period.builder';

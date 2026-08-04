@@ -102,13 +102,22 @@
         "tsConfigPath": "libs/backtest/tsconfig.lib.json"
       }
     },
-    "signal": {
+    "signal-lib": {
       "type": "library",
       "root": "libs/signal",
       "entryFile": "index",
       "sourceRoot": "libs/signal/src",
       "compilerOptions": {
         "tsConfigPath": "libs/signal/tsconfig.lib.json"
+      }
+    },
+    "signal": {
+      "type": "application",
+      "root": "apps/signal",
+      "entryFile": "main",
+      "sourceRoot": "apps/signal/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/signal/tsconfig.app.json"
       }
     },
     "strategy": {

@@ -139,6 +139,13 @@ export const mistEnvSchema = commonEnvSchema
         'off=memory-only (default); shadow=aggregate+write Redis but hide from query; on=expose Redis-backed current-day query',
       ),
 
+    REALTIME_STRATEGY_MODE: Joi.string()
+      .valid('off', 'shadow', 'on')
+      .default('off')
+      .description(
+        'off=registry only; shadow=evaluate without strategy persistence; on=enable live signal persistence',
+      ),
+
     REALTIME_CANDLE_GRACE_MS: Joi.number()
       .integer()
       .min(REALTIME_CANDLE_GRACE_LIMITS.min)
@@ -190,3 +197,30 @@ export const chanEnvSchema = commonEnvSchema.append({
 export const scheduleEnvSchema = commonEnvSchema.append({
   PORT: Joi.number().port().default(8003),
 });
+
+/**
+ * Signal app-specific environment variable validation.
+ * Realtime Redis is required only when shadow/on modules are assembled.
+ */
+export const signalEnvSchema = commonEnvSchema.append({
+  PORT: Joi.number().port().default(8010),
+  SIGNAL_RPC_PORT: Joi.number().port().default(9010),
+  REALTIME_STRATEGY_MODE: Joi.string()
+    .valid('off', 'shadow', 'on')
+    .default('off'),
+  MIST_REALTIME_REDIS_URL: Joi.string().uri().allow('').default(''),
+});
+
+export type RealtimeStrategyMode = 'off' | 'shadow' | 'on';
+
+export function resolveRealtimeStrategyMode(
+  value: string | undefined,
+): RealtimeStrategyMode {
+  const normalized = (value ?? 'off').trim().toLowerCase();
+  if (normalized === 'off' || normalized === 'shadow' || normalized === 'on') {
+    return normalized;
+  }
+  throw new Error(
+    `Unsupported REALTIME_STRATEGY_MODE=${JSON.stringify(value)}; expected off, shadow or on`,
+  );
+}
