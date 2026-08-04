@@ -4,9 +4,13 @@ import {
   type RealtimeStrategyMode,
 } from '@app/config';
 import type { SignalHealthVo } from './signal-health.vo';
+import { SignalRuntimeObservabilityService } from './signal-runtime-observability.service';
 
 @Injectable()
 export class SignalHealthStateService {
+  constructor(
+    private readonly runtime = new SignalRuntimeObservabilityService(),
+  ) {}
   private readonly realtimeMode: RealtimeStrategyMode =
     resolveRealtimeStrategyMode(process.env.REALTIME_STRATEGY_MODE);
   private registry: SignalHealthVo['registry'] = {
@@ -189,6 +193,7 @@ export class SignalHealthStateService {
       marketData: { ...this.marketData },
       queue: { ...this.queue },
       evaluation: { ...this.evaluation },
+      runtime: this.runtime.snapshot(),
     };
   }
 }

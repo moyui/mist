@@ -16,7 +16,7 @@ describe('SignalHealthStateService', () => {
     const state = new SignalHealthStateService();
     state.recordRegistrySuccess(1, 0, 0, '2026-08-04T01:02:03.000Z');
 
-    expect(state.snapshot()).toEqual({
+    expect(state.snapshot()).toMatchObject({
       status: 'ok',
       instance: 'signal',
       realtimeMode: 'off',
@@ -56,6 +56,13 @@ describe('SignalHealthStateService', () => {
         lastPersistenceOutcome: null,
         activeEpisodeCount: 0,
         lastFailureCode: null,
+      },
+      runtime: {
+        consumerRemovalCount: 0,
+        gcCount: 0,
+        gcPauseSeconds: 0,
+        lastCleanupOutcome: null,
+        tradingDayRolloverCount: 0,
       },
     });
   });

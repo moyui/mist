@@ -17,6 +17,7 @@ import { SignalRegistryService } from '../signal-registry.service';
 import { SignalRealtimeStartupService } from './signal-realtime-startup.service';
 import { LiveStrategyPersistenceService } from './live-strategy-persistence.service';
 import { resolveRealtimeStrategyMode } from '@app/config';
+import { SignalRuntimeObservabilityService } from '../signal-runtime-observability.service';
 
 @Module({
   imports: [
@@ -47,12 +48,14 @@ import { resolveRealtimeStrategyMode } from '@app/config';
         SignalRegistryService,
         ConfigService,
         LiveStrategyPersistenceService,
+        SignalRuntimeObservabilityService,
       ],
       useFactory(
         marketData: SignalStrategyMarketDataAdapter,
         registry: SignalRegistryService,
         config: ConfigService,
         persistence: LiveStrategyPersistenceService,
+        runtimeObservability: SignalRuntimeObservabilityService,
       ) {
         return new CandleFinalizedJobProcessor(
           marketData,
@@ -66,6 +69,7 @@ import { resolveRealtimeStrategyMode } from '@app/config';
             config.get<string>('REALTIME_STRATEGY_MODE'),
           ) as 'shadow' | 'on',
           persistence,
+          runtimeObservability,
         );
       },
     },

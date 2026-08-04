@@ -22,11 +22,9 @@ import {
   CANDLE_FINALIZATION_HANDOFF_PORT,
   type CandleFinalizationHandoffPort,
 } from './candle-finalization-handoff.port';
+import { RealtimeStrategyHandoffObservabilityService } from './realtime-strategy-handoff-observability.service';
 
-export type StartupCompensationOutcome =
-  | 'not_enabled'
-  | 'completed'
-  | 'failed';
+export type StartupCompensationOutcome = 'not_enabled' | 'completed' | 'failed';
 
 /** One bounded, same-day best-effort recovery pass. It is not a reconciler. */
 @Injectable()
@@ -47,6 +45,8 @@ export class RealtimeStrategyStartupCompensationService
     @Optional()
     @Inject(CANDLE_FINALIZATION_HANDOFF_PORT)
     private readonly handoff?: CandleFinalizationHandoffPort,
+    @Optional()
+    private readonly observability?: RealtimeStrategyHandoffObservabilityService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -55,11 +55,13 @@ export class RealtimeStrategyStartupCompensationService
     try {
       await this.runOnce();
       this.outcome = 'completed';
+      this.observability?.recordStartup(this.outcome, this.submitted);
       this.logger.log(
         `Realtime strategy same-day best-effort startup compensation completed; submitted=${this.submitted}`,
       );
     } catch (error) {
       this.outcome = 'failed';
+      this.observability?.recordStartup(this.outcome, this.submitted);
       this.logger.error(
         `Realtime strategy same-day best-effort startup compensation failed after submitted=${this.submitted}: ${
           error instanceof Error ? error.message : String(error)

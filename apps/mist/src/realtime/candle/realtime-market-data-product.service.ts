@@ -46,6 +46,7 @@ import {
   CANDLE_FINALIZATION_HANDOFF_PORT,
   type CandleFinalizationHandoffPort,
 } from '../strategy-trigger/candle-finalization-handoff.port';
+import { RealtimeStrategyHandoffObservabilityService } from '../strategy-trigger/realtime-strategy-handoff-observability.service';
 
 /** Due scanner interval. Design: "每秒扫描". */
 const DUE_SCAN_INTERVAL_MS = 1_000;
@@ -105,6 +106,8 @@ export class RealtimeMarketDataProductService
     @Optional()
     @Inject(CANDLE_FINALIZATION_HANDOFF_PORT)
     private readonly finalizationHandoff?: CandleFinalizationHandoffPort,
+    @Optional()
+    private readonly handoffObservability?: RealtimeStrategyHandoffObservabilityService,
   ) {
     const rawMode =
       this.config.get<string>('REALTIME_PRODUCTIZATION_MODE') ?? 'off';
@@ -729,13 +732,17 @@ export class RealtimeMarketDataProductService
 
   private publishFinalization(trigger: CandleFinalizedTriggerV1): void {
     if (!this.finalizationHandoff) return;
-    void this.finalizationHandoff.publish(trigger).catch((error: unknown) => {
-      this.logger.error(
-        `Realtime strategy handoff failed after candle commit for securityId=${trigger.securityId} source=${trigger.source} triggerTime=${trigger.triggerTime}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    });
+    void this.finalizationHandoff
+      .publish(trigger)
+      .then(() => this.handoffObservability?.recordLiveSuccess())
+      .catch((error: unknown) => {
+        this.handoffObservability?.recordLiveFailure();
+        this.logger.error(
+          `Realtime strategy handoff failed after candle commit for securityId=${trigger.securityId} source=${trigger.source} triggerTime=${trigger.triggerTime}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
   }
 
   private async releaseAtHardHorizon(

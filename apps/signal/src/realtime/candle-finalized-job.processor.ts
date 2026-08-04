@@ -17,6 +17,7 @@ import type {
   LiveStrategyPersistenceOutcome,
   LiveStrategyPersistenceService,
 } from './live-strategy-persistence.service';
+import type { SignalRuntimeObservabilityService } from '../signal-runtime-observability.service';
 
 export type CandleFinalizedJobOutcome =
   | 'completed'
@@ -67,7 +68,14 @@ export class CandleFinalizedJobProcessor {
     ),
     private readonly jobTimeoutMs = STRATEGY_TRIGGER_JOB_TIMEOUT_MS,
     private readonly mode: 'shadow' | 'on' = 'shadow',
-    private readonly persistence?: Pick<LiveStrategyPersistenceService, 'persist'>,
+    private readonly persistence?: Pick<
+      LiveStrategyPersistenceService,
+      'persist'
+    >,
+    private readonly runtimeObservability?: Pick<
+      SignalRuntimeObservabilityService,
+      'recordTradingDayRollover' | 'recordConsumerRemoval'
+    >,
   ) {}
 
   async process(
@@ -95,6 +103,9 @@ export class CandleFinalizedJobProcessor {
     }
     this.assertWithinDeadline(deadlineAt, 'trading_day_validation:after');
     if (this.activeTradingDay !== tradingDay) {
+      if (this.activeTradingDay !== null) {
+        this.runtimeObservability?.recordTradingDayRollover();
+      }
       this.activeTradingDay = tradingDay;
       this.cursors.clear();
       this.periodBuilder.reset();
@@ -228,6 +239,9 @@ export class CandleFinalizedJobProcessor {
   }
 
   reconcileRegistry(snapshot: SignalRegistrySnapshot): void {
+    const before = this.runtimeObservability
+      ? this.evaluation.diagnostics().groupCount
+      : 0;
     const groups: Array<{
       securityId: number;
       source: 'tdx' | 'qmt';
@@ -262,6 +276,10 @@ export class CandleFinalizedJobProcessor {
     }
     this.periodBuilder.retainGroups(groups);
     this.evaluation.retainRegistryScopes(groups, episodes);
+    if (this.runtimeObservability) {
+      const after = this.evaluation.diagnostics().groupCount;
+      this.runtimeObservability.recordConsumerRemoval(before - after);
+    }
     const retainedSeries = new Set(
       groups.map((group) => `${group.securityId}\u0000${group.source}`),
     );

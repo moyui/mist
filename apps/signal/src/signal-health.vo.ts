@@ -47,12 +47,20 @@ export interface SignalHealthVo {
       | 'unavailable'
       | 'failed'
       | null;
-    lastPersistenceOutcome:
-      | 'created'
-      | 'duplicate_skipped'
-      | 'failed'
-      | null;
+    lastPersistenceOutcome: 'created' | 'duplicate_skipped' | 'failed' | null;
     activeEpisodeCount: number;
     lastFailureCode: string | null;
+  };
+  runtime: {
+    processStartedAt: string;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+    rssBytes: number;
+    heapHighWaterBytes: number;
+    gcCount: number;
+    gcPauseSeconds: number;
+    consumerRemovalCount: number;
+    tradingDayRolloverCount: number;
+    lastCleanupOutcome: 'consumer_removed' | 'trading_day_rolled_over' | null;
   };
 }

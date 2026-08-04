@@ -18,6 +18,7 @@ import type {
 } from './realtime-candle-health.types';
 import { RealtimeMarketDataProductService } from './realtime-market-data-product.service';
 import { marketSeriesKey } from './market-series-key';
+import { RealtimeStrategyHandoffObservabilityService } from '../strategy-trigger/realtime-strategy-handoff-observability.service';
 
 const RETENTION_LOOKBACK_DAYS = 7;
 
@@ -32,6 +33,7 @@ export class RealtimeCandleHealthService {
     private readonly clock: Clock,
     private readonly allowlist: RealtimeSecurityAllowlistService,
     private readonly observability: RealtimeMarketObservabilityService,
+    private readonly handoffObservability?: RealtimeStrategyHandoffObservabilityService,
   ) {}
 
   async observe(): Promise<RealtimeCandleHealthObservation> {
@@ -63,6 +65,18 @@ export class RealtimeCandleHealthService {
         observationFailureTotal: this.redisObservationFailureCount,
       },
       quantityProfileRejections,
+      strategyHandoff: this.handoffObservability?.snapshot(
+        runtime.mode !== 'off',
+      ) ?? {
+        enabled: false,
+        sharedRedisFailureDomain: true,
+        liveEnqueue: {
+          successTotal: 0,
+          failureTotal: 0,
+          lastOutcome: null,
+        },
+        startupCompensation: { outcome: 'not_enabled', submitted: 0 },
+      },
     };
 
     if (runtime.mode === 'off') return observation;

@@ -1,5 +1,6 @@
 import type { CandleFinalizerDiagnostics } from './candle-finalizer';
 import type { RealtimeQuantityRejectionObservation } from '../realtime-market-observability.service';
+import type { RealtimeStrategyHandoffObservation } from '../strategy-trigger/realtime-strategy-handoff-observability.service';
 
 export type RealtimeCandleProductMode = 'off' | 'shadow' | 'on';
 
@@ -70,4 +71,5 @@ export interface RealtimeCandleHealthObservation
     observationFailureTotal: number;
   };
   quantityProfileRejections: RealtimeQuantityRejectionObservation[];
+  strategyHandoff: RealtimeStrategyHandoffObservation;
 }
