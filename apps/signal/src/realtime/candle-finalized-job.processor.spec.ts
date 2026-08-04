@@ -148,12 +148,12 @@ describe('CandleFinalizedJobProcessor', () => {
         sealedPayload(makeBar('2026-08-04T06:44:00.000Z', 28)),
       ),
     ).rejects.toEqual(
-      expect.objectContaining<Partial<RealtimeStrategyJobDeadlineExceededError>>(
-        {
-          code: 'REALTIME_STRATEGY_JOB_DEADLINE_EXCEEDED',
-          stage: 'redis_observation:before',
-        },
-      ),
+      expect.objectContaining<
+        Partial<RealtimeStrategyJobDeadlineExceededError>
+      >({
+        code: 'REALTIME_STRATEGY_JOB_DEADLINE_EXCEEDED',
+        stage: 'redis_observation:before',
+      }),
     );
     expect(marketData.resolveRealtimeObservation).not.toHaveBeenCalled();
   });

@@ -182,16 +182,14 @@ describe('shared strategy evaluation', () => {
   });
 
   it('shares KDJ 13/14 and MACD 130/131 calculations across plans at one anchor', () => {
-    const calculateKdj = jest.fn((_bars: readonly StrategyBar[]) => ({
-      k: 3,
-      d: 2,
-      j: 5,
-    }));
-    const calculateMacd = jest.fn((_bars: readonly StrategyBar[]) => ({
-      line: 3,
-      signal: 2,
-      histogram: 1,
-    }));
+    const calculateKdj = jest.fn((bars: readonly StrategyBar[]) => {
+      void bars;
+      return { k: 3, d: 2, j: 5 };
+    });
+    const calculateMacd = jest.fn((bars: readonly StrategyBar[]) => {
+      void bars;
+      return { line: 3, signal: 2, histogram: 1 };
+    });
     const analysis = new StrategyAnalysisObservationCache(
       calculateKdj,
       calculateMacd,

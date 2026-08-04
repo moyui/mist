@@ -89,11 +89,7 @@ export class RealtimeStrategyEvaluationService {
     const candidates: ShadowStrategyCandidate[] = [];
     const analysis = new StrategyAnalysisObservationCache();
     for (const execution of eligible) {
-      const outcome = evaluateStrategyPlan(
-        execution.plan,
-        projected,
-        analysis,
-      );
+      const outcome = evaluateStrategyPlan(execution.plan, projected, analysis);
       this.lastOutcome =
         outcome.status === 'unavailable'
           ? 'unavailable'

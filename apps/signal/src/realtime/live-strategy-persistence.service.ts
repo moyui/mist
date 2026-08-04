@@ -11,9 +11,7 @@ import {
 import type { ShadowStrategyCandidate } from '@app/signal';
 import { DataSource as TypeOrmDataSource, QueryFailedError } from 'typeorm';
 
-export type LiveStrategyPersistenceOutcome =
-  | 'created'
-  | 'duplicate_skipped';
+export type LiveStrategyPersistenceOutcome = 'created' | 'duplicate_skipped';
 
 const ALERT_DEDUPE_CONSTRAINT = 'uq_strategy_alert_events_dedupe_key';
 
