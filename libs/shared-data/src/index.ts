@@ -9,3 +9,4 @@ export * from './enums/strategy-signal-source.enum';
 export * from './enums/strategy-signal-kind.enum';
 export * from './enums/strategy-status.enum';
 export * from './enums/backtest-run-status.enum';
+export * from './mappers/k-strategy-bar.mapper';
