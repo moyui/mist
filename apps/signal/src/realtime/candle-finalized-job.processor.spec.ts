@@ -114,6 +114,28 @@ describe('CandleFinalizedJobProcessor', () => {
     expect(marketData.resolveRealtimeObservation).not.toHaveBeenCalled();
   });
 
+  it('rejects a trigger price that conflicts with the sealed Redis candle', async () => {
+    const bar = makeBar('2026-08-04T06:44:00.000Z', 28);
+    const marketData = {
+      loadRealtimeWindow: jest.fn(),
+      resolveRealtimeObservation: jest
+        .fn()
+        .mockResolvedValue({ outcome: 'sealed', bar }),
+    };
+    const processor = new CandleFinalizedJobProcessor(
+      marketData,
+      () => [],
+      () => new Date('2026-08-04T07:00:00.000Z'),
+    );
+
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, {
+        ...sealedPayload(bar),
+        triggerPrice: 29,
+      }),
+    ).rejects.toThrow('conflicts with Redis candle close');
+  });
+
   it('ignores identical finalization and rejects conflicting content', async () => {
     const bar = makeBar('2026-08-04T06:44:00.000Z', 28);
     const marketData = {
@@ -124,7 +146,7 @@ describe('CandleFinalizedJobProcessor', () => {
         .mockResolvedValueOnce({ outcome: 'sealed', bar })
         .mockResolvedValueOnce({
           outcome: 'sealed',
-          bar: { ...bar, close: 29 },
+          bar: { ...bar, high: 29 },
         }),
     };
     const processor = new CandleFinalizedJobProcessor(

@@ -74,7 +74,9 @@ export class CandleFinalizedJobProcessor {
     }
 
     const sealedBar =
-      trigger.outcome === 'sealed' ? await this.resolveSealed(trigger) : null;
+      payload.outcome === 'sealed'
+        ? await this.resolveSealed(trigger, payload.triggerPrice)
+        : null;
     if (prior && triggerMs === prior.timestampMs) {
       if (
         prior.outcome === trigger.outcome &&
@@ -108,11 +110,17 @@ export class CandleFinalizedJobProcessor {
     });
   }
 
-  private async resolveSealed(trigger: ReturnType<typeof toStrategyTrigger>) {
+  private async resolveSealed(
+    trigger: ReturnType<typeof toStrategyTrigger>,
+    triggerPrice: number,
+  ) {
     const observation =
       await this.marketData.resolveRealtimeObservation(trigger);
     if (observation.outcome !== 'sealed') {
       throw new TypeError('sealed trigger resolved to a discarded observation');
+    }
+    if (observation.bar.close !== triggerPrice) {
+      throw new Error('sealed trigger price conflicts with Redis candle close');
     }
     return observation.bar;
   }
