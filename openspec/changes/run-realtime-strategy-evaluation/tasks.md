@@ -66,13 +66,13 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 
 ## 5. Episode 与持久化
 
-- [ ] 5.1 实现 source-aware active/inactive episode membership：matched activate/suppress、evaluated
+- [x] 5.1 实现 source-aware active/inactive episode membership：matched activate/suppress、evaluated
   non-match clear、unavailable no-op、restart/off/day rollover clear 和 listener cleanup。
-- [ ] 5.2 实现 shadow 零策略表写入；on 模式使用短 MySQL transaction 原子写 live Signal 与 PENDING
+- [x] 5.2 实现 shadow 零策略表写入；on 模式使用短 MySQL transaction 原子写 live Signal 与 PENDING
   AlertEvent，并复用共享 contextSnapshot serializer。
-- [ ] 5.3 实现 approved logical identity、named AlertEvent dedupe conflict classifier、duplicate skip 和
+- [x] 5.3 实现 approved logical identity、named AlertEvent dedupe conflict classifier、duplicate skip 和
   非目标数据库错误传播；本 change 不新增 migration 或 Signal composite unique。
-- [ ] 5.4 覆盖每日首次重发、持续命中抑制、incomplete K、disable/version race、transaction rollback、
+- [x] 5.4 覆盖每日首次重发、持续命中抑制、incomplete K、disable/version race、transaction rollback、
   duplicate/conflict 和 unavailable 不落库 tests。
 
 ## 6. 部署、监控与 HIL

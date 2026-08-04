@@ -15,6 +15,8 @@ import {
   Security,
   SecuritySourceConfig,
   StrategyDefinition,
+  StrategyAlertEvent,
+  StrategySignal,
   StrategyVersion,
 } from '@app/shared-data';
 import * as path from 'node:path';
@@ -62,11 +64,14 @@ import { SignalRegistryModule } from './signal-registry.module';
             SecuritySourceConfig,
             StrategyDefinition,
             StrategyVersion,
+            StrategySignal,
+            StrategyAlertEvent,
           ],
           poolSize: 10,
           connectorPackage: 'mysql2' as const,
           extra: {
             authPlugins: 'sha256_password',
+            connectTimeout: 5_000,
           },
         };
       },
@@ -84,8 +89,5 @@ export class SignalAppModule {}
 /** Off mode deliberately omits every Redis and BullMQ provider. */
 export function signalRealtimeModulesForMode(mode: RealtimeStrategyMode) {
   if (mode === 'off') return [];
-  if (mode === 'shadow') return [SignalRealtimeModule];
-  throw new Error(
-    'REALTIME_STRATEGY_MODE=on is unavailable until live persistence is assembled',
-  );
+  return [SignalRealtimeModule];
 }

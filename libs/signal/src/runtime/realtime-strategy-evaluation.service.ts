@@ -21,6 +21,7 @@ export interface RealtimeStrategyExecutionPlan {
   readonly source: StrategyRealtimeSource;
   readonly period: number;
   readonly plan: CompiledStrategyExecutionPlan;
+  readonly ruleSnapshot: Readonly<Record<string, unknown>>;
 }
 
 export interface ShadowStrategyCandidate {
@@ -39,6 +40,7 @@ export interface ShadowStrategyCandidate {
     { status: 'evaluated' }
   >;
   readonly contextSnapshot: Readonly<Record<string, unknown>>;
+  readonly ruleSnapshot: Readonly<Record<string, unknown>>;
 }
 
 export class RealtimeStrategyEvaluationService {
@@ -113,11 +115,15 @@ export class RealtimeStrategyEvaluationService {
           execution.plan,
           outcome.context,
         ),
+        ruleSnapshot: execution.ruleSnapshot,
       });
       candidates.push(candidate);
-      this.episodes.activate(identity);
     }
     return Object.freeze(candidates);
+  }
+
+  activate(candidate: ShadowStrategyCandidate): void {
+    this.episodes.activate(candidate);
   }
 
   reset(): void {

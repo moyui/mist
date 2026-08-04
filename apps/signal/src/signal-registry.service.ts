@@ -8,7 +8,7 @@ import {
   StrategyStatus,
 } from '@app/shared-data';
 import {
-  compileStoredStrategyRule,
+  compileStoredStrategyRuleWithNormalized,
   type StrategyRealtimeSource,
 } from '@app/strategy';
 import { In, Repository } from 'typeorm';
@@ -107,6 +107,7 @@ export class SignalRegistryService implements OnApplicationBootstrap {
               source,
               period,
               plan: definition.executionPlan,
+              ruleSnapshot: definition.ruleSnapshot,
             }),
           ),
       )
@@ -252,7 +253,7 @@ function compileRegistryDefinition(
       `Strategy version ${version.id} has unsupported rule schema`,
     );
   }
-  const executionPlan = compileStoredStrategyRule(
+  const compilation = compileStoredStrategyRuleWithNormalized(
     version.rule,
     version.signalKind,
   );
@@ -266,7 +267,10 @@ function compileRegistryDefinition(
     ),
     periods: Object.freeze([...definition.periods]),
     sources: Object.freeze([...definition.sources]),
-    executionPlan,
+    executionPlan: compilation.plan,
+    ruleSnapshot: compilation.normalizedRule as Readonly<
+      Record<string, unknown>
+    >,
   });
 }
 

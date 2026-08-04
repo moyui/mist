@@ -64,6 +64,7 @@ export { buildStrategyEvaluationContext } from './evaluation/strategy-context.bu
 export type { StrategyContextBuildResult } from './evaluation/strategy-context.builder';
 export { serializeStrategyContextSnapshot } from './evaluation/strategy-context-snapshot.serializer';
 export { StrategyAnalysisObservationCache } from './evaluation/strategy-context.builder';
+export { compileStoredStrategyRuleWithNormalized } from './rules/strategy-rule.compiler';
 export { evaluateStrategyPlan } from './evaluation/strategy-rule.evaluator';
 export type {
   StrategyEvaluationContext,

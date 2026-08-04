@@ -13,6 +13,10 @@ import {
   type ShadowStrategyCandidate,
 } from '@app/signal';
 import type { SignalRegistrySnapshot } from '../signal-registry.types';
+import type {
+  LiveStrategyPersistenceOutcome,
+  LiveStrategyPersistenceService,
+} from './live-strategy-persistence.service';
 
 export type CandleFinalizedJobOutcome =
   | 'completed'
@@ -55,6 +59,8 @@ export class CandleFinalizedJobProcessor {
       marketData,
     ),
     private readonly jobTimeoutMs = STRATEGY_TRIGGER_JOB_TIMEOUT_MS,
+    private readonly mode: 'shadow' | 'on' = 'shadow',
+    private readonly persistence?: Pick<LiveStrategyPersistenceService, 'persist'>,
   ) {}
 
   async process(
@@ -128,11 +134,26 @@ export class CandleFinalizedJobProcessor {
 
     const candidates: ShadowStrategyCandidate[] = [];
     for (const bar of emitted) {
-      candidates.push(
-        ...(await this.runStage(deadlineAt, 'analysis_evaluation', () =>
-          this.evaluation.evaluate(bar, executionPlans),
-        )),
+      const evaluated = await this.runStage(
+        deadlineAt,
+        'analysis_evaluation',
+        () => this.evaluation.evaluate(bar, executionPlans),
       );
+      for (const candidate of evaluated) {
+        if (this.mode === 'on') {
+          if (!this.persistence) {
+            throw new Error('on-mode live strategy persistence is unavailable');
+          }
+          await this.runStage(
+            deadlineAt,
+            'persistence',
+            async (): Promise<LiveStrategyPersistenceOutcome> =>
+              this.persistence!.persist(candidate),
+          );
+        }
+        this.evaluation.activate(candidate);
+        candidates.push(candidate);
+      }
     }
     return Object.freeze({
       outcome: 'completed',

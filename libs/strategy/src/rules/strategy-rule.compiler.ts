@@ -45,6 +45,13 @@ export function compileStoredStrategyRule(
   return compileStrategyRule(rule, signalKind, 'stored').plan;
 }
 
+export function compileStoredStrategyRuleWithNormalized(
+  rule: unknown,
+  signalKind: StrategySignalKind,
+): StrategyRuleCompilation {
+  return compileStrategyRule(rule, signalKind, 'stored');
+}
+
 function compileStrategyRule(
   rule: unknown,
   signalKind: StrategySignalKind,

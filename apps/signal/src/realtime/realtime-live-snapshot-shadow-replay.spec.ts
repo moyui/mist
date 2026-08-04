@@ -87,6 +87,11 @@ describe.each(REALTIME_LIVE_SNAPSHOT_FIXTURES)(
             versionId: 201,
             source: fixture.source,
             period: 1,
+            ruleSnapshot: {
+              field: 'k.close',
+              operator: 'gt',
+              value: fixture.expectedPrices.last - 0.01,
+            },
             plan: compileStoredStrategyRule(
               {
                 field: 'k.close',

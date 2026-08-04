@@ -10,6 +10,7 @@ export interface SignalRegistryDefinition {
   readonly periods: readonly Period[];
   readonly sources: readonly DataSource[];
   readonly executionPlan: CompiledStrategyExecutionPlan;
+  readonly ruleSnapshot: Readonly<Record<string, unknown>>;
 }
 
 export interface SignalRegistrySnapshot {

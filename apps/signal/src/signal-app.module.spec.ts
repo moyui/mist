@@ -9,9 +9,7 @@ describe('signal realtime module assembly', () => {
     expect(signalRealtimeModulesForMode('shadow')).toHaveLength(1);
   });
 
-  it('fails bootstrap before on can silently behave like shadow', () => {
-    expect(() => signalRealtimeModulesForMode('on')).toThrow(
-      'live persistence is assembled',
-    );
+  it('assembles the persistence-capable realtime module in on mode', () => {
+    expect(signalRealtimeModulesForMode('on')).toHaveLength(1);
   });
 });

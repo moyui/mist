@@ -15,6 +15,8 @@ import { SignalStrategyMarketDataAdapter } from './signal-strategy-market-data.a
 import { SignalRegistryModule } from '../signal-registry.module';
 import { SignalRegistryService } from '../signal-registry.service';
 import { SignalRealtimeStartupService } from './signal-realtime-startup.service';
+import { LiveStrategyPersistenceService } from './live-strategy-persistence.service';
+import { resolveRealtimeStrategyMode } from '@app/config';
 
 @Module({
   imports: [
@@ -37,17 +39,20 @@ import { SignalRealtimeStartupService } from './signal-realtime-startup.service'
   providers: [
     SignalRealtimeRedisService,
     SignalStrategyMarketDataAdapter,
+    LiveStrategyPersistenceService,
     {
       provide: CandleFinalizedJobProcessor,
       inject: [
         SignalStrategyMarketDataAdapter,
         SignalRegistryService,
         ConfigService,
+        LiveStrategyPersistenceService,
       ],
       useFactory(
         marketData: SignalStrategyMarketDataAdapter,
         registry: SignalRegistryService,
         config: ConfigService,
+        persistence: LiveStrategyPersistenceService,
       ) {
         return new CandleFinalizedJobProcessor(
           marketData,
@@ -57,6 +62,10 @@ import { SignalRealtimeStartupService } from './signal-realtime-startup.service'
           undefined,
           undefined,
           config.get<number>('REALTIME_STRATEGY_JOB_TIMEOUT_MS') ?? 30_000,
+          resolveRealtimeStrategyMode(
+            config.get<string>('REALTIME_STRATEGY_MODE'),
+          ) as 'shadow' | 'on',
+          persistence,
         );
       },
     },

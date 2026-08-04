@@ -22,6 +22,7 @@ describe('CandleFinalizedJobProcessor', () => {
           versionId: 7,
           source: 'tdx',
           period: 1,
+          ruleSnapshot: { field: 'k.close', operator: 'gt', value: 27 },
           plan: compileStoredStrategyRule(
             { field: 'k.close', operator: 'gt', value: 27 },
             'entry',
@@ -73,6 +74,11 @@ describe('CandleFinalizedJobProcessor', () => {
           versionId: 8,
           source: 'tdx',
           period: 5,
+          ruleSnapshot: {
+            field: 'k.type',
+            operator: 'eq',
+            value: 'incomplete',
+          },
           plan: compileStoredStrategyRule(
             { field: 'k.type', operator: 'eq', value: 'incomplete' },
             'entry',
@@ -286,6 +292,136 @@ describe('CandleFinalizedJobProcessor', () => {
     expect(marketData.resolveRealtimeObservation).toHaveBeenCalledTimes(1);
   });
 
+  it('activates shadow episodes without calling persistence', async () => {
+    const first = makeBar('2026-08-04T06:43:00.000Z', 28);
+    const second = makeBar('2026-08-04T06:44:00.000Z', 29);
+    const marketData = sequentialMarketData(first, second);
+    const persistence = { persist: jest.fn() };
+    const processor = modeProcessor(
+      marketData,
+      'shadow',
+      persistence,
+      () => new Date('2026-08-04T07:00:00.000Z'),
+    );
+
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(first)),
+    ).resolves.toMatchObject({ candidates: [expect.any(Object)] });
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(second)),
+    ).resolves.toEqual({ outcome: 'completed', candidates: [] });
+    expect(persistence.persist).not.toHaveBeenCalled();
+  });
+
+  it('keeps an on-mode episode inactive after rollback and activates after commit', async () => {
+    const first = makeBar('2026-08-04T06:42:00.000Z', 28);
+    const second = makeBar('2026-08-04T06:43:00.000Z', 29);
+    const third = makeBar('2026-08-04T06:44:00.000Z', 30);
+    const failure = new Error('rollback');
+    const persistence = {
+      persist: jest
+        .fn()
+        .mockRejectedValueOnce(failure)
+        .mockResolvedValueOnce('created'),
+    };
+    const processor = modeProcessor(
+      sequentialMarketData(first, second, third),
+      'on',
+      persistence,
+      () => new Date('2026-08-04T07:00:00.000Z'),
+    );
+
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(first)),
+    ).rejects.toBe(failure);
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(second)),
+    ).resolves.toMatchObject({ candidates: [expect.any(Object)] });
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(third)),
+    ).resolves.toEqual({ outcome: 'completed', candidates: [] });
+    expect(persistence.persist).toHaveBeenCalledTimes(2);
+  });
+
+  it('activates an on-mode episode after an approved duplicate skip', async () => {
+    const first = makeBar('2026-08-04T06:43:00.000Z', 28);
+    const second = makeBar('2026-08-04T06:44:00.000Z', 29);
+    const persistence = {
+      persist: jest.fn().mockResolvedValue('duplicate_skipped'),
+    };
+    const processor = modeProcessor(
+      sequentialMarketData(first, second),
+      'on',
+      persistence,
+      () => new Date('2026-08-04T07:00:00.000Z'),
+    );
+
+    await processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(first));
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(second)),
+    ).resolves.toEqual({ outcome: 'completed', candidates: [] });
+    expect(persistence.persist).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears episode continuity on the first trigger of a new Shanghai day', async () => {
+    const first = makeBar('2026-08-04T06:44:00.000Z', 28);
+    const nextDay = makeBar('2026-08-05T01:30:00.000Z', 29);
+    const marketData = sequentialMarketData(first, nextDay);
+    let now = new Date('2026-08-04T07:00:00.000Z');
+    const processor = modeProcessor(
+      marketData,
+      'shadow',
+      { persist: jest.fn() },
+      () => now,
+    );
+
+    const firstResult = await processor.process(
+      CANDLE_FINALIZED_JOB_NAME,
+      sealedPayload(first),
+    );
+    now = new Date('2026-08-05T02:00:00.000Z');
+    const nextResult = await processor.process(
+      CANDLE_FINALIZED_JOB_NAME,
+      sealedPayload(nextDay),
+    );
+
+    expect(firstResult.candidates).toHaveLength(1);
+    expect(nextResult.candidates).toHaveLength(1);
+  });
+
+  it('does not persist a quantity plan when the field is unavailable', async () => {
+    const bar = makeBar('2026-08-04T06:44:00.000Z', 28);
+    const marketData = sequentialMarketData(bar);
+    const persistence = { persist: jest.fn() };
+    const processor = new CandleFinalizedJobProcessor(
+      marketData,
+      () => [
+        {
+          definitionId: 3,
+          versionId: 7,
+          source: 'tdx',
+          period: 1,
+          ruleSnapshot: { field: 'k.volume', operator: 'gt', value: '0' },
+          plan: compileStoredStrategyRule(
+            { field: 'k.volume', operator: 'gt', value: '0' },
+            'entry',
+          ),
+        },
+      ],
+      () => new Date('2026-08-04T07:00:00.000Z'),
+      undefined,
+      undefined,
+      30_000,
+      'on',
+      persistence,
+    );
+
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(bar)),
+    ).resolves.toEqual({ outcome: 'completed', candidates: [] });
+    expect(persistence.persist).not.toHaveBeenCalled();
+  });
+
   it('reconciles window, period and episode scope after registry cutover', () => {
     const periodBuilder = {
       accept: jest.fn(),
@@ -325,6 +461,7 @@ describe('CandleFinalizedJobProcessor', () => {
               { field: 'k.close', operator: 'gt', value: 1 },
               'entry',
             ),
+            ruleSnapshot: { field: 'k.close', operator: 'gt', value: 1 },
           },
         ],
       ]),
@@ -387,4 +524,48 @@ function sealedPayload(bar: StrategyBar) {
     outcome: 'sealed',
     triggerPrice: bar.close,
   };
+}
+
+function sequentialMarketData(...bars: StrategyBar[]) {
+  const resolveRealtimeObservation = jest.fn();
+  bars.forEach((bar) =>
+    resolveRealtimeObservation.mockResolvedValueOnce({
+      outcome: 'sealed',
+      bar,
+    }),
+  );
+  return {
+    loadRealtimeWindow: jest.fn().mockResolvedValue({ bars: [] }),
+    resolveRealtimeObservation,
+  };
+}
+
+function modeProcessor(
+  marketData: ReturnType<typeof sequentialMarketData>,
+  mode: 'shadow' | 'on',
+  persistence: { persist: jest.Mock },
+  now: () => Date,
+) {
+  return new CandleFinalizedJobProcessor(
+    marketData,
+    () => [
+      {
+        definitionId: 3,
+        versionId: 7,
+        source: 'tdx',
+        period: 1,
+        ruleSnapshot: { field: 'k.close', operator: 'gt', value: 27 },
+        plan: compileStoredStrategyRule(
+          { field: 'k.close', operator: 'gt', value: 27 },
+          'entry',
+        ),
+      },
+    ],
+    now,
+    undefined,
+    undefined,
+    30_000,
+    mode,
+    persistence,
+  );
 }
