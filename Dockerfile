@@ -41,7 +41,8 @@ COPY --from=builder --chown=app:app /app/deploy/database ./deploy/database
 # Expose ports
 # 8001: Main mist app
 # 8008: Chan test entry
-EXPOSE 8001 8008
+# 8010/9010: internal-only Signal HTTP/RPC listeners (Compose does not publish)
+EXPOSE 8001 8008 8010 9010
 
 # Health check - verify main app is responding
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
