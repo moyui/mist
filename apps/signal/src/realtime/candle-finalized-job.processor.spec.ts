@@ -49,6 +49,9 @@ describe('CandleFinalizedJobProcessor', () => {
       triggerTime: bar.timestamp.toISOString(),
       triggerPrice: 28,
       barType: 'complete',
+      contextSnapshot: {
+        k: { type: 'complete', close: 28 },
+      },
     });
     expect(marketData.resolveRealtimeObservation).toHaveBeenCalledTimes(1);
     expect(marketData.loadRealtimeWindow).toHaveBeenCalledTimes(1);

@@ -1,5 +1,7 @@
 import {
   evaluateStrategyPlan,
+  serializeStrategyContextSnapshot,
+  StrategyAnalysisObservationCache,
   type CompiledStrategyExecutionPlan,
   type StrategyBar,
   type StrategyEvaluationOutcome,
@@ -36,6 +38,7 @@ export interface ShadowStrategyCandidate {
     StrategyEvaluationOutcome,
     { status: 'evaluated' }
   >;
+  readonly contextSnapshot: Readonly<Record<string, unknown>>;
 }
 
 export class RealtimeStrategyEvaluationService {
@@ -77,8 +80,13 @@ export class RealtimeStrategyEvaluationService {
       bar.period,
     );
     const candidates: ShadowStrategyCandidate[] = [];
+    const analysis = new StrategyAnalysisObservationCache();
     for (const execution of eligible) {
-      const outcome = evaluateStrategyPlan(execution.plan, projected);
+      const outcome = evaluateStrategyPlan(
+        execution.plan,
+        projected,
+        analysis,
+      );
       const identity: RealtimeEpisodeIdentity = {
         definitionId: execution.definitionId,
         versionId: execution.versionId,
@@ -101,6 +109,10 @@ export class RealtimeStrategyEvaluationService {
         triggerPrice: bar.close,
         barType: bar.type,
         evaluation: outcome,
+        contextSnapshot: serializeStrategyContextSnapshot(
+          execution.plan,
+          outcome.context,
+        ),
       });
       candidates.push(candidate);
       this.episodes.activate(identity);

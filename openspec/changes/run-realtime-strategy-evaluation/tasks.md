@@ -58,7 +58,7 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
   disable/version in-flight race 和 bounded structural cleanup。
 - [x] 4.3 实现 A 股 session 对齐的 1/5/15/30/60m period builder；从 sealed 1m 生成同形 complete 或
   incomplete StrategyBar，零可用组成 K 时不产出，迟到 K 不修订终态。
-- [ ] 4.4 接入共享 QuantityForwardFillProjector、Strategy-owned Indicator calculations、context builder/evaluator/serializer，
+- [x] 4.4 接入共享 QuantityForwardFillProjector、Strategy-owned Indicator calculations、context builder/evaluator/serializer，
   覆盖 KDJ 13/14、MACD 130/131、restart parity 和多策略同组只计算一次。
 - [x] 4.5 用 contract/negative tests 证明 V1 只接受 `candle_finalized` 且严格区分
   `sealed + finite triggerPrice` 与 `discarded + null`；snapshot/raw provisional input 不进入

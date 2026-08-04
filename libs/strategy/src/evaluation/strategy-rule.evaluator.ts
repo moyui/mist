@@ -5,7 +5,10 @@ import type {
   CompiledStrategyExpression,
   StrategyRuleOperator,
 } from '../rules/strategy-rule.types';
-import { buildStrategyEvaluationContext } from './strategy-context.builder';
+import {
+  buildStrategyEvaluationContext,
+  type StrategyAnalysisObservationCache,
+} from './strategy-context.builder';
 import type {
   StrategyEvaluationContext,
   StrategyEvaluationOutcome,
@@ -16,8 +19,13 @@ import type { ProjectedStrategyBar } from '../projection/quantity-forward-fill.p
 export function evaluateStrategyPlan(
   plan: CompiledStrategyExecutionPlan,
   projectedBars: readonly ProjectedStrategyBar[],
+  analysis?: StrategyAnalysisObservationCache,
 ): StrategyEvaluationOutcome {
-  const prepared = buildStrategyEvaluationContext(plan, projectedBars);
+  const prepared = buildStrategyEvaluationContext(
+    plan,
+    projectedBars,
+    analysis,
+  );
   if (prepared.status === 'unavailable') return prepared;
 
   return Object.freeze({

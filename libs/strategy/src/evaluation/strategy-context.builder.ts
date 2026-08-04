@@ -41,6 +41,7 @@ interface FieldDemand {
 export function buildStrategyEvaluationContext(
   plan: CompiledStrategyExecutionPlan,
   projectedBars: readonly ProjectedStrategyBar[],
+  analysis = new StrategyAnalysisObservationCache(),
 ): StrategyContextBuildResult {
   if (projectedBars.length < plan.requiredBarCount) {
     return Object.freeze({
@@ -58,8 +59,6 @@ export function buildStrategyEvaluationContext(
   const quantityPrevious: MutableQuantityEvidenceObservation = {};
   let hasQuantity = false;
   let hasPreviousQuantity = false;
-  const analysis: AnalysisObservationCache = {};
-
   for (const demand of demands.values()) {
     const observation = materializeField(demand, bars, analysis);
     if (!observation) {
@@ -122,17 +121,55 @@ interface MaterializedField {
   readonly quantityPrevious?: StrategyQuantityEvidenceItem;
 }
 
-interface AnalysisObservationCache {
-  kdjCurrent?: StrategyKdjObservation;
-  kdjPrevious?: StrategyKdjObservation;
-  macdCurrent?: StrategyMacdObservation;
-  macdPrevious?: StrategyMacdObservation;
+/** Per-group, per-anchor cache. Never retain this object across another bar. */
+export class StrategyAnalysisObservationCache {
+  private kdjCurrent?: StrategyKdjObservation;
+  private kdjPrevious?: StrategyKdjObservation;
+  private macdCurrent?: StrategyMacdObservation;
+  private macdPrevious?: StrategyMacdObservation;
+
+  constructor(
+    private readonly calculateKdj = calculateStrategyKdj,
+    private readonly calculateMacd = calculateStrategyMacd,
+  ) {}
+
+  kdj(
+    bars: readonly ProjectedStrategyBar[],
+    previous: boolean,
+  ): StrategyKdjObservation {
+    if (previous) {
+      this.kdjPrevious ??= this.calculateKdj(
+        rawBars(bars.slice(-(STRATEGY_KDJ_CALCULATION_BAR_COUNT + 1), -1)),
+      );
+      return this.kdjPrevious;
+    }
+    this.kdjCurrent ??= this.calculateKdj(
+      rawBars(bars.slice(-STRATEGY_KDJ_CALCULATION_BAR_COUNT)),
+    );
+    return this.kdjCurrent;
+  }
+
+  macd(
+    bars: readonly ProjectedStrategyBar[],
+    previous: boolean,
+  ): StrategyMacdObservation {
+    if (previous) {
+      this.macdPrevious ??= this.calculateMacd(
+        rawBars(bars.slice(-(STRATEGY_MACD_CALCULATION_BAR_COUNT + 1), -1)),
+      );
+      return this.macdPrevious;
+    }
+    this.macdCurrent ??= this.calculateMacd(
+      rawBars(bars.slice(-STRATEGY_MACD_CALCULATION_BAR_COUNT)),
+    );
+    return this.macdCurrent;
+  }
 }
 
 function materializeField(
   demand: FieldDemand,
   bars: readonly ProjectedStrategyBar[],
-  analysis: AnalysisObservationCache,
+  analysis: StrategyAnalysisObservationCache,
 ): MaterializedField | null {
   const current = bars.at(-1);
   if (!current) return null;
@@ -183,9 +220,9 @@ function materializeField(
     case 'indicator.kdj.d':
     case 'indicator.kdj.j': {
       const property = demand.field.slice(-1) as 'k' | 'd' | 'j';
-      const currentValue = kdjObservation(analysis, bars, false)[property];
+      const currentValue = analysis.kdj(bars, false)[property];
       const previousValue = demand.needsPrevious
-        ? kdjObservation(analysis, bars, true)[property]
+        ? analysis.kdj(bars, true)[property]
         : undefined;
       return observation(currentValue, previousValue, demand.needsPrevious);
     }
@@ -196,47 +233,13 @@ function materializeField(
         | 'line'
         | 'signal'
         | 'histogram';
-      const currentValue = macdObservation(analysis, bars, false)[property];
+      const currentValue = analysis.macd(bars, false)[property];
       const previousValue = demand.needsPrevious
-        ? macdObservation(analysis, bars, true)[property]
+        ? analysis.macd(bars, true)[property]
         : undefined;
       return observation(currentValue, previousValue, demand.needsPrevious);
     }
   }
-}
-
-function kdjObservation(
-  analysis: AnalysisObservationCache,
-  bars: readonly ProjectedStrategyBar[],
-  previous: boolean,
-): StrategyKdjObservation {
-  if (previous) {
-    analysis.kdjPrevious ??= calculateStrategyKdj(
-      rawBars(bars.slice(-(STRATEGY_KDJ_CALCULATION_BAR_COUNT + 1), -1)),
-    );
-    return analysis.kdjPrevious;
-  }
-  analysis.kdjCurrent ??= calculateStrategyKdj(
-    rawBars(bars.slice(-STRATEGY_KDJ_CALCULATION_BAR_COUNT)),
-  );
-  return analysis.kdjCurrent;
-}
-
-function macdObservation(
-  analysis: AnalysisObservationCache,
-  bars: readonly ProjectedStrategyBar[],
-  previous: boolean,
-): StrategyMacdObservation {
-  if (previous) {
-    analysis.macdPrevious ??= calculateStrategyMacd(
-      rawBars(bars.slice(-(STRATEGY_MACD_CALCULATION_BAR_COUNT + 1), -1)),
-    );
-    return analysis.macdPrevious;
-  }
-  analysis.macdCurrent ??= calculateStrategyMacd(
-    rawBars(bars.slice(-STRATEGY_MACD_CALCULATION_BAR_COUNT)),
-  );
-  return analysis.macdCurrent;
 }
 
 function observation(

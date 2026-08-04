@@ -1,7 +1,10 @@
 import type { StrategyBar } from '../market-data/strategy-bar';
 import { QuantityForwardFillProjector } from '../projection/quantity-forward-fill.projector';
 import { compileStoredStrategyRule } from '../rules/strategy-rule.compiler';
-import { buildStrategyEvaluationContext } from './strategy-context.builder';
+import {
+  buildStrategyEvaluationContext,
+  StrategyAnalysisObservationCache,
+} from './strategy-context.builder';
 import { serializeStrategyContextSnapshot } from './strategy-context-snapshot.serializer';
 import { evaluateStrategyPlan } from './strategy-rule.evaluator';
 
@@ -175,6 +178,86 @@ describe('shared strategy evaluation', () => {
     if (macd.status !== 'evaluated') throw new Error('expected MACD context');
     expect(macd.context.fields['indicator.macd.line']?.previous).toEqual(
       expect.any(Number),
+    );
+  });
+
+  it('shares KDJ 13/14 and MACD 130/131 calculations across plans at one anchor', () => {
+    const calculateKdj = jest.fn((_bars: readonly StrategyBar[]) => ({
+      k: 3,
+      d: 2,
+      j: 5,
+    }));
+    const calculateMacd = jest.fn((_bars: readonly StrategyBar[]) => ({
+      line: 3,
+      signal: 2,
+      histogram: 1,
+    }));
+    const analysis = new StrategyAnalysisObservationCache(
+      calculateKdj,
+      calculateMacd,
+    );
+    const projected = project(buildBars(131));
+    const plans = [
+      compileStoredStrategyRule(
+        { field: 'indicator.kdj.k', operator: 'gt', value: 0 },
+        'entry',
+      ),
+      compileStoredStrategyRule(
+        { field: 'indicator.kdj.d', operator: 'crossesAbove', value: 0 },
+        'entry',
+      ),
+      compileStoredStrategyRule(
+        { field: 'indicator.macd.line', operator: 'gt', value: 0 },
+        'entry',
+      ),
+      compileStoredStrategyRule(
+        {
+          field: 'indicator.macd.histogram',
+          operator: 'crossesAbove',
+          value: 0,
+        },
+        'entry',
+      ),
+    ];
+
+    plans.forEach((plan) => evaluateStrategyPlan(plan, projected, analysis));
+
+    expect(calculateKdj).toHaveBeenCalledTimes(2);
+    expect(calculateKdj.mock.calls.map(([bars]) => bars.length)).toEqual([
+      13, 13,
+    ]);
+    expect(calculateMacd).toHaveBeenCalledTimes(2);
+    expect(calculateMacd.mock.calls.map(([bars]) => bars.length)).toEqual([
+      130, 130,
+    ]);
+  });
+
+  it('rebuilds identical MACD context after an analysis-cache restart', () => {
+    const plan = compileStoredStrategyRule(
+      {
+        field: 'indicator.macd.line',
+        operator: 'crossesAbove',
+        value: -100,
+      },
+      'entry',
+    );
+    const projected = project(buildBars(131));
+    const before = evaluateStrategyPlan(
+      plan,
+      projected,
+      new StrategyAnalysisObservationCache(),
+    );
+    const after = evaluateStrategyPlan(
+      plan,
+      projected,
+      new StrategyAnalysisObservationCache(),
+    );
+    if (before.status !== 'evaluated' || after.status !== 'evaluated') {
+      throw new Error('expected restart parity contexts');
+    }
+
+    expect(serializeStrategyContextSnapshot(plan, after.context)).toEqual(
+      serializeStrategyContextSnapshot(plan, before.context),
     );
   });
 });
