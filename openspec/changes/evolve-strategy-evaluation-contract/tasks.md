@@ -43,15 +43,15 @@ lookback、quantity projection、contextSnapshot、schema 目标和 creation-onl
   validator/compiler/evaluator/context serializer。
 - [x] 3.4 实现 creation-only 后端契约：POST 原子创建 definition/version 1，删除 PATCH controller、
   `UpdateStrategyDefinitionDto`、service update、注册和 tests，并证明旧 route/OpenAPI 不再存在。
-- [ ] 3.5 在独立 `mist-fe` 交付中删除 update consumer，增加必填 signal kind 并保持 decimal string；
+- [x] 3.5 在独立 `mist-fe` 交付中删除 update consumer，增加必填 signal kind 并保持 decimal string；
   后端与前端作为匹配版本发布。
 
 ## 4. 验证与交付
 
-- [ ] 4.1 运行 backend/frontend 完整基线、隔离真实 MySQL migration/contract tests、strict OpenSpec 和
+- [x] 4.1 运行 backend/frontend 完整基线、隔离真实 MySQL migration/contract tests、strict OpenSpec 和
   `git diff --check`。
 - [x] 4.2 检索 `lookbackBars`、paired-rule、numeric decimal compatibility、raw bigint serialization、
   legacy PATCH/manual-scan coupling、重复 bar/port/decimal 实现和未批准字段。
-- [ ] 4.3 记录自动化、环境阻塞、source quantity HIL 和 protected-table digest；未完成真实数据库与
+- [x] 4.3 记录自动化、环境阻塞、source quantity HIL 和 protected-table digest；未完成真实数据库与
   profile 证据前不得允许 runtime changes 依赖本 change。
 - [ ] 4.4 经项目负责人审核 schema/API/parity evidence 后归档。
