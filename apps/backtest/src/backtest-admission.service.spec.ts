@@ -128,4 +128,22 @@ describe('BacktestAdmissionService', () => {
     expect(admission.waitingCount()).toBe(0);
     expect(executor.execute).not.toHaveBeenCalled();
   });
+
+  it('keeps startup reservations unpublished until readiness is opened', () => {
+    const health = new BacktestHealthStateService();
+    const executor = { execute: jest.fn().mockResolvedValue(undefined) };
+    const admission = new BacktestAdmissionService(
+      config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,
+      executor as any,
+      health,
+      runs() as any,
+    );
+
+    const startNow = admission.restorePending([11]);
+    expect(startNow).toEqual([11]);
+    expect(executor.execute).not.toHaveBeenCalled();
+    admission.setReady(true);
+    admission.startReserved(startNow);
+    expect(executor.execute).toHaveBeenCalledWith(11);
+  });
 });

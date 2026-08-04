@@ -65,6 +65,28 @@ export class BacktestAdmissionService {
     return this.waiting.length;
   }
 
+  /**
+   * Rebuilds the in-memory startup reservation without opening a command
+   * admission window. The caller must set readiness only after this returns,
+   * then launch the returned active identities.
+   */
+  restorePending(runIds: readonly number[]): number[] {
+    const startNow: number[] = [];
+    for (const runId of runIds) {
+      const reservation = this.reservePending(runId);
+      if (!reservation.accepted) {
+        throw new Error(`backtest startup admission rejected ${runId}`);
+      }
+      if (reservation.startNow) startNow.push(runId);
+    }
+    return startNow;
+  }
+
+  startReserved(runIds: readonly number[]): void {
+    if (!this.ready) throw new Error('backtest admission is not ready');
+    for (const runId of runIds) this.start(runId);
+  }
+
   private async acceptOne(runId: number): Promise<BacktestAdmissionResult> {
     if (!this.ready) {
       this.health.recordCommand('not_ready');
@@ -89,21 +111,36 @@ export class BacktestAdmissionService {
     // The database read above is the only await before this synchronous
     // reservation. The Node event loop therefore makes capacity/reservation
     // atomic for this process; the keyed chain prevents same-run races.
+    const reservation = this.reservePending(runId);
+    if (!reservation.accepted) {
+      this.health.recordCommand('queue_full');
+      return reservation;
+    }
+    this.health.recordCommand('accepted');
+    if (reservation.startNow) this.start(runId);
+    return { accepted: true };
+  }
+
+  private reservePending(
+    runId: number,
+  ): BacktestAdmissionResult & { readonly startNow?: boolean } {
+    if (this.active.has(runId) || this.waitingSet.has(runId)) {
+      return { accepted: true, startNow: false };
+    }
     if (this.active.size >= this.concurrency) {
       if (this.waiting.length >= this.capacity) {
-        this.health.recordCommand('queue_full');
         return { accepted: false, code: 'queue_full' };
       }
       this.waiting.push(runId);
       this.waitingSet.add(runId);
       this.waitingEnqueuedAt.set(runId, Date.now());
-      this.health.recordCommand('accepted');
       this.publishCounts();
-      return { accepted: true };
+      return { accepted: true, startNow: false };
     }
-    this.health.recordCommand('accepted');
-    this.start(runId);
-    return { accepted: true };
+    this.active.add(runId);
+    this.activeStartedAt.set(runId, Date.now());
+    this.publishCounts();
+    return { accepted: true, startNow: true };
   }
 
   private removeChain(runId: number, tail: Promise<void>): void {
@@ -111,8 +148,9 @@ export class BacktestAdmissionService {
   }
 
   private start(runId: number): void {
-    this.active.add(runId);
-    this.activeStartedAt.set(runId, Date.now());
+    if (!this.active.has(runId)) {
+      throw new Error(`backtest run ${runId} is not reserved`);
+    }
     this.publishCounts();
     let execution: Promise<void>;
     try {
@@ -133,6 +171,8 @@ export class BacktestAdmissionService {
     if (next !== undefined) {
       this.waitingSet.delete(next);
       this.waitingEnqueuedAt.delete(next);
+      this.active.add(next);
+      this.activeStartedAt.set(next, Date.now());
       this.start(next);
     } else {
       this.publishCounts();

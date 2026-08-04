@@ -75,8 +75,11 @@ export class BacktestStartupService implements OnApplicationBootstrap {
     if (overflowResult.affected) {
       this.health.recordStartupFailure('queue_full', overflowResult.affected);
     }
-    this.admission.setReady(true);
     this.health.setCounts(0, 0);
-    for (const run of admitted) await this.admission.accept(run.id);
+    const startNow = this.admission.restorePending(
+      admitted.map((run) => run.id),
+    );
+    this.admission.setReady(true);
+    this.admission.startReserved(startNow);
   }
 }
