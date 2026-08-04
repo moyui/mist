@@ -100,6 +100,29 @@ describe('RealtimeMarketDataProductService', () => {
     expect(aggregator.applySnapshot).not.toHaveBeenCalled();
   });
 
+  it('does not count the owned Redis connecting phase as a due-scan failure', async () => {
+    const client = {
+      status: 'connecting',
+      zrangebyscore: jest.fn().mockRejectedValue(new Error('not ready')),
+    };
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow'),
+      new Clock(),
+      { isAvailable: jest.fn().mockReturnValue(true), client } as any,
+      {} as any,
+      {} as any,
+      emptyAllowlist,
+    );
+
+    await scanAndDrain(service);
+
+    expect(client.zrangebyscore).not.toHaveBeenCalled();
+    expect(
+      (service as unknown as { dueScanFailureCount: number })
+        .dueScanFailureCount,
+    ).toBe(0);
+  });
+
   it('enqueues a snapshot when mode=shadow', async () => {
     const fakeMulti = {
       zadd: jest.fn().mockReturnThis(),

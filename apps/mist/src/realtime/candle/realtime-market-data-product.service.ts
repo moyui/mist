@@ -365,6 +365,10 @@ export class RealtimeMarketDataProductService
     if (this.stopping) return;
     const client = this.redis.client;
     if (!client) return;
+    // ioredis is created with offline queuing disabled. Nest lifecycle hooks can
+    // run while the owned client is still connecting; that startup condition is
+    // not a due-scan failure and the one-second scanner will retry once ready.
+    if (client.status && client.status !== 'ready') return;
 
     const now = this.clock.now();
     await this.syncExpectedBuckets(client, now);
