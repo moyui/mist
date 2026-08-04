@@ -1,11 +1,15 @@
 import { CANDLE_FINALIZED_JOB_NAME } from '@app/signal';
 import { CandleFinalizedBullMqWorker } from './candle-finalized-bullmq.worker';
+import { SignalRuntimeMutex } from '../signal-runtime-mutex.service';
 
 describe('CandleFinalizedBullMqWorker', () => {
   it('delegates the BullMQ job to the strict signal processor', async () => {
     const result = { outcome: 'completed', candidates: [] } as const;
     const processor = { process: jest.fn().mockResolvedValue(result) };
-    const worker = new CandleFinalizedBullMqWorker(processor as never);
+    const worker = new CandleFinalizedBullMqWorker(
+      processor as never,
+      new SignalRuntimeMutex(),
+    );
     const data = {
       contractVersion: 1,
       securityId: 9,

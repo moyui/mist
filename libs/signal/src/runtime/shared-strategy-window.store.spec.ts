@@ -80,6 +80,20 @@ describe('SharedStrategyWindowStore', () => {
     ).rejects.toThrow('conflicting canonical StrategyBar identity');
     expect(marketData.loadRealtimeWindow).toHaveBeenCalledTimes(1);
   });
+
+  it('releases groups that no longer have a registry consumer', async () => {
+    const marketData = {
+      loadRealtimeWindow: jest.fn().mockResolvedValue({ bars: [] }),
+      resolveRealtimeObservation: jest.fn(),
+    };
+    const store = new SharedStrategyWindowStore();
+    await store.prepare(marketData, bar(1, '2026-08-04T01:30:00.000Z'), 1);
+    expect(store.groupCount).toBe(1);
+
+    store.retainGroups([]);
+
+    expect(store.groupCount).toBe(0);
+  });
 });
 
 function bar(

@@ -1,16 +1,35 @@
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Injectable,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { BullRegistrar } from '@nestjs/bullmq';
 import { SignalRegistryService } from '../signal-registry.service';
+import { CandleFinalizedJobProcessor } from './candle-finalized-job.processor';
 
 @Injectable()
-export class SignalRealtimeStartupService implements OnApplicationBootstrap {
+export class SignalRealtimeStartupService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
+  private unsubscribe: (() => void) | null = null;
+
   constructor(
     private readonly registry: SignalRegistryService,
     private readonly registrar: BullRegistrar,
+    private readonly processor: CandleFinalizedJobProcessor,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     await this.registry.initialize();
+    this.processor.reconcileRegistry(this.registry.capture());
+    this.unsubscribe = this.registry.subscribe((snapshot) =>
+      this.processor.reconcileRegistry(snapshot),
+    );
     this.registrar.register();
+  }
+
+  onModuleDestroy(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
   }
 }

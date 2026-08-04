@@ -38,6 +38,13 @@ export class RealtimeEpisodeStore {
     this.active.clear();
   }
 
+  retainIdentities(identities: readonly RealtimeEpisodeIdentity[]): void {
+    const retained = new Set(identities.map(episodeKey));
+    for (const key of this.active) {
+      if (!retained.has(key)) this.active.delete(key);
+    }
+  }
+
   get activeCount(): number {
     return this.active.size;
   }

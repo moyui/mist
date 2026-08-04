@@ -14,6 +14,12 @@ interface WindowGroup {
 
 export type WindowAppendOutcome = 'appended' | 'duplicate';
 
+export interface RealtimeWindowGroupIdentity {
+  readonly securityId: number;
+  readonly source: StrategyRealtimeSource;
+  readonly period: number;
+}
+
 export class SharedStrategyWindowStore {
   private readonly groups = new Map<string, WindowGroup>();
 
@@ -72,6 +78,21 @@ export class SharedStrategyWindowStore {
 
   reset(): void {
     this.groups.clear();
+  }
+
+  retainGroups(groups: readonly RealtimeWindowGroupIdentity[]): void {
+    const retained = new Set(
+      groups.map((group) =>
+        groupKey(group.securityId, group.source, group.period),
+      ),
+    );
+    for (const key of this.groups.keys()) {
+      if (!retained.has(key)) this.groups.delete(key);
+    }
+  }
+
+  get groupCount(): number {
+    return this.groups.size;
   }
 }
 

@@ -26,7 +26,7 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 - [x] 2.2 实现 source-exact historical/pre-anchor Redis seam、canonical mapping、timestamp/dedupe/conflict
   acceptance、共享 `KPriceProjector` 的 MySQL string/Redis number 投影和 hard-bound validation；
   MySQL/Redis 不跨源或同日重叠，不改变现有存储 shape 或复制消费者转换。
-- [ ] 2.3 实现按 listener/eligible-plan 分组的 shared ring window、group-max hydration、hot append、
+- [x] 2.3 实现按 listener/eligible-plan 分组的 shared ring window、group-max hydration、hot append、
   consumer removal 和 trading-day rollover cleanup。
 - [x] 2.4 实现 quantity plan 的当日 pre-anchor projector seed、current finalization exactly-once 和
   unavailable semantics；不得读 current/future K、补 gap 或把合法缺失升级成系统错误。
@@ -54,7 +54,7 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
   `libs/signal/src/contracts`，单一持有 Signal control-plane pattern/command/result/error/decoder，
   caller/handler 统一从 exact `@app/signal` root barrel 导入，不得放入 transport、strategy 或 app
   source；禁止 wildcard/deep import、contract 导入 transport/Nest/TypeORM/Redis 或重复 raw pattern。
-- [ ] 4.2 实现 immutable registry refresh/commit、listener eligibility、source-aware group creation、
+- [x] 4.2 实现 immutable registry refresh/commit、listener eligibility、source-aware group creation、
   disable/version in-flight race 和 bounded structural cleanup。
 - [x] 4.3 实现 A 股 session 对齐的 1/5/15/30/60m period builder；从 sealed 1m 生成同形 complete 或
   incomplete StrategyBar，零可用组成 K 时不产出，迟到 K 不修订终态。

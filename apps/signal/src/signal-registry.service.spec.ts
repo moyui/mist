@@ -11,6 +11,7 @@ import {
 import type { Repository } from 'typeorm';
 import { SignalHealthStateService } from './signal-health-state.service';
 import { SignalRegistryService } from './signal-registry.service';
+import { SignalRuntimeMutex } from './signal-runtime-mutex.service';
 
 describe('SignalRegistryService', () => {
   const originalMode = process.env.REALTIME_STRATEGY_MODE;
@@ -34,6 +35,7 @@ describe('SignalRegistryService', () => {
       repository,
       securityRepository(),
       health,
+      new SignalRuntimeMutex(),
     );
 
     await registry.onApplicationBootstrap();
@@ -41,6 +43,9 @@ describe('SignalRegistryService', () => {
     expect(repository.find).toHaveBeenCalledTimes(1);
     expect(registry.capture().generation).toBe(1);
     expect([...registry.capture().definitions.keys()]).toEqual([1]);
+    expect(registry.executionPlansFor(9, 'tdx')).toHaveLength(1);
+    expect(registry.executionPlansFor(10, 'tdx')).toEqual([]);
+    expect(registry.executionPlansFor(9, 'qmt')).toEqual([]);
     expect(health.snapshot().registry).toMatchObject({
       ready: true,
       generation: 1,
@@ -59,6 +64,7 @@ describe('SignalRegistryService', () => {
       repository,
       securityRepository(),
       new SignalHealthStateService(),
+      new SignalRuntimeMutex(),
     );
     await registry.onApplicationBootstrap();
     const captured = registry.capture();
@@ -87,6 +93,7 @@ describe('SignalRegistryService', () => {
       repository,
       securityRepository(),
       health,
+      new SignalRuntimeMutex(),
     );
     await registry.onApplicationBootstrap();
     const captured = registry.capture();

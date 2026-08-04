@@ -20,13 +20,16 @@ export class RealtimePeriodBuilder {
   accept(
     trigger: StrategyTrigger,
     sealedBar: StrategyBar | null,
+    periods: ReadonlySet<number> = new Set(REALTIME_STRATEGY_PERIODS),
   ): readonly StrategyBar[] {
     assertFinalization(trigger, sealedBar);
     const emitted: StrategyBar[] = [];
-    if (sealedBar) emitted.push(sealedBar);
+    if (sealedBar && periods.has(1)) emitted.push(sealedBar);
 
     const position = sessionPosition(trigger.timestamp);
-    for (const period of REALTIME_STRATEGY_PERIODS.slice(1)) {
+    for (const period of REALTIME_STRATEGY_PERIODS.slice(1).filter((value) =>
+      periods.has(value),
+    )) {
       const slotOffset = Math.floor(position.minuteOffset / period) * period;
       const slotStartMs = position.sessionStartMs + slotOffset * 60_000;
       const key = slotKey(
@@ -59,6 +62,24 @@ export class RealtimePeriodBuilder {
 
   reset(): void {
     this.pending.clear();
+  }
+
+  retainGroups(
+    groups: readonly {
+      securityId: number;
+      source: StrategyTrigger['source'];
+      period: number;
+    }[],
+  ): void {
+    const retained = new Set(
+      groups.map((group) =>
+        groupKey(group.securityId, group.source, group.period),
+      ),
+    );
+    for (const key of this.pending.keys()) {
+      const identity = key.split('\u0000').slice(0, 3).join('\u0000');
+      if (!retained.has(identity)) this.pending.delete(key);
+    }
   }
 }
 
@@ -178,4 +199,12 @@ function slotKey(
   slotStartMs: number,
 ): string {
   return `${securityId}\u0000${source}\u0000${period}\u0000${slotStartMs}`;
+}
+
+function groupKey(
+  securityId: number,
+  source: StrategyTrigger['source'],
+  period: number,
+): string {
+  return `${securityId}\u0000${source}\u0000${period}`;
 }

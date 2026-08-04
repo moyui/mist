@@ -164,6 +164,80 @@ describe('CandleFinalizedJobProcessor', () => {
       processor.process(CANDLE_FINALIZED_JOB_NAME, payload),
     ).rejects.toThrow('conflicting candle finalization identity');
   });
+
+  it('reconciles window, period and episode scope after registry cutover', () => {
+    const periodBuilder = {
+      accept: jest.fn(),
+      reset: jest.fn(),
+      retainGroups: jest.fn(),
+    };
+    const evaluation = {
+      evaluate: jest.fn(),
+      reset: jest.fn(),
+      retainRegistryScopes: jest.fn(),
+    };
+    const processor = new CandleFinalizedJobProcessor(
+      {
+        loadRealtimeWindow: jest.fn(),
+        resolveRealtimeObservation: jest.fn(),
+      },
+      () => [],
+      () => new Date('2026-08-04T07:00:00.000Z'),
+      periodBuilder as never,
+      evaluation as never,
+    );
+
+    processor.reconcileRegistry({
+      generation: 2,
+      definitions: new Map([
+        [
+          1,
+          {
+            definitionId: 1,
+            versionId: 3,
+            signalKind: 'entry' as never,
+            targetUniverse: ['000001.SZ'],
+            securityIds: new Set([9]),
+            periods: [1, 5],
+            sources: ['tdx' as never],
+            executionPlan: compileStoredStrategyRule(
+              { field: 'k.close', operator: 'gt', value: 1 },
+              'entry',
+            ),
+          },
+        ],
+      ]),
+    });
+
+    expect(periodBuilder.retainGroups).toHaveBeenCalledWith([
+      { securityId: 9, source: 'tdx', period: 1 },
+      { securityId: 9, source: 'tdx', period: 5 },
+    ]);
+    expect(evaluation.retainRegistryScopes).toHaveBeenCalledWith(
+      [
+        { securityId: 9, source: 'tdx', period: 1 },
+        { securityId: 9, source: 'tdx', period: 5 },
+      ],
+      [
+        {
+          definitionId: 1,
+          versionId: 3,
+          securityId: 9,
+          source: 'tdx',
+          period: 1,
+          signalKind: 'entry',
+        },
+        {
+          definitionId: 1,
+          versionId: 3,
+          securityId: 9,
+          source: 'tdx',
+          period: 5,
+          signalKind: 'entry',
+        },
+      ],
+    );
+  });
 });
 
 function makeBar(timestamp: string, close: number): StrategyBar {

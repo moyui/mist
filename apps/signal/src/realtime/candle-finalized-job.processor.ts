@@ -11,6 +11,7 @@ import {
   type RealtimeStrategyExecutionPlan,
   type ShadowStrategyCandidate,
 } from '@app/signal';
+import type { SignalRegistrySnapshot } from '../signal-registry.types';
 
 export type CandleFinalizedJobOutcome =
   | 'completed'
@@ -98,7 +99,11 @@ export class CandleFinalizedJobProcessor {
       }
       throw new Error('conflicting candle finalization identity');
     }
-    const emitted = this.periodBuilder.accept(trigger, sealedBar);
+    const emitted = this.periodBuilder.accept(
+      trigger,
+      sealedBar,
+      new Set(executionPlans.map((plan) => plan.period)),
+    );
     this.cursors.set(cursorKey, {
       timestampMs: triggerMs,
       outcome: trigger.outcome,
@@ -128,6 +133,49 @@ export class CandleFinalizedJobProcessor {
       throw new Error('sealed trigger price conflicts with Redis candle close');
     }
     return observation.bar;
+  }
+
+  reconcileRegistry(snapshot: SignalRegistrySnapshot): void {
+    const groups: Array<{
+      securityId: number;
+      source: 'tdx' | 'qmt';
+      period: number;
+    }> = [];
+    const episodes: Array<{
+      definitionId: number;
+      versionId: number;
+      securityId: number;
+      source: 'tdx' | 'qmt';
+      period: number;
+      signalKind: 'entry' | 'exit';
+    }> = [];
+    for (const definition of snapshot.definitions.values()) {
+      for (const source of definition.sources) {
+        if (source !== 'tdx' && source !== 'qmt') continue;
+        for (const securityId of definition.securityIds) {
+          for (const period of definition.periods) {
+            if (![1, 5, 15, 30, 60].includes(period)) continue;
+            groups.push({ securityId, source, period });
+            episodes.push({
+              definitionId: definition.definitionId,
+              versionId: definition.versionId,
+              securityId,
+              source,
+              period,
+              signalKind: definition.signalKind,
+            });
+          }
+        }
+      }
+    }
+    this.periodBuilder.retainGroups(groups);
+    this.evaluation.retainRegistryScopes(groups, episodes);
+    const retainedSeries = new Set(
+      groups.map((group) => `${group.securityId}\u0000${group.source}`),
+    );
+    for (const key of this.cursors.keys()) {
+      if (!retainedSeries.has(key)) this.cursors.delete(key);
+    }
   }
 }
 

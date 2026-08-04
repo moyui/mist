@@ -10,6 +10,7 @@ import {
   CandleFinalizedJobProcessor,
   type CandleFinalizedJobResult,
 } from './candle-finalized-job.processor';
+import { SignalRuntimeMutex } from '../signal-runtime-mutex.service';
 
 @Processor(STRATEGY_TRIGGER_QUEUE_NAME, {
   concurrency: STRATEGY_TRIGGER_WORKER_CONCURRENCY,
@@ -17,13 +18,18 @@ import {
   prefix: STRATEGY_TRIGGER_BULLMQ_PREFIX,
 })
 export class CandleFinalizedBullMqWorker extends WorkerHost {
-  constructor(private readonly processor: CandleFinalizedJobProcessor) {
+  constructor(
+    private readonly processor: CandleFinalizedJobProcessor,
+    private readonly runtimeMutex: SignalRuntimeMutex,
+  ) {
     super();
   }
 
   process(
     job: Job<CandleFinalizedTriggerV1, CandleFinalizedJobResult, string>,
   ): Promise<CandleFinalizedJobResult> {
-    return this.processor.process(job.name, job.data);
+    return this.runtimeMutex.run(() =>
+      this.processor.process(job.name, job.data),
+    );
   }
 }

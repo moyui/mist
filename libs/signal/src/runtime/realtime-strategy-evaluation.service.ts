@@ -11,6 +11,7 @@ import {
   type RealtimeEpisodeIdentity,
 } from './realtime-episode.store';
 import { SharedStrategyWindowStore } from './shared-strategy-window.store';
+import type { RealtimeWindowGroupIdentity } from './shared-strategy-window.store';
 
 export interface RealtimeStrategyExecutionPlan {
   readonly definitionId: number;
@@ -110,6 +111,14 @@ export class RealtimeStrategyEvaluationService {
   reset(): void {
     this.windows.reset();
     this.episodes.reset();
+  }
+
+  retainRegistryScopes(
+    groups: readonly RealtimeWindowGroupIdentity[],
+    episodes: readonly RealtimeEpisodeIdentity[],
+  ): void {
+    this.windows.retainGroups(groups);
+    this.episodes.retainIdentities(episodes);
   }
 }
 

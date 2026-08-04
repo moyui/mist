@@ -21,6 +21,7 @@ import type {
   SignalRegistryDefinition,
   SignalRegistrySnapshot,
 } from './signal-registry.types';
+import { SignalRuntimeMutex } from './signal-runtime-mutex.service';
 
 const REGISTRY_REFRESH_FAILED = 'REGISTRY_REFRESH_FAILED';
 
@@ -32,6 +33,9 @@ export class SignalRegistryService implements OnApplicationBootstrap {
   });
   private cutoverTail: Promise<void> = Promise.resolve();
   private initialization: Promise<void> | null = null;
+  private readonly listeners = new Set<
+    (snapshot: SignalRegistrySnapshot) => void
+  >();
 
   constructor(
     @InjectRepository(StrategyDefinition)
@@ -39,6 +43,7 @@ export class SignalRegistryService implements OnApplicationBootstrap {
     @InjectRepository(Security)
     private readonly securities: Repository<Security>,
     private readonly healthState: SignalHealthStateService,
+    private readonly runtimeMutex: SignalRuntimeMutex,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -67,6 +72,11 @@ export class SignalRegistryService implements OnApplicationBootstrap {
 
   capture(): SignalRegistrySnapshot {
     return this.current;
+  }
+
+  subscribe(listener: (snapshot: SignalRegistrySnapshot) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   executionPlansFor(
@@ -119,21 +129,24 @@ export class SignalRegistryService implements OnApplicationBootstrap {
             where: { id: strategyDefinitionId },
             relations: { currentVersion: true },
           });
-          const next = new Map(this.current.definitions);
+          const compiled =
+            definition?.status === StrategyStatus.ENABLED
+              ? compileRegistryDefinition(
+                  definition,
+                  await this.resolveSecurityIds(definition.targetUniverse),
+                )
+              : null;
           let action: SignalRegistryRefreshV1['action'] = 'removed';
-          if (definition?.status === StrategyStatus.ENABLED) {
-            const securityIds = await this.resolveSecurityIds(
-              definition.targetUniverse,
-            );
-            next.set(
-              strategyDefinitionId,
-              compileRegistryDefinition(definition, securityIds),
-            );
-            action = 'upserted';
-          } else {
-            next.delete(strategyDefinitionId);
-          }
-          this.publish(next);
+          await this.runtimeMutex.run(() => {
+            const next = new Map(this.current.definitions);
+            if (compiled) {
+              next.set(strategyDefinitionId, compiled);
+              action = 'upserted';
+            } else {
+              next.delete(strategyDefinitionId);
+            }
+            this.publish(next);
+          });
           resolve({
             strategyDefinitionId,
             registryGeneration: this.current.generation,
@@ -163,6 +176,7 @@ export class SignalRegistryService implements OnApplicationBootstrap {
       generation,
       definitions: immutableDefinitions,
     });
+    for (const listener of this.listeners) listener(this.current);
     this.healthState.recordRegistrySuccess(
       generation,
       immutableDefinitions.size,
