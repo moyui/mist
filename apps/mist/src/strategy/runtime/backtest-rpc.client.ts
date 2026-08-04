@@ -3,10 +3,15 @@ import type { ClientProxy } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import {
   BACKTEST_RUN_SUBMIT_PATTERN,
-  decodeSubmitBacktestRunResultV1,
-  type SubmitBacktestRunResultV1,
+  decodeSubmitBacktestRunErrorCodeV1,
+  decodeSubmitBacktestRunSuccessV1,
+  type SubmitBacktestRunErrorCode,
 } from '@app/backtest';
-import { createRpcRequestV1 } from '@app/transport/rpc';
+import {
+  createRpcRequestV1,
+  decodeRpcResultV1,
+  type RpcResultV1,
+} from '@app/transport/rpc';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
 import { BACKTEST_RPC_CLIENT } from './backtest-rpc.constants';
 
@@ -14,6 +19,8 @@ export type BacktestRpcTransportFailureKind =
   | 'timeout'
   | 'unavailable'
   | 'failed';
+
+type SubmitBacktestRunResultV1 = RpcResultV1<null, SubmitBacktestRunErrorCode>;
 
 export class BacktestRpcTransportError extends Error {
   constructor(
@@ -60,7 +67,12 @@ export class BacktestRpcClient {
     }
 
     try {
-      return decodeSubmitBacktestRunResultV1(raw, request.meta.correlationId);
+      return decodeRpcResultV1(
+        raw,
+        request.meta.correlationId,
+        decodeSubmitBacktestRunSuccessV1,
+        decodeSubmitBacktestRunErrorCodeV1,
+      );
     } catch (error) {
       throw new BacktestRpcTransportError('failed', error);
     }
