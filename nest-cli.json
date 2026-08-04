@@ -147,6 +147,15 @@
         "tsConfigPath": "libs/decimal/tsconfig.lib.json"
       }
     },
+    "realtime": {
+      "type": "library",
+      "root": "libs/realtime",
+      "entryFile": "index",
+      "sourceRoot": "libs/realtime/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/realtime/tsconfig.lib.json"
+      }
+    },
     "chan": {
       "type": "application",
       "root": "apps/chan",

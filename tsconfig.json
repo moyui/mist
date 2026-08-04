@@ -40,7 +40,8 @@
       "@app/signal": ["libs/signal/src/index.ts"],
       "@app/strategy": ["libs/strategy/src/index.ts"],
       "@app/chancore": ["libs/chancore/src/index.ts"],
-      "@app/decimal": ["libs/decimal/src/index.ts"]
+      "@app/decimal": ["libs/decimal/src/index.ts"],
+      "@app/realtime": ["libs/realtime/src/index.ts"]
     }
   },
   "include": ["apps/**/*", "libs/**/*"]

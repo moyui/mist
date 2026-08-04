@@ -3,6 +3,7 @@ import { toZonedTime } from 'date-fns-tz';
 import type Redis from 'ioredis';
 import type { RealtimeSource } from '../realtime.types';
 import type { InvalidReason, SealedCandle } from './candle.types';
+import type { RealtimeClosedCandleRecordV1 } from '@app/realtime';
 import {
   closedCandleKey,
   watermarkKey,
@@ -19,21 +20,6 @@ import {
  * value of a closed-Hash field keyed by `bucketStartMs`. Mirrors the fields
  * the design allows in the closed record (no full native object).
  */
-interface CompactClosedRecord {
-  o: number;
-  h: number;
-  l: number;
-  c: number;
-  v: string | null;
-  a: string | null;
-  cv: string | null;
-  ca: string | null;
-  cs: SealedCandle['closingSnapshot'];
-  fe: string;
-  le: string;
-  q: 'provisional';
-}
-
 export interface CandleFinalizerDiagnostics {
   sealedTotal: number;
   discardTotals: Array<{ reason: InvalidReason; total: number }>;
@@ -325,7 +311,7 @@ export class CandleFinalizer {
     ].join('');
   }
 
-  private toCompactRecord(candle: SealedCandle): CompactClosedRecord {
+  private toCompactRecord(candle: SealedCandle): RealtimeClosedCandleRecordV1 {
     return {
       o: candle.open,
       h: candle.high,
