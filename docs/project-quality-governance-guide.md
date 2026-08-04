@@ -252,6 +252,10 @@ Chan 当前为请求时实时派生计算，不写 MySQL。未来若重新持久
 - `apps/schedule` 保留给后续职责设计，不恢复旧通用 scheduler。
 - AlertEvent 当前只要求能够发送；不擅自增加严格状态机、attempt、retry 或 dead-letter 字段。
 - 当前产品范围不支持期货和期权；不得用股票字段语义推断未来衍生品 schema。
+- Strategy portfolio-level backtesting（组合级回测：资金/仓位/订单/费用/净值/收益）无限期延期；现行
+  方向为 signal-level（`extract-backtest-runtime` + `evolve-strategy-evaluation-contract`）。不得合并
+  `feat/strategy-portfolio-backtesting` 分支或复用其 `007/008` migration。决策记录见
+  `openspec/changes/archive/2026-08-04-defer-strategy-portfolio-backtesting`。
 
 ## 7. 命名、文件和目录规则
 
