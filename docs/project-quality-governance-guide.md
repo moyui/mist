@@ -179,15 +179,18 @@ QMT 可以从其实际 native `lastClose` 映射到同一个 canonical 输出。
 
 | 名称 | 含义 |
 |---|---|
-| `eventTime` | provider 市场事件时间 |
+| `eventTime` | canonical 市场事件时间；通常来自 provider，当前 TDX 例外使用 datasource `capturedAt` |
 | `capturedAt` | 终端或 datasource 捕获时间 |
 | `receivedAt` | 当前服务接收时间 |
 | `acceptedAt` | 边界验证通过时间 |
 | `closedAt` | K 或业务窗口封存时间 |
 | `createdAt/updatedAt` | 持久化记录审计时间 |
 
-禁止用服务当前时间替代缺失的 provider `eventTime`。Historical `K.timestamp` 已定案保留：
-TDX/QMT 各自解析 provider historical bar time 后写入，不要求原始格式相同。
+禁止用 backend 当前时间、`receivedAt` 或 `acceptedAt` 替代缺失的 provider `eventTime`。当前已评审的
+TDX `get_market_snapshot` runtime 不提供业务时间字段，因此 TDX converter 必须忽略 native 中偶然出现的
+`AsOf`、`DateTime` 或其他时间别名，直接把 schema-v2 decoder 已校验的 datasource `capturedAt` 映射为
+canonical `eventTime`；QMT 仍只使用其 fixture-backed native business time，不得套用该例外。Historical
+`K.timestamp` 已定案保留：TDX/QMT 各自解析 provider historical bar time 后写入，不要求原始格式相同。
 
 ### 6.5 K 线缺失和精度
 

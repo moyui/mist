@@ -75,6 +75,9 @@
   scale 必须在裁剪尾随零前检查，并覆盖 whitespace/sign/exponent/locale/Unicode/省略位/负零测试。
 - [x] 3.2 更新 canonical snapshot quantity 类型及 TDX/QMT provider-specific converters；canonical
   输出统一为股/元，缺失/null 与非法已出现值分流，非 A 股 STOCK 不套用股票换算因子。
+  - [x] 3.2.1 2026-08-04 真实 TDX native 样本确认没有 provider business time；经项目负责人评审，
+    TDX converter 删除 `AsOf` 读取并固定使用 schema-v2 `capturedAt` 作为 canonical/candle event time。
+    QMT native time 规则保持不变，定向测试与 typecheck 通过（commit `fe6f989`）。
 - [x] 3.3 同步 OpenAPI、negative tests、四仓 fixture 和 SHA sidecars。
 - [x] 3.4 将 app-local `k-decimal.util.ts` 的合法消费者迁移到共享 primitive，并证明 candle、strategy
   evaluator 与 period builder 不存在重复 parser/comparator；检索并拒绝量额路径中的 `Number(...)`、
@@ -128,5 +131,7 @@
     `evidence/2026-08-04-single-subscription-recovery.md` 和
     `evidence/2026-08-04-trading-session-hil.md`；2026-08-04 下午 TDX/QMT subscribe 与 finally
     unsubscribe 均取得 passed artifact，且临时产品路径已从 backend/deploy 删除；QMT canonical
-    snapshot/candidate 已观察，TDX 因 native `AsOf` 缺失而没有合法 candidate，故子任务保持未完成。
+    snapshot/candidate 已观察；TDX native 没有 business time 后，项目负责人已接受 `capturedAt` 口径，
+    backend 实现见 `fe6f989`。该候选尚未部署并重跑 TDX candidate/sealed/restart/AOF HIL，故子任务保持
+    未完成。
 - [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。

@@ -20,3 +20,19 @@ isolate sink failure from transport acceptance.
 - **WHEN** latest-memory update has already succeeded
 - **THEN** the accepted snapshot MUST remain the latest transport state
 - **AND** sink degradation MUST be reported separately
+
+### Requirement: TDX Canonical Event Time Shall Use Validated CapturedAt
+The TDX source converter SHALL map the schema-v2 datasource `capturedAt` directly to canonical `eventTime`
+because the accepted runtime has no provider-native business-time field. It SHALL NOT read `AsOf`, `DateTime`
+or another native time alias. This approved source exception SHALL NOT apply to QMT.
+
+#### Scenario: TDX schema-v2 snapshot reaches its converter
+- **WHEN** the common decoder has validated `capturedAt` as RFC3339
+- **THEN** TDX canonical `eventTime` MUST equal that `capturedAt`
+- **AND** quality MUST mark event time available and aggregation eligible
+- **AND** neither datasource send time nor backend receipt/current time may replace it
+
+#### Scenario: QMT native event time is unavailable
+- **WHEN** the QMT converter cannot resolve one consistent fixture-backed business time
+- **THEN** canonical `eventTime` MUST remain null and aggregation-ineligible
+- **AND** QMT MUST NOT fall back to datasource `capturedAt`

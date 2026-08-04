@@ -29,6 +29,9 @@ accepted realtime snapshot 目前没有形成可恢复、可审计的当日 K �
 - market-series runtime identity 固定为 `(securityId,source)`，candle identity 再加入 `bucketStartMs`；
   Node state、counter baseline、due/watermark/manifest 和 Redis key 均隔离 source。`providerSymbol` 只作为
   provenance，不进入 identity 或 key。
+- 当前 TDX `get_market_snapshot` runtime 不提供 provider business time；TDX converter 删除 native
+  `AsOf` 读取，直接使用 schema-v2 已校验的 datasource `capturedAt` 作为 canonical `eventTime` 和 1m
+  bucket 时间。QMT 继续使用 fixture-backed native business time，不共享该例外。
 - 增加 capacity、grace、restart、retention、监控、Windows Compose 和真实交易时段 HIL 门禁。
 - 明确本 change 不创建策略 trigger、不连接策略 queue、不运行 evaluator、不写 Signal/AlertEvent。
 - 所有 grace、精度、discard、capacity 和恢复细节必须在相应任务实施前逐项评审并记录。

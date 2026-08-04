@@ -108,7 +108,26 @@ Redis 不增加业务 record-count cutoff 或 eviction。Compose 明确使用 AO
 Redis object overhead、discard/watermark/manifest、AOF 和共享 BullMQ 占用不靠该估算豁免，必须在
 shadow/HIL 中观测 used memory、AOF size、due lag、record bytes 和增长趋势。
 
-### 3. 量额使用 exact decimal 与统一 A 股单位
+### 3. TDX 使用 datasource capture time 作为 candle time
+
+2026-08-04 交易时段 native evidence 证明当前 pinned TDX `get_market_snapshot` payload 没有 `AsOf`、
+`DateTime` 或其他 provider business-time 字段。项目负责人已明确接受 capture-time 口径，TDX source
+converter 因此不再读取或猜测任何 native 时间字段，而是直接把 schema-v2 common decoder 已完成
+RFC3339 校验的 datasource `capturedAt` 映射为 canonical `eventTime`。TDX 的
+`quality.eventTimeAvailable` 与 `aggregationEligible` 均表示这个 canonical candle time 可用；
+`capturedAt` 字段本身继续保留，便于审计时间来源。
+
+该规则只适用于当前 TDX runtime。QMT 继续从 fixture-backed `time/stime/timetag` 解析一致的 provider
+business time；QMT native time 缺失或冲突时仍保持 `eventTime=null` 且不可聚合。任何 provider 都不得
+使用 backend 当前时间、`receivedAt` 或 `acceptedAt` 补齐。TDX 即使未来 payload 偶然出现 `AsOf` 或
+其他时间别名，当前 converter 也必须忽略；若要改回 provider business time，必须先取得真实样本并通过
+reviewed OpenSpec delta。
+
+capture time 可能在分钟边界附近把 provider 的上一状态归入下一 bucket，这是本 V1 接受的精度取舍。
+shadow HIL 必须记录 `capturedAt`、candidate identity 和 sealed bucket；若观察到不可接受的捕获延迟、
+乱序或跨 bucket 偏移，保持 `shadow` 并重新评审，而不是增加运行时猜测或双时间自动切换。
+
+### 4. 量额使用 exact decimal 与统一 A 股单位
 
 TDX/QMT 在各自边界验证 native 类型、精度和单位。A 股 `CanonicalRealtimeSnapshot`、open candle 和
 sealed candle 的领域单位固定为 `volume=股`、`amount=人民币元`，并且只传规范十进制字符串或
@@ -200,12 +219,12 @@ change 定义 scale/rounding 后再评估 `big.js` 等库。当前 app-local `k-
 module，不导入 TypeORM、Redis、HTTP、env 或其他 Mist application/library。market、strategy 和 realtime
 period builder 不得各自复制 parser/comparator。
 
-### 4. Redis commit 与下游完全隔离
+### 5. Redis commit 与下游完全隔离
 
 valid/discarded sealing 只提交 market state。未来 post-commit trigger 通过独立 port 接入；该 port
 未安装时 candle 行为不变。
 
-### 5. Realtime market state 按上海自然日日切
+### 6. Realtime market state 按上海自然日日切
 
 交易日 D 的 sealed/discarded、watermark、due 和 manifest 等 market-owned Redis keys 必须在写入时
 设置统一的上海时间 D+1 00:00 绝对到期点。到期只作用于 market-data namespace；共享 endpoint 中
@@ -221,7 +240,7 @@ Redis 到期后，昨日 realtime K 不再承担历史、恢复或审计职责�
 能来自 MySQL provider history；缺失时由下游 `insufficient_history` 处理，不能延长 Redis TTL 或跨日
 fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期，不依赖昨日 candle 存活。
 
-### 6. 模式与 HIL 分层
+### 7. 模式与 HIL 分层
 
 `off` 保持 memory-only；`shadow` 写入隔离 Redis 以校准 grace/capacity；`on` 仅在自动化、双 source
 交易时段 HIL、restart/AOF recovery 和 rollback evidence 全部通过后启用。
@@ -240,6 +259,8 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
   fail closed、暴露 `finalization_horizon_exceeded`，不生成 guessed/discarded candle。
 - [bridge/runtime 变化导致量额 profile 漂移] → 当前 adapter 固定使用已接受的 production artifact
   profile；部署 identity 变化后以 shadow/HIL 重新校验，禁止运行时猜测或自动切换。
+- [TDX capture time 在分钟边界产生 bucket 偏移] → 保留 `capturedAt` provenance，以 shadow HIL 对照
+  candidate/sealed bucket；发生不可接受偏移时阻止 `on`，不在运行时猜测 native alias 或自动切时间源。
 - [内存或 Redis 无界增长] → 所有 collection、record、retention 和 command 都必须有硬上限。
 - [共享 Redis 日切误删 BullMQ] → 只使用 market-owned exact keys 与各 key 的绝对到期点，禁止
   database-wide、prefix-wide 或 wildcard cleanup。
@@ -253,7 +274,8 @@ fallback。BullMQ 跨日 waiting job 由 realtime strategy change 判定过期�
 1. 逐项评审 exact-decimal、identity、bucket、grace、discard 和 capacity。
 2. 以 mode off 完成代码与跨仓契约。
 3. 部署 market Redis，保持 mode off。
-4. shadow 复用 datasource/backend 现有实时输出复核双 source quantity profile 与股/元换算，并通过
+4. shadow 复用 datasource/backend 现有实时输出复核双 source quantity profile 与股/元换算；TDX 同时
+   证明 canonical `eventTime=capturedAt` 能产生正确 candidate/sealed bucket，并通过
    datasource 只读 historical endpoint 获取收盘同源 K 对照；真实异常未出现时链接
    `capture-realtime-provider-anomalies` 并保持 `not-observed`。
 5. 用户审核 evidence 后决定是否切 on。

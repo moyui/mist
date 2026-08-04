@@ -72,16 +72,19 @@ freshness。禁止使用脱离对象/方法作用域的 `ready`，也不得把 `
 
 | 名称 | 含义 |
 |---|---|
-| `eventTime` | provider 市场事件时间 |
+| `eventTime` | canonical 市场事件时间；通常来自 provider，当前 TDX 例外使用 datasource `capturedAt` |
 | `capturedAt` | terminal/datasource 捕获时间 |
 | `receivedAt` | 当前服务接收时间 |
 | `acceptedAt` | 边界验证成功时间 |
 | `closedAt` | K 或业务窗口封存时间 |
 | `createdAt/updatedAt` | 持久化审计时间 |
 
-缺失 provider `eventTime` 时不得使用当前时间补齐。受管数据库审计列使用 `created_at/updated_at`，
-TypeScript/HTTP 使用 `createdAt/updatedAt`；`createdAt` 不随更新变化，审计时间不能替代领域事件时间。
-Mist TypeORM MySQL connection 使用显式 `timezone: '+08:00'`，HTTP JSON 序列化为 ISO-8601 instant。
+缺失 provider `eventTime` 时不得使用 backend 当前时间、`receivedAt` 或 `acceptedAt` 补齐。当前已评审的
+TDX realtime runtime 不提供业务时间字段，因此其 source converter 直接使用 schema-v2 decoder 已校验的
+datasource `capturedAt`，并忽略 native `AsOf`、`DateTime` 或其他时间别名；该例外不得扩展到 QMT 或其他
+provider。受管数据库审计列使用 `created_at/updated_at`，TypeScript/HTTP 使用
+`createdAt/updatedAt`；`createdAt` 不随更新变化，审计时间不能替代领域事件时间。Mist TypeORM MySQL
+connection 使用显式 `timezone: '+08:00'`，HTTP JSON 序列化为 ISO-8601 instant。
 
 ## 5. HTTP、RPC 与 consumer
 

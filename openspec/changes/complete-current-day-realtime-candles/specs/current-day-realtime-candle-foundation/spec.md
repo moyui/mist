@@ -22,6 +22,12 @@ open candle state and SHALL serialize snapshot, due and finalizer mutations for 
 - **AND** it MUST NOT participate in Node/Redis candle, baseline, due, watermark or manifest identity
 - **AND** it MUST NOT directly invoke strategy, MySQL or notification behavior
 
+#### Scenario: TDX supplies capture-time-backed canonical event time
+- **WHEN** an accepted TDX snapshot maps validated datasource `capturedAt` to canonical `eventTime`
+- **THEN** candle bucketing MUST use that canonical instant without inspecting native time aliases
+- **AND** the sealed closing snapshot MUST retain both `eventTime` and `capturedAt` so the source remains auditable
+- **AND** QMT candle bucketing MUST continue to require its native-time-derived canonical `eventTime`
+
 ### Requirement: Quantity Values Shall Remain Exact Through Candle Aggregation
 Realtime cumulative volume and amount, baselines, deltas and sealed values SHALL use canonical decimal strings
 or `null`; their A-share units SHALL remain shares and CNY yuan from accepted snapshot through sealed candle,

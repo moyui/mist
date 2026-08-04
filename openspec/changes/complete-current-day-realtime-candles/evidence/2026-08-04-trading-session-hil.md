@@ -15,6 +15,17 @@
 因此 task 5.4 保持未完成，模式保持 `shadow`，不得切 `on`。QMT historical 本次只取得 provider fill 的
 零量额样本，不能据此完成 historical quantity profile 门禁。
 
+## HIL 后续评审决策（尚未复验）
+
+项目负责人根据同一 TDX native 样本确认：当前 runtime 没有可读取的 provider business-time 字段，
+V1 接受 datasource capture-time 口径。backend commit `fe6f989` 已删除 TDX native `AsOf` 读取，固定把
+schema-v2 decoder 已校验的 `capturedAt` 映射为 canonical `eventTime`；QMT native time 规则不变。
+
+这个提交当前只有定向测试、typecheck 和提交钩子证据，尚未部署或重跑交易时段 HIL。因此下文
+`f545c72`、`eventTime=null` 和“无 candidate”仍是当时生产运行的真实历史结果，不能改写成通过；必须用
+新 backend 候选取得 TDX candidate、sealed candle、restart/AOF 和 protected-table post digest 后才能
+完成 task 5.4。
+
 这不是 quantity rejection：所有下午运行均为 `quantityProfileRejections=[]`，Redis AOF 为 enabled、last
 write `ok`，策略表没有因 shadow 流程写入。当前剩余阻塞是 TDX provider time 缺失、QMT 目标标的
 baseline 后无新 exact candle，以及尚未执行的完整 restart/AOF/protected-table 后置门禁。

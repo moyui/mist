@@ -74,3 +74,24 @@ that read SHALL NOT become a production history dependency or write MySQL.
 - **THEN** the harness MAY call the existing datasource historical endpoint read-only
 - **AND** the result MUST remain validation evidence without a MySQL write
 - **AND** production next-day consumers MUST continue to use the owning MySQL provider-history boundary
+
+### Requirement: TDX Realtime Candle Time Shall Use Datasource Capture Time
+The accepted TDX `get_market_snapshot` runtime does not expose provider business time. The TDX source converter
+SHALL use the schema-v2 envelope's validated `capturedAt` as canonical `eventTime` and SHALL NOT inspect a native
+time alias. This source-specific rule SHALL NOT change QMT event-time resolution.
+
+#### Scenario: A current TDX native snapshot is accepted
+- **WHEN** the common schema-v2 decoder accepts RFC3339 `capturedAt` and the TDX native object
+- **THEN** the TDX converter MUST set canonical `eventTime` to that exact `capturedAt`
+- **AND** canonical quality MUST mark event time available and aggregation eligible
+- **AND** the original `capturedAt` MUST remain present for provenance
+
+#### Scenario: A TDX payload contains a time-looking native field
+- **WHEN** native contains `AsOf`, `DateTime`, a case variant or another time-like key
+- **THEN** the TDX converter MUST ignore it for canonical event-time selection
+- **AND** it MUST continue to use validated datasource `capturedAt`
+
+#### Scenario: QMT has no consistent native business time
+- **WHEN** QMT native time candidates are absent, invalid or conflicting
+- **THEN** QMT MUST remain `eventTime=null` and aggregation-ineligible
+- **AND** it MUST NOT reuse the TDX capture-time rule
