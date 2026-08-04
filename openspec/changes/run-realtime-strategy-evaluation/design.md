@@ -23,6 +23,17 @@ design 的“只重放 72h Redis、绝不读 MySQL”会让较长 lookback 在�
 
 ## Decisions
 
+### 0. 开发门禁与 `on` promotion 门禁分离
+
+前置 candle change 的自动化、严格 contract、真实 snapshot fixture 离线回放和 shadow 基础足以支持
+本 change 开发 trigger、worker、window、period builder、evaluator、episode 及事务代码，并允许以
+`off|shadow` 部署和验证。该授权不等于 candle 交易时段 HIL 或 realtime strategy 生产验收完成。
+
+以下证据继续只作为 `on` promotion 的硬门禁：前置 candle change 的真实交易时段 HIL、本 change
+任务 6.4 的 TDX/QMT timestamp/quantity seam 与 restart/capacity shadow 证据，以及任务 6.5 的项目
+负责人审核和 on-mode transaction/episode/idempotency HIL。任一证据缺失时仍可继续离线自动化和
+shadow 开发，但运行模式不得切换为 `on`，文档也不得宣称生产闭环。
+
 ### 1. Trigger 与计算数据分离
 
 `StrategyTrigger` 是版本化 wake-up reference，只标识目标市场状态。完整 history、rule、native
@@ -1128,7 +1139,9 @@ datasource containers
 
 ## Migration Plan
 
-1. 验收 service boundary、candle、analysis 和 strategy contract 四类前置 changes。
+1. 确认 service boundary、candle 自动化/严格契约/真实 fixture shadow 基础和 strategy contract
+   足以支撑开发；未完成的交易时段 candle HIL 与 timestamp/quantity/capacity 证据保留为 `on`
+   promotion 门禁，不阻塞 `off|shadow` 实现。
 2. 删除 legacy manual live-scan backend route/service/types/registration/tests；由独立前端项目同步删除
    对应 action/client/types/tests，并把人工执行统一到 Backtest workflow。
 3. 逐项评审并实现 StrategyMarketDataPort realtime capability，保持 runtime off。

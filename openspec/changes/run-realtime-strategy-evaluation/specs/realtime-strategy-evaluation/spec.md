@@ -565,6 +565,14 @@ configurable concurrency surface.
 Realtime strategy mode SHALL default to off; shadow SHALL execute evaluation with zero strategy-table writes;
 on SHALL require accepted prerequisites, capacity evidence and supported-session HIL.
 
+#### Scenario: Implementation starts before production HIL is complete
+- **WHEN** candle automation, strict contracts, captured-snapshot replay and the shadow foundation are accepted
+- **THEN** realtime trigger, worker, context, evaluator, episode and transaction code MAY be implemented and
+  validated in `off` or `shadow`
+- **AND** incomplete trading-session candle HIL, timestamp/quantity seam evidence or capacity review MUST NOT be
+  reported as complete merely because offline automation passes
+- **AND** those missing production proofs MUST continue to block promotion to `on`
+
 #### Scenario: A prerequisite change lacks accepted evidence
 - **WHEN** strategy mode promotion is requested
 - **THEN** mode MUST NOT be promoted to on

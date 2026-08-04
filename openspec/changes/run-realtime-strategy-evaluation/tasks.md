@@ -6,11 +6,14 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
 
 ## 1. 前置与基线
 
-- [ ] 1.1 确认 `standardize-service-boundary-contracts`、`complete-current-day-realtime-candles` 和
-  `evolve-strategy-evaluation-contract` 已通过验收；`extract-chan-core` 不属于 Realtime Strategy
-  前置依赖。
+- [ ] 1.1 确认 `standardize-service-boundary-contracts` 与 `evolve-strategy-evaluation-contract` 的
+  已交付契约，以及 `complete-current-day-realtime-candles` 的自动化、严格 contract、真实 snapshot
+  fixture 离线回放和 shadow 基础，足以支撑本 change 的 `off|shadow` 开发；`extract-chan-core` 不属于
+  Realtime Strategy 前置依赖。
   - [ ] 1.1.1 验证 candle foundation 已实现 active-listener expected-bucket due：完全无 snapshot 的
     分钟也产生 discarded terminal watermark，Signal 不实现第二套 session/grace timer。
+  - [ ] 1.1.2 candle 真实交易时段 HIL 与本 change 6.4/6.5 的 timestamp、quantity、capacity、protected
+    table 和负责人审核只作为切换 `on` 的硬门禁，不阻塞离线自动化、部署 `off` 或运行 `shadow`。
 - [ ] 1.2 记录 strategy schema/存量、market Redis、historical K、legacy manual scan、Compose、
   monitoring、protected-table 和受影响仓库 branch/HEAD/dirty/worktree 基线。
 - [ ] 1.3 建立 sealed/discarded finalization → handoff → context/period builder → analysis → evaluator → episode → transaction →

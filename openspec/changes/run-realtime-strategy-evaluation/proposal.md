@@ -6,6 +6,10 @@ realtime evaluation。
 
 ## What Changes
 
+- 将开发门禁与生产启用门禁分离：candle 自动化、严格契约校验、真实 snapshot 离线回放和 shadow
+  基础成立后即可实现、部署和离线验证 realtime strategy 的 `off|shadow` 路径；交易时段 candle HIL、
+  TDX/QMT timestamp/quantity seam、Signal shadow 容量证据和项目负责人审核仍是切换 `on` 的硬门禁，
+  不得因代码或 fixture 通过而提前宣称生产闭环。
 - 定义轻量、版本化 `StrategyTrigger`；trigger 只负责唤醒，不携带完整 history、rule 或 native payload。
 - V1 只交付 deterministic `candle_finalized` 触发，统一表达 1m `sealed|discarded` 终态；本 change 不定义
   `snapshot_update` trigger kind、job、payload、producer 或 evaluator 入口。任何非
