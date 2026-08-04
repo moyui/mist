@@ -10,3 +10,20 @@ export {
   toStrategyTrigger,
 } from './contracts/candle-finalized-trigger.contract';
 export type { CandleFinalizedTriggerV1 } from './contracts/candle-finalized-trigger.contract';
+export {
+  REALTIME_STRATEGY_PERIODS,
+  RealtimePeriodBuilder,
+} from './runtime/realtime-period.builder';
+export type { RealtimeStrategyPeriod } from './runtime/realtime-period.builder';
+export { RealtimeEpisodeStore } from './runtime/realtime-episode.store';
+export type {
+  RealtimeEpisodeDecision,
+  RealtimeEpisodeIdentity,
+} from './runtime/realtime-episode.store';
+export { SharedStrategyWindowStore } from './runtime/shared-strategy-window.store';
+export type { WindowAppendOutcome } from './runtime/shared-strategy-window.store';
+export { RealtimeStrategyEvaluationService } from './runtime/realtime-strategy-evaluation.service';
+export type {
+  RealtimeStrategyExecutionPlan,
+  ShadowStrategyCandidate,
+} from './runtime/realtime-strategy-evaluation.service';
