@@ -17,9 +17,7 @@ export function convertTdxNativeSnapshot(
   const high = readTdxNativeNumber(input.native, ['Max', 'High', 'high']);
   const low = readTdxNativeNumber(input.native, ['Min', 'Low', 'low']);
   const lastClose = readTdxNativeNumber(input.native, ['LastClose']);
-  const eventTime = parseTdxBusinessTime(
-    input.native['DateTime'] ?? input.native['datetime'],
-  );
+  const eventTime = parseTdxBusinessTime(input.native['AsOf']);
 
   return {
     source: 'tdx',
@@ -144,14 +142,11 @@ function requiredNumber(
 
 function parseTdxBusinessTime(value: unknown): string | null {
   if (typeof value !== 'string') return null;
-  const match =
-    /^(\d{4})(?:-?)(\d{2})(?:-?)(\d{2})[ T]?(\d{2}):(\d{2}):(\d{2})$/.exec(
-      value,
-    );
-  if (!match) return null;
-  const [, year, month, day, hour, minute, second] = match;
-  const candidate = `${year}-${month}-${day}T${hour}:${minute}:${second}+08:00`;
-  return Number.isFinite(Date.parse(candidate)) ? candidate : null;
+  if (!TDX_AS_OF_PATTERN.test(value)) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
 }
 
 const STRICT_NUMERIC_STRING = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+const TDX_AS_OF_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;

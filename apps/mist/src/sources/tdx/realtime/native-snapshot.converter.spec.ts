@@ -11,7 +11,7 @@ describe('TDX native snapshot converter', () => {
       LastClose: 30.5,
       Volume: '10',
       Amount: '100',
-      DateTime: '2026-07-22 10:01:02',
+      AsOf: '2026-07-22T10:01:02.123456+08:00',
       providerOnly: [1, 2, 3],
     };
 
@@ -24,7 +24,7 @@ describe('TDX native snapshot converter', () => {
 
     expect(snapshot.securityId).toBe(600030);
     expect(snapshot.providerSymbol).toBe('600030.SH');
-    expect(snapshot.eventTime).toBe('2026-07-22T10:01:02+08:00');
+    expect(snapshot.eventTime).toBe('2026-07-22T02:01:02.123Z');
     expect(snapshot.prices.last).toBe(31.25);
     expect(snapshot.prices.lastClose).toBe(30.5);
     expect(snapshot.cumulativeVolume).toBe('1000');
@@ -53,6 +53,23 @@ describe('TDX native snapshot converter', () => {
       providerSymbol: '600030.SH',
       capturedAt: '2026-07-22T10:01:03+08:00',
       native: { Now: 31.25 },
+    });
+
+    expect(snapshot.eventTime).toBeNull();
+    expect(snapshot.quality.aggregationEligible).toBe(false);
+  });
+
+  it.each([
+    ['retired DateTime', { DateTime: '2026-07-22 10:01:02' }],
+    ['wrong-case AsOf', { asof: '2026-07-22T10:01:02+08:00' }],
+    ['timezone-free AsOf', { AsOf: '2026-07-22T10:01:02' }],
+    ['invalid AsOf', { AsOf: 'not-a-time' }],
+  ])('does not accept %s as provider business time', (_, timeFields) => {
+    const snapshot = convertTdxNativeSnapshot({
+      securityId: 600030,
+      providerSymbol: '600030.SH',
+      capturedAt: '2026-07-22T10:01:03+08:00',
+      native: { Now: 31.25, ...timeFields },
     });
 
     expect(snapshot.eventTime).toBeNull();

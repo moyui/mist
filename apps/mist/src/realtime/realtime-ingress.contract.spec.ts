@@ -83,7 +83,7 @@ describe('formal realtime schema-v2 ingress contract', () => {
       frame('tdx', {
         '600030.SH': {
           Now: 31.25,
-          DateTime: '2026-07-22 10:01:02',
+          AsOf: '2026-07-22T10:01:02.000+08:00',
         },
       }),
     );
@@ -111,7 +111,7 @@ describe('formal realtime schema-v2 ingress contract', () => {
         frame('tdx', {
           '600030.SH': {
             Now: 31.25,
-            DateTime: '2026-07-22 10:01:02',
+            AsOf: '2026-07-22T10:01:02.000+08:00',
           },
         }),
       );
