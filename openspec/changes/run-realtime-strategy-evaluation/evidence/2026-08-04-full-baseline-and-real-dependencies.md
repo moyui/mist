@@ -2,9 +2,10 @@
 
 日期：2026-08-04
 
-## 固定提交
+## 基线执行时提交
 
-- `mist` master: `652be8ca21e0fbfc9ca51b9bc1c3bbe2d870577b`
+- `mist` runtime/CI code HEAD: `652be8ca21e0fbfc9ca51b9bc1c3bbe2d870577b`；其后的 commit 只回填
+  本 evidence 与 task checkbox，不改变已测试运行时代码。
 - `mist-monitoring` master: `e5231741dfc3ec97941c2421a3eb1385f2170a5a`
 - `mist-deploy` master: `85c541c59d6e39efcbaa84dc9915ebdde3fb00db`
 - 三仓工作区在证据完成前均通过 `git diff --check`；`REALTIME_STRATEGY_MODE` 部署默认值保持 `off`。
