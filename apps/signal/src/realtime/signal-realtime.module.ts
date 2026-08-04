@@ -39,16 +39,24 @@ import { SignalRealtimeStartupService } from './signal-realtime-startup.service'
     SignalStrategyMarketDataAdapter,
     {
       provide: CandleFinalizedJobProcessor,
-      inject: [SignalStrategyMarketDataAdapter, SignalRegistryService],
+      inject: [
+        SignalStrategyMarketDataAdapter,
+        SignalRegistryService,
+        ConfigService,
+      ],
       useFactory(
         marketData: SignalStrategyMarketDataAdapter,
         registry: SignalRegistryService,
+        config: ConfigService,
       ) {
         return new CandleFinalizedJobProcessor(
           marketData,
           (securityId, source) =>
             registry.executionPlansFor(securityId, source),
           () => new Date(),
+          undefined,
+          undefined,
+          config.get<number>('REALTIME_STRATEGY_JOB_TIMEOUT_MS') ?? 30_000,
         );
       },
     },

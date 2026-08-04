@@ -146,6 +146,12 @@ export const mistEnvSchema = commonEnvSchema
         'off=registry only; shadow=evaluate without strategy persistence; on=enable live signal persistence',
       ),
 
+    REALTIME_STRATEGY_JOB_TIMEOUT_MS: Joi.number()
+      .integer()
+      .positive()
+      .default(30_000)
+      .description('Overall candle_finalized worker deadline in milliseconds'),
+
     SIGNAL_RPC_HOST: Joi.string().hostname().default('signal'),
     SIGNAL_RPC_PORT: Joi.number().port().default(9010),
 
@@ -212,6 +218,10 @@ export const signalEnvSchema = commonEnvSchema.append({
     .valid('off', 'shadow', 'on')
     .default('off'),
   MIST_REALTIME_REDIS_URL: Joi.string().uri().allow('').default(''),
+  REALTIME_STRATEGY_JOB_TIMEOUT_MS: Joi.number()
+    .integer()
+    .positive()
+    .default(30_000),
 });
 
 export type RealtimeStrategyMode = 'off' | 'shadow' | 'on';

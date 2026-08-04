@@ -1,6 +1,9 @@
 import { compileStoredStrategyRule, type StrategyBar } from '@app/strategy';
 import { CANDLE_FINALIZED_JOB_NAME } from '@app/signal';
-import { CandleFinalizedJobProcessor } from './candle-finalized-job.processor';
+import {
+  CandleFinalizedJobProcessor,
+  RealtimeStrategyJobDeadlineExceededError,
+} from './candle-finalized-job.processor';
 
 describe('CandleFinalizedJobProcessor', () => {
   it('resolves one sealed observation, hydrates once and emits a shadow candidate', async () => {
@@ -112,6 +115,66 @@ describe('CandleFinalizedJobProcessor', () => {
       processor.process('snapshot_update', { anything: true }),
     ).rejects.toThrow('unsupported strategy trigger job');
     expect(marketData.resolveRealtimeObservation).not.toHaveBeenCalled();
+  });
+
+  it('does not start Redis observation after the overall deadline', async () => {
+    const marketData = {
+      loadRealtimeWindow: jest.fn(),
+      resolveRealtimeObservation: jest.fn(),
+    };
+    let call = 0;
+    const times = [0, 1, 2, 2, 10];
+    const processor = new CandleFinalizedJobProcessor(
+      marketData,
+      () => [],
+      () => new Date(Date.UTC(2026, 7, 4, 7, 0, 0, times[call++] ?? 10)),
+      undefined,
+      undefined,
+      10,
+    );
+
+    await expect(
+      processor.process(
+        CANDLE_FINALIZED_JOB_NAME,
+        sealedPayload(makeBar('2026-08-04T06:44:00.000Z', 28)),
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<RealtimeStrategyJobDeadlineExceededError>>(
+        {
+          code: 'REALTIME_STRATEGY_JOB_DEADLINE_EXCEEDED',
+          stage: 'redis_observation:before',
+        },
+      ),
+    );
+    expect(marketData.resolveRealtimeObservation).not.toHaveBeenCalled();
+  });
+
+  it('fails after a stage that consumes the remaining budget', async () => {
+    const bar = makeBar('2026-08-04T06:44:00.000Z', 28);
+    const marketData = {
+      loadRealtimeWindow: jest.fn(),
+      resolveRealtimeObservation: jest
+        .fn()
+        .mockResolvedValue({ outcome: 'sealed', bar }),
+    };
+    let call = 0;
+    const times = [0, 1, 2, 3, 4, 10];
+    const processor = new CandleFinalizedJobProcessor(
+      marketData,
+      () => [],
+      () => new Date(Date.UTC(2026, 7, 4, 7, 0, 0, times[call++] ?? 10)),
+      undefined,
+      undefined,
+      10,
+    );
+
+    await expect(
+      processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(bar)),
+    ).rejects.toMatchObject({
+      code: 'REALTIME_STRATEGY_JOB_DEADLINE_EXCEEDED',
+      stage: 'redis_observation:after',
+    });
+    expect(marketData.resolveRealtimeObservation).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a trigger price that conflicts with the sealed Redis candle', async () => {

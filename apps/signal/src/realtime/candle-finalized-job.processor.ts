@@ -4,6 +4,7 @@ import type {
 } from '@app/strategy';
 import {
   CANDLE_FINALIZED_JOB_NAME,
+  STRATEGY_TRIGGER_JOB_TIMEOUT_MS,
   RealtimePeriodBuilder,
   RealtimeStrategyEvaluationService,
   decodeCandleFinalizedTriggerV1,
@@ -21,6 +22,15 @@ export type CandleFinalizedJobOutcome =
 export interface CandleFinalizedJobResult {
   readonly outcome: CandleFinalizedJobOutcome;
   readonly candidates: readonly ShadowStrategyCandidate[];
+}
+
+export class RealtimeStrategyJobDeadlineExceededError extends Error {
+  readonly code = 'REALTIME_STRATEGY_JOB_DEADLINE_EXCEEDED';
+
+  constructor(readonly stage: string) {
+    super(`realtime strategy job deadline exceeded at ${stage}`);
+    this.name = 'RealtimeStrategyJobDeadlineExceededError';
+  }
 }
 
 interface FinalizationCursor {
@@ -44,17 +54,20 @@ export class CandleFinalizedJobProcessor {
     private readonly evaluation = new RealtimeStrategyEvaluationService(
       marketData,
     ),
+    private readonly jobTimeoutMs = STRATEGY_TRIGGER_JOB_TIMEOUT_MS,
   ) {}
 
   async process(
     jobName: string,
     data: unknown,
   ): Promise<CandleFinalizedJobResult> {
+    const deadlineAt = this.now().getTime() + this.jobTimeoutMs;
     if (jobName !== CANDLE_FINALIZED_JOB_NAME) {
       throw new TypeError(`unsupported strategy trigger job: ${jobName}`);
     }
     const payload = decodeCandleFinalizedTriggerV1(data);
     const trigger = toStrategyTrigger(payload);
+    this.assertWithinDeadline(deadlineAt, 'trading_day_validation:before');
     const tradingDay = shanghaiDay(trigger.timestamp);
     const currentDay = shanghaiDay(this.now());
     if (tradingDay < currentDay) {
@@ -63,6 +76,7 @@ export class CandleFinalizedJobProcessor {
     if (tradingDay > currentDay) {
       throw new RangeError('candle_finalized triggerTime is in the future day');
     }
+    this.assertWithinDeadline(deadlineAt, 'trading_day_validation:after');
     if (this.activeTradingDay !== tradingDay) {
       this.activeTradingDay = tradingDay;
       this.cursors.clear();
@@ -83,7 +97,9 @@ export class CandleFinalizedJobProcessor {
 
     const sealedBar =
       payload.outcome === 'sealed'
-        ? await this.resolveSealed(trigger, payload.triggerPrice)
+        ? await this.runStage(deadlineAt, 'redis_observation', () =>
+            this.resolveSealed(trigger, payload.triggerPrice),
+          )
         : null;
     if (prior && triggerMs === prior.timestampMs) {
       if (
@@ -112,12 +128,33 @@ export class CandleFinalizedJobProcessor {
 
     const candidates: ShadowStrategyCandidate[] = [];
     for (const bar of emitted) {
-      candidates.push(...(await this.evaluation.evaluate(bar, executionPlans)));
+      candidates.push(
+        ...(await this.runStage(deadlineAt, 'analysis_evaluation', () =>
+          this.evaluation.evaluate(bar, executionPlans),
+        )),
+      );
     }
     return Object.freeze({
       outcome: 'completed',
       candidates: Object.freeze(candidates),
     });
+  }
+
+  private async runStage<T>(
+    deadlineAt: number,
+    stage: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    this.assertWithinDeadline(deadlineAt, `${stage}:before`);
+    const result = await operation();
+    this.assertWithinDeadline(deadlineAt, `${stage}:after`);
+    return result;
+  }
+
+  private assertWithinDeadline(deadlineAt: number, stage: string): void {
+    if (this.now().getTime() >= deadlineAt) {
+      throw new RealtimeStrategyJobDeadlineExceededError(stage);
+    }
   }
 
   private async resolveSealed(
