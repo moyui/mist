@@ -93,7 +93,8 @@ export class TdxRealtimeClient
       false,
     );
     this.subscribeAllowlistOnReady =
-      subscribeAllowlistOnReady === true || subscribeAllowlistOnReady === 'true';
+      subscribeAllowlistOnReady === true ||
+      subscribeAllowlistOnReady === 'true';
     void desiredPoster;
   }
 
