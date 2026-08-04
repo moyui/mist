@@ -30,12 +30,26 @@ export class BacktestCommandHttpException extends HttpException {
     code: string,
     message: string,
     readonly runId: number,
+    readonly currentStatus?: BacktestRunStatus,
   ) {
-    super({ code, message, data: { runId } }, status);
+    super(
+      {
+        code,
+        message,
+        data: {
+          runId,
+          ...(currentStatus ? { status: currentStatus } : {}),
+        },
+      },
+      status,
+    );
   }
 }
 
-type PendingFailureStatus = BacktestRunStatus | 'missing';
+type PendingFailureResult = {
+  status: BacktestRunStatus | 'missing';
+  updated: boolean;
+};
 
 @Injectable()
 export class BacktestRunCommandService {
@@ -115,11 +129,22 @@ export class BacktestRunCommandService {
         `BACKTEST_${result.error.code.toUpperCase()}`,
       );
       if (
-        failed === BacktestRunStatus.RUNNING ||
-        failed === BacktestRunStatus.COMPLETED ||
-        failed === BacktestRunStatus.FAILED
+        failed.status === BacktestRunStatus.RUNNING ||
+        failed.status === BacktestRunStatus.COMPLETED ||
+        (failed.status === BacktestRunStatus.FAILED && !failed.updated)
       ) {
         return receipt(run.id);
+      }
+      if (
+        failed.status === 'missing' ||
+        failed.status === BacktestRunStatus.PENDING
+      ) {
+        throw new BacktestCommandHttpException(
+          500,
+          'INTERNAL_ERROR',
+          'Internal Server Error',
+          run.id,
+        );
       }
       if (result.error.code === 'queue_full') {
         throw new BacktestCommandHttpException(
@@ -127,6 +152,7 @@ export class BacktestRunCommandService {
           'BACKTEST_QUEUE_FULL',
           'Backtest queue is full',
           run.id,
+          BacktestRunStatus.FAILED,
         );
       }
       throw new BacktestCommandHttpException(
@@ -134,6 +160,7 @@ export class BacktestRunCommandService {
         'BACKTEST_NOT_READY',
         'Backtest service is not ready',
         run.id,
+        BacktestRunStatus.FAILED,
       );
     } catch (error) {
       if (!(error instanceof BacktestRpcTransportError)) throw error;
@@ -145,45 +172,31 @@ export class BacktestRunCommandService {
     runId: number,
     error: BacktestRpcTransportError,
   ): Promise<BacktestRunReceiptVo> {
+    const state = await this.markPendingFailed(
+      runId,
+      error.kind === 'timeout'
+        ? 'BACKTEST_COMMAND_TIMEOUT'
+        : error.kind === 'unavailable'
+          ? 'BACKTEST_STARTUP_UNAVAILABLE'
+          : 'BACKTEST_RPC_INTERNAL_ERROR',
+    );
     if (error.kind === 'timeout') {
-      const state = await this.markPendingFailed(
-        runId,
-        'BACKTEST_COMMAND_TIMEOUT',
-      );
+      if (state.updated) {
+        throw new BacktestCommandHttpException(
+          504,
+          'BACKTEST_COMMAND_TIMEOUT',
+          'Backtest command timed out',
+          runId,
+          BacktestRunStatus.FAILED,
+        );
+      }
       if (
-        state === BacktestRunStatus.RUNNING ||
-        state === BacktestRunStatus.COMPLETED ||
-        state === BacktestRunStatus.FAILED
+        state.status === BacktestRunStatus.RUNNING ||
+        state.status === BacktestRunStatus.COMPLETED ||
+        state.status === BacktestRunStatus.FAILED
       ) {
         return receipt(runId);
       }
-      if (state === 'missing') {
-        throw new BacktestCommandHttpException(
-          500,
-          'INTERNAL_ERROR',
-          'Internal Server Error',
-          runId,
-        );
-      }
-      throw new BacktestCommandHttpException(
-        504,
-        'BACKTEST_COMMAND_TIMEOUT',
-        'Backtest command timed out',
-        runId,
-      );
-    }
-    const state = await this.markPendingFailed(
-      runId,
-      'BACKTEST_STARTUP_UNAVAILABLE',
-    );
-    if (
-      state === BacktestRunStatus.RUNNING ||
-      state === BacktestRunStatus.COMPLETED ||
-      state === BacktestRunStatus.FAILED
-    ) {
-      return receipt(runId);
-    }
-    if (state === 'missing') {
       throw new BacktestCommandHttpException(
         500,
         'INTERNAL_ERROR',
@@ -192,11 +205,52 @@ export class BacktestRunCommandService {
       );
     }
     if (error.kind === 'unavailable') {
+      if (state.updated) {
+        throw new BacktestCommandHttpException(
+          503,
+          'BACKTEST_UNAVAILABLE',
+          'Backtest service is unavailable',
+          runId,
+          BacktestRunStatus.FAILED,
+        );
+      }
+      if (
+        state.status === BacktestRunStatus.RUNNING ||
+        state.status === BacktestRunStatus.COMPLETED ||
+        state.status === BacktestRunStatus.FAILED
+      ) {
+        return receipt(runId);
+      }
       throw new BacktestCommandHttpException(
-        503,
-        'BACKTEST_UNAVAILABLE',
-        'Backtest service is unavailable',
+        500,
+        'INTERNAL_ERROR',
+        'Internal Server Error',
         runId,
+      );
+    }
+
+    if (state.updated) {
+      throw new BacktestCommandHttpException(
+        500,
+        'INTERNAL_ERROR',
+        'Internal Server Error',
+        runId,
+        BacktestRunStatus.FAILED,
+      );
+    }
+    if (
+      state.status === BacktestRunStatus.RUNNING ||
+      state.status === BacktestRunStatus.COMPLETED
+    ) {
+      return receipt(runId);
+    }
+    if (state.status === BacktestRunStatus.FAILED) {
+      throw new BacktestCommandHttpException(
+        500,
+        'INTERNAL_ERROR',
+        'Internal Server Error',
+        runId,
+        BacktestRunStatus.FAILED,
       );
     }
     throw new BacktestCommandHttpException(
@@ -210,7 +264,7 @@ export class BacktestRunCommandService {
   private async markPendingFailed(
     runId: number,
     errorMessage: string,
-  ): Promise<PendingFailureStatus> {
+  ): Promise<PendingFailureResult> {
     try {
       const result = await this.runRepository.update(
         { id: runId, status: BacktestRunStatus.PENDING },
@@ -220,11 +274,16 @@ export class BacktestRunCommandService {
           errorMessage,
         },
       );
-      if (result.affected === 1) return BacktestRunStatus.FAILED;
+      if (result.affected === 1) {
+        return { status: BacktestRunStatus.FAILED, updated: true };
+      }
       const current = await this.runRepository.findOne({
         where: { id: runId },
       });
-      return current?.status ?? 'missing';
+      return {
+        status: current?.status ?? 'missing',
+        updated: false,
+      };
     } catch {
       throw new BacktestCommandHttpException(
         500,

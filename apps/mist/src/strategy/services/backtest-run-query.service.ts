@@ -23,6 +23,11 @@ type QueryRejection = HttpBusinessRejection<
 >;
 
 const SAFE_FAILURE_CODES = new Set([
+  'BACKTEST_QUEUE_FULL',
+  'BACKTEST_NOT_READY',
+  'BACKTEST_UNAVAILABLE',
+  'BACKTEST_COMMAND_TIMEOUT',
+  'BACKTEST_RPC_INTERNAL_ERROR',
   'BACKTEST_SOURCE_UNSUPPORTED',
   'BACKTEST_TARGET_UNIVERSE_EMPTY',
   'BACKTEST_NO_EXECUTABLE_TARGETS',
@@ -149,7 +154,7 @@ function mapRun(run: BacktestRun): BacktestRunVo {
     status: run.status,
     signalCount: run.signalCount,
     matchedSecurityCount: run.matchedSecurityCount,
-    targetIssues: [...(run.targetIssues ?? [])],
+    targetIssues: mapTargetIssues(run.targetIssues),
     startedAt: toIsoOrNull(run.startedAt),
     completedAt: toIsoOrNull(run.completedAt),
     errorMessage: safeErrorMessage(run.errorMessage),
@@ -177,4 +182,41 @@ function toIsoOrNull(value: Date | null | undefined): string | null {
 function safeErrorMessage(value: string | null | undefined): string | null {
   if (!value) return null;
   return SAFE_FAILURE_CODES.has(value) ? value : 'BACKTEST_EXECUTION_FAILED';
+}
+
+const TARGET_ISSUE_CODES = new Set([
+  'SECURITY_NOT_FOUND',
+  'NO_HISTORICAL_BARS',
+]);
+const SECURITY_CODE_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
+
+function mapTargetIssues(value: unknown): BacktestRunVo['targetIssues'] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const issues: BacktestRunVo['targetIssues'] = [];
+  for (const candidate of value) {
+    if (!isRecord(candidate)) continue;
+    const securityCode = candidate.securityCode;
+    const code = candidate.code;
+    if (
+      typeof securityCode !== 'string' ||
+      !SECURITY_CODE_PATTERN.test(securityCode) ||
+      typeof code !== 'string' ||
+      !TARGET_ISSUE_CODES.has(code)
+    ) {
+      continue;
+    }
+    const key = `${securityCode}\u0000${code}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    issues.push({
+      securityCode,
+      code: code as 'SECURITY_NOT_FOUND' | 'NO_HISTORICAL_BARS',
+    });
+  }
+  return issues;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

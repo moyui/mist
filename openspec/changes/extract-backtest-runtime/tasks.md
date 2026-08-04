@@ -27,53 +27,54 @@
   pattern。
 - [x] 2.3 在 `libs/config` 实现并注入已批准的 Backtest ports、capacity、concurrency、command/run
   deadline 和 bar-limit 配置；业务代码不得直接读取 `process.env`。
-- [ ] 2.4 实现单实例 PENDING 原子领取、active/waiting admission、幂等重复 command、bounded queue 和
+- [x] 2.4 实现单实例 PENDING 原子领取、active/waiting admission、幂等重复 command、bounded queue 和
   queue-full/error mapping；同一 run 使用自动清理的 keyed admission chain，dedupe 早于 capacity，
   capacity/reservation 间无 await，active/waiting state 与 admission chain 分离，且不同 correlation
   的重复请求分别构造 result。memory acceptance 不新增持久化状态；runner 以 PENDING 条件 claim，
   affected=0 无 readback 丢弃，claim/cleanup/schedule 的所有出口 finally exactly-once release slot 并
   admit 至多一个 oldest waiting identity。
-- [ ] 2.5 实现 Backtest 自身启动 reconciliation、遗留 RUNNING failure、cutoff/FIFO 恢复与 scoped
+- [x] 2.5 实现 Backtest 自身启动 reconciliation、遗留 RUNNING failure、cutoff/FIFO 恢复与 scoped
   readiness；实现 `apps/mist` 一次性 3 秒 health compensation，不等待、轮询或阻塞其他 API。
 
 ## 3. Historical Replay 与 Evaluation
 
-- [ ] 3.1 只实现共享 `StrategyMarketDataPort.readReplayPage()` 的 MySQL adapter，使用 approved
+- [x] 3.1 只实现共享 `StrategyMarketDataPort.readReplayPage()` 的 MySQL adapter，使用 approved
   source-exact criteria、固定内部 page size 和 timestamp keyset pagination，不连接 market Redis。
-- [ ] 3.2 只选择构造 canonical `StrategyBar` 所需列，完成 TDX/QMT A 股 historical quantity profile
+- [x] 3.2 只选择构造 canonical `StrategyBar` 所需列，完成 TDX/QMT A 股 historical quantity profile
   mapping、共享 `KPriceProjector` 的 MySQL fixed-scale OHLC 投影、provider-filled row、duplicate
   timestamp/value 和 null 语义的 tests；不得增加 K migration、全局 decimal coercion 或消费者私有转换。
-- [ ] 3.3 实现跨页连续的 bounded context、QuantityForwardFillProjector、Indicator/evaluator state、
+- [x] 3.3 实现跨页连续的 bounded context、QuantityForwardFillProjector、Indicator/evaluator state、
   group 串行执行、cooperative deadline 和实际消费 K 总量限制。
-- [ ] 3.4 实现 target resolution、`targetIssues`、无历史/全目标不可执行、unavailable 零结果和真正
+- [x] 3.4 实现 target resolution、`targetIssues`、无历史/全目标不可执行、unavailable 零结果和真正
   database/evaluator failure 的区分。
-- [ ] 3.5 实现 bounded calculation/persistence batches、BacktestRun 状态推进和
+- [x] 3.5 实现 bounded calculation/persistence batches、BacktestRun 状态推进和
   BacktestSignalResult/contextSnapshot 写入；非目标数据库错误直接到 run boundary。
-- [ ] 3.6 实现并验证结果唯一键冲突的普通数据库失败语义、COMPLETED publication barrier 和 immutable
+- [x] 3.6 实现并验证结果唯一键冲突的普通数据库失败语义、COMPLETED publication barrier 和 immutable
   result pages；不得把重复业务运行自动去重。
 
 ## 4. Schema 与公共 API Cutover
 
 - [ ] 4.1 只有真实 preflight 通过后才新增最终 forward-only migration；分别处理 `target_issues` 与
   result pagination index，并同步 ORM/raw SQL/audit/repair-forward。
-- [ ] 4.2 保留 `/v1/strategy-backtests` owner 在 `apps/mist`，把 POST 改为 durable register + TCP
+- [x] 4.2 保留 `/v1/strategy-backtests` owner 在 `apps/mist`，把 POST 改为 durable register + TCP
   accepted 后返回真实 202、`BacktestRunReceiptVo{runId,initialStatus=PENDING}` 和 Location；receipt 不为
   刷新当前状态增加 DB readback，当前状态只从 run GET 读取。
-- [ ] 4.3 实现 run GET 与 signals GET 的 approved DTO/VO、business/not-found/error envelope、opaque
+- [x] 4.3 实现 run GET 与 signals GET 的 approved DTO/VO、business/not-found/error envelope、opaque
   keyset cursor、1–100 limit、targetIssues 和 partial-result visibility；cursor 使用不签名、不加密的
   内部 Base64URL contract，并执行 512 字符、严格字段、时间与 run scope 校验。
-- [ ] 4.4 用 negative contract tests 证明 V1 无 cancel API/RPC、无自动 retry、无 EF create、无公开
+- [x] 4.4 用 negative contract tests 证明 V1 无 cancel API/RPC、无自动 retry、无 EF create、无公开
   Backtest runtime route，且 frontend 不在本 change 修改。
-- [ ] 4.5 将旧混合 service 拆为 `BacktestRunCommandService` 与 `BacktestRunQueryService`，删除
+- [x] 4.5 将旧混合 service 拆为 `BacktestRunCommandService` 与 `BacktestRunQueryService`，删除
   `StrategyBacktestService.executeRun()`、API 进程 K/evaluator/context 依赖和失效测试；检索并证明没有
   replay facade、feature flag、fallback、双跑或跨 app source import。
 
 ## 5. 部署、监控与验收
 
-- [ ] 5.1 增加单实例 Backtest image/build、Compose service、内部 HTTP/RPC 配置、PowerShell defaults、
+- [x] 5.1 增加单实例 Backtest image/build、Compose service、内部 HTTP/RPC 配置、PowerShell defaults、
   deploy/start order 和 health contract；`mist-backend` 不以 Compose healthy 硬依赖 Backtest。
 - [ ] 5.2 增加 scoped readiness、active/waiting/capacity、command/run/duration/persistence/failure、
-  target issue 和 lost-ACK 低基数 monitoring 与 contract tests。
+  target issue 和 lost-ACK 低基数 monitoring 与 contract tests。Backtest health 与 command outcomes
+  已实现；Mist 侧一次性 startup-compensation/lost-ACK outcome 的 monitoring 仍待补齐。
 - [ ] 5.3 运行 `mist`、`mist-deploy`、`mist-monitoring` 完整基线、strict OpenSpec、退役路径检索和
   `git diff --check`。
 - [ ] 5.4 在隔离真实 MySQL 执行 migration pre/postflight/readback、protected digest、first/middle page

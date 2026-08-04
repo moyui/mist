@@ -8,6 +8,7 @@ describe('BacktestHealthStateService', () => {
     health.recordCommand('accepted');
     health.recordCommand('queue_full');
     health.recordCommand('not_ready');
+    health.recordCommand('run_failed');
     health.recordStartupFailure('queue_full');
     health.recordResultBatch(4, 250);
     health.recordResultBatchFailure(100);
@@ -28,6 +29,7 @@ describe('BacktestHealthStateService', () => {
           commandAcceptedCount: 1,
           commandQueueFullCount: 1,
           commandNotReadyCount: 1,
+          commandRunFailedCount: 1,
           startupQueueFullCount: 1,
           startupUnavailableCount: 0,
           runCompletedCount: 1,

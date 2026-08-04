@@ -16,17 +16,24 @@ function config(values: Record<string, number>) {
   return { get: (name: string) => values[name] };
 }
 
+function runs(status: string = 'pending') {
+  return {
+    findOne: jest.fn().mockResolvedValue({ status }),
+  };
+}
+
 describe('BacktestAdmissionService', () => {
-  it('rejects before readiness and does not call the executor', () => {
+  it('rejects before readiness and does not call the executor', async () => {
     const health = new BacktestHealthStateService();
     const executor = { execute: jest.fn() };
     const admission = new BacktestAdmissionService(
       config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,
       executor as any,
       health,
+      runs() as any,
     );
 
-    expect(admission.accept(1)).toEqual({
+    await expect(admission.accept(1)).resolves.toEqual({
       accepted: false,
       code: 'not_ready',
     });
@@ -34,7 +41,7 @@ describe('BacktestAdmissionService', () => {
     expect(health.snapshot().backtest.state).toBe('starting');
   });
 
-  it('deduplicates active and waiting runs before applying capacity', () => {
+  it('deduplicates active and waiting runs before applying capacity', async () => {
     const first = deferred();
     const health = new BacktestHealthStateService();
     const executor = { execute: jest.fn().mockReturnValue(first.promise) };
@@ -42,13 +49,14 @@ describe('BacktestAdmissionService', () => {
       config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,
       executor as any,
       health,
+      runs() as any,
     );
     admission.setReady(true);
 
-    expect(admission.accept(1)).toEqual({ accepted: true });
-    expect(admission.accept(2)).toEqual({ accepted: true });
-    expect(admission.accept(2)).toEqual({ accepted: true });
-    expect(admission.accept(3)).toEqual({
+    await expect(admission.accept(1)).resolves.toEqual({ accepted: true });
+    await expect(admission.accept(2)).resolves.toEqual({ accepted: true });
+    await expect(admission.accept(2)).resolves.toEqual({ accepted: true });
+    await expect(admission.accept(3)).resolves.toEqual({
       accepted: false,
       code: 'queue_full',
     });
@@ -76,12 +84,13 @@ describe('BacktestAdmissionService', () => {
       config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 2 }) as any,
       executor as any,
       health,
+      runs() as any,
     );
     admission.setReady(true);
 
-    admission.accept(10);
-    admission.accept(20);
-    admission.accept(30);
+    await admission.accept(10);
+    await admission.accept(20);
+    await admission.accept(30);
     first.resolve();
     await Promise.resolve();
     await Promise.resolve();
@@ -98,5 +107,25 @@ describe('BacktestAdmissionService', () => {
 
     third.resolve();
     await Promise.resolve();
+  });
+
+  it('returns run_failed for a durable failed run without reserving capacity', async () => {
+    const health = new BacktestHealthStateService();
+    const executor = { execute: jest.fn() };
+    const admission = new BacktestAdmissionService(
+      config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,
+      executor as any,
+      health,
+      runs('failed') as any,
+    );
+    admission.setReady(true);
+
+    await expect(admission.accept(9)).resolves.toEqual({
+      accepted: false,
+      code: 'run_failed',
+    });
+    expect(admission.activeCount()).toBe(0);
+    expect(admission.waitingCount()).toBe(0);
+    expect(executor.execute).not.toHaveBeenCalled();
   });
 });

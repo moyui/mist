@@ -21,10 +21,10 @@ export class BacktestCommandController {
 
   @MessagePattern(BACKTEST_RUN_SUBMIT_PATTERN)
   @RpcContract(decodeSubmitBacktestRunCommandV1)
-  submit(
+  async submit(
     @Payload() request: RpcRequestV1<SubmitBacktestRunCommandV1>,
-  ): RpcResultV1<null, SubmitBacktestRunErrorCode> {
-    const result = this.admission.accept(request.data.runId);
+  ): Promise<RpcResultV1<null, SubmitBacktestRunErrorCode>> {
+    const result = await this.admission.accept(request.data.runId);
     if (!result.accepted) {
       return createRpcRejectionV1(request.meta.correlationId, result.code);
     }

@@ -40,15 +40,15 @@ export class BacktestMarketDataAdapter implements StrategyReplayMarketDataPort {
       .andWhere('k.source = :source', { source: criteria.source })
       .andWhere('k.period = :period', { period: criteria.period })
       .andWhere('k.timestamp >= :startAt', { startAt: criteria.startAt })
-      .andWhere('k.timestamp <= :endAt', { endAt: criteria.endAt })
-      .orderBy('k.timestamp', 'ASC')
-      .limit(BACKTEST_REPLAY_PAGE_SIZE);
+      .andWhere('k.timestamp <= :endAt', { endAt: criteria.endAt });
 
     if (criteria.afterTimestamp) {
       query.andWhere('k.timestamp > :afterTimestamp', {
         afterTimestamp: criteria.afterTimestamp,
       });
     }
+
+    query.orderBy('k.timestamp', 'ASC').limit(BACKTEST_REPLAY_PAGE_SIZE);
 
     const rows = await query.getMany();
     const bars = rows.map(mapKToStrategyBar);

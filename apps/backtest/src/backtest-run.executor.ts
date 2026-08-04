@@ -29,6 +29,7 @@ const BACKTEST_RESULT_BATCH_SIZE = 100;
 
 class ReplayBudget {
   consumed = 0;
+  private lastYieldConsumed = -1;
 
   constructor(
     private readonly maxBars: number,
@@ -49,6 +50,16 @@ class ReplayBudget {
     if (Date.now() >= this.deadlineAt) {
       throw new BacktestRunFailure('BACKTEST_EXECUTION_TIMEOUT');
     }
+  }
+
+  async checkpoint(forceYield = false): Promise<void> {
+    this.checkDeadline();
+    const shouldYield =
+      forceYield || this.consumed % BACKTEST_CALCULATION_BATCH_SIZE === 0;
+    if (!shouldYield || this.lastYieldConsumed === this.consumed) return;
+    this.lastYieldConsumed = this.consumed;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    this.checkDeadline();
   }
 }
 
@@ -77,6 +88,7 @@ export class BacktestRunExecutor {
       claimed = await this.claim(runId);
     } catch (error) {
       this.health.recordRunFailed('BACKTEST_DATABASE_ERROR', 0);
+      await this.failAndCleanup(runId, classifyFailure(error));
       this.logger.error(
         `Backtest run ${runId} could not be claimed`,
         errorTrace(error),
@@ -103,7 +115,9 @@ export class BacktestRunExecutor {
       { status: BacktestRunStatus.RUNNING, startedAt: new Date() },
     );
     if (result.affected !== 1) return null;
-    return this.runRepository.findOne({ where: { id: runId } });
+    const run = await this.runRepository.findOne({ where: { id: runId } });
+    if (!run) throw new Error(`claimed backtest run ${runId} disappeared`);
+    return run;
   }
 
   private async replay(run: BacktestRun): Promise<void> {
@@ -153,25 +167,31 @@ export class BacktestRunExecutor {
       securities.map((security) => [security.code, security]),
     );
     const issues: BacktestTargetIssue[] = [];
-    const executable = normalizedTargets.filter((code) => {
+    const executable: Array<{ code: string; security: Security }> = [];
+    const seenSecurityIds = new Set<number>();
+    for (const code of normalizedTargets) {
       if (!byCode.has(code)) {
         issues.push({ securityCode: code, code: 'SECURITY_NOT_FOUND' });
-        return false;
+        continue;
       }
-      return true;
-    });
+      const security = byCode.get(code);
+      if (!security || seenSecurityIds.has(security.id)) continue;
+      seenSecurityIds.add(security.id);
+      executable.push({ code, security });
+    }
     if (executable.length === 0) {
-      run.targetIssues = uniqueIssues(issues);
-      await this.runRepository.save(run);
-      throw new BacktestRunFailure('BACKTEST_NO_EXECUTABLE_TARGETS');
+      throw new BacktestRunFailure(
+        'BACKTEST_NO_EXECUTABLE_TARGETS',
+        'BACKTEST_NO_EXECUTABLE_TARGETS',
+        undefined,
+        uniqueIssues(issues),
+      );
     }
 
     const results: BacktestSignalResult[] = [];
     let signalCount = 0;
     const matchedCodes = new Set<string>();
-    for (const code of executable) {
-      const security = byCode.get(code);
-      if (!security) continue;
+    for (const { code, security } of executable) {
       const outcome = await this.replaySecurity(
         run,
         plan,
@@ -238,28 +258,39 @@ export class BacktestRunExecutor {
         const projected = projector.project(bar);
         windows.push(projected);
         if (windows.length > plan.requiredBarCount) windows.shift();
-        if (bar.timestamp < run.startDate) continue;
-        const evaluation = evaluateStrategyPlan(plan, windows);
-        if (evaluation.status !== 'evaluated' || !evaluation.matched) continue;
-        results.push(
-          this.resultRepository.create({
-            backtestRunId: run.id,
-            securityCode,
-            signalTime: bar.timestamp,
-            contextSnapshot: serializeStrategyContextSnapshot(
-              plan,
-              evaluation.context,
-            ) as Record<string, unknown>,
-            ruleSnapshot,
-          }),
-        );
-        matchedCodes.add(securityCode);
-        onSignal();
-        if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
-          await this.flushResults(results);
-        await checkpoint(budget);
+        if (bar.timestamp >= run.startDate) {
+          const evaluation = evaluateStrategyPlan(plan, windows);
+          if (evaluation.status === 'evaluated' && evaluation.matched) {
+            results.push(
+              this.resultRepository.create({
+                backtestRunId: run.id,
+                securityCode,
+                signalTime: bar.timestamp,
+                contextSnapshot: serializeStrategyContextSnapshot(
+                  plan,
+                  evaluation.context,
+                ) as Record<string, unknown>,
+                ruleSnapshot,
+              }),
+            );
+            matchedCodes.add(securityCode);
+            onSignal();
+            if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
+              await this.flushResults(results);
+          }
+        }
+        await budget.checkpoint();
       }
+      await budget.checkpoint(true);
       if (!page.nextAfterTimestamp) break;
+      const lastBar = page.bars.at(-1);
+      if (
+        !lastBar ||
+        page.nextAfterTimestamp <= lastBar.timestamp ||
+        (afterTimestamp && page.nextAfterTimestamp <= afterTimestamp)
+      ) {
+        throw new BacktestRunFailure('BACKTEST_EXECUTION_FAILED');
+      }
       afterTimestamp = page.nextAfterTimestamp;
     }
     return { hasBars: hasPublicBars };
@@ -295,14 +326,21 @@ export class BacktestRunExecutor {
   ): Promise<void> {
     try {
       await this.dataSource.transaction(async (manager) => {
+        const update = {
+          status: BacktestRunStatus.FAILED,
+          completedAt: new Date(),
+          errorMessage: failure.code,
+          ...(failure.targetIssues
+            ? { targetIssues: uniqueIssues(failure.targetIssues) }
+            : {}),
+        };
         const updated = await manager.update(
           BacktestRun,
-          { id: runId, status: BacktestRunStatus.RUNNING },
           {
-            status: BacktestRunStatus.FAILED,
-            completedAt: new Date(),
-            errorMessage: failure.code,
+            id: runId,
+            status: In([BacktestRunStatus.PENDING, BacktestRunStatus.RUNNING]),
           },
+          update,
         );
         if (updated.affected !== 1) return;
         await manager.delete(BacktestSignalResult, { backtestRunId: runId });
@@ -330,14 +368,6 @@ function uniqueIssues(
     seen.add(key);
     return true;
   });
-}
-
-async function checkpoint(budget: ReplayBudget): Promise<void> {
-  budget.checkDeadline();
-  if (budget.consumed % BACKTEST_CALCULATION_BATCH_SIZE === 0) {
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    budget.checkDeadline();
-  }
 }
 
 function replayStartFor(

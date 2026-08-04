@@ -10,20 +10,23 @@ SELECT
       AND `COLUMN_NAME` = 'target_issues'
       AND `COLUMN_TYPE` = 'json'
       AND `IS_NULLABLE` = 'NO'
-      AND (`COLUMN_DEFAULT` = (_utf8mb4'[]') OR `COLUMN_DEFAULT` = (_utf8mb4'(json_array())'))
+      AND LOWER(CAST(`COLUMN_DEFAULT` AS CHAR)) IN ('[]', '(json_array())')
   ) AS `backtest_target_issues_ready`,
   (
-    SELECT COUNT(*) = 3
-    FROM `information_schema`.`STATISTICS`
-    WHERE `TABLE_SCHEMA` = DATABASE()
-      AND `TABLE_NAME` = 'backtest_signal_results'
-      AND `INDEX_NAME` = 'idx_backtest_signal_results_run_time_id'
-      AND `NON_UNIQUE` = 1
-      AND (
-        (`SEQ_IN_INDEX` = 1 AND `COLUMN_NAME` = 'backtest_run_id') OR
-        (`SEQ_IN_INDEX` = 2 AND `COLUMN_NAME` = 'signal_time') OR
-        (`SEQ_IN_INDEX` = 3 AND `COLUMN_NAME` = 'id')
-      )
+    SELECT COUNT(*) = 1
+    FROM (
+      SELECT `INDEX_NAME`
+      FROM `information_schema`.`STATISTICS`
+      WHERE `TABLE_SCHEMA` = DATABASE()
+        AND `TABLE_NAME` = 'backtest_signal_results'
+        AND `INDEX_NAME` = 'idx_backtest_signal_results_run_time_id'
+        AND `NON_UNIQUE` = 1
+      GROUP BY `INDEX_NAME`
+      HAVING COUNT(*) = 3
+        AND SUM(`SEQ_IN_INDEX` = 1 AND `COLUMN_NAME` = 'backtest_run_id') = 1
+        AND SUM(`SEQ_IN_INDEX` = 2 AND `COLUMN_NAME` = 'signal_time') = 1
+        AND SUM(`SEQ_IN_INDEX` = 3 AND `COLUMN_NAME` = 'id') = 1
+    ) AS pagination_index
   ) AS `backtest_result_pagination_index_ready`,
   (
     SELECT COUNT(*) = 1

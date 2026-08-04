@@ -45,7 +45,7 @@ export class BacktestStartupCompensationService
 
     const healthy = await this.backtestReady();
     if (!healthy) {
-      await this.failPending(pending, 'BACKTEST_STARTUP_UNAVAILABLE');
+      await this.failPending(cutoff, 'BACKTEST_STARTUP_UNAVAILABLE');
       return;
     }
     const correlationPrefix = 'backtest-startup';
@@ -93,11 +93,18 @@ export class BacktestStartupCompensationService
     }
   }
 
-  private async failPending(
-    runs: readonly BacktestRun[],
-    code: string,
-  ): Promise<void> {
-    for (const run of runs) await this.failOne(run.id, code);
+  private async failPending(cutoff: Date, code: string): Promise<void> {
+    await this.runs.update(
+      {
+        status: BacktestRunStatus.PENDING,
+        createdAt: LessThanOrEqual(cutoff),
+      },
+      {
+        status: BacktestRunStatus.FAILED,
+        completedAt: new Date(),
+        errorMessage: code,
+      },
+    );
   }
 
   private async failOne(runId: number, code: string): Promise<void> {

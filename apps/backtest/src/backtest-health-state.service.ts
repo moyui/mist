@@ -11,6 +11,7 @@ export class BacktestHealthStateService {
   private commandAcceptedCount = 0;
   private commandQueueFullCount = 0;
   private commandNotReadyCount = 0;
+  private commandRunFailedCount = 0;
   private startupQueueFullCount = 0;
   private startupUnavailableCount = 0;
   private runCompletedCount = 0;
@@ -45,15 +46,19 @@ export class BacktestHealthStateService {
     this.oldestWaitingEnqueuedAtMs = oldestWaitingEnqueuedAtMs;
   }
 
-  recordCommand(outcome: 'accepted' | 'queue_full' | 'not_ready'): void {
+  recordCommand(
+    outcome: 'accepted' | 'queue_full' | 'not_ready' | 'run_failed',
+  ): void {
     if (outcome === 'accepted') this.commandAcceptedCount += 1;
     if (outcome === 'queue_full') this.commandQueueFullCount += 1;
     if (outcome === 'not_ready') this.commandNotReadyCount += 1;
+    if (outcome === 'run_failed') this.commandRunFailedCount += 1;
   }
 
-  recordStartupFailure(kind: 'queue_full' | 'unavailable'): void {
-    if (kind === 'queue_full') this.startupQueueFullCount += 1;
-    if (kind === 'unavailable') this.startupUnavailableCount += 1;
+  recordStartupFailure(kind: 'queue_full' | 'unavailable', count = 1): void {
+    const boundedCount = Number.isSafeInteger(count) && count > 0 ? count : 1;
+    if (kind === 'queue_full') this.startupQueueFullCount += boundedCount;
+    if (kind === 'unavailable') this.startupUnavailableCount += boundedCount;
   }
 
   recordRunCompleted(durationMs: number): void {
@@ -94,6 +99,7 @@ export class BacktestHealthStateService {
           commandAcceptedCount: this.commandAcceptedCount,
           commandQueueFullCount: this.commandQueueFullCount,
           commandNotReadyCount: this.commandNotReadyCount,
+          commandRunFailedCount: this.commandRunFailedCount,
           startupQueueFullCount: this.startupQueueFullCount,
           startupUnavailableCount: this.startupUnavailableCount,
           runCompletedCount: this.runCompletedCount,

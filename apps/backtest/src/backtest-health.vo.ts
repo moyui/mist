@@ -12,6 +12,7 @@ export interface BacktestHealthVo {
       readonly commandAcceptedCount: number;
       readonly commandQueueFullCount: number;
       readonly commandNotReadyCount: number;
+      readonly commandRunFailedCount: number;
       readonly startupQueueFullCount: number;
       readonly startupUnavailableCount: number;
       readonly runCompletedCount: number;

@@ -1,3 +1,5 @@
+import type { BacktestTargetIssue } from '@app/shared-data';
+
 export type BacktestFailureCode =
   | 'BACKTEST_SOURCE_UNSUPPORTED'
   | 'BACKTEST_TARGET_UNIVERSE_EMPTY'
@@ -16,6 +18,7 @@ export class BacktestRunFailure extends Error {
     readonly code: BacktestFailureCode,
     message = code,
     cause?: unknown,
+    readonly targetIssues?: readonly BacktestTargetIssue[],
   ) {
     super(message);
     if (cause !== undefined) {
