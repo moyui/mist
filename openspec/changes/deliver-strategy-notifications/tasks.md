@@ -1,7 +1,11 @@
-## 1. 前置与现状审计
+## 1. 后置启动门禁与现状审计
 
-- [ ] 1.1 确认 realtime evaluation 已稳定产生可消费的 PENDING AlertEvent。
-- [ ] 1.2 审计 AlertEvent/Signal schema、delivery APIs、stable specs、notification worktree 和真实部署状态。
+- [ ] 1.1 确认 `run-realtime-strategy-evaluation` 已通过 shadow/on 集成门禁并真实产生可消费的 PENDING
+  AlertEvent，Signal/context evidence shape 已由 HIL 固定，且项目负责人明确恢复本 change。该项完成前，
+  1.2–5.4 全部暂停，不创建 notification 实施 worktree，不修改代码/schema/deploy/monitoring，不申请或
+  接入生产渠道凭据；seeded fixture、旧 manual scan 或字段存在只能用于未来开发，不能满足恢复门禁。
+- [ ] 1.2 恢复后重新审计 AlertEvent/Signal schema、delivery APIs、stable specs、真实 producer evidence、
+  notification worktree 和真实部署状态；不得把当前审计结论视为届时仍然有效。
 - [ ] 1.3 建立 AlertEvent → claim → template → channel → result → monitoring/deploy 影响链。
 
 ## 2. 渠道与消费语义逐项评审门禁

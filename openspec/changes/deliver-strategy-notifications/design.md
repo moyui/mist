@@ -4,6 +4,23 @@ Mist 已持久化 PENDING AlertEvent，并允许外部调用 delivered/failed/ac
 worker。旧 stable spec 把 schedule scan 与外部 skill polling 混在同一 capability；新架构要求通知
 成为 Signal/AlertEvent 之后的独立故障域。
 
+## Delivery Order
+
+本 change 当前**明确延期实施**。这不是因为 Signal/AlertEvent 字段尚未定义，而是因为 candle、生产
+订阅生命周期、realtime evaluation、backtest/runtime 和相应部署验收仍有未完成工作；现在同时展开
+notification 会增加并行故障域和未决设计数量。
+
+延期期间仅保留本 change 的 proposal/design/delta specs/tasks 作为后续边界，不启动代码、worktree、
+schema migration、渠道 adapter、Compose/monitoring 或生产 secrets 工作。恢复条件固定为：
+
+1. `run-realtime-strategy-evaluation` 已通过其 shadow/on 集成门禁，并真实产生可读取的 PENDING
+   AlertEvent；不得只用 seeded fixture 或旧 manual scan 证明该条件。
+2. Signal/context evidence 的实际持久化 shape 已由 realtime HIL 固定，notification 不再猜测消息字段。
+3. 项目负责人根据当时剩余工作重新确认优先级，并明确恢复本 change。
+
+满足恢复条件后，现有 AlertEvent/Signal 字段和测试 fixture 可以作为实现输入；恢复前不得借“字段已经
+存在”提前决定 claim、retry、channel 或 migration。
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -51,11 +68,13 @@ claim/lease、并发、重试、backoff、dead-letter、provider idempotency、�
 
 ## Migration Plan
 
-1. 审计 AlertEvent schema、现有 API、notification worktree 和真实渠道条件。
-2. 与用户确认首批渠道及消费/失败语义。
-3. 更新 design/spec 后再实现 worker 与 adapter。
-4. 先 dry-run/shadow，再以测试接收端验证。
-5. 最后执行真实渠道 HIL；失败时关闭 notifier，不回滚策略事件。
+1. 等待 Delivery Order 的三项恢复条件满足；延期期间不启动 notification 实施。
+2. 恢复后重新审计 AlertEvent schema、现有 API、stable specs、真实 producer evidence 和渠道条件，
+   不直接沿用可能过期的当前代码假设。
+3. 与用户确认首批渠道及消费/失败语义。
+4. 更新 design/spec 后再实现 worker 与 adapter。
+5. 先 dry-run/shadow，再以测试接收端验证。
+6. 最后执行真实渠道 HIL；失败时关闭 notifier，不回滚策略事件。
 
 ## Open Questions
 
