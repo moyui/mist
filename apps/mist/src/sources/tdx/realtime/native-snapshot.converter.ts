@@ -17,7 +17,10 @@ export function convertTdxNativeSnapshot(
   const high = readTdxNativeNumber(input.native, ['Max', 'High', 'high']);
   const low = readTdxNativeNumber(input.native, ['Min', 'Low', 'low']);
   const lastClose = readTdxNativeNumber(input.native, ['LastClose']);
-  const eventTime = parseTdxBusinessTime(input.native['AsOf']);
+  // The accepted TDX get_market_snapshot runtime has no provider business-time
+  // field. The schema-v2 decoder has already validated capturedAt as RFC3339,
+  // so TDX uses that datasource capture instant as its candle event time.
+  const eventTime = input.capturedAt;
 
   return {
     source: 'tdx',
@@ -30,8 +33,8 @@ export function convertTdxNativeSnapshot(
     cumulativeAmount: readTdxNativeQuantity(input.native, 'Amount', 10_000),
     quality: {
       level: 'latest-state',
-      eventTimeAvailable: eventTime !== null,
-      aggregationEligible: eventTime !== null,
+      eventTimeAvailable: true,
+      aggregationEligible: true,
       partialPrices: [open, high, low, lastClose].some(
         (value) => value === null,
       ),
@@ -140,13 +143,4 @@ function requiredNumber(
   return value;
 }
 
-function parseTdxBusinessTime(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  if (!TDX_AS_OF_PATTERN.test(value)) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
-}
-
 const STRICT_NUMERIC_STRING = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
-const TDX_AS_OF_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;

@@ -2,7 +2,7 @@ import { convertTdxNativeSnapshot } from './native-snapshot.converter';
 import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quantity-validation.error';
 
 describe('TDX native snapshot converter', () => {
-  it('uses only provider-native time and preserves identity/native values', () => {
+  it('uses datasource capturedAt and preserves identity/native values', () => {
     const native = {
       Now: '31.25',
       Open: 30,
@@ -11,7 +11,6 @@ describe('TDX native snapshot converter', () => {
       LastClose: 30.5,
       Volume: '10',
       Amount: '100',
-      AsOf: '2026-07-22T10:01:02.123456+08:00',
       providerOnly: [1, 2, 3],
     };
 
@@ -24,7 +23,9 @@ describe('TDX native snapshot converter', () => {
 
     expect(snapshot.securityId).toBe(600030);
     expect(snapshot.providerSymbol).toBe('600030.SH');
-    expect(snapshot.eventTime).toBe('2026-07-22T02:01:02.123Z');
+    expect(snapshot.eventTime).toBe('2026-07-22T10:01:03+08:00');
+    expect(snapshot.quality.eventTimeAvailable).toBe(true);
+    expect(snapshot.quality.aggregationEligible).toBe(true);
     expect(snapshot.prices.last).toBe(31.25);
     expect(snapshot.prices.lastClose).toBe(30.5);
     expect(snapshot.cumulativeVolume).toBe('1000');
@@ -47,7 +48,7 @@ describe('TDX native snapshot converter', () => {
     },
   );
 
-  it('does not fall back to capturedAt when native time is absent', () => {
+  it('does not require a provider-native time field', () => {
     const snapshot = convertTdxNativeSnapshot({
       securityId: 600030,
       providerSymbol: '600030.SH',
@@ -55,8 +56,8 @@ describe('TDX native snapshot converter', () => {
       native: { Now: 31.25 },
     });
 
-    expect(snapshot.eventTime).toBeNull();
-    expect(snapshot.quality.aggregationEligible).toBe(false);
+    expect(snapshot.eventTime).toBe('2026-07-22T10:01:03+08:00');
+    expect(snapshot.quality.aggregationEligible).toBe(true);
   });
 
   it.each([
@@ -64,7 +65,8 @@ describe('TDX native snapshot converter', () => {
     ['wrong-case AsOf', { asof: '2026-07-22T10:01:02+08:00' }],
     ['timezone-free AsOf', { AsOf: '2026-07-22T10:01:02' }],
     ['invalid AsOf', { AsOf: 'not-a-time' }],
-  ])('does not accept %s as provider business time', (_, timeFields) => {
+    ['valid-looking AsOf', { AsOf: '2026-07-22T10:01:02+08:00' }],
+  ])('ignores native %s and still uses capturedAt', (_, timeFields) => {
     const snapshot = convertTdxNativeSnapshot({
       securityId: 600030,
       providerSymbol: '600030.SH',
@@ -72,8 +74,8 @@ describe('TDX native snapshot converter', () => {
       native: { Now: 31.25, ...timeFields },
     });
 
-    expect(snapshot.eventTime).toBeNull();
-    expect(snapshot.quality.aggregationEligible).toBe(false);
+    expect(snapshot.eventTime).toBe('2026-07-22T10:01:03+08:00');
+    expect(snapshot.quality.aggregationEligible).toBe(true);
   });
 
   it('preserves absent/null quantities and distinguishes explicit zero', () => {

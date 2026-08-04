@@ -83,13 +83,13 @@ describe('formal realtime schema-v2 ingress contract', () => {
       frame('tdx', {
         '600030.SH': {
           Now: 31.25,
-          AsOf: '2026-07-22T10:01:02.000+08:00',
         },
       }),
     );
 
     expect(ingress.read(600030)?.prices.last).toBe(31.25);
     expect(ingress.read(600030)?.providerSymbol).toBe('600030.SH');
+    expect(ingress.read(600030)?.eventTime).toBe(capturedAt);
   });
 
   it('parses a snapshot frame exactly once before routing and decoding', () => {
@@ -111,7 +111,6 @@ describe('formal realtime schema-v2 ingress contract', () => {
         frame('tdx', {
           '600030.SH': {
             Now: 31.25,
-            AsOf: '2026-07-22T10:01:02.000+08:00',
           },
         }),
       );
