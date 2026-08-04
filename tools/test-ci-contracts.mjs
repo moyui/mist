@@ -1,14 +1,25 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 
+const mistWorktreeRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+  cwd: process.cwd(),
+  encoding: 'utf8',
+}).trim();
+const commonDirText = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+  cwd: mistWorktreeRoot,
+  encoding: 'utf8',
+}).trim();
+const commonDir = isAbsolute(commonDirText)
+  ? commonDirText
+  : resolve(mistWorktreeRoot, commonDirText);
 const workspaceRoot = resolve(
-  process.env.MIST_WORKSPACE_ROOT ?? join(process.cwd(), '..'),
+  process.env.MIST_WORKSPACE_ROOT ?? dirname(dirname(commonDir)),
 );
 
 const repos = {
-  mist: join(workspaceRoot, 'mist'),
+  mist: mistWorktreeRoot,
   frontend: join(workspaceRoot, 'mist-fe'),
   datasource: join(workspaceRoot, 'mist-datasource'),
   monitoring: join(workspaceRoot, 'mist-monitoring'),
@@ -371,9 +382,7 @@ function assertBackendP3QuickWins() {
     join(repos.mist, 'libs/chancore/src/internal/channel.ts'),
   );
   if (/return\s*\{\s*channels\s*,\s*offsetIndex\b/.test(channelCalculator)) {
-    fail(
-      'CODE_SMELL R1.2: ChannelCalculator must not return offsetIndex',
-    );
+    fail('CODE_SMELL R1.2: ChannelCalculator must not return offsetIndex');
   }
 
   const dockerWorkflow = read(join(repos.mist, '.github/workflows/docker.yml'));
