@@ -28,9 +28,9 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
   MySQL/Redis 不跨源或同日重叠，不改变现有存储 shape 或复制消费者转换。
 - [ ] 2.3 实现按 listener/eligible-plan 分组的 shared ring window、group-max hydration、hot append、
   consumer removal 和 trading-day rollover cleanup。
-- [ ] 2.4 实现 quantity plan 的当日 pre-anchor projector seed、current finalization exactly-once 和
+- [x] 2.4 实现 quantity plan 的当日 pre-anchor projector seed、current finalization exactly-once 和
   unavailable semantics；不得读 current/future K、补 gap 或把合法缺失升级成系统错误。
-- [ ] 2.5 用 tests 证明 cold start/lookback expansion 只做一次 bounded hydration，正常 trigger 不逐
+- [x] 2.5 用 tests 证明 cold start/lookback expansion 只做一次 bounded hydration，正常 trigger 不逐
   策略重查完整历史，同 identity duplicate no-op、conflicting content fail closed。
 
 ## 3. Trigger 与 Handoff

@@ -63,13 +63,11 @@ export class SignalStrategyMarketDataAdapter
     criteria: StrategyRealtimeWindowCriteria,
   ): Promise<StrategyRealtimeWindow> {
     assertCriteria(criteria);
+    const hydrationBarLimit = criteria.requiredBars + 1;
     const tradingDay = shanghaiTradingDay(criteria.anchorAt);
     const dayStart = shanghaiDayStart(tradingDay);
     const redisBars = await this.loadCurrentDayBars(criteria, tradingDay);
-    const historicalNeeded = Math.max(
-      0,
-      criteria.requiredBars - redisBars.length,
-    );
+    const historicalNeeded = Math.max(0, hydrationBarLimit - redisBars.length);
     const historical =
       historicalNeeded === 0
         ? []
@@ -86,7 +84,7 @@ export class SignalStrategyMarketDataAdapter
           });
     const bars = [...historical.reverse().map(mapKToStrategyBar), ...redisBars];
     return Object.freeze({
-      bars: Object.freeze(bars.slice(-criteria.requiredBars)),
+      bars: Object.freeze(bars.slice(-hydrationBarLimit)),
     });
   }
 

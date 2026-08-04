@@ -86,9 +86,36 @@ describe('SignalStrategyMarketDataAdapter', () => {
           period: 1,
         }),
         order: { timestamp: 'DESC' },
-        take: 1,
+        take: 2,
       }),
     );
+  });
+
+  it('returns one pre-window same-day bar so quantity projection can seed forward fill', async () => {
+    const redis = fakeRedis({
+      hgetall: {
+        [String(Date.parse('2026-08-04T01:30:00.000Z'))]: JSON.stringify(
+          record(10, '80'),
+        ),
+        [String(Date.parse('2026-08-04T01:31:00.000Z'))]: JSON.stringify(
+          record(11, null),
+        ),
+      },
+    });
+    const adapter = new SignalStrategyMarketDataAdapter(
+      repository([]),
+      redis.service,
+    );
+
+    const result = await adapter.loadRealtimeWindow({
+      securityId: 9,
+      source: 'tdx',
+      period: 1,
+      anchorAt: new Date('2026-08-04T01:32:00.000Z'),
+      requiredBars: 1,
+    });
+
+    expect(result.bars.map((bar) => bar.volume)).toEqual(['80', null]);
   });
 
   it('rebuilds an incomplete higher-period bar from bounded current-day 1m records', async () => {
@@ -125,7 +152,9 @@ describe('SignalStrategyMarketDataAdapter', () => {
         type: 'incomplete',
       }),
     ]);
-    expect(kRepository.find).not.toHaveBeenCalled();
+    expect(kRepository.find).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 1 }),
+    );
   });
 
   it('propagates malformed Redis record failures without fallback', async () => {
@@ -187,13 +216,13 @@ function historicalK(timestamp: string): K {
   });
 }
 
-function record(close: number) {
+function record(close: number, volume: string | null = '100') {
   return {
     o: close,
     h: close,
     l: close,
     c: close,
-    v: '100',
+    v: volume,
     a: '200',
     cv: '1000',
     ca: '2000',
