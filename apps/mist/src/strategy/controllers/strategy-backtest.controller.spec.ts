@@ -1,28 +1,56 @@
+import { HttpBusinessRejection } from '@app/transport/http';
 import { StrategyBacktestController } from './strategy-backtest.controller';
 
 describe('StrategyBacktestController', () => {
-  it('delegates pending backtest run commands to the backtest service', async () => {
-    const service = {
-      createRun: jest.fn().mockResolvedValue({ id: 1 }),
-      findRun: jest.fn().mockResolvedValue({ id: 1 }),
-      listSignals: jest.fn().mockResolvedValue([]),
+  it('returns an accepted receipt and Location without querying current state', async () => {
+    const command = {
+      createRun: jest
+        .fn()
+        .mockResolvedValue({ runId: 1, initialStatus: 'PENDING' }),
     };
-    const controller = new StrategyBacktestController(service as any);
-    const dto = {
-      strategyVersionId: 1,
-      targetUniverse: ['600519'],
-      period: 1440,
-      source: 'tdx',
-      startDate: '2026-01-01',
-      endDate: '2026-06-30',
-    } as any;
+    const query = {
+      findRun: jest.fn(),
+      listSignals: jest.fn(),
+    };
+    const response = { setHeader: jest.fn() };
+    const controller = new StrategyBacktestController(
+      command as any,
+      query as any,
+    );
 
-    await controller.createRun(dto);
-    await controller.findRun('1');
-    await controller.listSignals('1');
+    await expect(
+      controller.createRun({} as any, response as any),
+    ).resolves.toEqual({
+      runId: 1,
+      initialStatus: 'PENDING',
+    });
+    expect(command.createRun).toHaveBeenCalledTimes(1);
+    expect(query.findRun).not.toHaveBeenCalled();
+    expect(response.setHeader).toHaveBeenCalledWith(
+      'Location',
+      '/v1/strategy-backtests/1',
+    );
+  });
 
-    expect(service.createRun).toHaveBeenCalledWith(dto);
-    expect(service.findRun).toHaveBeenCalledWith(1);
-    expect(service.listSignals).toHaveBeenCalledWith(1);
+  it('keeps the Location header for a 200 business rejection', async () => {
+    const command = {
+      createRun: jest.fn().mockResolvedValue(
+        new HttpBusinessRejection('BACKTEST_RUN_ALREADY_FAILED', 'failed', {
+          runId: 2,
+          status: 'failed',
+        }),
+      ),
+    };
+    const response = { setHeader: jest.fn() };
+    const controller = new StrategyBacktestController(
+      command as any,
+      {} as any,
+    );
+
+    await controller.createRun({} as any, response as any);
+    expect(response.setHeader).toHaveBeenCalledWith(
+      'Location',
+      '/v1/strategy-backtests/2',
+    );
   });
 });

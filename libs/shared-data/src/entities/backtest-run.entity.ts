@@ -14,6 +14,7 @@ import { BacktestRunStatus } from '../enums/backtest-run-status.enum';
 import { BacktestSignalResult } from './backtest-signal-result.entity';
 import { StrategyDefinition } from './strategy-definition.entity';
 import { StrategyVersion } from './strategy-version.entity';
+import type { BacktestTargetIssue } from '../backtest-target-issue';
 
 @Entity({ name: 'backtest_runs' })
 export class BacktestRun {
@@ -36,6 +37,9 @@ export class BacktestRun {
 
   @Column({ name: 'target_universe', type: 'json' })
   targetUniverse: string[] = [];
+
+  @Column({ name: 'target_issues', type: 'json', default: () => "('[]')" })
+  targetIssues: BacktestTargetIssue[] = [];
 
   @Column({ type: 'int' })
   period: Period = Period.DAY;

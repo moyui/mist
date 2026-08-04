@@ -22,7 +22,7 @@ export function mapKToStrategyBar(k: K): StrategyBar {
     high: KPriceProjector(k.high as unknown as string | number),
     low: KPriceProjector(k.low as unknown as string | number),
     close: KPriceProjector(k.close as unknown as string | number),
-    volume: mapHistoricalQuantity(k.volume),
+    volume: mapHistoricalVolume(k.source, k.volume),
     amount: mapHistoricalAmount(k.source, k.amount),
     type: 'complete',
   });
@@ -53,6 +53,18 @@ function mapSource(source: DataSource): StrategyMarketSource {
 function mapHistoricalQuantity(value: string | null): string | null {
   if (value === null) return null;
   return normalizeExternalDecimalText(value);
+}
+
+function mapHistoricalVolume(
+  source: DataSource,
+  value: string | null,
+): string | null {
+  const canonical = mapHistoricalQuantity(value);
+  if (canonical === null || source !== DataSource.QMT) return canonical;
+  if (canonical.includes('.')) {
+    throw new TypeError('QMT historical volume must be an integral lot count');
+  }
+  return Decimal8.parseCanonical(canonical).scaleByUnit(100).formatCanonical();
 }
 
 function mapHistoricalAmount(

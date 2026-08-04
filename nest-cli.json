@@ -21,6 +21,15 @@
         "tsConfigPath": "apps/mist/tsconfig.app.json"
       }
     },
+    "backtest": {
+      "type": "application",
+      "root": "apps/backtest",
+      "entryFile": "main",
+      "sourceRoot": "apps/backtest/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/backtest/tsconfig.app.json"
+      }
+    },
     "realtime-subscription-hil": {
       "type": "application",
       "root": "apps/realtime-subscription-hil",

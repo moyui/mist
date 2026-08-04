@@ -1,2 +1,1 @@
-// Backtest-owned pure contracts are added by the Backtest runtime change.
-export {};
+export * from './contracts/backtest-run-submit.contract';

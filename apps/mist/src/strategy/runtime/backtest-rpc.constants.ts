@@ -1,0 +1,1 @@
+export const BACKTEST_RPC_CLIENT = Symbol('BACKTEST_RPC_CLIENT');
