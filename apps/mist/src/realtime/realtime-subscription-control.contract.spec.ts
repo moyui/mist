@@ -145,9 +145,35 @@ describe.each(['qmt', 'tdx'] as const)(
   },
 );
 
+it('subscribes the TDX allowlist one symbol at a time when explicitly enabled', async () => {
+  const { client, send } = buildClient('tdx', true, 1_000, {
+    TDX_SUBSCRIBE_ALLOWLIST_ON_READY: true,
+  });
+
+  emit(client, ready('tdx'));
+  expect(JSON.parse(send.mock.calls[0][0] as string)).toEqual({
+    type: 'subscribe',
+    symbol: '300502.SZ',
+  });
+  emit(client, response('tdx', 'subscribed', { success: null }));
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(JSON.parse(send.mock.calls[1][0] as string)).toEqual({
+    type: 'subscribe',
+    symbol: '600030.SH',
+  });
+  emit(client, response('tdx', 'subscribed', { success: null }));
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(send).toHaveBeenCalledTimes(2);
+});
+
 type ControlClient = QmtRealtimeClient | TdxRealtimeClient;
 
-function buildClient(provider: 'qmt' | 'tdx', open = true, timeoutMs = 1_000) {
+function buildClient(
+  provider: 'qmt' | 'tdx',
+  open = true,
+  timeoutMs = 1_000,
+  extraConfig: Record<string, unknown> = {},
+) {
   const entries = new Map([
     ['300502.SZ', { formatCode: '300502.SZ', securityId: 300502 }],
     ['600030.SH', { formatCode: '600030.SH', securityId: 600030 }],
@@ -164,7 +190,10 @@ function buildClient(provider: 'qmt' | 'tdx', open = true, timeoutMs = 1_000) {
           allowlist as never,
         )
       : new TdxRealtimeClient(
-          new ConfigService({ TDX_SUBSCRIPTION_CONTROL_TIMEOUT_MS: timeoutMs }),
+          new ConfigService({
+            TDX_SUBSCRIPTION_CONTROL_TIMEOUT_MS: timeoutMs,
+            ...extraConfig,
+          }),
           new TdxRealtimeStore(),
           allowlist as never,
         );

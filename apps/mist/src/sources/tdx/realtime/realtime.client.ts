@@ -63,6 +63,7 @@ export class TdxRealtimeClient
   private shuttingDown = false;
   private transportReady = false;
   private pendingControl: PendingControl | null = null;
+  private readonly subscribeAllowlistOnReady: boolean;
 
   constructor(
     config: ConfigService,
@@ -87,6 +88,12 @@ export class TdxRealtimeClient
       'TDX_SUBSCRIPTION_CONTROL_TIMEOUT_MS',
       10_000,
     );
+    const subscribeAllowlistOnReady = config.get<boolean | string>(
+      'TDX_SUBSCRIBE_ALLOWLIST_ON_READY',
+      false,
+    );
+    this.subscribeAllowlistOnReady =
+      subscribeAllowlistOnReady === true || subscribeAllowlistOnReady === 'true';
     void desiredPoster;
   }
 
@@ -267,6 +274,22 @@ export class TdxRealtimeClient
     this.transportReady = true;
     this.store.markConnected();
     this.store.clearError();
+    if (this.subscribeAllowlistOnReady) {
+      void this.subscribeConfiguredSymbols();
+    }
+  }
+
+  private async subscribeConfiguredSymbols(): Promise<void> {
+    for (const entry of this.allowlist.entriesList) {
+      const result = await this.subscribe(entry.formatCode);
+      if ('failure' in result) {
+        this.store.setError(
+          'TDX_SINGLE_SUBSCRIPTION_FAILED',
+          result.failure.reason,
+        );
+        return;
+      }
+    }
   }
 
   private handleSnapshot(message: Record<string, unknown>): void {
