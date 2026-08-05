@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -26,6 +27,7 @@ export class K {
     onDelete: 'CASCADE',
     eager: false,
   })
+  @JoinColumn({ name: 'security_id' })
   security!: Security;
 
   @Column({
@@ -117,7 +119,9 @@ export class K {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
 
-  // Virtual column for securityId to support the unique constraint
-  @Column({ name: 'security_id', select: false })
+  // Explicit FK column aligned with the @JoinColumn above. Declared here so the
+  // entity exposes securityId as a plain column (used by unique constraint and
+  // by consumers that read k.securityId without loading the relation).
+  @Column({ name: 'security_id' })
   securityId: number = 0;
 }
