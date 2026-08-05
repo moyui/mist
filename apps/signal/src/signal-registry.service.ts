@@ -7,6 +7,7 @@ import {
   StrategyRuleSchemaVersion,
   StrategyStatus,
 } from '@app/shared-data';
+import { normalizeSecurityCode } from '@app/utils';
 import {
   compileStoredStrategyRuleWithNormalized,
   type StrategyRealtimeSource,
@@ -189,7 +190,9 @@ export class SignalRegistryService implements OnApplicationBootstrap {
   private async resolveSecurityIds(
     codes: readonly string[],
   ): Promise<ReadonlyMap<string, number>> {
-    const unique = [...new Set(codes)].sort();
+    const unique = [
+      ...new Set(codes.map((code) => normalizeSecurityCode(code))),
+    ].sort();
     if (unique.length === 0) return new Map();
     const rows = await this.securities.find({
       where: { code: In(unique) },
@@ -263,7 +266,9 @@ function compileRegistryDefinition(
     signalKind: version.signalKind,
     targetUniverse: Object.freeze([...definition.targetUniverse]),
     securityIds: toImmutableSet(
-      definition.targetUniverse.map((code) => securityIdsByCode.get(code)!),
+      definition.targetUniverse.map(
+        (code) => securityIdsByCode.get(normalizeSecurityCode(code))!,
+      ),
     ),
     periods: Object.freeze([...definition.periods]),
     sources: Object.freeze([...definition.sources]),

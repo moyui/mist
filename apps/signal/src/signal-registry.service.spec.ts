@@ -108,6 +108,28 @@ describe('SignalRegistryService', () => {
       lastFailureCode: 'REGISTRY_REFRESH_FAILED',
     });
   });
+
+  it('normalizes market-suffixed target universe to plain security codes', async () => {
+    process.env.REALTIME_STRATEGY_MODE = 'off';
+    const repository = {
+      find: jest.fn().mockResolvedValue([definition(1, 11)]),
+      findOne: jest.fn(),
+    } as unknown as Repository<StrategyDefinition>;
+    const health = new SignalHealthStateService();
+    const registry = new SignalRegistryService(
+      repository,
+      securityRepository(),
+      health,
+      new SignalRuntimeMutex(),
+    );
+
+    await registry.onApplicationBootstrap();
+
+    // definition(1) targets ['000001.SZ']; Security.code is '000001' (plain).
+    // Resolution must succeed and map to security id 9.
+    expect(registry.capture().definitions.get(1)).toBeDefined();
+    expect(registry.executionPlansFor(9, 'tdx')).toHaveLength(1);
+  });
 });
 
 function securityRepository(): Repository<Security> {
@@ -115,7 +137,7 @@ function securityRepository(): Repository<Security> {
     find: jest
       .fn()
       .mockResolvedValue([
-        Object.assign(new Security(), { id: 9, code: '000001.SZ' }),
+        Object.assign(new Security(), { id: 9, code: '000001' }),
       ]),
   } as unknown as Repository<Security>;
 }

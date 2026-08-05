@@ -83,7 +83,12 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
   queue、heap/GC、Redis memory/AOF/drain throughput 低基数 monitoring/contracts。
 - [x] 6.3 运行受影响仓库完整基线、真实 MySQL/Redis tests、strict OpenSpec、退役路径检索和
   `git diff --check`。
-- [ ] 6.4 以 shadow 完成支持交易时段 restart、missing/duplicate/conflict、listener-bound memory、
+- [x] 6.4 以 shadow 完成支持交易时段 restart、missing/duplicate/conflict、listener-bound memory、
   1/5/15/30/60 timestamp seam 和 TDX/QMT realtime/historical quantity profile HIL。
+  - evidence: `integration-20260806/evidence/2026-08-05-trading-session-shadow-hil.md`
+    (168 candle_finalized, strategy-table zero-write), `2026-08-05-signal-restart-hil.md`,
+    `2026-08-05-backtest-real-data-hil.md` (TDX run 4), `2026-08-05-strategy-64-status.md`
+    (QMT NaN-settle 502 root cause fixed at datasource boundary `68e411b` + backtest run 5;
+    1/5/15/30/60 seams + listener memory in `9503f3a`).
 - [ ] 6.5 经项目负责人审核 shadow、protected-table 零写入、capacity 和 timestamp/quantity evidence 后
   才切 on；on HIL 必须验证 transaction、episode 与幂等，然后才能归档。
