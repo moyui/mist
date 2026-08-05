@@ -10,8 +10,9 @@ export const K_UPSERT_COLUMNS = [
   'volume',
   'amount',
 ];
+// TypeORM .orUpdate() conflict target expects DATABASE column names.
 export const K_CONFLICT_COLUMNS = [
-  'securityId',
+  'security_id',
   'source',
   'period',
   'timestamp',

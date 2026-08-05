@@ -24,16 +24,18 @@ import { saveBaseK } from '../k-save.helper';
 
 const MARKET_TIME_ZONE = 'Asia/Shanghai';
 
+// TypeORM .orUpdate() expects DATABASE column names, not entity property names.
+// amplitude keeps its property name (no DB rename); the rest map to snake_case.
 const EF_EXTENSION_UPSERT_COLUMNS = [
   'amplitude',
-  'changePct',
-  'changeAmt',
-  'turnoverRate',
-  'volumeCount',
-  'innerVolume',
-  'outerVolume',
-  'prevClose',
-  'prevOpen',
+  'change_pct',
+  'change_amt',
+  'turnover_rate',
+  'volume_count',
+  'inner_volume',
+  'outer_volume',
+  'prev_close',
+  'prev_open',
 ];
 
 @Injectable()

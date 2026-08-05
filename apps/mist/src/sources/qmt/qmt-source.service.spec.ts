@@ -517,7 +517,7 @@ describe('QmtSource', () => {
       },
     ]);
     expect(extensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
-      ['preClose', 'suspendFlag', 'openInterest', 'settle'],
+      ['pre_close', 'suspend_flag', 'open_interest', 'settle'],
       ['k_id'],
     );
   });
