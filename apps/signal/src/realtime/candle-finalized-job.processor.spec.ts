@@ -496,6 +496,53 @@ describe('CandleFinalizedJobProcessor', () => {
       ],
     );
   });
+
+  it('releases listener-bound cursor memory when a series leaves the registry', async () => {
+    const bar = makeBar('2026-08-04T06:44:00.000Z', 28);
+    const marketData = sequentialMarketData(bar);
+    const processor = new CandleFinalizedJobProcessor(
+      marketData,
+      () => [
+        {
+          definitionId: 3,
+          versionId: 7,
+          source: 'tdx',
+          period: 1,
+          ruleSnapshot: { field: 'k.close', operator: 'gt', value: 27 },
+          plan: compileStoredStrategyRule(
+            { field: 'k.close', operator: 'gt', value: 27 },
+            'entry',
+          ),
+        },
+      ],
+      () => new Date('2026-08-04T07:00:00.000Z'),
+    );
+    await processor.process(CANDLE_FINALIZED_JOB_NAME, sealedPayload(bar));
+
+    // After the first trigger, a cursor for series (9, tdx) must exist.
+    // reconcileRegistry with an EMPTY registry drops it, releasing memory.
+    processor.reconcileRegistry({
+      generation: 1,
+      definitions: new Map(),
+    });
+
+    // A second identical trigger must be treated as a NEW first observation
+    // (not a duplicate) because the cursor was released — proving the cursor
+    // map is listener-bound and does not leak after removal.
+    marketData.resolveRealtimeObservation.mockClear();
+    const bar2 = makeBar('2026-08-04T06:45:00.000Z', 29);
+    marketData.resolveRealtimeObservation.mockResolvedValueOnce({
+      outcome: 'sealed',
+      bar: bar2,
+    });
+    const result = await processor.process(
+      CANDLE_FINALIZED_JOB_NAME,
+      sealedPayload(bar2),
+    );
+    expect(result.outcome).toBe('completed');
+    expect(result.candidates).toHaveLength(1);
+    expect(marketData.resolveRealtimeObservation).toHaveBeenCalledTimes(1);
+  });
 });
 
 function makeBar(timestamp: string, close: number): StrategyBar {
