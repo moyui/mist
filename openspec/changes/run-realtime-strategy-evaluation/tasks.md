@@ -92,3 +92,15 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
     1/5/15/30/60 seams + listener memory in `9503f3a`).
 - [ ] 6.5 经项目负责人审核 shadow、protected-table 零写入、capacity 和 timestamp/quantity evidence 后
   才切 on；on HIL 必须验证 transaction、episode 与幂等，然后才能归档。
+  - 2026-08-05 前置阻塞解除：enable 502 根因（`targetUniverse` 市场后缀 vs `Security.code`
+    纯代码不匹配）经 `normalizeSecurityCode` 修复（`ef5710e`，signal registry 加载策略证明
+    `registry_items{definitions}=2/execution_plans=2`）；`REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=off`
+    无 `syncSubscriptions` producer → `desired_symbols=0` → 无 snapshot → 无 sealed candle（不是
+    candle restart-recovery bug）；建 assignment（300059 等 3 条）、清 legacy allowlist（`455fc4e`
+    `-Clear`）、切 lifecycle=on（run 30982002428）后，TDX 交易时段全链路实证：
+    `sealedTotal=9→15`、`discardTotals=[]`、`evaluation_last_outcome{evaluated_matched}=1`、
+    `active_episodes=1`（策略 3：1m/300059/tdx close>0，14:42-14:44 CST），
+    `strategy_signals=0` 保持 shadow 零写入。见
+    `integration-20260806/evidence/2026-08-05-strategy-64-status.md`。
+  - 剩余：切 `REALTIME_STRATEGY_MODE=on` 后验证 transaction/episode/幂等（`strategy_signals`
+    落库、重复 trigger 不重复写），然后项目负责人审核 + 归档（2026-08-06 计划）。

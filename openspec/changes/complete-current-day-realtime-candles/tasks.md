@@ -123,6 +123,15 @@
   provider-float provenance；任一 source 未证明前不得切 `on`。
   - 2026-08-03 已完成 harness/workflow、TDX bridge artifact health 补充和非交易时段自动化准备，见
     `evidence/2026-08-03-shadow-hil-readiness.md`；尚无双 source 交易时段 artifact，父任务保持未完成。
+  - 2026-08-05 TDX 交易时段 sealed 实证：根因是 `REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=off`
+    无订阅 producer（非 restart-recovery bug）；建 assignment + 清 legacy allowlist（`455fc4e`）
+    + 切 lifecycle=on（run 30982002428）后，`sealedTotal=9→15`、`discardTotals=[]`、
+    `mist_signal_evaluation_last_outcome{evaluated_matched}=1`、`active_episodes=1`
+    （策略 3：1m/300059/tdx，14:42-14:44 CST），`strategy_signals=0` 保持 shadow 零写入；
+    backend recreate 后 sealed 恢复（restart 恢复侧面证据，未跑正式 restart/AOF HIL）。
+    见 `integration-20260806/evidence/2026-08-05-strategy-64-status.md`。
+    父任务 5.4 仍差：QMT source 直接 sealed 证据、`amountDelta/volumeDelta` vs price range
+    historical 对照、正式 restart/AOF HIL 与 protected-table post digest。
   - [x] 5.4.1 移除 TDX 临时 `TDX_SUBSCRIBE_ALLOWLIST_ON_READY` 产品路径和 deploy 配置；candle HIL
     只通过 datasource 既有 WebSocket 控制接口建立并在 `finally` 清理单条订阅，再从正常 backend
     diagnostics 验证 canonical snapshot 与 candle candidate。不得把该 HIL 编排描述成生产订阅生命周期。
