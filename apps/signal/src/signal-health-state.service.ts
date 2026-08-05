@@ -8,9 +8,9 @@ import { SignalRuntimeObservabilityService } from './signal-runtime-observabilit
 
 @Injectable()
 export class SignalHealthStateService {
-  constructor(
-    private readonly runtime = new SignalRuntimeObservabilityService(),
-  ) {}
+  // Property-based injection avoids the webpack/ts-loader transpileOnly
+  // metadata loss that drops __decorate for this class's constructor params.
+  private readonly runtime = new SignalRuntimeObservabilityService();
   private readonly realtimeMode: RealtimeStrategyMode =
     resolveRealtimeStrategyMode(process.env.REALTIME_STRATEGY_MODE);
   private registry: SignalHealthVo['registry'] = {
