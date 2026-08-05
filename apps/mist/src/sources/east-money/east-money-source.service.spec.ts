@@ -443,7 +443,7 @@ describe('EastMoneySource', () => {
       );
       expect(mockKInsertBuilder.orUpdate).toHaveBeenCalledWith(
         ['open', 'high', 'low', 'close', 'volume', 'amount'],
-        ['securityId', 'source', 'period', 'timestamp'],
+        ['security_id', 'source', 'period', 'timestamp'],
       );
       expect(mockKInsertBuilder.updateEntity).toHaveBeenCalledWith(false);
       expect(mockKInsertBuilder.execute).toHaveBeenCalledTimes(1);
@@ -477,14 +477,14 @@ describe('EastMoneySource', () => {
       expect(mockExtensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
         [
           'amplitude',
-          'changePct',
-          'changeAmt',
-          'turnoverRate',
-          'volumeCount',
-          'innerVolume',
-          'outerVolume',
-          'prevClose',
-          'prevOpen',
+          'change_pct',
+          'change_amt',
+          'turnover_rate',
+          'volume_count',
+          'inner_volume',
+          'outer_volume',
+          'prev_close',
+          'prev_open',
         ],
         ['k_id'],
       );
@@ -621,7 +621,7 @@ describe('EastMoneySource', () => {
       );
       expect(kInsertBuilder.orUpdate).toHaveBeenCalledWith(
         ['open', 'high', 'low', 'close', 'volume', 'amount'],
-        ['securityId', 'source', 'period', 'timestamp'],
+        ['security_id', 'source', 'period', 'timestamp'],
       );
       expect(kInsertBuilder.updateEntity).toHaveBeenCalledWith(false);
       expect(kInsertBuilder.execute).toHaveBeenCalledTimes(1);
@@ -657,7 +657,7 @@ describe('EastMoneySource', () => {
       );
       expect(mockKInsertBuilder.orUpdate).toHaveBeenCalledWith(
         ['open', 'high', 'low', 'close', 'volume', 'amount'],
-        ['securityId', 'source', 'period', 'timestamp'],
+        ['security_id', 'source', 'period', 'timestamp'],
       );
       expect(mockExtensionInsertBuilder.execute).not.toHaveBeenCalled();
     });

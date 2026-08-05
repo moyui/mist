@@ -294,7 +294,7 @@ describe('TdxSource', () => {
       );
       expect(kInsertBuilder.orUpdate).toHaveBeenCalledWith(
         ['open', 'high', 'low', 'close', 'volume', 'amount'],
-        ['securityId', 'source', 'period', 'timestamp'],
+        ['security_id', 'source', 'period', 'timestamp'],
       );
       expect(kInsertBuilder.updateEntity).toHaveBeenCalledWith(false);
       expect(kInsertBuilder.execute).toHaveBeenCalledTimes(1);
@@ -312,17 +312,17 @@ describe('TdxSource', () => {
       );
       expect(extensionInsertBuilder.orUpdate).toHaveBeenCalledWith(
         [
-          'forwardFactor',
-          'volInStock',
-          'backwardFactor',
-          'volumeRatio',
-          'turnoverRate',
-          'turnoverAmount',
-          'totalMarketValue',
-          'floatMarketValue',
-          'earningsPerShare',
-          'priceEarningsRatio',
-          'priceToBookRatio',
+          'forward_factor',
+          'vol_in_stock',
+          'backward_factor',
+          'volume_ratio',
+          'turnover_rate',
+          'turnover_amount',
+          'total_market_value',
+          'float_market_value',
+          'earnings_per_share',
+          'price_earnings_ratio',
+          'price_to_book_ratio',
         ],
         ['k_id'],
       );

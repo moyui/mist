@@ -39,18 +39,20 @@ const TDX_BAR_FIELDS = [
 
 const MARKET_TIME_ZONE = 'Asia/Shanghai';
 
+// TypeORM .orUpdate() expects DATABASE column names, not entity property names.
+// These match the @Column name: values in KExtensionTdx.
 const TDX_EXTENSION_UPSERT_COLUMNS = [
-  'forwardFactor',
-  'volInStock',
-  'backwardFactor',
-  'volumeRatio',
-  'turnoverRate',
-  'turnoverAmount',
-  'totalMarketValue',
-  'floatMarketValue',
-  'earningsPerShare',
-  'priceEarningsRatio',
-  'priceToBookRatio',
+  'forward_factor',
+  'vol_in_stock',
+  'backward_factor',
+  'volume_ratio',
+  'turnover_rate',
+  'turnover_amount',
+  'total_market_value',
+  'float_market_value',
+  'earnings_per_share',
+  'price_earnings_ratio',
+  'price_to_book_ratio',
 ];
 
 @Injectable()

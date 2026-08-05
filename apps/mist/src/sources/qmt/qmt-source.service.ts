@@ -48,10 +48,11 @@ const QMT_DEFAULT_FIELDS = [
   'settelementPrice',
 ];
 
+// TypeORM .orUpdate() expects DATABASE column names, not entity property names.
 const QMT_EXTENSION_UPSERT_COLUMNS = [
-  'preClose',
-  'suspendFlag',
-  'openInterest',
+  'pre_close',
+  'suspend_flag',
+  'open_interest',
   'settle',
 ];
 
