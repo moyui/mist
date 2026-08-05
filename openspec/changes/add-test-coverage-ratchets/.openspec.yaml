@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-08-05
+goal: Make coverage visible, prevent regression via ratchet baseline, preserve
+  existing collectCoverageFrom exclusions
