@@ -49,20 +49,12 @@ export class RealtimeSubscriptionAssignment {
     onDelete: 'RESTRICT',
     onUpdate: 'RESTRICT',
   })
-  @JoinColumn([
-    {
-      name: 'source_config_id',
-      referencedColumnName: 'id',
-      foreignKeyConstraintName:
-        'fk_realtime_subscription_assignments_source_config',
-    },
-    {
-      name: 'security_id',
-      referencedColumnName: 'securityId',
-      foreignKeyConstraintName:
-        'fk_realtime_subscription_assignments_source_config',
-    },
-  ])
+  @JoinColumn({
+    name: 'source_config_id',
+    referencedColumnName: 'id',
+    foreignKeyConstraintName:
+      'fk_realtime_subscription_assignments_source_config',
+  })
   sourceConfig!: SecuritySourceConfig;
 
   @CreateDateColumn({ name: 'created_at', type: 'datetime', precision: 6 })

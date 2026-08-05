@@ -105,12 +105,6 @@ describe('RealtimeSubscriptionAssignment metadata', () => {
           'id',
           'fk_realtime_subscription_assignments_source_config',
         ],
-        [
-          'sourceConfig',
-          'security_id',
-          'securityId',
-          'fk_realtime_subscription_assignments_source_config',
-        ],
       ]),
     );
   });
