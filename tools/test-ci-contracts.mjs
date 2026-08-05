@@ -139,6 +139,13 @@ function assertBackendJestHygiene(packageJson) {
       fail(`mist jest.collectCoverageFrom must include ${expected}`);
     }
   }
+  // Ratchet gate: a coverageThreshold must be declared.
+  const threshold = jestConfig.coverageThreshold?.global;
+  if (!threshold || typeof threshold.lines !== 'number') {
+    fail(
+      'mist jest.coverageThreshold.global.lines must be a number (ratchet baseline)',
+    );
+  }
 }
 
 function assertNoSelectedBackendProductionConsoleCalls() {
@@ -669,6 +676,32 @@ function assertDatasourceContracts() {
     workflow,
     'uv run pytest -m "not live"',
     'mist-datasource CI workflow',
+  );
+  // Ratchet gate: CI must pass --cov-fail-under explicitly (pytest-cov #728).
+  assertIncludes(
+    workflow,
+    '--cov-fail-under',
+    'mist-datasource CI ratchet gate',
+  );
+
+  // Coverage config must declare pytest-cov, [tool.coverage], bridge omit,
+  // and a fail_under baseline.
+  const pyproject = read(join(repos.datasource, 'pyproject.toml'));
+  assertIncludes(pyproject, 'pytest-cov', 'mist-datasource dev dependencies');
+  assertIncludes(
+    pyproject,
+    '[tool.coverage.run]',
+    'mist-datasource coverage config',
+  );
+  assertIncludes(
+    pyproject,
+    'builtin_bridge/*',
+    'mist-datasource coverage omit',
+  );
+  assertIncludes(
+    pyproject,
+    'fail_under',
+    'mist-datasource coverage ratchet baseline',
   );
 }
 

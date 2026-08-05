@@ -55,7 +55,8 @@ The committed baseline SHALL be derived from actual measured coverage, not from
 an aspirational target. The baseline tool SHALL write back the larger of the
 existing committed baseline and the freshly measured overall line coverage, so
 the floor only ever rises. The initial baselines anchor to the post-
-`clean-up-test-hygiene` measurements: mist 82.72% lines, datasource 86% lines.
+`clean-up-test-hygiene` measurements: mist 82.72% lines, datasource 85.75% lines
+(gate threshold 85, integer-below-measured to avoid coverage.py round ambiguity).
 
 #### Scenario: Baseline is set from actual coverage
 

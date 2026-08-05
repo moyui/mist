@@ -13,8 +13,11 @@ Both primary repositories carry mature suites but zero coverage measurement:
   marker was removed by `clean-up-test-hygiene`).
 
 Measured post-cleanup baselines (the ratchet anchors): mist **82.72%** lines /
-67.9% branches; datasource **86%** lines (with `builtin_bridge` and `main.py`
-omitted, per the coverage config this change adds).
+67.9% branches; datasource **85.75%** lines (with `builtin_bridge` and `main.py`
+omitted, per the coverage config this change adds). The datasource gate
+threshold is 85 (integer, below the measured 85.75%) because coverage.py rounds
+the measured percentage to an integer before comparing — setting it to 86 would
+let 85.75% (rounds to 86) pass ambiguously.
 
 The governance guide (`mist/docs/project-quality-governance-guide.md` §10–11)
 **intentionally defines no numeric coverage thresholds**; its philosophy is

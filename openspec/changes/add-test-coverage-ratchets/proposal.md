@@ -13,8 +13,9 @@ measured level and block any drop, without inventing arbitrary targets.
 This change builds on `clean-up-test-hygiene`, which removed coverage-distorting
 debt (vacuous tests, type-file denominator pollution, dead config) so the
 ratchet baseline anchors to healthy code. The measured post-cleanup baselines
-are: mist **82.72%** lines, datasource **86%** lines (with `builtin_bridge` and
-`main.py` omitted).
+are: mist **82.72%** lines, datasource **85.75%** lines (with `builtin_bridge`
+and `main.py` omitted). The datasource gate threshold is set to 85 (integer,
+below the measured 85.75%) to avoid coverage.py's round-to-integer ambiguity.
 
 ## What Changes
 
