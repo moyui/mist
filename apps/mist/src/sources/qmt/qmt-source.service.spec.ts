@@ -14,15 +14,7 @@ import { PeriodMappingService, UtilsService } from '@app/utils';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
 import { QmtSource } from './qmt-source.service';
 import { QmtResponse } from './types';
-
-const createInsertBuilderMock = () => ({
-  insert: jest.fn().mockReturnThis(),
-  into: jest.fn().mockReturnThis(),
-  values: jest.fn().mockReturnThis(),
-  orUpdate: jest.fn().mockReturnThis(),
-  updateEntity: jest.fn().mockReturnThis(),
-  execute: jest.fn().mockResolvedValue(undefined),
-});
+import { createInsertBuilderMock } from '../testing/typeorm-mock-helpers';
 
 describe('QmtSource', () => {
   let service: QmtSource;

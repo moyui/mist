@@ -13,15 +13,7 @@ import {
 import { UtilsService, PeriodMappingService } from '@app/utils';
 import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
-
-const createInsertBuilderMock = () => ({
-  insert: jest.fn().mockReturnThis(),
-  into: jest.fn().mockReturnThis(),
-  values: jest.fn().mockReturnThis(),
-  orUpdate: jest.fn().mockReturnThis(),
-  updateEntity: jest.fn().mockReturnThis(),
-  execute: jest.fn().mockResolvedValue(undefined),
-});
+import { createInsertBuilderMock } from '../testing/typeorm-mock-helpers';
 
 describe('EastMoneySource', () => {
   let service: EastMoneySource;

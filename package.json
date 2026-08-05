@@ -113,12 +113,20 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "clearMocks": true,
     "collectCoverageFrom": [
       "**/*.(t|j)s",
       "!**/*.spec.ts",
       "!**/main.ts",
       "!**/*.config.*",
-      "!**/.eslintrc.js"
+      "!**/.eslintrc.js",
+      "!**/*.module.ts",
+      "!**/*.dto.ts",
+      "!**/*.interface.ts",
+      "!**/*.types.ts",
+      "!**/*.enum.ts",
+      "!**/*.constants.ts",
+      "!**/dto/index.ts"
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
@@ -142,8 +150,7 @@
       "^@app/strategy$": "<rootDir>/libs/strategy/src/index.ts",
       "^@app/chancore$": "<rootDir>/libs/chancore/src/index.ts",
       "^@app/decimal$": "<rootDir>/libs/decimal/src/index.ts",
-      "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts",
-      "^@app/data-collector(|/.*)$": "<rootDir>/apps/mist/src/data-collector/$1"
+      "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts"
     }
   },
   "pkg": {

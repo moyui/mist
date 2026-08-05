@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-08-05
+goal: Remove vacuous tests, dead config, duplicated harnesses, and align async
+  test style so the coverage baseline reflects real, healthy test code

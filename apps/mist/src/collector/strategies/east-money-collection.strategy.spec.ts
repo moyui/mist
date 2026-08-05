@@ -159,11 +159,22 @@ describe('EastMoneyCollectionStrategy', () => {
 
     it('should use current time when triggerTime not provided', async () => {
       const security = createMockSecurity('000001.SH');
+      // Pin "current" time to a trading-session moment so the boundary resolves
+      // deterministically (rather than depending on wall-clock at run time).
+      mockTimezoneService.getCurrentBeijingTime.mockReturnValue(
+        new Date('2026-03-30T10:00:00+08:00'),
+      );
 
       await strategy.collectScheduledCandle(security, Period.FIVE_MIN);
 
-      // Should either call collectorService or skip depending on current time
-      // Just verify it doesn't throw
+      expect(mockCollectorService.collectKForSource).toHaveBeenCalledTimes(1);
+      expect(mockCollectorService.collectKForSource).toHaveBeenCalledWith(
+        '000001.SH',
+        Period.FIVE_MIN,
+        expect.any(Date),
+        expect.any(Date),
+        DataSource.EAST_MONEY,
+      );
     });
   });
 
