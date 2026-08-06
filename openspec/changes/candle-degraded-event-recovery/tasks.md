@@ -52,18 +52,32 @@
   - quantity_profile_rejected 窗口过后回 OK；
   - counter 保留累计不重置。
 
-## 5. HIL 断言语义
+## 5. 监控暴露（两层信号拆分）
 
-- [ ] 5.1 `[mist-deploy]` `run-realtime-candle-shadow-hil.ps1` 的 `Assert-CandleHealth`：
+- [ ] 5.1 `[mist-monitoring]` `internal/exporter/collector.go` 的 `candleHealth` struct 加
+  `Status string`；`parseCandleHealth` 解析 envelope 的 `data.status`（`ok`/`degraded`/
+  `disabled`）。
+- [ ] 5.2 `[mist-monitoring]` `candleSamples` 里 `mist_realtime_candle_health` 从恒 1 改为：
+  `ok → 1`、`degraded → 0`、`disabled → 1`。`mist_component_up` 维持"endpoint 可达 + 契约合法"
+  语义不动（probe 失败时 candleSamples 不发，已满足 collector.go:113 逻辑）。
+- [ ] 5.3 `[mist-monitoring]` `internal/metrics/render.go:54` help 文本 + `docs/metrics.md:42`
+  契约描述从"contract parse 成功"改为"生产健康判定（degraded 时 0）"。
+- [ ] 5.4 `[mist-monitoring]` metric contract test：断言 candle probe 在 ok/degraded/disabled
+  下的 `mist_realtime_candle_health` 取值；断言 probe 失败时不发该 metric（与
+  `mist_component_up` 不重叠）。
+
+## 6. HIL 断言语义
+
+- [ ] 6.1 `[mist-deploy]` `run-realtime-candle-shadow-hil.ps1` 的 `Assert-CandleHealth`：
   移除 `AllowInitialProcessLocalDegraded` 临时容忍；改为断言 Redis AOF restart 后 health
   在 `REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS` 内回 OK。
-- [ ] 5.2 `[mist-deploy]` HIL contract test 同步新断言语义。
+- [ ] 6.2 `[mist-deploy]` HIL contract test 同步新断言语义。
 
-## 6. 发布与验收
+## 7. 发布与验收
 
-- [ ] 6.1 `[mist/mist-deploy]` 运行 unit、contract、lint、typecheck、`git diff --check`
-  与 OpenSpec strict validation。
-- [ ] 6.2 `[operator]` 交易时段 HIL 验证：Redis AOF restart 瞬时失败后 health 窗口内回 OK，
-  sealed/discard 数据与 Redis key 不变。
-- [ ] 6.3 `[operator]` 本 change 发布后，若观测表明窗口默认值不合理，另建 reviewed
+- [ ] 7.1 `[mist/mist-monitoring/mist-deploy]` 运行 unit、contract、lint、typecheck、
+  `git diff --check` 与 OpenSpec strict validation。
+- [ ] 7.2 `[operator]` 交易时段 HIL 验证：Redis AOF restart 瞬时失败后 health 窗口内回 OK，
+  sealed/discard 数据与 Redis key 不变；`mist_realtime_candle_health` 窗口期内 0、过后回 1。
+- [ ] 7.3 `[operator]` 本 change 发布后，若观测表明窗口默认值不合理，另建 reviewed
   OpenSpec delta 调整，不在本 change 中反复修改生产语义。

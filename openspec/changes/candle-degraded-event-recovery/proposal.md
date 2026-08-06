@@ -41,7 +41,7 @@
 
 - 主要影响 `mist`：`realtime-candle-health.service.ts`、runtime observation types、
   `CandleFinalizer`（注入 Clock + 拆分确定性/瞬时路径）、quantity rejection map、config。
+- 影响 `mist-monitoring`：`mist_realtime_candle_health` 从恒 1 改为反映 degraded 生产健康；
+  与 `mist_component_up`（基础设施探活）拆成两层信号，不重叠。
 - 影响 `mist-deploy` 的 candle HIL health 断言（恢复窗口语义，移除临时容忍）。
-- `mist-monitoring` 不在本 change 范围（`mist_realtime_candle_health` 当前恒 1，是否让该
-  metric 反映 degraded 是 owner 单独决策）。
 - 不改变 sealed/discard 数据、Redis key、`quality` 字段语义、subscription 或 strategy 链路。

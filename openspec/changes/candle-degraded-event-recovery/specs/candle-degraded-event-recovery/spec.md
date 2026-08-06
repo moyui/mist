@@ -77,3 +77,30 @@ failure, and remove the temporary process-local degraded tolerance.
 - **THEN** the HIL MUST assert health returns OK within the recovery window
 - **AND** sealed/discard data and Redis keys MUST be preserved before and after the restart
 - **AND** the HIL MUST no longer apply a blanket tolerance for process-local degraded reasons
+
+### Requirement: Candle Health SHALL Be Exposed As a Tiered Monitoring Signal
+The monitoring exporter SHALL keep infrastructure liveness and production-health as two distinct,
+non-overlapping signals: `mist_component_up` reports endpoint reachability and contract validity
+(infrastructure down), while `mist_realtime_candle_health` reports the candle production-health
+verdict (degraded). The two SHALL NOT collapse into a single boolean, so an operator can alert on
+"system down" and "production degraded" at different priorities.
+
+#### Scenario: Infrastructure liveness stays separate from production health
+- **WHEN** the candle endpoint is reachable and the envelope parses but `status == "degraded"`
+- **THEN** `mist_component_up{component="realtime-candles"}` MUST remain `1`
+- **AND** `mist_realtime_candle_health` MUST be `0`
+- **AND** when the endpoint is unreachable or the contract is invalid, `mist_component_up` MUST be `0`
+  and `mist_realtime_candle_health` MUST NOT be emitted (production health is unassertable when
+  infrastructure is down)
+
+#### Scenario: Production health reflects the degraded verdict
+- **WHEN** the candle health endpoint returns `status == "ok"` or `status == "degraded"`
+- **THEN** `mist_realtime_candle_health` MUST be `1` for `ok` and `0` for `degraded`
+- **AND** for `status == "disabled"` (product mode off) it MUST be `1` (off is an intentional state,
+  not a production failure)
+
+#### Scenario: The production-health metric contract is documented and tested
+- **WHEN** the exporter emits `mist_realtime_candle_health`
+- **THEN** its help text in `render.go` and its row in `docs/metrics.md` MUST describe it as the
+  production-health verdict (not contract-parse success)
+- **AND** the metric contract test MUST assert the metric is emitted by the candle probe target

@@ -114,22 +114,45 @@ due 注册侧同理：`dueRegistrationFailureCount++` 的 catch 块按错误来�
   finalizer（注入 Clock + 拆分确定性/瞬时）、observability map、constants、config、单测。
 - **mist-deploy**：candle HIL health 断言改为新语义；移除 `AllowInitialProcessLocalDegraded`
   临时容忍，改为断言 Redis AOF restart 后 health 在窗口内回 OK。
-- **mist-monitoring**：`mist_realtime_candle_health` 当前恒为 1（collector.go 的
-  `candleHealth` struct 不解析 `status`/`degradedReasons`）。**本 change 不改监控导出语义**
-  （是否让该 metric 反映 degraded 是单独决策，待 owner 定）；监控侧无 REQUIRED_METRICS 变更。
+- **mist-monitoring**：`mist_realtime_candle_health` 从恒 1 改为反映 degraded 生产健康；
+  `candleHealth` struct 加 `Status`、`parseCandleHealth` 解析 `data.status`、
+  `candleSamples` 改值；`render.go` help + `docs/metrics.md` 契约同步；metric contract test。
 - OpenSpec：本 change 的 specs/ delta spec。
+
+### 7.1 监控两层信号拆分（owner 定调）
+
+监控侧已存在两层，本 change 让第二层真正生效：
+
+| 层 | metric | 语义 | 本 change |
+|---|---|---|---|
+| 基础设施探活 | `mist_component_up{component="realtime-candles"}` | endpoint 可达 + envelope 解析 + 契约合法；进程死/500/契约崩 → 0 | 不动 |
+| 生产健康 | `mist_realtime_candle_health` | 当前恒 1；改后 `status=ok`→1、`degraded`→0、`disabled`→1 | **改** |
+
+两层职责不重叠：
+- `mist_component_up=0` → 系统挂了（最高优先级），生产健康 metric 不发（基础设施都没了，
+  生产健康无从断言）；
+- `mist_component_up=1` 且 `mist_realtime_candle_health=0` → 系统活着但生产环节在出问题
+  （窗口期内），次级告警。
+
+**契约变化**：`mist_realtime_candle_health` 从"contract parse 成功"变"生产健康判定"。
+之前 =0 与 `mist_component_up=0` 重复；改后 =0 独立表达 degraded。需同步 `docs/metrics.md`
+第 42 行描述与 `render.go:54` help 文本，并在 metric contract test 断言。
+
+`mist_realtime_candle_health` 在 `mist_component_up=0`（probe 失败 / 契约违反）时**不发**
+——collector.go:113 的逻辑是 parse 失败时 `up=false` 且不 append candleSamples，已满足。
 
 ## 8. 验收
 
 - 单测：窗口内 degraded / 窗口外恢复 / 窗口内再失败刷新时间戳 / 持续失败持续 degraded /
   确定性拒绝不降级 / queue 双计数器共享 reason / record_limit_breach 与 finalization_failed
   耦合不撕裂 / 单次数据丢失窗口过后回 OK / counter 保留累计。
+- 监控 contract test：`mist_realtime_candle_health` 在 ok/degraded/disabled 下的取值；
+  `mist_component_up` 与生产健康不重叠。
 - HIL：Redis AOF restart 后 health 在窗口内回 OK，sealed 保留；移除临时容忍。
 - 不改变 sealed/discard 数据与 Redis key；不改 `quality` 字段语义。
 
 ## 9. 不在本 change 范围
 
-- `mist_realtime_candle_health` 是否反映 degraded（监控契约变更，待 owner 决策）。
 - queue failed → alert（Alertmanager 后续项）。
 - 收盘 15:02 `outside A-share sessions`（独立 bug，另开 change）。
 - TDX eventTime `+08:00`（独立 bug，已由 `1421cb5` 修复，已部署）。
