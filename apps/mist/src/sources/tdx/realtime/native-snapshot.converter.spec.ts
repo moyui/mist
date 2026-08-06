@@ -23,7 +23,7 @@ describe('TDX native snapshot converter', () => {
 
     expect(snapshot.securityId).toBe(600030);
     expect(snapshot.providerSymbol).toBe('600030.SH');
-    expect(snapshot.eventTime).toBe('2026-07-22T10:01:03+08:00');
+    expect(snapshot.eventTime).toBe('2026-07-22T02:01:03.000Z');
     expect(snapshot.quality.eventTimeAvailable).toBe(true);
     expect(snapshot.quality.aggregationEligible).toBe(true);
     expect(snapshot.prices.last).toBe(31.25);
@@ -56,7 +56,7 @@ describe('TDX native snapshot converter', () => {
       native: { Now: 31.25 },
     });
 
-    expect(snapshot.eventTime).toBe('2026-07-22T10:01:03+08:00');
+    expect(snapshot.eventTime).toBe('2026-07-22T02:01:03.000Z');
     expect(snapshot.quality.aggregationEligible).toBe(true);
   });
 
@@ -74,8 +74,31 @@ describe('TDX native snapshot converter', () => {
       native: { Now: 31.25, ...timeFields },
     });
 
-    expect(snapshot.eventTime).toBe('2026-07-22T10:01:03+08:00');
+    expect(snapshot.eventTime).toBe('2026-07-22T02:01:03.000Z');
     expect(snapshot.quality.aggregationEligible).toBe(true);
+  });
+
+  it('normalizes the offset capturedAt instant to UTC Z for candle event time', () => {
+    const snapshot = convertTdxNativeSnapshot({
+      securityId: 600030,
+      providerSymbol: '600030.SH',
+      capturedAt: '2026-08-06T13:54:01+08:00',
+      native: { Now: 31.25, Volume: '10', Amount: '100' },
+    });
+
+    expect(snapshot.eventTime).toBe('2026-08-06T05:54:01.000Z');
+    expect(snapshot.capturedAt).toBe('2026-08-06T13:54:01+08:00');
+  });
+
+  it('keeps an already-UTC capturedAt unchanged', () => {
+    const snapshot = convertTdxNativeSnapshot({
+      securityId: 600030,
+      providerSymbol: '600030.SH',
+      capturedAt: '2026-08-06T05:54:01.123Z',
+      native: { Now: 31.25, Volume: '10', Amount: '100' },
+    });
+
+    expect(snapshot.eventTime).toBe('2026-08-06T05:54:01.123Z');
   });
 
   it('preserves absent/null quantities and distinguishes explicit zero', () => {

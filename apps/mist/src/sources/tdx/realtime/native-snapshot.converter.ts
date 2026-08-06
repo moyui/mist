@@ -18,9 +18,11 @@ export function convertTdxNativeSnapshot(
   const low = readTdxNativeNumber(input.native, ['Min', 'Low', 'low']);
   const lastClose = readTdxNativeNumber(input.native, ['LastClose']);
   // The accepted TDX get_market_snapshot runtime has no provider business-time
-  // field. The schema-v2 decoder has already validated capturedAt as RFC3339,
-  // so TDX uses that datasource capture instant as its candle event time.
-  const eventTime = input.capturedAt;
+  // field. The schema-v2 decoder has already validated capturedAt as RFC3339
+  // (Z or ±HH:MM), so TDX uses that datasource capture instant as its candle
+  // event time. The canonical instant is normalized to UTC `Z` (mirroring the
+  // QMT converter) so sealed records satisfy the strict shared Redis contract.
+  const eventTime = new Date(input.capturedAt).toISOString();
 
   return {
     source: 'tdx',
