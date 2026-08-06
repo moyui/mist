@@ -22,7 +22,8 @@
   `candle.recoveryGapLastFailureAtMs`。
 - [ ] 2.2 `[mist]` `realtime-market-observability.service.ts` 的 `quantityRejections` map
   为每个 key（`${source}:${field}:${reason}`）维护 `lastFailureAtMs`；health 判定从
-  "map 非空"改为"存在 key 满足窗口条件"。
+  "map 非空"改为"存在 key 满足窗口条件"。map 必须有界：引入窗口外 key 的清理逻辑
+  （窗口判定已不触发则 delete），避免无界增长。
 
 ## 3. health 判定改写
 
@@ -77,7 +78,9 @@
 
 - [ ] 7.1 `[mist/mist-monitoring/mist-deploy]` 运行 unit、contract、lint、typecheck、
   `git diff --check` 与 OpenSpec strict validation。
-- [ ] 7.2 `[operator]` 交易时段 HIL 验证：Redis AOF restart 瞬时失败后 health 窗口内回 OK，
+- [ ] 7.2 `[operator]` 交易时段 HIL 验证：Redis AOF restart 瞬时失败后 health 回 OK——
+  窗口起算点是**最后一次失败时间戳**（restart 动作本身会刷新 scanFailure 时间戳），需等
+  restart 完成、scanner 恢复（sealed 增长）后，最后一次失败的时间戳窗口过后才回 OK。
   sealed/discard 数据与 Redis key 不变；`mist_realtime_candle_health` 窗口期内 0、过后回 1。
 - [ ] 7.3 `[operator]` 本 change 发布后，若观测表明窗口默认值不合理，另建 reviewed
   OpenSpec delta 调整，不在本 change 中反复修改生产语义。

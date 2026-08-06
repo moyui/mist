@@ -77,6 +77,22 @@ degraded 不阻塞数据流：它不被任何数据路径服务注入（已验�
 前者与 degraded 无关。`candidate_capacity_exceeded` 当前仅累积不进 degraded 是合理的（单根
 容量超限是局部数据问题，不是生产环节故障），落位维持不变。
 
+**redis_* 六个 reason 是实时状态快照，不适用窗口化**：表格末行"不动"需要明确——这 6 个
+reason（`redis_unavailable`、`redis_observation_failed`、`redis_aof_disabled`、
+`redis_aof_error`、`redis_eviction_policy`、`redis_retention`）来自 `observe()` 每次调用对
+Redis 的**实时状态读取**（INFO/CONFIG/EXISTS），不是单调累计计数器。它们的语义是"当前这一刻
+Redis 状态是否健康"，下一次 `observe()` 成功时自然重新求值、条件不成立即清除——**不走
+lastFailureAtMs + 窗口判定**。实现时不要给它们加时间戳或窗口化逻辑。
+
+其中两个容易混淆的 reason 需区分（均为"读不到 Redis"，但故障层不同）：
+- `redis_unavailable`（`health.service.ts:85`）：Redis client 不存在（`this.redis.client`
+  为 null，连接从未建立）→ early return，后续 INFO/CONFIG 探测都不执行。优先级最高——
+  连接都没建。
+- `redis_observation_failed`（`health.service.ts:153`）：client 存在但 `observe()` 的
+  INFO/CONFIG/EXISTS 命令 throw（连接中断 / 命令超时 / 权限）。client 建了但命令失败。
+两者独立，同一故障可能只触发其一；operator 看到不同 reason 可定位故障层（连接建立 vs
+命令执行）。
+
 ## 5. 实现要点
 
 ### 5.1 finalizer 注入 Clock（前置依赖）
@@ -97,6 +113,12 @@ due 注册侧同理：`dueRegistrationFailureCount++` 的 catch 块按错误来�
 ### 5.3 quantity rejection map
 `realtime-market-observability.service.ts` 的 `quantityRejections` Map 当前只有计数。
 需为每个 key 维护 `lastFailureAtMs`；health 判定从"map 非空"改为"存在 key 满足窗口条件"。
+
+**map 必须有界**：key 是 `${source}:${field}:${reason}`，理论组合有限（2 source × 2 field ×
+7 reason = 28），但不同 provider symbol 异常可能产生变体。实现时 map 容量必须有上限
+（如与 `MAX_NATIVE_ENTRIES` 同模式的 bounded guard），窗口外的 key 应清理（窗口判定已
+不触发 → 无保留价值），避免长期运行无界增长。当前 map 只有 `set(+1)` 无 `delete/clear`，
+窗口化时需同步引入清理逻辑。
 
 ### 5.4 observation type 与 health 判定
 - `RealtimeCandleRuntimeObservation` 的 `due`/`candle`/`queue` 各加 `lastFailureAtMs` 字段；

@@ -23,7 +23,8 @@
 - 累计计数器永久保留供监控/审计；新增每个计数器的 `lastFailureAtMs` 供窗口判定。
 - 同步 `realtime-candle-health.service.ts`、runtime observation types、`CandleFinalizer`
   （注入 Clock + 拆分确定性/瞬时路径）、quantity rejection map、candle HIL 的 health 断言。
-- `mist_realtime_candle_health` 监控导出语义不在本 change 范围（待 owner 单独决策）。
+- `mist_realtime_candle_health` 从恒 1 改为反映 degraded 生产健康，与 `mist_component_up`
+  （基础设施探活）拆成两层不重叠的信号（见 design §7.1）。
 - HIL 侧已加的"Redis AOF restart 容忍瞬时 due_scan_failed"作为临时缓解，
   本 change 落地后按新语义回归。
 

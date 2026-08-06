@@ -74,7 +74,9 @@ failure, and remove the temporary process-local degraded tolerance.
 
 #### Scenario: HIL verifies recovery after Redis AOF restart
 - **WHEN** the candle HIL restarts `mist-realtime-redis` causing a transient due scan failure
-- **THEN** the HIL MUST assert health returns OK within the recovery window
+- **AND** the restart completes and the scanner resumes (sealedTotal resumes growing)
+- **THEN** the HIL MUST assert health returns OK once the window has elapsed since the **last** failure
+  timestamp (not since the restart was triggered — the restart itself may refresh the timestamp)
 - **AND** sealed/discard data and Redis keys MUST be preserved before and after the restart
 - **AND** the HIL MUST no longer apply a blanket tolerance for process-local degraded reasons
 
