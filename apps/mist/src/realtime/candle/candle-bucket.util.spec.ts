@@ -1,4 +1,7 @@
-import { resolveCandleBucket } from './candle-bucket.util';
+import {
+  resolveCandleBucket,
+  isSessionTerminalBucket,
+} from './candle-bucket.util';
 
 /**
  * Table-driven session/bucket resolution tests.
@@ -59,14 +62,8 @@ describe('resolveCandleBucket', () => {
       tradingDay: '20260728',
     },
     {
-      name: 'close-delay 15:01:30 (still afternoon)',
-      iso: sh(2026, 7, 28, 15, 1, 30),
-      session: 'afternoon',
-      tradingDay: '20260728',
-    },
-    {
-      name: 'close-delay edge 15:02:00 (still afternoon)',
-      iso: sh(2026, 7, 28, 15, 2),
+      name: 'afternoon close-auction frame 15:00:57 (last bucket)',
+      iso: sh(2026, 7, 28, 15, 0, 57),
       session: 'afternoon',
       tradingDay: '20260728',
     },
@@ -82,6 +79,10 @@ describe('resolveCandleBucket', () => {
     { name: 'lunch start 11:31:00', iso: sh(2026, 7, 28, 11, 31) },
     { name: 'lunch mid 12:30:00', iso: sh(2026, 7, 28, 12, 30) },
     { name: 'lunch end 12:59:59', iso: sh(2026, 7, 28, 12, 59, 59) },
+    { name: 'post-close dead frame 15:01:00', iso: sh(2026, 7, 28, 15, 1) },
+    { name: 'post-close dead frame 15:01:58', iso: sh(2026, 7, 28, 15, 1, 58) },
+    { name: 'post-close dead frame 15:02:00', iso: sh(2026, 7, 28, 15, 2) },
+    { name: 'post-close dead frame 15:02:58', iso: sh(2026, 7, 28, 15, 2, 58) },
     { name: 'deep post-close 15:03:00', iso: sh(2026, 7, 28, 15, 3) },
     { name: 'midnight 00:00:00', iso: sh(2026, 7, 28, 0, 0) },
   ])('returns null for $name (out of session)', ({ iso }) => {
@@ -126,5 +127,32 @@ describe('resolveCandleBucket', () => {
 
   it('returns null for an empty string', () => {
     expect(resolveCandleBucket('')).toBeNull();
+  });
+});
+
+describe('isSessionTerminalBucket', () => {
+  const bucketStart = (h: number, mi: number): number => {
+    // Epoch ms of HH:MM:00 Asia/Shanghai on 2026-07-28 (UTC+8).
+    return Date.parse(
+      `2026-07-28T${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}:00+08:00`,
+    );
+  };
+
+  it.each([
+    { name: '11:30 morning terminal', h: 11, mi: 30 },
+    { name: '15:00 afternoon terminal', h: 15, mi: 0 },
+  ])('returns true for $name', ({ h, mi }) => {
+    expect(isSessionTerminalBucket(bucketStart(h, mi))).toBe(true);
+  });
+
+  it.each([
+    { name: '11:29 (not terminal)', h: 11, mi: 29 },
+    { name: '11:31 (out of session)', h: 11, mi: 31 },
+    { name: '14:59 (not terminal)', h: 14, mi: 59 },
+    { name: '15:01 (out of session)', h: 15, mi: 1 },
+    { name: '09:30 open', h: 9, mi: 30 },
+    { name: '13:00 open', h: 13, mi: 0 },
+  ])('returns false for $name', ({ h, mi }) => {
+    expect(isSessionTerminalBucket(bucketStart(h, mi))).toBe(false);
   });
 });

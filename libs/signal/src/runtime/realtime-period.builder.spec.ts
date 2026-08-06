@@ -185,4 +185,42 @@ describe('RealtimePeriodBuilder', () => {
     const after = builder.accept(trigger(afternoon, 'sealed'), afternoon);
     expect(after.map((bar) => bar.period)).toEqual([1]);
   });
+
+  it('accepts the 11:30 morning-terminal trigger (session close extension)', () => {
+    // 11:30 CST = SESSION_START_MS + 120 minutes.
+    const terminal = barAt(120, { close: 55 });
+    const emitted = new RealtimePeriodBuilder().accept(
+      trigger(terminal, 'sealed'),
+      terminal,
+    );
+    // 1m bar is emitted; the 11:30 minute is a valid session-terminal bucket.
+    expect(emitted.some((bar) => bar.period === 1)).toBe(true);
+  });
+
+  it('accepts the 15:00 afternoon-terminal trigger (closing auction bucket)', () => {
+    // 15:00 CST = AFTERNOON_START_MS + 120 minutes.
+    const terminal = afternoonBarAt(120, { close: 66 });
+    const emitted = new RealtimePeriodBuilder().accept(
+      trigger(terminal, 'sealed'),
+      terminal,
+    );
+    expect(emitted.some((bar) => bar.period === 1)).toBe(true);
+  });
+
+  it('rejects a trigger at 11:31 (lunch break started)', () => {
+    const lunch = barAt(121);
+    expect(() =>
+      new RealtimePeriodBuilder().accept(trigger(lunch, 'sealed'), lunch),
+    ).toThrow('outside A-share sessions');
+  });
+
+  it('rejects a trigger at 15:01 (deep post-close)', () => {
+    const postClose = afternoonBarAt(121);
+    expect(() =>
+      new RealtimePeriodBuilder().accept(
+        trigger(postClose, 'sealed'),
+        postClose,
+      ),
+    ).toThrow('outside A-share sessions');
+  });
 });
