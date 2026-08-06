@@ -14,9 +14,15 @@ sealed 继续正常产出，但 health 卡 degraded。HIL 侧临时加 `AllowIni
 
 1. **degraded 报"当前是否需要运维介入"，不报"历史是否出过事"。** 当前生产环节正常运转
    就该是 OK；历史失败由累计计数器永久记录。
-2. **坏数据进库是正常的。** K 线 `quality` 字段（`candle.types.ts:157`，当前恒
-   `provisional`）标记数据完成态；上游写坏数据可接受，靠 `quality` 标记 + 下游主动检查，
-   不该让上游持续告警。
+2. **采样性质的可疑数据进库是正常的；硬性无效数据上游已在拦截。** 数据有效性分两档：
+   - **轻度可疑 / 采样性质**（`quality='provisional'`，`candle.types.ts:157`，恒定单值）→
+     进库，下游映射成 `type='incomplete'`（`libs/strategy/.../strategy-bar.ts:3`）自决用不用。
+     这档"进库可接受"成立。
+   - **硬性无效**（12 类 `InvalidReason`，`candle.types.ts:36-47`：价格非法 / 计数器回滚 /
+     session 违规 / queue_overflow 等）→ `validity='invalid'`，finalizer **直接丢弃不写 Redis**
+     （`candle-finalizer.ts:143`：`if (candle.validity === 'valid') multi.hset(...)`）。
+     这档上游已经在拦，坏数据不进库。
+   无论哪档，都不该让上游为"数据好不好"持续告警——degraded 不对数据 validity 负责。
 3. **消费是下游的事。** 上游（candle 生产方）告警职责到"是否正常生产 K 线"为止。sealed
    record 写进 Redis，上游职责完成；下游（signal worker）能否解码消费是下游的 bug
    （如 2026-08-06 的 `1421cb5`，在下游修）。上游不保证数据完整性。
@@ -57,6 +63,19 @@ degraded 不阻塞数据流：它不被任何数据路径服务注入（已验�
 一次调用同时递增两个计数器。实现时两者必须共享同一时间戳（同一次事件），或确定性路径
 统一走"仅累积不更新时间戳"，避免同一事件在一个 reason 已恢复、在另一个 reason 还 degraded
 的撕裂。
+
+**validity / InvalidReason 与 degraded 正交**：`InvalidReason`（`candle.types.ts:36-47`）的
+12 个值里有 4 个与 degraded 计数器同名或同源（`queue_overflow`、
+`redis_due_registration_failed`、`redis_finalization_failed`、`candidate_capacity_exceeded`），
+容易误以为"invalid candle 必然 degraded"。但两者职责不同：
+- `markInvalid(...)` 标记的是"**这根** candle 的数据有问题，discard 不入库"——单根 K 线的
+  **局部数据**判定；
+- degraded 计数器 +1 标记的是"生产环节出现了一次过载/失败"——**全局生产健康**判定。
+
+一次 queue overflow 同时触发两者：这根 K 被 discard（数据面，局部，由 finalizer 处理），
+`snapshotOverflowTotal++`（健康面，全局，由本 change 窗口化）。degraded 窗口化处理的是后者；
+前者与 degraded 无关。`candidate_capacity_exceeded` 当前仅累积不进 degraded 是合理的（单根
+容量超限是局部数据问题，不是生产环节故障），落位维持不变。
 
 ## 5. 实现要点
 
