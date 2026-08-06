@@ -161,7 +161,16 @@ function derivePeriodBars(
 ): StrategyBar[] {
   const groups = new Map<number, StrategyBar[]>();
   for (const bar of bars) {
-    const position = sessionPosition(bar.timestamp);
+    let position;
+    try {
+      position = sessionPosition(bar.timestamp);
+    } catch {
+      // A legacy or anomalous sealed bar outside the session (e.g. pre-fix
+      // 15:01/15:02 dead-time buckets still present in Redis) must not fail
+      // the whole evaluation window load — skip it. Volume is zero for such
+      // bars, so no market data is lost.
+      continue;
+    }
     const slotStart =
       position.sessionStartMs +
       Math.floor(position.minuteOffset / period) * period * 60_000;
@@ -220,9 +229,9 @@ function sessionPosition(timestamp: Date): {
   const morningStart = 9 * 60 + 30;
   const afternoonStart = 13 * 60;
   const start =
-    wallMinute >= morningStart && wallMinute < 11 * 60 + 30
+    wallMinute >= morningStart && wallMinute < 11 * 60 + 31
       ? morningStart
-      : wallMinute >= afternoonStart && wallMinute < 15 * 60
+      : wallMinute >= afternoonStart && wallMinute < 15 * 60 + 1
         ? afternoonStart
         : null;
   if (start === null) throw new RangeError('realtime K is outside session');

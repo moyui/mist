@@ -15,15 +15,16 @@
 
 ## What Changes
 
-- 区分**事件性失败**（once 型：瞬时扫描/注册/封存失败，恢复后应回 OK）与
-  **持续状态**（level 型：`recovery_gap` 重启丢状态、`quantity_profile_rejected`
-  数据持续异常，保持累计判定）。
-- 为事件性失败增加**最近失败时间**观测（`lastFailureAtMs`），degraded 判定改为
-  `counter > 0 && now - lastFailureAt < 窗口`（窗口值待评审，候选 5 分钟）。
-- 保留累计计数器供监控面板展示"历史失败次数"；新增"最近失败 age"维度。
-- 同步 `realtime-candle-health.service.ts`、runtime observation types、
-  monitoring exporter/render metrics、`docs/metrics.md` 与 candle HIL 的
-  health 断言语义。
+- degraded 的语义从"进程生命周期内是否出过事"改为"当前生产环节是否在正常运转"。
+- 所有非确定性失败的计数器**统一窗口化判定**
+  （`counter > 0 && now - lastFailureAtMs < REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`）。
+  没有"事件性 vs 持续状态"二分法——持续故障靠时间戳不断刷新自然涌现。
+- 确定性拒绝（交易日过期、record 字节超限等正常生命周期路径）不触发 degraded，仅累积计数器。
+- 累计计数器永久保留供监控/审计；新增每个计数器的 `lastFailureAtMs` 供窗口判定。
+- 同步 `realtime-candle-health.service.ts`、runtime observation types、`CandleFinalizer`
+  （注入 Clock + 拆分确定性/瞬时路径）、quantity rejection map、candle HIL 的 health 断言。
+- `mist_realtime_candle_health` 从恒 1 改为反映 degraded 生产健康，与 `mist_component_up`
+  （基础设施探活）拆成两层不重叠的信号（见 design §7.1）。
 - HIL 侧已加的"Redis AOF restart 容忍瞬时 due_scan_failed"作为临时缓解，
   本 change 落地后按新语义回归。
 
@@ -31,7 +32,7 @@
 
 ### New Capabilities
 
-- `candle-degraded-event-recovery`: 事件性失败带恢复窗口的 degraded 判定。
+- `candle-degraded-event-recovery`: 统一窗口化的 degraded 判定（报当前生产健康，不报历史）。
 
 ### Modified Capabilities
 
@@ -39,7 +40,9 @@
 
 ## Impact
 
-- 主要影响 `mist` 的 `realtime-candle-health.service.ts` 与 runtime observation。
-- 影响 `mist-monitoring` 的 candle health metrics（新增最近失败 age 维度）。
-- 影响 `mist-deploy` 的 candle HIL health 断言（恢复窗口语义）。
-- 不改变 sealed/discard 数据、Redis key、subscription 或 strategy 链路。
+- 主要影响 `mist`：`realtime-candle-health.service.ts`、runtime observation types、
+  `CandleFinalizer`（注入 Clock + 拆分确定性/瞬时路径）、quantity rejection map、config。
+- 影响 `mist-monitoring`：`mist_realtime_candle_health` 从恒 1 改为反映 degraded 生产健康；
+  与 `mist_component_up`（基础设施探活）拆成两层信号，不重叠。
+- 影响 `mist-deploy` 的 candle HIL health 断言（恢复窗口语义，移除临时容忍）。
+- 不改变 sealed/discard 数据、Redis key、`quality` 字段语义、subscription 或 strategy 链路。

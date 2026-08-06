@@ -340,6 +340,7 @@ export class TdxRealtimeClient
           error.source,
           error.field,
           error.reason,
+          Date.now(),
         );
       }
       this.store.recordReject(

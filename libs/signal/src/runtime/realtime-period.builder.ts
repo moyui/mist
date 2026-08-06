@@ -149,10 +149,14 @@ function sessionPosition(timestamp: Date): SessionPosition {
   const wallMinute = hour * 60 + minute;
   const morningStart = 9 * 60 + 30;
   const afternoonStart = 13 * 60;
+  // Half-open sessions with a 1-minute close extension, aligned with the
+  // producer bucket universe (242 buckets): 11:30 and 15:00 are legal
+  // session-terminal buckets that absorb post-close tail frames and the
+  // closing-auction print. See openspec/changes/fix-close-auction-bucket-semantic.
   const sessionStartWall =
-    wallMinute >= morningStart && wallMinute < 11 * 60 + 30
+    wallMinute >= morningStart && wallMinute < 11 * 60 + 31
       ? morningStart
-      : wallMinute >= afternoonStart && wallMinute < 15 * 60
+      : wallMinute >= afternoonStart && wallMinute < 15 * 60 + 1
         ? afternoonStart
         : null;
   if (sessionStartWall === null) {

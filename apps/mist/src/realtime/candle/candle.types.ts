@@ -3,8 +3,11 @@ import type { RealtimeSource } from '../realtime.types';
 /**
  * A-share trading session that a bucket belongs to.
  *
- * Snapshots outside any session (pre-open, lunch break 11:30–13:00, post-close
- * beyond the close-delay window) yield `session: null` and do NOT participate
+ * Sessions are half-open with a 1-minute close extension: morning
+ * `[09:30, 11:31)`, afternoon `[13:00, 15:01)` (242 buckets/day). The 11:30
+ * and 15:00 buckets are session-terminal and absorb close-tail / closing-auction
+ * frames. Snapshots outside any session (pre-open, lunch break 11:31–13:00,
+ * post-close at or after 15:01) yield `session: null` and do NOT participate
  * in candle aggregation.
  */
 export type CandleSession = 'morning' | 'afternoon';

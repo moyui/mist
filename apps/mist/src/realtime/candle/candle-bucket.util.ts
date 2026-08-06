@@ -8,14 +8,15 @@ import type { CandleBucket, CandleSession } from './candle.types';
  * The aggregator and finalizer both rely on this to decide bucket membership
  * and partition keys.
  *
- * A-share sessions (Asia/Shanghai):
- *   morning   09:30 – 11:30
- *   afternoon 13:00 – 15:00   (plus a close-delay window to 15:02 for the
- *                              last bucket, per B1 design line 271)
- *
- * Snapshots outside these windows (pre-open, lunch 11:30–13:00, deep
- * post-close) return `null` → they may still refresh the memory latest but
- * must not be aggregated into a candle.
+ * A-share sessions (Asia/Shanghai), half-open with a 1-minute close extension:
+ *   morning   [09:30, 11:31)  → 11:30 is the last bucket (absorbs post-close
+ *                                tail frames)
+ *   afternoon [13:00, 15:01)  → 15:00 is the last bucket (absorbs the
+ *                                closing-auction print, whose provider
+ *                                eventTime lands at 15:00:xx)
+ * This yields 242 buckets per trading day (121 morning + 121 afternoon).
+ * Frames at or after 11:31 / 15:01 are out-of-session — they may still
+ * refresh the memory latest but must not be aggregated into a candle.
  *
  * HK sessions are not handled here yet; they require HIL-confirmed close-auction
  * timing (design mentions 16:10) and will be added in a follow-up.
@@ -24,12 +25,9 @@ const TIME_ZONE = 'Asia/Shanghai';
 
 // Session boundaries in zoned wall-clock minutes-of-day.
 const MORNING_START_MIN = 9 * 60 + 30; // 09:30
-const MORNING_END_MIN = 11 * 60 + 30; // 11:30 (inclusive boundary)
+const MORNING_END_MIN = 11 * 60 + 31; // 11:31 (half-open; 11:30 is last bucket)
 const AFTERNOON_START_MIN = 13 * 60; // 13:00
-const AFTERNOON_END_MIN = 15 * 60; // 15:00 (inclusive boundary)
-// A-share close delay: the last 15:00 bucket stays open until 15:02 to absorb
-// closing-auction snapshots (design line 271).
-const CLOSE_DELAY_MIN = 2;
+const AFTERNOON_END_MIN = 15 * 60 + 1; // 15:01 (half-open; 15:00 is last bucket)
 
 /**
  * @param eventTimeIso - RFC3339 eventTime from the canonical snapshot.
@@ -60,20 +58,37 @@ export function resolveCandleBucket(eventTimeIso: string): CandleBucket | null {
 function resolveSession(zoned: Date): CandleSession | null {
   const minutesOfDay = zoned.getHours() * 60 + zoned.getMinutes();
 
-  // Morning 09:30–11:30 inclusive.
-  if (minutesOfDay >= MORNING_START_MIN && minutesOfDay <= MORNING_END_MIN) {
+  // Morning 09:30–11:30, half-open at 11:31 (11:30 is the last bucket and
+  // absorbs post-close tail frames).
+  if (minutesOfDay >= MORNING_START_MIN && minutesOfDay < MORNING_END_MIN) {
     return 'morning';
   }
 
-  // Afternoon 13:00–15:00 inclusive, plus close-delay to 15:02.
-  if (
-    minutesOfDay >= AFTERNOON_START_MIN &&
-    minutesOfDay <= AFTERNOON_END_MIN + CLOSE_DELAY_MIN
-  ) {
+  // Afternoon 13:00–15:00, half-open at 15:01 (15:00 is the last bucket and
+  // absorbs the closing-auction print).
+  if (minutesOfDay >= AFTERNOON_START_MIN && minutesOfDay < AFTERNOON_END_MIN) {
     return 'afternoon';
   }
 
   return null;
+}
+
+/**
+ * True when the bucket is a session-terminal bucket (11:30 or 15:00).
+ *
+ * Terminal buckets absorb post-close tail frames / the closing-auction print,
+ * whose provider eventTime lands inside the terminal minute but may arrive
+ * late. The product layer gives them an extended finalization grace
+ * (`REALTIME_CANDLE_TERMINAL_GRACE_MS`); see
+ * openspec/changes/fix-close-auction-bucket-semantic.
+ */
+export function isSessionTerminalBucket(bucketStartMs: number): boolean {
+  const zoned = toZonedTime(new Date(bucketStartMs), TIME_ZONE);
+  const minutesOfDay = zoned.getHours() * 60 + zoned.getMinutes();
+  return (
+    minutesOfDay === MORNING_END_MIN - 1 || // 11:30
+    minutesOfDay === AFTERNOON_END_MIN - 1 // 15:00
+  );
 }
 
 /**

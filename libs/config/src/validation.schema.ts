@@ -1,7 +1,9 @@
 import * as Joi from 'joi';
 import {
+  REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_LIMITS,
   REALTIME_CANDLE_GRACE_LIMITS,
   REALTIME_CANDLE_QUEUE_LIMITS,
+  REALTIME_CANDLE_TERMINAL_GRACE_LIMITS,
 } from './realtime-candle.config';
 
 /**
@@ -180,6 +182,12 @@ export const mistEnvSchema = commonEnvSchema
       .max(REALTIME_CANDLE_GRACE_LIMITS.max)
       .default(REALTIME_CANDLE_GRACE_LIMITS.default),
 
+    REALTIME_CANDLE_TERMINAL_GRACE_MS: Joi.number()
+      .integer()
+      .min(REALTIME_CANDLE_TERMINAL_GRACE_LIMITS.min)
+      .max(REALTIME_CANDLE_TERMINAL_GRACE_LIMITS.max)
+      .default(REALTIME_CANDLE_TERMINAL_GRACE_LIMITS.default),
+
     REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES: Joi.number()
       .integer()
       .min(REALTIME_CANDLE_QUEUE_LIMITS.perSeries.min)
@@ -191,6 +199,12 @@ export const mistEnvSchema = commonEnvSchema
       .min(REALTIME_CANDLE_QUEUE_LIMITS.global.min)
       .max(REALTIME_CANDLE_QUEUE_LIMITS.global.max)
       .default(REALTIME_CANDLE_QUEUE_LIMITS.global.default),
+
+    REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS: Joi.number()
+      .integer()
+      .min(REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_LIMITS.min)
+      .max(REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_LIMITS.max)
+      .default(REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_LIMITS.default),
   })
   .custom((value: Record<string, unknown>, helpers) => {
     const perSeries = value[
