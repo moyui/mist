@@ -115,7 +115,7 @@
 - [x] 5.2 完成 candle/Redis/grace/discard/capacity/recovery monitoring 与低基数 tests。
 - [x] 5.3 运行受影响仓库完整基线、strict OpenSpec、fixture SHA 和 `git diff --check`；自动化证据见
   `evidence/2026-08-03-automated-validation.md`。
-- [ ] 5.4 以 shadow 完成 TDX/QMT 支持交易时段、restart/AOF、capacity 和 protected-table 零写入 HIL；
+- [x] 5.4 以 shadow 完成 TDX/QMT 支持交易时段、restart/AOF、capacity 和 protected-table 零写入 HIL；
   不新增 snapshot collector，直接复用 datasource/backend 已有实时输出并固定 terminal/bridge identity，
   用规范化后的 `amountDelta/volumeDelta` 与同期 price range 对照；收盘同源 historical K 由验收脚本直接
   调用 datasource 既有只读接口，不写 MySQL。真实异常未出现时保持 `not-observed` 并链接
@@ -130,8 +130,22 @@
     （策略 3：1m/300059/tdx，14:42-14:44 CST），`strategy_signals=0` 保持 shadow 零写入；
     backend recreate 后 sealed 恢复（restart 恢复侧面证据，未跑正式 restart/AOF HIL）。
     见 `integration-20260806/evidence/2026-08-05-strategy-64-status.md`。
-    父任务 5.4 仍差：QMT source 直接 sealed 证据、`amountDelta/volumeDelta` vs price range
-    historical 对照、正式 restart/AOF HIL 与 protected-table post digest。
+  - 2026-08-06 双源全流程完成，父任务闭环：
+    - TDX（deploy run 31075678182，600519.SH/securityId=1）与 QMT（deploy run 31074655336，
+      300502.SZ/securityId=4）各 2 个新 sealed 1m bucket，vwap 均在同期 price range 内，
+      `quantityProfile=volume=shares,amount=yuan`、`amountPrecisionProvenance`
+      =`source=tdx,fixed-adapter=native-decimal-text` / `source=qmt,fixed-adapter=provider-float-observable-value`；
+    - backend restart 与 **Redis AOF restart 双源 sealed hash 保留 PASSED**（0c377ce 补完 +
+      `AllowInitialProcessLocalDegraded` 有界容忍 harness 修复链 `0e6ab42`/`2776157`/`1b4baef`/`5f7dca0`/`09441af`）；
+    - protected-table digest 前后 6 表全 SAME（k=4405、k_extensions_ef=0/tdx=4394/qmt=11、
+      strategy_signals=0、strategy_alert_events=0），shadow 零写入 MySQL；
+    - 收盘同源 historical：QMT HTTP 1m bars 可用，`unitDecision=not-inferred`
+      （provider-native historical units remain owned by their reader change，按契约 deferred）；
+    - anomalies `not-observed`（链接 `capture-realtime-provider-anomalies`）。
+    详细证据：`evidence/2026-08-06-qmt-candle-hil-afternoon.md`、
+    `evidence/2026-08-06-gate-review-candles-54-55.md`、
+    `integration-20260806/evidence/2026-08-06-strategy-on-hil-blocked-tdx-eventtime.md`
+    （strategy 侧消费发现，与 candle 数据面无关）。
   - [x] 5.4.1 移除 TDX 临时 `TDX_SUBSCRIBE_ALLOWLIST_ON_READY` 产品路径和 deploy 配置；candle HIL
     只通过 datasource 既有 WebSocket 控制接口建立并在 `finally` 清理单条订阅，再从正常 backend
     diagnostics 验证 canonical snapshot 与 candle candidate。不得把该 HIL 编排描述成生产订阅生命周期。
@@ -143,6 +157,18 @@
     snapshot/candidate 已观察；TDX native 没有 business time 后，项目负责人已接受 `capturedAt` 口径，
     backend 实现见 `fe6f989`。最终候选已由 deploy run `30884565901` 以 `shadow` 完整健康部署，TDX run
     `30885030432` 观察到合法 canonical snapshot 和 target candidate。该子任务只拥有临时订阅编排清理与
-    canonical/candidate 证明，故现标记完成；target exact sealed、restart/AOF、historical compare 和 protected
-    post digest 仍由父任务 5.4 保持未完成。
-- [ ] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。
+    canonical/candidate 证明，故现标记完成。
+- [x] 5.5 向项目负责人逐项审阅 HIL 与 limit 校准结果；未接受前不得切 on 或归档。
+  - 2026-08-06 项目负责人逐项审阅并接受（grace=5000ms 定案）：
+    - grace：`REALTIME_CANDLE_GRACE_MS=5000` 固定，两个完整交易时段 `lateAfterGraceTotal=0`；
+    - queue 8/256、due batch 64、sealed ≤2048B（实测 ≤566B）、manifest ≤1024B（实测 ≤189B）、
+      series ≤10（实测 3）——全部未触顶；
+    - usedMemory 3.5–4.5MB、AOF 7.9MB、due lag=0、pendingGlobal=0，增长平缓；
+    - TDX capture-time 跨 bucket 偏移：131 条 sealed fe/le 全部落在 bucket 分钟内（0 偏移）；
+    - 全日 sealed 外推 ≈136KiB/series（实测最大记录 566B × 240 分钟），远低于设计 4.7MiB/day
+      上界估算（2048B 上限）；
+    - quantity profile 双源复核（股/元 + provenance）通过。
+    校准记录：`evidence/2026-08-06-gate-review-candles-54-55.md` 补充节。
+    切 on 仍受 strategy on-HIL（TDX eventTime 修复 `1421cb5` 部署后重跑，见
+    `run-realtime-strategy-evaluation/evidence/2026-08-06-strategy-on-hil-blocked-tdx-eventtime.md`）
+    与 owner 批准约束；本 change 归档同样待 on 门禁通过。
