@@ -1,98 +1,116 @@
 # Design — Candle Degraded Event Recovery
 
-## 1. 现状
+## 1. 问题
 
-`degradedRuntimeReasons`（`realtime-candle-health.service.ts`）用 8 个累计
-计数器 > 0 判定 degraded。累计计数器只增不减 → 一次性事件永久 degraded。
+`degradedRuntimeReasons`（`realtime-candle-health.service.ts:191`）用 8 个**单调递增的
+进程内计数器 > 0** 判定 degraded。计数器只增不减 → 任何一次失败（哪怕一次 Redis AOF
+restart 期间的瞬时 due scan 失败）让 health **永久 degraded**。
 
-2026-08-06 HIL 实测：Redis AOF restart 期间一次 due scan 失败 →
-`due_scan_failed` 永久生效，sealed 继续产出但 health 卡 degraded。
+2026-08-06 candle shadow HIL 三次复现：AOF restart 后 `due_scan_failed` 永久生效，
+sealed 继续正常产出，但 health 卡 degraded。HIL 侧临时加 `AllowInitialProcessLocalDegraded`
+有界容忍，backend 语义未修。
 
-## 2. 完整计数器清单（代码事实，2026-08-06）
+## 2. 设计原则（owner 定调，约束后续所有分类）
 
-| 计数器 | 递增点 | observation 字段 | 当前是否计入 degraded |
+1. **degraded 报"当前是否需要运维介入"，不报"历史是否出过事"。** 当前生产环节正常运转
+   就该是 OK；历史失败由累计计数器永久记录。
+2. **坏数据进库是正常的。** K 线 `quality` 字段（`candle.types.ts:157`，当前恒
+   `provisional`）标记数据完成态；上游写坏数据可接受，靠 `quality` 标记 + 下游主动检查，
+   不该让上游持续告警。
+3. **消费是下游的事。** 上游（candle 生产方）告警职责到"是否正常生产 K 线"为止。sealed
+   record 写进 Redis，上游职责完成；下游（signal worker）能否解码消费是下游的 bug
+   （如 2026-08-06 的 `1421cb5`，在下游修）。上游不保证数据完整性。
+
+## 3. 核心规则（一句话）
+
+**所有非确定性拒绝的失败计数器，统一窗口化判定；确定性拒绝不触发 degraded，仅累积；
+累计计数器永久保留供监控。**
+
+判定式：`counter > 0 && now - lastFailureAtMs < REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`
+
+没有"事件性 vs 持续状态"二分法。持续故障靠时间戳不断刷新自然涌现——每个 bucket 都失败
+= 每次刷时间戳 = 永远在窗口内 = 持续 degraded，直到根因解除。单次失败 = 时间戳记一次 =
+窗口过后回 OK。这个维度**不需要在分类时预先判断**，由运行时是否还在刷时间戳自动决定。
+
+degraded 不阻塞数据流：它不被任何数据路径服务注入（已验证
+`RealtimeCandleHealthService` 仅被 diagnostic controller 调用），不 throw、不改开关。
+数据流（handleSnapshot → seal）从不检查健康状态。
+
+## 4. 完整计数器清单（代码事实，2026-08-06 master）
+
+| 计数器 | observation 字段 | 递增点性质 | 处理 |
 |---|---|---|---|
-| due scan 失败 | due scanner `zrangebyscore` 抛异常 | `due.scanFailureTotal` | 是（累计判定） |
-| due 注册失败 | due MULTI/EXEC null/throw；交易日过期；record bytes 断言 | `due.registrationFailureTotal` | 是（累计判定） |
-| 封存失败 | seal bounds 失败；交易日过期；`multi.exec()` null/throw；discardDue 同类失败 | `candle.finalizationFailureTotal` | 是（累计判定） |
-| record 超限 | seal/discardDue record bytes 断言失败（与封存失败同时 +1） | `candle.recordLimitBreachTotal` | 是（累计判定） |
-| 超 horizon 仍无候选 | `releaseAtHardHorizon` 超过 hard horizon | `candle.finalizationHorizonExceededTotal` | 是（累计判定） |
-| snapshot 入队被拒 | snapshot 入队 rejection | `queue.snapshotOverflowTotal` | 是（累计判定，与下行共用一个 reason） |
-| due 入队被拒 | due task 入队 rejection | `queue.dueAdmissionOverflowTotal` | 是（累计判定，与上行共用一个 reason） |
-| 重启缺口 | 进程启动在 bucket 中间，从下一个完整 bucket 恢复 | `candle.recoveryGapTotal` | 是（累计判定） |
-| 晚于 grace | snapshot 晚于 `bucketEndMs + graceMs` | `candle.lateAfterGraceTotal` | 否（仅监控累积） |
-| candidate 超限 | candidate capacity 超限 | `candle.candidateCapacityExceededTotal` | 否（仅监控累积） |
-| quantity profile 拒绝 | converter 抛 `RealtimeQuantityValidationError` | `quantity_profile_rejected`（map） | 是（累计判定） |
-| redis_* | observe() 实时状态读取（非累计） | `redis.*` | 是（瞬时状态，可自然清除） |
+| due scan 失败 | `due.scanFailureTotal` | 瞬时（zrangebyscore throw，下秒重扫） | 窗口化 |
+| due 注册失败 | `due.registrationFailureTotal` | **混合**：exec null/throw（瞬时）+ 交易日过期/record bytes（确定性） | 瞬时子路径窗口化，确定性子路径仅累积 |
+| 封存失败 | `candle.finalizationFailureTotal` | **混合**：exec null/throw（瞬时）+ expired/record bytes（确定性） | 同上 |
+| record 超限 | `candle.recordLimitBreachTotal` | **确定性**（record 超 byte 上限），且**永远与封存失败同时 +1**（`recordFinalizationFailure(true)`） | 仅累积；与封存失败共享一次事件的判定，不各自独立窗口化 |
+| 超 horizon | `candle.finalizationHorizonExceededTotal` | 一次性：bucket 到 `bucketEnd+60s` 仍无候选，candidate 释放，那一分钟永久丢 | 窗口化（单次丢失 → 窗口过后回 OK；丢失记入累计计数器供审计） |
+| snapshot 入队被拒 | `queue.snapshotOverflowTotal` | 过载/背压 | 窗口化 |
+| due 入队被拒 | `queue.dueAdmissionOverflowTotal` | 过载/背压 | 窗口化；与 snapshotOverflowTotal 共享 `queue_overflow` reason，取两者时间戳最近者 |
+| 重启缺口 | `candle.recoveryGapTotal` | 启动落在 bucket 中间，当前分钟无 baseline，下一分钟恢复 | 窗口化（同 horizon） |
+| quantity profile 拒绝 | `quantity_profile_rejected`（map） | converter 抛 `RealtimeQuantityValidationError`，snapshot 被丢，不进 candle 数据 | 窗口化（map 需加 lastFailureAtMs） |
+| 晚于 grace | `candle.lateAfterGraceTotal` | snapshot 晚于 `bucketEndMs + graceMs` | 维持现状：仅累积，不进 degraded |
+| candidate 超限 | `candle.candidateCapacityExceededTotal` | candidate capacity 超限 | 维持现状：仅累积，不进 degraded |
+| redis_*（6 个） | `redis.*` | `observe()` 实时状态读取（非累计） | 不动（下一次成功 observe 自然清除） |
 
-## 3. 目标语义
+**注意 record_limit_breach 与 finalization_failed 的耦合**：`recordFinalizationFailure(true)`
+一次调用同时递增两个计数器。实现时两者必须共享同一时间戳（同一次事件），或确定性路径
+统一走"仅累积不更新时间戳"，避免同一事件在一个 reason 已恢复、在另一个 reason 还 degraded
+的撕裂。
 
-健康判定与状态累积分离：**所有计数器继续累积供监控/审计**，degraded 判定
-换用独立输入。
+## 5. 实现要点
 
-| 类别 | 判定 | 恢复 |
-|---|---|---|
-| 事件性失败 | `counter > 0 && now - lastFailureAtMs < WINDOW` | 窗口内无新失败 → 回 OK |
-| 持续状态 | `counter > 0`（保持现状） | 手动/状态重建 |
-| 确定性拒绝 | 不参与 degraded（仅累积） | — |
+### 5.1 finalizer 注入 Clock（前置依赖）
+当前 `CandleFinalizer` 构造器只有 logger（`candle-finalizer.ts:60`），没有 Clock。要维护
+`finalizationLastFailureAtMs` 必须先注入 Clock。
 
-事件性失败（窗口判定）：`due_scan_failed`、`due_registration_failed`、
-`finalization_failed`、`finalization_horizon_exceeded`、
-`record_limit_breach`、`queue_overflow`。
-持续状态（累计判定）：`recovery_gap`、`quantity_profile_rejected`。
-仅累积不判定：`late_after_grace`、`candidate_capacity_exceeded`（维持现状）。
+### 5.2 确定性/瞬时拆分
+`recordFinalizationFailure(recordLimitBreach=false)` 被 8 个调用点共用：
+- **确定性**（4 处）：seal 的 expired tradingDay（line 133）、seal 的 record bytes 断言
+  （line 122）、discardDue 的 record bytes（line 246）、discardDue 的 expired（line ~258）；
+- **瞬时**（4 处）：seal 的 exec null（line 182）、seal 的 exec throw（line 195）、discardDue
+  的 exec null（line 277）、discardDue 的 exec throw（line 281）。
 
-**待评审问题**（本 design 未擅自定案，交 owner/复核线程）：
-1. `due_registration_failed` / `finalization_failed` 计数里混有**确定性拒绝**
-   （交易日过期、record bytes 断言），这些递增点是否应在健康判定中排除
-   （仅累积）？本 design 倾向排除（spec 已写入"确定性拒绝不降级"场景）。
-2. `queue_overflow` 是一个 reason、两个计数器，是否各自维护
-   `lastFailureAtMs`、取最近者驱动窗口？本 design 倾向是（spec 已写入）。
-3. `recovery_gap` 每次进程重启都会 +1，代表当日数据确有缺口；保持"进程
-   生命周期内永久 degraded"（窗口不可清除）。
-4. 窗口值候选 5 分钟（范围 1-15 分钟），默认 300000，交 owner 定。
+拆分方式：给 `recordFinalizationFailure` 加 `deterministic` 参数；确定性路径传
+`deterministic=true` 只递增计数器不更新时间戳；瞬时路径传 `false` 同时递增 + 更新时间戳。
+due 注册侧同理：`dueRegistrationFailureCount++` 的 catch 块按错误来源区分。
 
-## 4. 观测结构
+### 5.3 quantity rejection map
+`realtime-market-observability.service.ts` 的 `quantityRejections` Map 当前只有计数。
+需为每个 key 维护 `lastFailureAtMs`；health 判定从"map 非空"改为"存在 key 满足窗口条件"。
 
-runtime observation 增加（每个事件性计数器配一个时间戳）：
-```ts
-due: {
-  scanFailureTotal, scanLastFailureAtMs,
-  registrationFailureTotal, registrationLastFailureAtMs,
-}
-candle: {
-  finalizationFailureTotal, finalizationLastFailureAtMs,
-  finalizationHorizonExceededTotal, finalizationHorizonExceededLastFailureAtMs,
-  recordLimitBreachTotal, recordLimitBreachLastFailureAtMs,
-  recoveryGapTotal, /* 持续状态，无时间戳 */
-}
-queue: {
-  snapshotOverflowTotal, snapshotOverflowLastFailureAtMs,
-  dueAdmissionOverflowTotal, dueAdmissionOverflowLastFailureAtMs,
-}
-```
+### 5.4 observation type 与 health 判定
+- `RealtimeCandleRuntimeObservation` 的 `due`/`candle`/`queue` 各加 `lastFailureAtMs` 字段；
+- `degradedRuntimeReasons()` 重写为窗口化判定（需传入 `now` 与 `windowMs`）；
+- `lateAfterGraceTotal` / `candidateCapacityExceededTotal` 维持不进 degraded。
 
-每次对应失败发生时更新时间戳（与计数递增同点）。窗口值待评审（候选
-5 分钟，候选范围 1-15 分钟，参考 `REALTIME_CANDLE_GRACE_MS` 的配置模式）。
+## 6. 配置
 
-## 5. 配置
+新增 `REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`（默认 300000，范围 60000..900000），
+经 `libs/config` 校验。窗口值待 owner 最终确认（候选 5 分钟）。
 
-新增 `REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`（默认 300000，
-有效范围 60000..900000），经 `libs/config` 校验。
+## 7. 影响面
 
-## 6. 影响面
-
-- `mist`：health service、observation types、product service 计数器递增点
-  （同步时间戳）、constants、config、单测。
-- `mist-monitoring`：candle health metrics 新增 lastFailureAge 维度；
-  render.go REQUIRED_METRICS；contract test；`mist-monitoring/docs/metrics.md`。
-- `mist-deploy`：candle HIL health 断言改为新语义；移除 HIL 侧临时容忍。
+- **mist**：health service、observation types、product service 计数器递增点（同步时间戳）、
+  finalizer（注入 Clock + 拆分确定性/瞬时）、observability map、constants、config、单测。
+- **mist-deploy**：candle HIL health 断言改为新语义；移除 `AllowInitialProcessLocalDegraded`
+  临时容忍，改为断言 Redis AOF restart 后 health 在窗口内回 OK。
+- **mist-monitoring**：`mist_realtime_candle_health` 当前恒为 1（collector.go 的
+  `candleHealth` struct 不解析 `status`/`degradedReasons`）。**本 change 不改监控导出语义**
+  （是否让该 metric 反映 degraded 是单独决策，待 owner 定）；监控侧无 REQUIRED_METRICS 变更。
 - OpenSpec：本 change 的 specs/ delta spec。
 
-## 7. 验收
+## 8. 验收
 
-- 单测：事件性失败在窗口内 degraded、窗口外恢复、窗口内再次失败刷新
-  时间戳、持续状态不受窗口影响、确定性拒绝不降级、queue 双计数器共享
-  reason 各自时间戳、counter 保留累计。
-- HIL：Redis AOF restart 后 health 在窗口内回 OK，sealed 保留。
-- 不改变 sealed/discard 数据与 Redis key。
+- 单测：窗口内 degraded / 窗口外恢复 / 窗口内再失败刷新时间戳 / 持续失败持续 degraded /
+  确定性拒绝不降级 / queue 双计数器共享 reason / record_limit_breach 与 finalization_failed
+  耦合不撕裂 / 单次数据丢失窗口过后回 OK / counter 保留累计。
+- HIL：Redis AOF restart 后 health 在窗口内回 OK，sealed 保留；移除临时容忍。
+- 不改变 sealed/discard 数据与 Redis key；不改 `quality` 字段语义。
+
+## 9. 不在本 change 范围
+
+- `mist_realtime_candle_health` 是否反映 degraded（监控契约变更，待 owner 决策）。
+- queue failed → alert（Alertmanager 后续项）。
+- 收盘 15:02 `outside A-share sessions`（独立 bug，另开 change）。
+- TDX eventTime `+08:00`（独立 bug，已由 `1421cb5` 修复，已部署）。

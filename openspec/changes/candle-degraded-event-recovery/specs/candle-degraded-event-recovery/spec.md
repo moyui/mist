@@ -2,71 +2,78 @@
 
 ## ADDED Requirements
 
-### Requirement: Event-Based Candle Degradation SHALL Recover Within a Window
-Candle health SHALL treat event-based failures as degraded only while a recent failure timestamp
-falls within a bounded recovery window, while persistent conditions (recovery gap, quantity profile
-rejection) SHALL remain degraded on cumulative counter basis.
+### Requirement: Candle Degraded SHALL Reflect Current Production Health, Not Lifetime History
+Candle health SHALL drive every non-deterministic failure counter through a single, uniform
+recovery window (`counter > 0 && now - lastFailureAtMs < REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`),
+so that the `degraded` verdict reports whether the candle production pipeline is currently failing —
+not whether it ever failed during the process lifetime. Cumulative totals SHALL be retained
+unchanged for monitoring and audit, but SHALL NOT by themselves hold the verdict at `degraded`.
 
-#### Scenario: A transient due scan failure degrades health only within the window
-- **WHEN** the due scanner fails once (e.g. Redis AOF restart) at time T and no further failure occurs
-- **THEN** `due_scan_failed` MUST be present in `degradedReasons` while `now - T < REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`
-- **AND** once the window passes with no new failure, health MUST recover to OK without manual action
-- **AND** `due.scanFailureTotal` MUST retain the cumulative count for monitoring
+#### Scenario: A transient failure degrades health only within the recovery window
+- **WHEN** a non-deterministic failure counter (e.g. `due_scan_failed` after a Redis AOF restart)
+  increments once at time T and no further failure of that counter occurs
+- **THEN** the corresponding degraded reason MUST be present while `now - T < REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`
+- **AND** once the window passes with no new failure, the reason MUST clear and health MUST recover to OK
+- **AND** the cumulative counter MUST retain its count for monitoring
 
-#### Scenario: A repeated event failure refreshes the window
-- **WHEN** an event-based failure recurs inside the recovery window
-- **THEN** the failure timestamp MUST be refreshed to the latest occurrence
-- **AND** degraded status MUST persist while failures continue within any window
+#### Scenario: A repeated failure refreshes the window
+- **WHEN** the same counter increments again inside the recovery window
+- **THEN** the failure timestamp MUST refresh to the latest occurrence
+- **AND** degraded status MUST persist while failures keep recurring within the window
 - **AND** the count MUST keep accumulating without masking recurrence
 
-#### Scenario: Persistent conditions are not windowed
-- **WHEN** `recovery_gap` or `quantity_profile_rejected` is observed
-- **THEN** degraded status MUST remain active regardless of elapsed time
-- **AND** recovery SHALL require the underlying condition to clear, not merely time to pass
+#### Scenario: A sustained failure stays degraded via timestamp refresh
+- **WHEN** a counter increments on every bucket (e.g. sustained queue overflow or a provider
+  contract change causing repeated quantity rejections)
+- **THEN** the timestamp MUST refresh on each increment
+- **AND** health MUST stay degraded for as long as the failures recur, without any special "persistent" category
+
+#### Scenario: Deterministic rejections never degrade health
+- **WHEN** a sealed record is rejected because its trading day already expired, or a record exceeds
+  the byte limit, or any other deterministic lifecycle transition is recorded as a counter increment
+- **THEN** that increment MUST NOT produce a degraded reason
+- **AND** the counter MUST still count the occurrence for monitoring/audit
+- **AND** only non-deterministic runtime failures SHALL drive the windowed degraded decision
+
+#### Scenario: Single-bucket data loss recovers within the window
+- **WHEN** `finalization_horizon_exceeded` or `recovery_gap` records that one minute's candle was lost
+- **THEN** health MUST recover to OK once the window passes with no further loss
+- **AND** the loss MUST remain recorded in the cumulative counter for audit
+- **RATIONALE**: the candle pipeline is an upstream producer; it does not guarantee data
+  completeness, and whether a sealed record is consumable is a downstream concern. A single lost
+  minute does not mean production is currently broken if subsequent minutes seal normally.
+
+#### Scenario: Queue overflow is driven by two counters sharing one reason
+- **WHEN** either `snapshotOverflowTotal` or `dueAdmissionOverflowTotal` increments
+- **THEN** the shared `queue_overflow` reason MUST be driven by the more recent of the two
+  per-counter failure timestamps
+- **AND** each counter MUST retain its own cumulative total and its own `lastFailureAtMs`
+- **AND** a fresh failure on either counter MUST refresh the shared degraded window
+
+### Requirement: Last-Failure Timestamps SHALL Be Observed Without High-Cardinality Labels
+The runtime observation SHALL expose a `lastFailureAtMs` for every non-deterministic failure
+counter, so monitoring can compute failure age, without any free-text or identity labels.
+
+#### Scenario: Observations expose last failure age with bounded labels
+- **WHEN** monitoring observes candle health after a transient failure
+- **THEN** a `lastFailureAtMs` MUST be exposed for each non-deterministic counter
+- **AND** the value MUST be `null` when that counter has never incremented
+- **AND** no metric label MAY carry security id, source symbol, run, path, owner or free-text values
+
+### Requirement: The Recovery Window SHALL Be Configured and Bounded
+The recovery window SHALL be a validated deployment configuration.
 
 #### Scenario: The recovery window is configured and bounded
 - **WHEN** the deployment sets `REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS`
 - **THEN** it MUST be validated to lie within 60000..900000 and default to 300000
 - **AND** invalid values MUST fail configuration validation rather than degrade silently
 
-#### Scenario: Observations expose last failure age without high-cardinality labels
-- **WHEN** monitoring observes candle health after a transient failure
-- **THEN** last-failure timestamps/age MUST be exposed with a bounded label set
-- **AND** the age MUST be 0/absent when no failure occurred
-- **AND** no metric label MAY carry security, run, path, owner or free-text values
+### Requirement: The HIL SHALL Verify Recovery After a Transient Failure
+The candle HIL SHALL assert that health recovers within the window after an induced transient
+failure, and remove the temporary process-local degraded tolerance.
 
 #### Scenario: HIL verifies recovery after Redis AOF restart
 - **WHEN** the candle HIL restarts `mist-realtime-redis` causing a transient due scan failure
 - **THEN** the HIL MUST assert health returns OK within the recovery window
 - **AND** sealed/discard data and Redis keys MUST be preserved before and after the restart
-
-#### Scenario: A deterministic rejection does not degrade health
-- **WHEN** a sealed record is rejected because its trading day is already expired, or any other
-  deterministic, expected lifecycle transition is recorded as a finalization/registration counter
-  increment
-- **THEN** that increment MUST NOT by itself produce a degraded reason
-- **AND** the cumulative counter MUST still count the occurrence for monitoring/audit
-- **AND** only failures representing unexpected runtime errors SHALL drive the windowed degraded decision
-
-#### Scenario: Queue overflow has two independent counters with one degraded reason
-- **WHEN** either `snapshotOverflowTotal` or `dueAdmissionOverflowTotal` increments
-- **THEN** the shared `queue_overflow` degraded reason MUST be driven by the most recent of the two
-  per-counter failure timestamps
-- **AND** each counter MUST retain its own cumulative total and its own `lastFailureAtMs`
-- **AND** a fresh failure on either counter MUST refresh the shared degraded window
-
-### Requirement: Health-Check State and Cumulative State SHALL Be Distinct
-The runtime observation SHALL expose cumulative totals (monitoring/audit) and degraded-state inputs
-(health check) as separate, independently readable fields, so that historical failure counts never
-change the current health verdict by themselves.
-
-#### Scenario: Counters accumulate while health verdict recovers
-- **WHEN** an event-based failure occurred longer than the window ago and no new failure happened
-- **THEN** the degraded verdict MUST be OK
-- **AND** every cumulative total MUST still be exposed unchanged for the monitoring panel
-- **AND** the last-failure timestamps MUST expose the age of the most recent failure
-
-#### Scenario: Recovery gap stays degraded across process restarts
-- **WHEN** a process start detected a mid-session gap and recorded `recoveryGapTotal`
-- **THEN** `recovery_gap` MUST remain degraded for the remainder of the process lifetime
-- **AND** the verdict MUST NOT be cleared by a time window
+- **AND** the HIL MUST no longer apply a blanket tolerance for process-local degraded reasons
