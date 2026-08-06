@@ -51,3 +51,23 @@ classifying legal input as garbage and filling the failed zset.
 
 - **WHEN** a `candle_finalized` trigger with `triggerTime = 09:00:00` Asia/Shanghai is processed
 - **THEN** the job MUST fail with `RangeError: finalized strategy trigger is outside A-share sessions`
+
+### Requirement: Realtime Window Loading SHALL Tolerate Terminal-Minute Sealed Bars
+
+The Signal strategy-market-data adapter SHALL align its own session boundary with the 242-bucket
+producer universe when deriving higher-period bars from current-day sealed 1m bars, so that a sealed
+11:30/15:00 terminal bar (including legacy dead-time bars still present in Redis from before this change)
+does not fail the whole evaluation window load.
+
+#### Scenario: A sealed 15:00 bar is derived into the current-day window
+
+- **WHEN** `loadCurrentDayBars` loads a sealed 1m bar with `timestamp = 15:00:00` from Redis
+- **THEN** the bar MUST be grouped into an afternoon derived slot
+- **AND** the window load MUST NOT throw `realtime K is outside session`
+
+#### Scenario: A sealed 15:02 legacy dead bar is tolerated during window load
+
+- **WHEN** `loadCurrentDayBars` loads a legacy sealed 1m bar with `timestamp = 15:02:00` still present in
+  Redis from a previous trading day
+- **THEN** the window load MUST NOT fail the whole evaluation
+- **AND** the bar SHALL be grouped into the terminal afternoon slot without throwing

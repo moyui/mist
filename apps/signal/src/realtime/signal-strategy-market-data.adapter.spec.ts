@@ -176,6 +176,81 @@ describe('SignalStrategyMarketDataAdapter', () => {
       }),
     ).rejects.toThrow('closed-candle v must be a string or null');
   });
+
+  it('derives a 15:00 terminal sealed bar into the afternoon window without throwing', async () => {
+    // 15:00 CST = 07:00:00Z. Anchor after close so the window load derives
+    // the current-day bars including the terminal 15:00 bar.
+    const redis = fakeRedis({
+      hgetall: {
+        [String(Date.parse('2026-08-04T06:59:00.000Z'))]: JSON.stringify(
+          record(40),
+        ),
+        [String(Date.parse('2026-08-04T07:00:00.000Z'))]: JSON.stringify(
+          record(41),
+        ),
+      },
+    });
+    const adapter = new SignalStrategyMarketDataAdapter(
+      repository([]),
+      redis.service,
+    );
+
+    await expect(
+      adapter.loadRealtimeWindow({
+        securityId: 9,
+        source: 'tdx',
+        period: 5,
+        anchorAt: new Date('2026-08-04T07:02:00.000Z'),
+        requiredBars: 1,
+      }),
+    ).resolves.toMatchObject({
+      bars: [
+        expect.objectContaining({
+          period: 5,
+          timestamp: new Date('2026-08-04T06:55:00.000Z'),
+          close: 40,
+          type: 'incomplete',
+        }),
+        expect.objectContaining({
+          period: 5,
+          timestamp: new Date('2026-08-04T07:00:00.000Z'),
+          close: 41,
+          type: 'incomplete',
+        }),
+      ],
+    });
+  });
+
+  it('tolerates a legacy 15:02 dead sealed bar during window load', async () => {
+    // Legacy dead-time bar (pre-fix Redis residue) at 15:02 CST = 07:02:00Z.
+    const redis = fakeRedis({
+      hgetall: {
+        [String(Date.parse('2026-08-04T06:59:00.000Z'))]: JSON.stringify(
+          record(40),
+        ),
+        [String(Date.parse('2026-08-04T07:00:00.000Z'))]: JSON.stringify(
+          record(41),
+        ),
+        [String(Date.parse('2026-08-04T07:02:00.000Z'))]: JSON.stringify(
+          record(41),
+        ),
+      },
+    });
+    const adapter = new SignalStrategyMarketDataAdapter(
+      repository([]),
+      redis.service,
+    );
+
+    await expect(
+      adapter.loadRealtimeWindow({
+        securityId: 9,
+        source: 'tdx',
+        period: 5,
+        anchorAt: new Date('2026-08-04T07:05:00.000Z'),
+        requiredBars: 1,
+      }),
+    ).resolves.toBeDefined();
+  });
 });
 
 function fakeRedis(options: {

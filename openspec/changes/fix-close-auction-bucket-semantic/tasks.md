@@ -31,12 +31,16 @@
   `late_after_grace` 对终端桶放宽。
 - [ ] 4.4 spec：终端桶 due 加成；普通桶 due 不变；hard horizon 放宽；aggregator 准入放宽。
 
-## 5. consumer session 对齐（libs/signal）
+## 5. consumer session 对齐（libs/signal + apps/signal）
 
 - [ ] 5.1 `realtime-period.builder.ts`：`sessionPosition` 改 `wallMinute < 11*60+31` /
   `wallMinute < 15*60+1`（含 11:30/15:00 端点）。
 - [ ] 5.2 `realtime-period.builder.spec.ts`：11:30/15:00 接受；≥11:31/≥15:01 RangeError；现有盘中用例
   不动。
+- [ ] 5.3 `signal-strategy-market-data.adapter.ts`：`derivePeriodBars` 的 `sessionPosition` 同样对齐
+  （`< 11*60+31` / `< 15*60+1`），防止历史 sealed 死桶 bar 在评估窗口加载时抛
+  `realtime K is outside session`（生产证据：08-06 的 11 个 QMT 盘中 job 死于此处）。
+- [ ] 5.4 adapter spec：15:00 sealed bar 能派生；15:02 遗留死桶 bar 不炸窗口加载。
 
 ## 6. 接缝对齐测试
 

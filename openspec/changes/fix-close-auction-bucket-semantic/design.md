@@ -102,6 +102,14 @@ export const REALTIME_CANDLE_TERMINAL_GRACE_LIMITS = Object.freeze({
 // after:  wallMinute < 11*60+31 / wallMinute < 15*60+1
 ```
 
+### 3.6 adapter sessionPosition 对齐（signal-strategy-market-data.adapter.ts）
+
+`derivePeriodBars` 内部的 `sessionPosition`（错误消息 `realtime K is outside session`）也要对齐 242
+桶。该路径在 **evaluation 窗口加载**时遍历当天 Redis sealed 1m bars 派生高周期 bar；旧代码下 15:01/
+15:02 死桶 bar 会在这里抛 RangeError，导致**整个评估失败**（生产证据：08-06 的 11 个 QMT 盘中 job
+失败于 `realtime K is outside session`，stacktrace 指向 `loadCurrentDayBars → derivePeriodBars →
+sessionPosition`）。修复后历史残留死桶 bar 也能被接受（volume=0 无害），不再炸评估窗口。
+
 ### 3.6 测试
 
 - `candle-bucket.util.spec.ts`：更新边界用例（11:30 in-session；11:31 null；15:00 in-session；
