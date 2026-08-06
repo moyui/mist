@@ -34,7 +34,9 @@ export const REALTIME_LIVE_SNAPSHOT_FIXTURES: readonly RealtimeLiveSnapshotFixtu
       securityId: 9,
       providerSymbol: '600030.SH',
       capturedAt: '2026-08-04T14:44:37+08:00',
-      expectedEventTime: '2026-08-04T14:44:37+08:00',
+      // The converter normalizes the datasource capture instant to strict UTC
+      // Z (1421cb5); capturedAt keeps the wire value as provenance.
+      expectedEventTime: '2026-08-04T06:44:37.000Z',
       expectedCumulativeVolume: '113980100',
       expectedCumulativeAmount: '3204521600',
       expectedPrices: {

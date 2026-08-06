@@ -77,6 +77,36 @@ describe('schema-v2 native-map decoder', () => {
     }
   });
 
+  it('accepts a Z-suffixed RFC3339 timestamp on the envelope and capturedAt', () => {
+    const decoded = decodeRealtimeNativeMapMessage(
+      parseRealtimeMessage(
+        JSON.stringify(
+          message('qmt', { '300502.SZ': {} }, '2026-07-26T02:00:00.000Z'),
+        ),
+      ),
+      'qmt',
+    );
+
+    expect(decoded.timestamp).toBe('2026-07-26T02:00:00.000Z');
+    expect(decoded.data.capturedAt).toBe('2026-07-26T02:00:00.000Z');
+  });
+
+  it.each(['2026-07-26 10:00:00', 'not-a-date', '2026-07-26T10:00:00'])(
+    'rejects non-RFC3339 capturedAt %s',
+    (bad) => {
+      const frame = message('qmt', { '300502.SZ': {} });
+      frame.data.capturedAt = bad;
+      expect(() =>
+        decodeRealtimeNativeMapMessage(
+          parseRealtimeMessage(JSON.stringify(frame)),
+          'qmt',
+        ),
+      ).toThrow(
+        new RealtimeNativeMapDecodeError('REALTIME_FRAME_DATA_INVALID'),
+      );
+    },
+  );
+
   it.each([
     ['{', 'REALTIME_FRAME_JSON_INVALID'],
     ['[]', 'REALTIME_FRAME_ENVELOPE_INVALID'],
@@ -87,14 +117,18 @@ describe('schema-v2 native-map decoder', () => {
   });
 });
 
-function message(provider: 'tdx' | 'qmt', native: Record<string, unknown>) {
+function message(
+  provider: 'tdx' | 'qmt',
+  native: Record<string, unknown>,
+  ts = timestamp,
+) {
   return {
     type: 'realtime.native_snapshot',
     provider,
-    timestamp,
+    timestamp: ts,
     data: {
       schemaVersion: 2,
-      capturedAt: timestamp,
+      capturedAt: ts,
       native,
     },
   };
