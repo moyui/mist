@@ -324,4 +324,44 @@ describe('CandleFinalizer', () => {
     });
     expect(finalizer.diagnostics().maxManifestBytes).toBeGreaterThan(0);
   });
+
+  it('records a transient MULTI/EXEC failure with a last-failure timestamp', async () => {
+    const fake = makeFakeRedis();
+    fake.chain.exec.mockResolvedValue(null); // transaction discarded
+    fake.multi.mockReturnValue(fake.chain);
+
+    const finalizer = new CandleFinalizer();
+    const candle = makeSealed();
+    const nowMs = Date.parse('2026-07-28T01:31:30.000Z');
+
+    const ok = await finalizer.seal(fake as any, candle, nowMs);
+
+    expect(ok).toBe(false);
+    expect(finalizer.diagnostics()).toMatchObject({
+      finalizationFailureTotal: 1,
+      recordLimitBreachTotal: 0,
+      finalizationLastFailureAtMs: nowMs,
+    });
+  });
+
+  it('does not refresh the last-failure timestamp for a deterministic expired trading day', async () => {
+    const fake = makeFakeRedis();
+    fake.chain.exec.mockResolvedValue([]);
+    fake.multi.mockReturnValue(fake.chain);
+
+    const finalizer = new CandleFinalizer();
+    const candle = makeSealed();
+    // nowMs far beyond the trading day expiry: the deterministic expired path
+    // triggers before any MULTI is built.
+    const nowMs = Date.parse('2026-07-29T02:00:00.000Z');
+
+    const ok = await finalizer.seal(fake as any, candle, nowMs);
+
+    expect(ok).toBe(false);
+    expect(finalizer.diagnostics()).toMatchObject({
+      finalizationFailureTotal: 1,
+      recordLimitBreachTotal: 0,
+      finalizationLastFailureAtMs: null,
+    });
+  });
 });

@@ -1,7 +1,8 @@
 ## 1. finalizer 前置改造
 
-- [ ] 1.1 `[mist]` `CandleFinalizer` 注入 `Clock`（当前构造器只有 logger，见
-  `candle-finalizer.ts:60`）；为后续 `finalizationLastFailureAtMs` 提供时间源。
+- [ ] 1.1 `[mist]` `CandleFinalizer` **不注入 Clock**：`seal`/`discardDue` 已有 `nowMs` 参数，
+  8 个 `recordFinalizationFailure` 调用点全部在 `nowMs` 作用域内，直接复用为
+  `finalizationLastFailureAtMs` 时间源（design §5.1）。
 - [ ] 1.2 `[mist]` `recordFinalizationFailure(recordLimitBreach=false)` 加 `deterministic`
   参数，拆分 8 个调用点：
   - 确定性（4 处：seal expired、seal record bytes、discardDue record bytes、discardDue

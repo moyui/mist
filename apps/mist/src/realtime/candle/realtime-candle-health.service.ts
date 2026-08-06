@@ -1,6 +1,8 @@
 import { DataSource } from '@app/shared-data';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { toZonedTime } from 'date-fns-tz';
+import { REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_LIMITS } from '@app/config';
 import { Clock } from '../clock.service';
 import { RealtimeMarketObservabilityService } from '../realtime-market-observability.service';
 import {
@@ -26,6 +28,7 @@ const RETENTION_LOOKBACK_DAYS = 7;
 @Injectable()
 export class RealtimeCandleHealthService {
   private redisObservationFailureCount = 0;
+  private readonly degradedRecoveryWindowMs: number;
 
   constructor(
     private readonly product: RealtimeMarketDataProductService,
@@ -33,16 +36,28 @@ export class RealtimeCandleHealthService {
     private readonly clock: Clock,
     private readonly allowlist: RealtimeSecurityAllowlistService,
     private readonly observability: RealtimeMarketObservabilityService,
+    config: ConfigService,
     private readonly handoffObservability?: RealtimeStrategyHandoffObservabilityService,
-  ) {}
+  ) {
+    this.degradedRecoveryWindowMs =
+      config.get<number>('REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_MS') ??
+      REALTIME_CANDLE_DEGRADED_RECOVERY_WINDOW_LIMITS.default;
+  }
 
   async observe(): Promise<RealtimeCandleHealthObservation> {
+    const now = this.clock.now();
     const runtime = this.product.runtimeObservation();
+    this.observability.pruneQuantityRejections(
+      now,
+      this.degradedRecoveryWindowMs,
+    );
     const quantityProfileRejections =
       this.observability.quantityRejectionObservations();
     const degradedReasons = degradedRuntimeReasons(
       runtime,
-      quantityProfileRejections.length > 0,
+      quantityProfileRejections,
+      now,
+      this.degradedRecoveryWindowMs,
     );
     const observation: RealtimeCandleHealthObservation = {
       ...runtime,
@@ -87,7 +102,6 @@ export class RealtimeCandleHealthService {
     }
 
     try {
-      const now = this.clock.now();
       const tradingDay = shanghaiCalendarDay(now, 0);
       const identities = this.activeMarketIdentities();
       const currentKeys = marketPartitionKeys(tradingDay, identities);
@@ -179,32 +193,58 @@ export class RealtimeCandleHealthService {
   }
 }
 
+/**
+ * Windowed degraded verdict. A non-deterministic failure counter degrades only
+ * while its last failure timestamp falls inside the recovery window; once the
+ * window passes with no new failure, health recovers even though the cumulative
+ * counter stays elevated. Persistent conditions (recovery_gap, quantity profile
+ * rejection) are also windowed — a single lost minute or a single rejected
+ * snapshot means production is currently OK if no further failure recurs.
+ * Deterministic rejections (expired trading day, record byte limit) never
+ * degrade; their counters accumulate for monitoring only.
+ */
 function degradedRuntimeReasons(
   runtime: ReturnType<RealtimeMarketDataProductService['runtimeObservation']>,
-  hasQuantityProfileRejections: boolean,
+  quantityProfileRejections: readonly {
+    source: string;
+    field: string;
+    reason: string;
+    total: number;
+    lastFailureAtMs: number;
+  }[],
+  now: number,
+  windowMs: number,
 ): Set<RealtimeCandleDegradedReason> {
   const reasons = new Set<RealtimeCandleDegradedReason>();
+  const withinWindow = (lastFailureAtMs: number | null) =>
+    lastFailureAtMs !== null && now - lastFailureAtMs < windowMs;
+
   if (
-    runtime.queue.snapshotOverflowTotal > 0 ||
-    runtime.queue.dueAdmissionOverflowTotal > 0
+    withinWindow(runtime.queue.snapshotOverflowLastFailureAtMs) ||
+    withinWindow(runtime.queue.dueAdmissionOverflowLastFailureAtMs)
   ) {
     reasons.add('queue_overflow');
   }
-  if (runtime.due.scanFailureTotal > 0) reasons.add('due_scan_failed');
-  if (runtime.due.registrationFailureTotal > 0) {
+  if (withinWindow(runtime.due.scanLastFailureAtMs)) {
+    reasons.add('due_scan_failed');
+  }
+  if (withinWindow(runtime.due.registrationLastFailureAtMs)) {
     reasons.add('due_registration_failed');
   }
-  if (runtime.candle.finalizationFailureTotal > 0) {
+  if (withinWindow(runtime.candle.finalizationLastFailureAtMs)) {
     reasons.add('finalization_failed');
   }
-  if (runtime.candle.finalizationHorizonExceededTotal > 0) {
+  if (withinWindow(runtime.candle.finalizationHorizonExceededLastFailureAtMs)) {
     reasons.add('finalization_horizon_exceeded');
   }
-  if (runtime.candle.recordLimitBreachTotal > 0) {
-    reasons.add('record_limit_breach');
+  if (withinWindow(runtime.candle.recoveryGapLastFailureAtMs)) {
+    reasons.add('recovery_gap');
   }
-  if (runtime.candle.recoveryGapTotal > 0) reasons.add('recovery_gap');
-  if (hasQuantityProfileRejections) {
+  if (
+    quantityProfileRejections.some((rejection) =>
+      withinWindow(rejection.lastFailureAtMs),
+    )
+  ) {
     reasons.add('quantity_profile_rejected');
   }
   return reasons;

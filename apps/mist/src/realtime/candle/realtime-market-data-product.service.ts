@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   REALTIME_CANDLE_GRACE_LIMITS,
   REALTIME_CANDLE_QUEUE_LIMITS,
+  REALTIME_CANDLE_TERMINAL_GRACE_LIMITS,
 } from '@app/config';
 import { DataSource } from '@app/shared-data';
 import { toZonedTime } from 'date-fns-tz';
@@ -22,7 +23,10 @@ import type { RealtimeSource } from '../realtime.types';
 import { OpenCandleAggregator } from './open-candle-aggregator';
 import { CandleFinalizer } from './candle-finalizer';
 import { KeyedQueue } from './keyed-queue';
-import { resolveCandleBucket } from './candle-bucket.util';
+import {
+  resolveCandleBucket,
+  isSessionTerminalBucket,
+} from './candle-bucket.util';
 import type { CandleBucket } from './candle.types';
 import { marketSeriesKey } from './market-series-key';
 import type {
@@ -78,6 +82,7 @@ export class RealtimeMarketDataProductService
   private readonly logger = new Logger(RealtimeMarketDataProductService.name);
   private readonly mode: RealtimeCandleProductMode;
   private readonly graceMs: number;
+  private readonly terminalGraceMs: number;
   private readonly queue: KeyedQueue;
   private readonly expectedSeries = new Map<string, ExpectedSeriesState>();
   private readonly registeredDueMembers = new Set<string>();
@@ -88,13 +93,19 @@ export class RealtimeMarketDataProductService
   private startupReplayPending = true;
   private startupEligibleBucketStartMs: number | null = null;
   private recoveryGapCount = 0;
+  private recoveryGapLastFailureAtMs: number | null = null;
   private snapshotOverflowCount = 0;
+  private snapshotOverflowLastFailureAtMs: number | null = null;
   private dueAdmissionOverflowCount = 0;
+  private dueAdmissionOverflowLastFailureAtMs: number | null = null;
   private lateAfterGraceCount = 0;
   private candidateCapacityExceededCount = 0;
   private dueScanFailureCount = 0;
+  private dueScanLastFailureAtMs: number | null = null;
   private dueRegistrationFailureCount = 0;
+  private dueRegistrationLastFailureAtMs: number | null = null;
   private finalizationHorizonExceededCount = 0;
+  private finalizationHorizonExceededLastFailureAtMs: number | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -121,6 +132,9 @@ export class RealtimeMarketDataProductService
     this.graceMs =
       this.config.get<number>('REALTIME_CANDLE_GRACE_MS') ??
       REALTIME_CANDLE_GRACE_LIMITS.default;
+    this.terminalGraceMs =
+      this.config.get<number>('REALTIME_CANDLE_TERMINAL_GRACE_MS') ??
+      REALTIME_CANDLE_TERMINAL_GRACE_LIMITS.default;
     this.queue = new KeyedQueue({
       maxPendingPerSeries:
         this.config.get<number>(
@@ -174,6 +188,7 @@ export class RealtimeMarketDataProductService
     );
     if (!accepted) {
       this.snapshotOverflowCount++;
+      this.snapshotOverflowLastFailureAtMs = acceptedAt;
       this.logger.warn(
         `Queue overflow for ${key}; marking candle queue_overflow.`,
       );
@@ -209,9 +224,15 @@ export class RealtimeMarketDataProductService
       return;
     }
 
+    // Session-terminal buckets (11:30 / 15:00) absorb post-close tail frames
+    // and the closing-auction print; their admission grace is extended so a
+    // late frame is not rejected by the normal 5s `late_after_grace` cutoff.
+    const effectiveGraceMs = snapshotBucket
+      ? this.effectiveGraceMs(snapshotBucket.bucketStartMs)
+      : this.graceMs;
     const outcome = this.aggregator.applySnapshot(snapshot, {
       acceptedAtMs: acceptedAt,
-      graceMs: this.graceMs,
+      graceMs: effectiveGraceMs,
     });
 
     switch (outcome.kind) {
@@ -288,6 +309,21 @@ export class RealtimeMarketDataProductService
   }
 
   /**
+   * Effective finalization/admission grace for a bucket.
+   *
+   * Session-terminal buckets (11:30 / 15:00) get the normal grace plus the
+   * terminal grace (`REALTIME_CANDLE_TERMINAL_GRACE_MS`) so their sealing is
+   * delayed enough to absorb post-close tail frames / the closing-auction
+   * print, whose provider eventTime lands inside the terminal minute but may
+   * arrive late. Normal buckets keep the plain grace.
+   */
+  private effectiveGraceMs(bucketStartMs: number): number {
+    return isSessionTerminalBucket(bucketStartMs)
+      ? this.graceMs + this.terminalGraceMs
+      : this.graceMs;
+  }
+
+  /**
    * On first observation of a new bucket, register it in the due ZSET so the
    * scanner will finalize it after grace. Design line 185: "每个 bucket 首次
    * 建立时只登记一次 due/manifest/TTL".
@@ -303,12 +339,16 @@ export class RealtimeMarketDataProductService
     acceptedAt: number,
     expected: boolean,
   ): Promise<boolean> {
-    if (acceptedAt > bucket.bucketEndMs + this.graceMs) {
+    if (
+      acceptedAt >
+      bucket.bucketEndMs + this.effectiveGraceMs(bucket.bucketStartMs)
+    ) {
       return false;
     }
 
     try {
-      const dueScore = bucket.bucketEndMs + this.graceMs;
+      const dueScore =
+        bucket.bucketEndMs + this.effectiveGraceMs(bucket.bucketStartMs);
       const member = encodeDueMember(
         identity.securityId,
         identity.source,
@@ -354,6 +394,16 @@ export class RealtimeMarketDataProductService
       return true;
     } catch (error) {
       this.dueRegistrationFailureCount++;
+      // Deterministic rejections (record byte limit, expired trading day) only
+      // accumulate; transient runtime errors (MULTI/EXEC null or throw) also
+      // refresh the timestamp that drives the windowed degraded verdict.
+      const deterministic =
+        error instanceof RangeError ||
+        (error instanceof Error &&
+          error.message.includes('is already expired'));
+      if (!deterministic) {
+        this.dueRegistrationLastFailureAtMs = acceptedAt;
+      }
       // A6 (design 303-304): mark candle redis_due_registration_failed.
       this.logger.error(
         `Due registration failed for securityId=${identity.securityId} source=${identity.source} bucket ${bucket.bucketStartMs}: ${
@@ -404,6 +454,7 @@ export class RealtimeMarketDataProductService
       );
     } catch (error) {
       this.dueScanFailureCount++;
+      this.dueScanLastFailureAtMs = now;
       this.logger.error(
         `Due scan failed for ${tradingDay}: ${
           error instanceof Error ? error.message : String(error)
@@ -436,6 +487,7 @@ export class RealtimeMarketDataProductService
       });
       if (!accepted) {
         this.dueAdmissionOverflowCount++;
+        this.dueAdmissionOverflowLastFailureAtMs = now;
         this.dueInFlight.delete(member);
         this.logger.warn(
           `Due queue admission overflow for securityId=${decoded.securityId} source=${decoded.source}; due remains pending.`,
@@ -508,6 +560,7 @@ export class RealtimeMarketDataProductService
     const current = resolveCandleBucket(new Date(now).toISOString());
     if (current && now > current.bucketStartMs) {
       this.recoveryGapCount++;
+      this.recoveryGapLastFailureAtMs = now;
       this.logger.warn(
         `recovery_gap startup_mid_bucket bucket=${current.bucketStartMs}; valid aggregation resumes at ${this.startupEligibleBucketStartMs ?? 'unknown'}`,
       );
@@ -588,7 +641,10 @@ export class RealtimeMarketDataProductService
           ...Object.values(queue.pendingByKey),
         ),
         snapshotOverflowTotal: this.snapshotOverflowCount,
+        snapshotOverflowLastFailureAtMs: this.snapshotOverflowLastFailureAtMs,
         dueAdmissionOverflowTotal: this.dueAdmissionOverflowCount,
+        dueAdmissionOverflowLastFailureAtMs:
+          this.dueAdmissionOverflowLastFailureAtMs,
       },
       candle: {
         ...aggregator,
@@ -597,15 +653,21 @@ export class RealtimeMarketDataProductService
         lateAfterGraceTotal: this.lateAfterGraceCount,
         candidateCapacityExceededTotal: this.candidateCapacityExceededCount,
         finalizationFailureTotal: finalizer.finalizationFailureTotal,
+        finalizationLastFailureAtMs: finalizer.finalizationLastFailureAtMs,
         finalizationHorizonExceededTotal: this.finalizationHorizonExceededCount,
+        finalizationHorizonExceededLastFailureAtMs:
+          this.finalizationHorizonExceededLastFailureAtMs,
         recordLimitBreachTotal: finalizer.recordLimitBreachTotal,
         recoveryGapTotal: this.recoveryGapCount,
+        recoveryGapLastFailureAtMs: this.recoveryGapLastFailureAtMs,
         maxSealedRecordBytes: finalizer.maxSealedRecordBytes,
         maxManifestBytes: finalizer.maxManifestBytes,
       },
       due: {
         scanFailureTotal: this.dueScanFailureCount,
+        scanLastFailureAtMs: this.dueScanLastFailureAtMs,
         registrationFailureTotal: this.dueRegistrationFailureCount,
+        registrationLastFailureAtMs: this.dueRegistrationLastFailureAtMs,
       },
     };
   }
@@ -643,7 +705,12 @@ export class RealtimeMarketDataProductService
     }
 
     const hardHorizon =
-      decoded.bucketStartMs + 60_000 + FINALIZATION_HARD_HORIZON_MS;
+      decoded.bucketStartMs +
+      60_000 +
+      FINALIZATION_HARD_HORIZON_MS +
+      (isSessionTerminalBucket(decoded.bucketStartMs)
+        ? this.terminalGraceMs
+        : 0);
     if (now >= hardHorizon) {
       await this.releaseAtHardHorizon(client, tradingDay, member, decoded);
       return;
@@ -771,6 +838,7 @@ export class RealtimeMarketDataProductService
       `finalization_horizon_exceeded securityId=${decoded.securityId} source=${decoded.source} bucket=${decoded.bucketStartMs}`,
     );
     this.finalizationHorizonExceededCount++;
+    this.finalizationHorizonExceededLastFailureAtMs = this.clock.now();
   }
 
   private clearDueTracking(member: string): void {

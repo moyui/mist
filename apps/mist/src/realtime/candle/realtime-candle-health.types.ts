@@ -27,7 +27,9 @@ export interface RealtimeCandleRuntimeObservation {
     pendingGlobal: number;
     maximumPendingPerSeries: number;
     snapshotOverflowTotal: number;
+    snapshotOverflowLastFailureAtMs: number | null;
     dueAdmissionOverflowTotal: number;
+    dueAdmissionOverflowLastFailureAtMs: number | null;
   };
   candle: {
     seriesCount: number;
@@ -39,15 +41,20 @@ export interface RealtimeCandleRuntimeObservation {
     lateAfterGraceTotal: number;
     candidateCapacityExceededTotal: number;
     finalizationFailureTotal: number;
+    finalizationLastFailureAtMs: number | null;
     finalizationHorizonExceededTotal: number;
+    finalizationHorizonExceededLastFailureAtMs: number | null;
     recordLimitBreachTotal: number;
     recoveryGapTotal: number;
+    recoveryGapLastFailureAtMs: number | null;
     maxSealedRecordBytes: number;
     maxManifestBytes: number;
   };
   due: {
     scanFailureTotal: number;
+    scanLastFailureAtMs: number | null;
     registrationFailureTotal: number;
+    registrationLastFailureAtMs: number | null;
   };
 }
 

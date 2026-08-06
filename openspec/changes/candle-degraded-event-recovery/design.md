@@ -95,9 +95,11 @@ lastFailureAtMs + 窗口判定**。实现时不要给它们加时间戳或窗口
 
 ## 5. 实现要点
 
-### 5.1 finalizer 注入 Clock（前置依赖）
-当前 `CandleFinalizer` 构造器只有 logger（`candle-finalizer.ts:60`），没有 Clock。要维护
-`finalizationLastFailureAtMs` 必须先注入 Clock。
+### 5.1 finalizer 时间戳来源：复用调用点 `nowMs`（不注入 Clock）
+`CandleFinalizer` 的 `seal(redis, candle, nowMs)` 与 `discardDue(..., nowMs)` 已把 `nowMs`
+作为显式参数传入，8 个 `recordFinalizationFailure` 调用点全部在 `nowMs` 作用域内。因此
+**不注入 Clock**——直接复用调用点的 `nowMs` 作为 `finalizationLastFailureAtMs` 时间源，
+避免引入与 product service 不同的第二时钟源。design 早期版本"注入 Clock"作废。
 
 ### 5.2 确定性/瞬时拆分
 `recordFinalizationFailure(recordLimitBreach=false)` 被 8 个调用点共用：
@@ -176,5 +178,7 @@ due 注册侧同理：`dueRegistrationFailureCount++` 的 catch 块按错误来�
 ## 9. 不在本 change 范围
 
 - queue failed → alert（Alertmanager 后续项）。
-- 收盘 15:02 `outside A-share sessions`（独立 bug，另开 change）。
-- TDX eventTime `+08:00`（独立 bug，已由 `1421cb5` 修复，已部署）。
+- 收盘 15:01/15:02 `outside A-share sessions`（已由
+  `fix-close-auction-bucket-semantic` 解决——session 改半开 `[13:00,15:01)`，
+  收盘桶 due 加成；2026-08-06 前此现象与 TDX 格式 bug 混杂，现独立 change 修复）。
+- TDX eventTime `+08:00`（独立 bug，已由 `1421cb5` 修复，**未部署**——待审查后重建 backend 镜像部署）。

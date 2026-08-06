@@ -796,6 +796,11 @@ describe('RealtimeMarketDataProductService', () => {
     expect(finalizer.seal).not.toHaveBeenCalled();
     expect(finalizer.discardDue).not.toHaveBeenCalled();
     expect(aggregator.peekCandidate(1, 'tdx', bucketStartMs)).toBeNull();
+    // The horizon timestamp MUST come from the injected Clock (not Date.now()),
+    // so the recovery-window verdict stays deterministic under test.
+    expect((service as any).finalizationHorizonExceededLastFailureAtMs).toBe(
+      bucketStartMs + 120_000,
+    );
   });
 
   it('stops admission, drains admitted work, then disconnects owned Redis without finalizing', async () => {
@@ -842,5 +847,95 @@ describe('RealtimeMarketDataProductService', () => {
     expect(aggregator.markInvalid).not.toHaveBeenCalled();
     expect(finalizer.seal).not.toHaveBeenCalled();
     expect(finalizer.discardDue).not.toHaveBeenCalled();
+  });
+
+  it('extends the due score of the 15:00 terminal bucket by the auction grace', async () => {
+    const harness = makeRedisHarness();
+    let clockMs = Date.parse('2026-07-28T06:59:59.000Z'); // 14:59:59Z = 14:59:59+08? no: 14:59 CST
+    const allowlist = {
+      list: jest.fn((source: DataSource) =>
+        source === DataSource.TDX
+          ? [{ securityId: 1, formatCode: '600030.SH' }]
+          : [],
+      ),
+    } as any;
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow', { REALTIME_CANDLE_TERMINAL_GRACE_MS: 60000 }),
+      { now: () => clockMs } as any,
+      harness.redis,
+      new OpenCandleAggregator(),
+      { seal: jest.fn(), discardDue: jest.fn() } as any,
+      allowlist,
+    );
+
+    // Advance into the 15:00 terminal minute (15:00:00 CST = 07:00:00Z).
+    clockMs = Date.parse('2026-07-28T07:00:00.000Z');
+    await scanAndDrain(service);
+    // Due score = bucketEnd(15:01 CST = 07:01:00Z) + grace(5s) + terminalGrace(60s)
+    //            = 07:02:05Z.
+    expect(harness.chain.zadd).toHaveBeenCalledWith(
+      expect.stringContaining('20260728:candle:1m:due'),
+      Date.parse('2026-07-28T07:02:05.000Z'),
+      expect.stringContaining('1:tdx:'),
+    );
+  });
+
+  it('extends the due score of the 11:30 terminal bucket by the auction grace', async () => {
+    const harness = makeRedisHarness();
+    let clockMs = Date.parse('2026-07-28T03:29:59.000Z'); // 11:29:59 CST
+    const allowlist = {
+      list: jest.fn((source: DataSource) =>
+        source === DataSource.TDX
+          ? [{ securityId: 1, formatCode: '600030.SH' }]
+          : [],
+      ),
+    } as any;
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow', { REALTIME_CANDLE_TERMINAL_GRACE_MS: 60000 }),
+      { now: () => clockMs } as any,
+      harness.redis,
+      new OpenCandleAggregator(),
+      { seal: jest.fn(), discardDue: jest.fn() } as any,
+      allowlist,
+    );
+
+    // Advance into the 11:30 terminal minute (11:30:00 CST = 03:30:00Z).
+    clockMs = Date.parse('2026-07-28T03:30:00.000Z');
+    await scanAndDrain(service);
+    // Due score = bucketEnd(11:31 CST = 03:31:00Z) + grace(5s) + terminalGrace(60s)
+    //            = 03:32:05Z.
+    expect(harness.chain.zadd).toHaveBeenCalledWith(
+      expect.stringContaining('20260728:candle:1m:due'),
+      Date.parse('2026-07-28T03:32:05.000Z'),
+      expect.stringContaining('1:tdx:'),
+    );
+  });
+
+  it('keeps a normal bucket at the plain grace without terminal extension', async () => {
+    const harness = makeRedisHarness();
+    const clockMs = Date.parse('2026-07-28T01:30:00.000Z'); // 09:30:00 CST
+    const allowlist = {
+      list: jest.fn((source: DataSource) =>
+        source === DataSource.TDX
+          ? [{ securityId: 1, formatCode: '600030.SH' }]
+          : [],
+      ),
+    } as any;
+    const service = new RealtimeMarketDataProductService(
+      makeConfig('shadow', { REALTIME_CANDLE_TERMINAL_GRACE_MS: 60000 }),
+      { now: () => clockMs } as any,
+      harness.redis,
+      new OpenCandleAggregator(),
+      { seal: jest.fn(), discardDue: jest.fn() } as any,
+      allowlist,
+    );
+
+    await scanAndDrain(service);
+    // Due score = bucketEnd(09:31 CST = 01:31:00Z) + grace(5s) = 01:31:05Z.
+    expect(harness.chain.zadd).toHaveBeenCalledWith(
+      expect.stringContaining('20260728:candle:1m:due'),
+      Date.parse('2026-07-28T01:31:05.000Z'),
+      expect.stringContaining('1:tdx:'),
+    );
   });
 });
