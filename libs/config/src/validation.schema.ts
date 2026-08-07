@@ -44,6 +44,33 @@ export const appEnvSchema = Joi.object({
 export const mistEnvSchema = commonEnvSchema
   .append({
     PORT: Joi.number().port().default(8001),
+    // Mock mode (MIST_MOCK_MODE=true) starts without MySQL: the mysql_server_*
+    // variables become optional. Production (unset/false) keeps them required.
+    MIST_MOCK_MODE: Joi.valid('true', 'false')
+      .default('false')
+      .description(
+        'true=start backend without MySQL (mock mode); unset/false=production behavior',
+      ),
+    mysql_server_host: Joi.string().hostname().when('MIST_MOCK_MODE', {
+      is: 'true',
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
+    mysql_server_username: Joi.string().when('MIST_MOCK_MODE', {
+      is: 'true',
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
+    mysql_server_password: Joi.string().when('MIST_MOCK_MODE', {
+      is: 'true',
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
+    mysql_server_database: Joi.string().when('MIST_MOCK_MODE', {
+      is: 'true',
+      then: Joi.optional(),
+      otherwise: Joi.required(),
+    }),
     redis_server_host: Joi.string().hostname().default('localhost'),
     redis_server_port: Joi.number().port().default(6379),
     redis_server_db: Joi.number().default(0),
@@ -300,6 +327,16 @@ export const backtestEnvSchema = commonEnvSchema
   }, 'backtest listener port relationship');
 
 export type RealtimeStrategyMode = 'off' | 'shadow' | 'on';
+
+/**
+ * Mock mode reads the same env the schema validates; single source of truth.
+ * MIST_MOCK_MODE=true starts the backend without MySQL and without the
+ * business modules (chan/schedule/strategy/backtest/collector), keeping only
+ * the realtime chain for local mock verification.
+ */
+export function isMockMode(): boolean {
+  return process.env.MIST_MOCK_MODE === 'true';
+}
 
 export function resolveRealtimeStrategyMode(
   value: string | undefined,

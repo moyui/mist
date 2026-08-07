@@ -1,4 +1,5 @@
 import {
+  mockModeModulesForMode,
   qmtRealtimeModulesForMode,
   tdxRealtimeModulesForMode,
 } from './app.module';
@@ -38,5 +39,23 @@ describe('QMT realtime mode module matrix', () => {
     expect(() => qmtRealtimeModulesForMode('legacy')).toThrow(
       'Unsupported QMT_REALTIME_MODE',
     );
+  });
+});
+
+describe('mock mode module matrix', () => {
+  it('omits TypeORM and all business modules in mock mode', () => {
+    expect(mockModeModulesForMode(true)).toEqual([]);
+  });
+
+  it('keeps TypeORM root + 6 business modules in production mode', () => {
+    const modules = mockModeModulesForMode(false);
+
+    expect(modules).toHaveLength(7);
+    // First entry is the TypeORM forRootAsync dynamic module (object with
+    // a module class); the rest are business module classes (functions).
+    expect(typeof modules[0]).toBe('object');
+    for (const module of modules.slice(1)) {
+      expect(typeof module).toBe('function');
+    }
   });
 });
