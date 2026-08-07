@@ -43,25 +43,47 @@
 > - mock 是链路验证工具，不是日常取数据/开发环境——仅用于验证指标语义，不做数据源、不做开发用途。
 > - 详细代码级计划：`implementation-plan-phase2.md`（v4）。
 
-- [ ] 3.1 `tools/mock-env/run-mock.sh`：编排（前置检查 → redis 容器 → datasource 双进程
-      `uv run uvicorn` 9001/9002 → backend `pnpm start:debug` MIST_MOCK_MODE=true →
-      exporter `go run` → 等健康）+ `tools/mock-env/stop-mock.sh`（pidfile 杀进程 + docker rm redis）。
-- [ ] 3.2 `tools/mock-env/.env.mock`：MIST_MOCK_MODE=true、
+- [x] 3.1 `tools/mock-env/run-mock.sh`：编排（前置检查 → redis 容器（7.4-alpine + AOF）→
+      datasource 双进程 `uv run uvicorn` 9001/9002 → backend `pnpm start:dev` MIST_MOCK_MODE=true →
+      exporter `go run` → 等健康）+ `tools/mock-env/stop-mock.sh`（**递归杀进程树**，pnpm 子进程链）。
+- [x] 3.2 `tools/mock-env/.env.mock`：MIST_MOCK_MODE=true、
       MIST_REALTIME_REDIS_URL=redis://127.0.0.1:6379/0、REALTIME_PRODUCTIZATION_MODE=shadow、
-      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on、REALTIME_STRATEGY_MODE=off、
-      TDX_REALTIME_MODE=builtin、QMT_REALTIME_MODE=builtin、TDX/QMT allowlist 空。
-- [ ] 3.3 `tools/mock-env/mock-drive.py`：注入器（扮演终端）——TDX：bridge owner→poll→result→
-      snapshot（capturedAt 动态生成，暂停/恢复可控）；QMT：bridge owner→subscriptions
-      poll/result→snapshot。fixture 只读引用 `tests/fixtures/tdx/live_market_snapshot_600519.json` +
+      **REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=off**、REALTIME_STRATEGY_MODE=off、
+      TDX_REALTIME_MODE=builtin、QMT_REALTIME_MODE=builtin、
+      **TDX_REALTIME_ALLOWLIST=600519.SH、QMT_REALTIME_ALLOWLIST=300502.SZ**（Step H 后非空）。
+- [x] 3.3 `tools/mock-env/mock-drive.py`：注入器（扮演终端）——TDX：bridge owner→poll→result→
+      snapshot（capturedAt 动态生成，暂停/恢复可控）；QMT：**探测式**（订阅已存在直接推帧）+
+      subscriptions poll/result→snapshot；**TDX eventTime 取 capturedAt，QMT 取 native.timetag
+      （注入器同步改写）**。fixture 只读引用 `tests/fixtures/tdx/live_market_snapshot_600519.json` +
       `tests/fixtures/realtime/realtime-native-frame-v2.json`（qmtOneEntry）。
-- [ ] 3.4 `tools/mock-env/config.monitoring.yaml`：exporter 配置（target 127.0.0.1 三目标：
-      backend candle health + tdx datasource + qmt datasource）。
-- [ ] 3.5 `tools/mock-env/mock-verify.sh`：**全链路验证**（datasource→backend→candle 封存→
-      exporter 指标）链路级断言（sealed 增长 / 暂停→discard 增长 / 恢复→自愈）。
+- [x] 3.4 `tools/mock-env/config.monitoring.yaml`：exporter 配置（target 127.0.0.1 四目标：
+      backend hello + candle health + tdx datasource + qmt datasource）。
+- [x] 3.5 `tools/mock-env/mock-verify.sh`：**两态链路验证**——帧持续到达（24/7）+ 聚合候选 +
+      sealed 增长（交易时段 due 到期自动断言）；macOS 系统代理绕过。
       **具体指标断言矩阵待指标梳理完成后再定**（第二个独立计划），本阶段只锁链路级断言。
-- [ ] 3.6 `tools/mock-env/README.md`：使用说明（前置依赖/启动/drive/verify/调试/清理）。
-- [ ] 3.7 跑通闭环：注入→sealed 增长→链路断言全绿→暂停→discard 增长→恢复→自愈。
-- [ ] 3.8 双源验证：TDX（600519.SH）+ QMT（300502.SZ）都注入一轮。
+- [x] 3.6 `tools/mock-env/README.md`：使用说明（前置依赖/启动/drive/verify/调试/清理/
+      **注入时间语义/已知事项（exporter 契约漂移）**）。
+- [x] 3.7 跑通闭环：**聚合层全链路已验证**（注入→backend 收帧→聚合候选，双源）；
+      **sealed 增长/暂停→discard/恢复→自愈 留交易时段 HIL**（due 是墙钟驱动）。
+- [x] 3.8 双源验证：TDX（600519.SH）+ QMT（300502.SZ）都注入一轮且聚合成功。
+
+## 5. Step H：mock 模式订阅驱动（2026-08-08 用户拍板：lifecycle=off + env allowlist 内存解析）
+
+> 背景（代码实证）：mock 模式跳过 RealtimeSubscriptionModule → coordinator（生产唯一
+> sync 调用者）不加载 → backend 不发 sync_subscriptions → datasource 广播不推给 backend，
+> candle 链路在入口断。用户拍板：**订阅不模拟**（终端/收敛/desired 是真机行为），
+> 订阅走真实机制（allowlist env 内存解析 + backend 真实 sync），mock 只注入上游数据。
+
+- [x] 5.1 `realtime-security-allowlist.service.ts`：`initialize()` 加 mock 分支——`isMockMode()`
+      时 env 非空直接内存构造 `{formatCode, securityId: 1}`（不查库，无视 lifecycle）。
+- [x] 5.2 `sources/{tdx,qmt}/realtime/realtime.client.ts`：`handleReady()` 末尾 mock 分支——
+      `syncSubscriptions(allowlist.entriesList formatCodes)`（生产 coordinator 同机制，重连幂等）。
+- [x] 5.3 `.env.mock`：lifecycle=off + TDX/QMT allowlist 非空（Joi off+非空合法）。
+- [x] 5.4 `mock-drive.py`：删 WS sync 控制面（订阅由 backend 真实驱动），保留 bridge 推帧。
+- [x] 5.5 单测：schema off+allowlist 合法 / allowlist mock 分支（有/无 env，不查库）/
+      client mock ready 后 sync（tdx+qmt）、非 mock 不调。
+- [x] 5.6 校验：相关 spec 全绿 + typecheck + openspec validate --all --strict（68 项）。
+- [x] 5.7 实测：TDX/QMT 双源全链路打通（真实订阅→注入→聚合），`mock-verify.sh` 全绿。
 
 ## 4. 不做（明确边界）
 
