@@ -79,9 +79,15 @@
 
 - [x] 7.1 `[mist/mist-monitoring/mist-deploy]` 运行 unit、contract、lint、typecheck、
   `git diff --check` 与 OpenSpec strict validation。
-- [ ] 7.2 `[operator]` 交易时段 HIL 验证：Redis AOF restart 瞬时失败后 health 回 OK——
+- [x] 7.2 `[operator]` 交易时段 HIL 验证：Redis AOF restart 瞬时失败后 health 回 OK——
   窗口起算点是**最后一次失败时间戳**（restart 动作本身会刷新 scanFailure 时间戳），需等
   restart 完成、scanner 恢复（sealed 增长）后，最后一次失败的时间戳窗口过后才回 OK。
   sealed/discard 数据与 Redis key 不变；`mist_realtime_candle_health` 窗口期内 0、过后回 1。
-- [ ] 7.3 `[operator]` 本 change 发布后，若观测表明窗口默认值不合理，另建 reviewed
+  ——2026-08-07 PASSED（run 31149178628）：AOF restart 触发 recovery_gap（13:02:19，无
+  due_scan 失败，not-observed 记录）→ 窗口内 degraded → 13:07:19 窗口过后自动回 OK
+  （13:10 实测 status=ok）；双 restart hash 保留、digest 6 表 SAME。见
+  `evidence/2026-08-07-aof-restart-window-hil.md`。
+- [x] 7.3 `[operator]` 本 change 发布后，若观测表明窗口默认值不合理，另建 reviewed
   OpenSpec delta 调整，不在本 change 中反复修改生产语义。
+  ——2026-08-07 首个观测：默认 300000ms 合理（restart 期间 degraded、窗口过后准时恢复，
+  无频繁闪动/无掩盖），无需另建 delta；持续观察并入监控 follow-up 线程。
