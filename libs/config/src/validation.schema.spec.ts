@@ -1,4 +1,8 @@
-import { backtestEnvSchema, mistEnvSchema } from './validation.schema';
+import {
+  backtestEnvSchema,
+  isMockMode,
+  mistEnvSchema,
+} from './validation.schema';
 
 const baseEnv = {
   mysql_server_host: 'localhost',
@@ -195,5 +199,89 @@ describe('mistEnvSchema backtest client defaults', () => {
     expect(value.BACKTEST_RPC_HOST).toBe('127.0.0.1');
     expect(value.BACKTEST_HEALTH_URL).toBe('http://127.0.0.1:8004/health');
     expect(value.BACKTEST_COMMAND_TIMEOUT_MS).toBe(3_000);
+  });
+});
+
+describe('mistEnvSchema mock mode', () => {
+  it('accepts MIST_MOCK_MODE=true without any mysql_server_* variables', () => {
+    const { error, value } = mistEnvSchema.validate({
+      MIST_MOCK_MODE: 'true',
+    });
+    expect(error).toBeUndefined();
+    expect(value.MIST_MOCK_MODE).toBe('true');
+  });
+
+  it('accepts mock mode with mysql variables also present', () => {
+    const { error } = mistEnvSchema.validate({
+      ...baseEnv,
+      MIST_MOCK_MODE: 'true',
+    });
+    expect(error).toBeUndefined();
+  });
+
+  it('defaults MIST_MOCK_MODE to false when unset', () => {
+    const { error, value } = mistEnvSchema.validate(baseEnv);
+    expect(error).toBeUndefined();
+    expect(value.MIST_MOCK_MODE).toBe('false');
+  });
+
+  it('still requires mysql_server_* in production (MIST_MOCK_MODE unset)', () => {
+    const { error } = mistEnvSchema.validate({});
+    expect(error?.message).toContain('mysql_server_host');
+  });
+
+  it('rejects a non-boolean MIST_MOCK_MODE value', () => {
+    const { error } = mistEnvSchema.validate({
+      ...baseEnv,
+      MIST_MOCK_MODE: 'yes',
+    });
+    expect(error?.message).toContain('MIST_MOCK_MODE');
+  });
+
+  it('keeps queue-limit relationship check in mock mode', () => {
+    const { error } = mistEnvSchema.validate({
+      MIST_MOCK_MODE: 'true',
+      REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES: 32,
+      REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL: 16,
+    });
+    expect(error?.message).toContain(
+      'REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL must be greater than or equal to REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES',
+    );
+  });
+
+  it('keeps lifecycle-on/allowlist conflict check in mock mode', () => {
+    const { error } = mistEnvSchema.validate({
+      MIST_MOCK_MODE: 'true',
+      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
+      TDX_REALTIME_ALLOWLIST: '600030.SH',
+    });
+    expect(error?.message).toContain('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on');
+  });
+});
+
+describe('isMockMode', () => {
+  const original = process.env.MIST_MOCK_MODE;
+
+  afterEach(() => {
+    if (original === undefined) {
+      delete process.env.MIST_MOCK_MODE;
+    } else {
+      process.env.MIST_MOCK_MODE = original;
+    }
+  });
+
+  it('returns true when MIST_MOCK_MODE=true', () => {
+    process.env.MIST_MOCK_MODE = 'true';
+    expect(isMockMode()).toBe(true);
+  });
+
+  it('returns false when MIST_MOCK_MODE=false', () => {
+    process.env.MIST_MOCK_MODE = 'false';
+    expect(isMockMode()).toBe(false);
+  });
+
+  it('returns false when MIST_MOCK_MODE is unset', () => {
+    delete process.env.MIST_MOCK_MODE;
+    expect(isMockMode()).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import { SecuritySourceConfig } from '@app/shared-data';
+import type { Repository } from 'typeorm';
 import { RealtimeSnapshotIngressService } from './realtime-snapshot-ingress.service';
 import { RealtimeSecurityAllowlistService } from './realtime-security-allowlist.service';
 import { Clock } from './clock.service';
@@ -11,15 +12,33 @@ import { RealtimeMarketDataProductService } from './candle/realtime-market-data-
 import { RealtimeMarketObservabilityService } from './realtime-market-observability.service';
 import { RealtimeCandleDiagnosticController } from './candle/realtime-candle-diagnostic.controller';
 import { RealtimeCandleHealthService } from './candle/realtime-candle-health.service';
-import { resolveRealtimeStrategyMode } from '@app/config';
+import { isMockMode, resolveRealtimeStrategyMode } from '@app/config';
 import { RealtimeStrategyHandoffModule } from './strategy-trigger/realtime-strategy-handoff.module';
 import { RealtimeStrategyStartupCompensationService } from './strategy-trigger/realtime-strategy-startup-compensation.service';
 import { RealtimeStrategyHandoffObservabilityService } from './strategy-trigger/realtime-strategy-handoff-observability.service';
 
+/**
+ * Mock-mode in-memory SecuritySourceConfig repository. The allowlist service
+ * only queries the DB when a non-empty allowlist is configured with
+ * lifecycle=off (realtime-security-allowlist.service.ts:44-80); mock mode
+ * keeps allowlists empty so this is never invoked. Any unexpected query
+ * fails fast rather than silently returning an empty result.
+ *
+ * Declared before the @Module decorator so the providers array can reference
+ * it (decorators evaluate at module definition time).
+ */
+const mockSourceConfigRepository = {
+  createQueryBuilder: () => {
+    throw new Error(
+      'mock mode: allowlist database resolution is unavailable; keep TDX/QMT_REALTIME_ALLOWLIST empty',
+    );
+  },
+} as unknown as Repository<SecuritySourceConfig>;
+
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SecuritySourceConfig]),
+    ...realtimePersistenceModulesForMode(isMockMode()),
     ...realtimeStrategyHandoffModulesForMode(
       resolveRealtimeStrategyMode(process.env.REALTIME_STRATEGY_MODE),
     ),
@@ -37,6 +56,14 @@ import { RealtimeStrategyHandoffObservabilityService } from './strategy-trigger/
     RealtimeCandleHealthService,
     RealtimeStrategyStartupCompensationService,
     RealtimeStrategyHandoffObservabilityService,
+    ...(isMockMode()
+      ? [
+          {
+            provide: getRepositoryToken(SecuritySourceConfig),
+            useValue: mockSourceConfigRepository,
+          },
+        ]
+      : []),
   ],
   exports: [
     RealtimeSnapshotIngressService,
@@ -52,4 +79,13 @@ export function realtimeStrategyHandoffModulesForMode(
   mode: 'off' | 'shadow' | 'on',
 ) {
   return mode === 'off' ? [] : [RealtimeStrategyHandoffModule];
+}
+
+/**
+ * Modules that require the SecuritySourceConfig repository. Mock mode
+ * (MIST_MOCK_MODE=true) swaps the TypeORM forFeature for an in-memory stub;
+ * production keeps the real repository.
+ */
+export function realtimePersistenceModulesForMode(isMock: boolean) {
+  return isMock ? [] : [TypeOrmModule.forFeature([SecuritySourceConfig])];
 }
