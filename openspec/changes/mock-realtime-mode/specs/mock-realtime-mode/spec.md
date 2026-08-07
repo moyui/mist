@@ -29,6 +29,19 @@ conditional module expansion; it SHALL NOT introduce a second module class that 
 - **AND** the allowlist SHALL resolve from memory (empty when `TDX_REALTIME_ALLOWLIST` /
   `QMT_REALTIME_ALLOWLIST` are unset) without touching a database
 
+#### Scenario: Mock mode drives real subscriptions from the env allowlist
+
+- **WHEN** `MIST_MOCK_MODE=true` and `TDX_REALTIME_ALLOWLIST` / `QMT_REALTIME_ALLOWLIST`
+  contain formatCodes
+- **THEN** the allowlist SHALL resolve those formatCodes from memory with a stable
+  placeholder securityId (no database lookup, regardless of
+  `REALTIME_SUBSCRIPTION_LIFECYCLE_MODE`)
+- **AND** after the realtime WS transport becomes ready, the backend SHALL issue a real
+  `sync_subscriptions` for those formatCodes over the transport (the same mechanism the
+  lifecycle coordinator uses in production) so the datasource delivers frames for them
+- **AND** subscriptions SHALL NOT be simulated in any other way: no fake terminal,
+  convergence or desired-management logic runs inside the backend
+
 #### Scenario: Mock mode is opt-in and defaults off
 
 - **WHEN** `MIST_MOCK_MODE` is unset or not `"true"`

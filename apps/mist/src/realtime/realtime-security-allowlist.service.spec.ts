@@ -87,6 +87,50 @@ describe('RealtimeSecurityAllowlistService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('resolves env allowlist from memory in mock mode without a database lookup', async () => {
+    process.env.MIST_MOCK_MODE = 'true';
+    try {
+      const { repository } = repositoryReturning([]);
+      const service = new RealtimeSecurityAllowlistService(
+        new ConfigService({
+          TDX_REALTIME_ALLOWLIST: '600519.SH',
+          REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
+        }),
+        repository,
+      );
+
+      await service.initialize(DataSource.TDX, 'TDX_REALTIME_ALLOWLIST');
+
+      expect(service.isAuthorized(DataSource.TDX, '600519.SH')).toBe(true);
+      expect(service.isAuthorized(DataSource.TDX, '600519.sh')).toBe(false);
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+      expect(service.resolve(DataSource.TDX, '600519.SH')).toEqual({
+        formatCode: '600519.SH',
+        securityId: 1,
+      });
+    } finally {
+      delete process.env.MIST_MOCK_MODE;
+    }
+  });
+
+  it('keeps the allowlist empty in mock mode when env is unset', async () => {
+    process.env.MIST_MOCK_MODE = 'true';
+    try {
+      const { repository } = repositoryReturning([]);
+      const service = new RealtimeSecurityAllowlistService(
+        new ConfigService({ TDX_REALTIME_ALLOWLIST: '' }),
+        repository,
+      );
+
+      await service.initialize(DataSource.TDX, 'TDX_REALTIME_ALLOWLIST');
+
+      expect(service.isAuthorized(DataSource.TDX, '600519.SH')).toBe(false);
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.MIST_MOCK_MODE;
+    }
+  });
+
   it('starts empty in lifecycle on mode and separates assigned control from effective ingress', async () => {
     const { repository } = repositoryReturning([]);
     const service = new RealtimeSecurityAllowlistService(

@@ -117,6 +117,16 @@ describe('mistEnvSchema data source configuration', () => {
     }
   });
 
+  it('accepts lifecycle off with non-empty legacy allowlists', () => {
+    const accepted = mistEnvSchema.validate({
+      ...baseEnv,
+      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'off',
+      TDX_REALTIME_ALLOWLIST: '600519.SH',
+      QMT_REALTIME_ALLOWLIST: '300502.SZ',
+    });
+    expect(accepted.error).toBeUndefined();
+  });
+
   it('rejects unsupported lifecycle modes', () => {
     const { error } = mistEnvSchema.validate({
       ...baseEnv,

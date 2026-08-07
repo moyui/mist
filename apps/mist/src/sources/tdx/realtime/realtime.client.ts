@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from '@app/shared-data';
+import { isMockMode } from '@app/config';
 import WebSocket from 'ws';
 import {
   decodeRealtimeNativeMapMessage,
@@ -283,6 +284,13 @@ export class TdxRealtimeClient
       DataSource.TDX,
       this.connectionId,
     );
+    if (isMockMode()) {
+      // No coordinator module in mock mode; drive real subscriptions directly
+      // from the env allowlist once the transport is ready.
+      void this.syncSubscriptions(
+        this.allowlist.entriesList.map((entry) => entry.formatCode),
+      );
+    }
   }
 
   private handleSnapshot(message: Record<string, unknown>): void {

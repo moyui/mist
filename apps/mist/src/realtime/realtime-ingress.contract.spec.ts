@@ -80,6 +80,78 @@ describe('formal realtime schema-v2 ingress contract', () => {
     expect(ingress.readSeries(8, 'qmt')).toBe(qmt);
   });
 
+  it.each(['tdx', 'qmt'] as const)(
+    'drives real subscriptions from env allowlist after ready in mock mode',
+    (provider) => {
+      process.env.MIST_MOCK_MODE = 'true';
+      try {
+        const store =
+          provider === 'tdx' ? new TdxRealtimeStore() : new QmtRealtimeStore();
+        const ingress = new RealtimeSnapshotIngressService();
+        const client =
+          provider === 'tdx'
+            ? new TdxRealtimeClient(
+                new ConfigService({ TDX_BASE_URL: 'http://127.0.0.1:9001' }),
+                store as TdxRealtimeStore,
+                resolver({ '600519.SH': 600519 }) as never,
+                undefined,
+                ingress,
+              )
+            : new QmtRealtimeClient(
+                new ConfigService({ QMT_BASE_URL: 'http://127.0.0.1:9002' }),
+                store as QmtRealtimeStore,
+                resolver({ '300502.SZ': 300502 }) as never,
+                undefined,
+                ingress,
+              );
+        const syncSpy = jest
+          .spyOn(client, 'syncSubscriptions')
+          .mockResolvedValue(undefined as never);
+
+        emit(client, ready(provider));
+
+        expect(syncSpy).toHaveBeenCalledTimes(1);
+        expect(syncSpy).toHaveBeenCalledWith(
+          provider === 'tdx' ? ['600519.SH'] : ['300502.SZ'],
+        );
+      } finally {
+        delete process.env.MIST_MOCK_MODE;
+      }
+    },
+  );
+
+  it.each(['tdx', 'qmt'] as const)(
+    'does not drive subscriptions from allowlist after ready outside mock mode',
+    (provider) => {
+      const store =
+        provider === 'tdx' ? new TdxRealtimeStore() : new QmtRealtimeStore();
+      const ingress = new RealtimeSnapshotIngressService();
+      const client =
+        provider === 'tdx'
+          ? new TdxRealtimeClient(
+              new ConfigService({ TDX_BASE_URL: 'http://127.0.0.1:9001' }),
+              store as TdxRealtimeStore,
+              resolver({ '600519.SH': 600519 }) as never,
+              undefined,
+              ingress,
+            )
+          : new QmtRealtimeClient(
+              new ConfigService({ QMT_BASE_URL: 'http://127.0.0.1:9002' }),
+              store as QmtRealtimeStore,
+              resolver({ '300502.SZ': 300502 }) as never,
+              undefined,
+              ingress,
+            );
+      const syncSpy = jest
+        .spyOn(client, 'syncSubscriptions')
+        .mockResolvedValue(undefined as never);
+
+      emit(client, ready(provider));
+
+      expect(syncSpy).not.toHaveBeenCalled();
+    },
+  );
+
   it('funnels a TDX one-entry native map through the common ingress', () => {
     const store = new TdxRealtimeStore();
     const ingress = new RealtimeSnapshotIngressService();

@@ -507,14 +507,12 @@ git diff --check
 
 ## Step G：Phase 2 mock 环境（实施计划确认后、spec 确认后再动）
 
-按资产拆分落位（用户已拍板）：
-- `tools/run-mock.sh` + `tools/stop-mock.sh` + `tools/mock-drive.py` + `tools/mock-verify.sh`
-- `test/fixtures/mock/.env.mock` + `test/fixtures/mock/config.monitoring.yaml`
-- `deploy/docker/docker-compose.mock.yml`
-- package.json 挂 `"mock:start": "bash tools/run-mock.sh"`、`"mock:stop"`
+> 已更新为 **v4 落位（2026-08-07 用户拍板）**：工具集整体放 **mist-datasource 仓
+> `tools/mock-env/`**，全本机形态（三仓本机进程 + redis 单容器），无 compose、无镜像 build、
+> mist/package.json 不加 mock scripts。详细代码级计划见 `implementation-plan-phase2.md`（v4）。
 
-**G 的详细代码级计划在 Phase 2 开始前单独补充**（涉及 datasource bridge 调用序列、
-exporter 配置、验证矩阵，属另一轮实施计划细化）。
+（v2 旧落位已废弃：`tools/` + `test/fixtures/mock/` + `deploy/docker/docker-compose.mock.yml` +
+npm scripts 方案不再使用。）
 
 ---
 
@@ -526,3 +524,97 @@ exporter 配置、验证矩阵，属另一轮实施计划细化）。
 | `jest.resetModules()` 导致 Nest 单例问题 | 改用独立 spec 文件方案（D3 已备选）|
 | TypeORM 配置搬入函数后行为变化 | 原样搬（entities/poolSize/connectorPackage 全保留），`mockModeModulesForMode(false)` 与现状等价的验证靠 app.module.spec 的"7 个模块"断言 |
 | 覆盖率阈值（lines 82.72）| 新增代码行被新增单测覆盖；若 mock 分支拉低覆盖率，评估补用例（如 isMockMode 三态）|
+
+---
+
+## Step H：mock 模式订阅驱动（2026-08-08 用户拍板：lifecycle=off + env allowlist 内存解析）
+
+> **背景（代码实证）**：mock 模式跳过 RealtimeSubscriptionModule → coordinator（生产唯一
+> sync 调用者）不加载 → 无论 lifecycle on/off，backend 都不发 sync_subscriptions →
+> datasource 广播只推给订阅者 → backend 收不到帧，candle 链路在入口断。
+> **方向（用户拍板）**：订阅不模拟（终端/收敛/desired 管理都是真机行为）；mock 只注入
+> 上游数据。订阅走真实机制：allowlist env 内存解析（不查库）+ backend 真实 sync。
+> spec 场景「Mock mode drives real subscriptions from the env allowlist」已扩展。
+
+### H1 `apps/mist/src/realtime/realtime-security-allowlist.service.ts`
+
+`initialize()` 顶部（`assignedEntries.has` 检查之后、lifecycle 短路之前）加 mock 分支：
+
+```ts
+if (isMockMode()) {
+  // Mock mode has no coordinator module and no database; the env allowlist is
+  // the sole subscription source and resolves from memory with a stable
+  // placeholder securityId (never a DB lookup). REALTIME_SUBSCRIPTION_LIFECYCLE_MODE
+  // is ignored: the coordinator (the on-mode authority) is not loaded.
+  const resolved = new Map<string, RealtimeAllowlistEntry>();
+  for (const formatCode of this.parse(environmentName)) {
+    resolved.set(formatCode, { formatCode, securityId: 1 });
+  }
+  this.assignedEntries.set(source, resolved);
+  this.effectiveEntries.set(source, new Map(resolved));
+  return;
+}
+```
+
+- `isMockMode` 从 `@app/config` import（与 app.module 同源）
+- `parse()` 复用（去重/上限 5 的校验保留）
+- `securityId: 1` 稳定占位：mock 分支不查库、不做 TDX/QMT 冲突检查；下游
+  `replaceAssigned/replaceEffective` 只按同 securityId 过滤，同源无影响
+
+### H2 `apps/mist/src/sources/tdx/realtime/realtime.client.ts` + qmt 同款
+
+`handleReady()` 末尾加 mock 分支（TDX 与 QMT 各一份，内容相同）：
+
+```ts
+if (isMockMode()) {
+  // No coordinator module in mock mode; drive real subscriptions directly
+  // from the env allowlist once the transport is ready.
+  void this.syncSubscriptions(
+    this.allowlist.entriesList.map((entry) => entry.formatCode),
+  );
+}
+```
+
+- `syncSubscriptions(symbols)` 是 client 已实现的真实控制面方法（发帧 + 等 ack + 超时）
+- `entriesList` getter 在 resolver 已有（`shared.list()` → effectiveEntries，mock 分支里
+  与 assigned 同源）
+- 重连 → 每次 ready 都 sync：幂等，与生产 coordinator 的 accepted_ready reset 同语义
+
+### H3 `mist-datasource/tools/mock-env/.env.mock`
+
+```
+REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=off
+TDX_REALTIME_ALLOWLIST=600519.SH
+QMT_REALTIME_ALLOWLIST=300502.SZ
+```
+
+- lifecycle=off：与 env allowlist 共存合法（Joi 冲突校验只禁 on+非空）
+- 生产 mock 语义：订阅完全由 env 静态声明，coordinator 的 ACTIVE 权威不参与
+
+### H4 `mist-datasource/tools/mock-env/mock-drive.py`
+
+- 删除 `ws_sync_subscriptions()` + `threading` import + TDX/QMT 的调用
+  （订阅由 backend 真实 sync 驱动，注入器不再碰控制面）
+- 保留 bridge owner→poll→result→snapshot（datasource 收帧的必经协议，
+  是「推数据」通道，不是模拟订阅）；`tdx_converge` 的 desired>=1 循环保留
+  （等 backend sync 落地后 desired 非空再收敛）
+
+### H5 单测
+
+| 文件 | 用例 |
+|---|---|
+| `validation.schema.spec.ts` | lifecycle=off + TDX/QMT allowlist 非空通过（Joi 合法组合）|
+| allowlist service spec（新增或并入现有）| mock 分支：env 非空 → 内存条目（securityId=1，无 DB）；env 空 → 空 map |
+| tdx/qmt client spec | mock 模式 ready 后调用 syncSubscriptions(env 符号)；非 mock 不调 |
+
+### H6 校验
+
+`pnpm test` / `pnpm typecheck` / `openspec validate --all --strict` 全绿。
+
+### 风险
+
+| 风险 | 应对 |
+|---|---|
+| securityId=1 占位被下游当真 | mock 分支注释明示；mock 链路（聚合/封存）只用 formatCode，不触 securityId 语义 |
+| client ready 后 sync 与注入器收敛竞争 | 注入器 poll 循环等待 desired>=1（已实现）；sync 幂等 |
+| mock 分支覆盖拉低覆盖率阈值 | 新增单测覆盖 mock 分支行 |

@@ -42,9 +42,11 @@ None.
   `apps/mist/src/app.module.ts`（mockModeModulesForMode + spec）、
   `apps/mist/src/realtime/realtime-ingress.module.ts`（realtimePersistenceModulesForMode + 内存 allowlist）、
   `apps/mist/src/main.ts`（零改动——mock 与否由 env 决定，与 tdxRealtimeModulesForMode 同模式）。
-  Phase 2（按资产拆分）：`tools/run-mock.sh` + `tools/mock-drive.py` + `tools/mock-verify.sh` +
-  `test/fixtures/mock/`（.env.mock + config.monitoring.yaml）+ `deploy/docker/docker-compose.mock.yml`。
-- **mist-monitoring / mist-deploy / mist-datasource**：零改动（mock 环境只做链路验证，
+- **mist-datasource**：Phase 2 mock 环境落于此仓——`tools/mock-env/`（run-mock.sh /
+  stop-mock.sh / mock-drive.py / mock-verify.sh / .env.mock / config.monitoring.yaml / README.md），
+  纯新增文件、零代码改动。全本机形态（三仓本机进程 + redis 单容器），无 compose、无镜像 build；
+  注入器扮演终端经 bridge HTTP 推真实 fixture（tests/fixtures/ 只读引用）。
+- **mist-monitoring / mist-deploy**：零改动（mock 环境只做链路验证，
   不是日常取数据/开发方式；指标断言矩阵待指标梳理计划完成后再定）。
 
 ## Dependencies

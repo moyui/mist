@@ -32,33 +32,36 @@
 - [x] 2.4 `openspec validate --all --strict` 通过（不破坏现有 specs）。
 - [x] 2.5 `git diff --check` 无 whitespace 问题。
 
-## 3. Phase 2：mock 环境（mist 仓，按资产类型拆分落位）
+## 3. Phase 2：mock 环境（mist-datasource 仓 tools/mock-env/，全本机 + redis 单容器）
 
-> 落位用户拍板（调研 NestJS 官方 + 本地三仓惯例）：**可执行脚本与数据资产分离**。
-> - 脚本（run-mock.sh / mock-drive.py / mock-verify.sh）→ `tools/`（与 test-docker-runtime.sh 同类，
->   可挂 npm scripts）
-> - 配置/帧数据（config.monitoring.yaml / .env.mock）→ `test/fixtures/mock/`（新建自有子目录，
->   不碰只读契约资产 test/fixtures/realtime/）
-> - compose → `deploy/docker/docker-compose.mock.yml`
-> **mock 是链路验证工具，不是日常取数据/开发环境**——仅用于验证指标语义，不做数据源、不做开发用途。
+> v4 落位（用户逐项拍板 2026-08-07）：
+> - **工具集整体放 mist-datasource 仓 `tools/mock-env/`**——注入器全部调用对象是 datasource
+>   bridge 路由、fixture 在 tests/fixtures/ 本地、与现有 tools/qmt_runtime_probe 结构一致。
+> - **全本机形态**：三仓（datasource/backend/monitoring）本机进程，仅 redis 一个 docker 容器，
+>   无镜像 build、无 compose——三仓都可热重载/断点调试。
+> - **mist/package.json 不加 mock scripts**（启动入口在 datasource 仓）。
+> - mock 是链路验证工具，不是日常取数据/开发环境——仅用于验证指标语义，不做数据源、不做开发用途。
+> - 详细代码级计划：`implementation-plan-phase2.md`（v4）。
 
-- [ ] 3.1 `deploy/docker/docker-compose.mock.yml`：redis 容器（redis:7-alpine）+ 可选 datasource 容器
-      （第一轮 TDX 单源；也可本机 uv 进程，二选一以资源最省为准）。
-- [ ] 3.2 `test/fixtures/mock/.env.mock`：MIST_MOCK_MODE=true、
+- [ ] 3.1 `tools/mock-env/run-mock.sh`：编排（前置检查 → redis 容器 → datasource 双进程
+      `uv run uvicorn` 9001/9002 → backend `pnpm start:debug` MIST_MOCK_MODE=true →
+      exporter `go run` → 等健康）+ `tools/mock-env/stop-mock.sh`（pidfile 杀进程 + docker rm redis）。
+- [ ] 3.2 `tools/mock-env/.env.mock`：MIST_MOCK_MODE=true、
       MIST_REALTIME_REDIS_URL=redis://127.0.0.1:6379/0、REALTIME_PRODUCTIZATION_MODE=shadow、
-      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on、TDX_REALTIME_MODE=builtin、QMT_REALTIME_MODE=off
-      （第一轮）、REALTIME_STRATEGY_MODE=off。
-- [ ] 3.3 `tools/run-mock.sh`（起 redis → 本机跑 backend MIST_MOCK_MODE=true → 本机/容器跑
-      datasource → 本机跑 exporter）+ `tools/stop-mock.sh` + `test/fixtures/mock/config.monitoring.yaml`
-      （target 地址 127.0.0.1）。挂 npm scripts（`"mock:start"` / `"mock:stop"`）。
-- [ ] 3.4 `tools/mock-drive.py`：bridge owner 注册→收敛→POST snapshot（capturedAt 参数化、
-      暂停/恢复可控），native 值取自 `test/fixtures/realtime/realtime-native-frame-v2.json`（只读引用）。
-- [ ] 3.5 `tools/mock-verify.sh`：**全链路验证**（datasource→backend→candle 封存→exporter 指标）
-      的链路跑通断言（sealed 增长 / 暂停→discard 增长 / 恢复→自愈）。
+      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on、REALTIME_STRATEGY_MODE=off、
+      TDX_REALTIME_MODE=builtin、QMT_REALTIME_MODE=builtin、TDX/QMT allowlist 空。
+- [ ] 3.3 `tools/mock-env/mock-drive.py`：注入器（扮演终端）——TDX：bridge owner→poll→result→
+      snapshot（capturedAt 动态生成，暂停/恢复可控）；QMT：bridge owner→subscriptions
+      poll/result→snapshot。fixture 只读引用 `tests/fixtures/tdx/live_market_snapshot_600519.json` +
+      `tests/fixtures/realtime/realtime-native-frame-v2.json`（qmtOneEntry）。
+- [ ] 3.4 `tools/mock-env/config.monitoring.yaml`：exporter 配置（target 127.0.0.1 三目标：
+      backend candle health + tdx datasource + qmt datasource）。
+- [ ] 3.5 `tools/mock-env/mock-verify.sh`：**全链路验证**（datasource→backend→candle 封存→
+      exporter 指标）链路级断言（sealed 增长 / 暂停→discard 增长 / 恢复→自愈）。
       **具体指标断言矩阵待指标梳理完成后再定**（第二个独立计划），本阶段只锁链路级断言。
-- [ ] 3.6 跑通闭环：注入→sealed 增长→链路断言全绿→暂停→discard 增长→恢复→自愈。
-- [ ] 3.7 QMT 第二轮：QMT_REALTIME_MODE=builtin + qmt bridge 订阅序列
-      （复用 fixture qmtOneEntry）。
+- [ ] 3.6 `tools/mock-env/README.md`：使用说明（前置依赖/启动/drive/verify/调试/清理）。
+- [ ] 3.7 跑通闭环：注入→sealed 增长→链路断言全绿→暂停→discard 增长→恢复→自愈。
+- [ ] 3.8 双源验证：TDX（600519.SH）+ QMT（300502.SZ）都注入一轮。
 
 ## 4. 不做（明确边界）
 
@@ -69,4 +72,5 @@
 - [ ] ~~signal shadow 评估~~（需要 mysql 策略表 + registry seed，第二轮扩展）
 - [ ] ~~A2 指标 / 指标 rename~~（第二个独立计划）
 - [ ] ~~动 Windows/生产配置~~（mock 纯本地 macOS）
-- [ ] ~~改 monitoring/datasource/deploy 代码~~（mock 环境脚本在 mist 仓但零代码改动）
+- [ ] ~~改 monitoring/datasource/deploy 代码~~（mock 环境工具在 mist-datasource 仓
+      tools/mock-env/，纯新增文件、零代码改动）

@@ -8,6 +8,7 @@ import {
   SecurityStatus,
   SecurityType,
 } from '@app/shared-data';
+import { isMockMode } from '@app/config';
 import { Repository } from 'typeorm';
 
 export interface RealtimeAllowlistEntry {
@@ -42,6 +43,19 @@ export class RealtimeSecurityAllowlistService {
     environmentName: 'TDX_REALTIME_ALLOWLIST' | 'QMT_REALTIME_ALLOWLIST',
   ): Promise<void> {
     if (this.assignedEntries.has(source)) return;
+    if (isMockMode()) {
+      // Mock mode has no coordinator module and no database; the env allowlist
+      // is the sole subscription source and resolves from memory with a stable
+      // placeholder securityId (never a DB lookup). LIFECYCLE_MODE is ignored:
+      // the coordinator (the on-mode authority) is not loaded in mock mode.
+      const resolved = new Map<string, RealtimeAllowlistEntry>();
+      for (const formatCode of this.parse(environmentName)) {
+        resolved.set(formatCode, { formatCode, securityId: 1 });
+      }
+      this.assignedEntries.set(source, resolved);
+      this.effectiveEntries.set(source, new Map(resolved));
+      return;
+    }
     if (
       this.config.get<string>('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE') === 'on'
     ) {
