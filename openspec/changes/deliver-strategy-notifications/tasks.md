@@ -1,9 +1,13 @@
 ## 1. 后置启动门禁与现状审计
 
-- [ ] 1.1 确认 `run-realtime-strategy-evaluation` 已通过 shadow/on 集成门禁并真实产生可消费的 PENDING
+- [x] 1.1 确认 `run-realtime-strategy-evaluation` 已通过 shadow/on 集成门禁并真实产生可消费的 PENDING
   AlertEvent，Signal/context evidence shape 已由 HIL 固定，且项目负责人明确恢复本 change。该项完成前，
   1.2–5.4 全部暂停，不创建 notification 实施 worktree，不修改代码/schema/deploy/monitoring，不申请或
   接入生产渠道凭据；seeded fixture、旧 manual scan 或字段存在只能用于未来开发，不能满足恢复门禁。
+  ——2026-08-07 三条件全部满足：① on 门禁通过（on-HIL PASSED，strategy_signals=2 落库，evidence
+  `integration-20260806/evidence/2026-08-07-on-hil-65-2-passed.md`）；② **真实产生可消费 PENDING
+  AlertEvent=2**（strategy_alert_events 行数实证，audit run 31151313143）+ evidence shape 由
+  on-HIL 固定；③ owner 2026-08-07 明确恢复（勾选本任务即为恢复信号）。**1.2–5.4 解除暂停**。
 - [ ] 1.2 恢复后重新审计 AlertEvent/Signal schema、delivery APIs、stable specs、真实 producer evidence、
   notification worktree 和真实部署状态；尤其核对 stable Purpose 与
   `Schedule Shall Not Own Public Strategy APIs` 正文中的 schedule scan owner 遗留语义，不得把当前

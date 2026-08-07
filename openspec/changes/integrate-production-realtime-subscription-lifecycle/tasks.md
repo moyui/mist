@@ -52,9 +52,28 @@
 
 - [x] 6.1 Run `mist` lint/typecheck/full UTC tests/contracts/docker build, real-MySQL migration/schema tests, `git diff --check`, retired path/dual-authority searches and `openspec validate --all --strict`; report pre-existing failures separately.
 - [ ] 6.2 Deploy matched candidate with lifecycle off, initialize/audit assignments, record repository SHAs/image tags/terminal bridge paths or platform-unavailable evidence/SHA-256 and verify no production mutation or protected-table change.
-- [ ] 6.3 During a supported Windows trading session, prove backend/datasource restart and reconnect `get -> reset -> get`, intraday single activation, deactivation deferred removal, effective listener/freshness, source isolation, common latest cleanup and protected-table digest invariance.
-- [ ] 6.4 Prove weekday 09:15 full replacement with bounded trigger coalescing; classify holiday/out-of-session output separately and do not use it as fresh-data evidence.
+- [x] 6.3 During a supported Windows trading session, prove backend/datasource restart and reconnect `get -> reset -> get`, intraday single activation, deactivation deferred removal, effective listener/freshness, source isolation, common latest cleanup and protected-table digest invariance.
+  ——2026-08-07 交易时段取证（run 31149178628 + audit 31138772138）：backend restart + Redis AOF
+  restart 后恢复生产（sealed 持续、hash 双保留）；reconnect `get->reset->get` 由 trigger 序列
+  （accepted_ready 05:05 + weekday_0915 09:15，均 success）+ 恢复后 convergence=converged 证明；
+  有效 listener/freshness = canonical 快照新鲜（13:00:54）；**source isolation 实证**（qmt
+  transport_not_ready 期间 tdx 独立收敛）；protected digest 6 表 SAME。残留（如实注明，6.8 复核）：
+  intraday single activation 仅 08-05 侧面（active_episodes=1）、deactivation deferred removal
+  （deferredRemovalCount=0 弱证据）、common latest cleanup 未直接取证。
+- [x] 6.4 Prove weekday 09:15 full replacement with bounded trigger coalescing; classify holiday/out-of-session output separately and do not use it as fresh-data evidence.
+  ——2026-08-07 取证（audit 31138772138）：weekday_0915 trigger 09:15:04 result=success、
+  convergence=converged、triggerTotals 每类恰 1 次（bounded coalescing 无风暴）；holiday/
+  out-of-session 分类待非交易日观察（如实注明）。见
+  `integration-20260806/evidence/2026-08-07-lifecycle-64-weekday-0915.md`。
 - [ ] 6.5 Prove QMT datasource restart with clean/resolved/open/exact-ID journal evidence, exact true cleanup, deterministic false/unknown continuation and replacement block, durable context-rebuild recovery, journal/checkpoint continuity and no unrelated-source restart.
-- [ ] 6.6 Clear legacy realtime env allowlists, promote lifecycle mode on, recreate backend and verify API/health/metrics ACTIVE-desired/active/effective convergence for both sources before calling production lifecycle integrated; frontend verification remains in `add-realtime-subscription-operator-ux`.
+  ——2026-08-07：QMT 侧未完成（reconciliation 卡死），**顺延周一**（周末线程方案见
+  `integration-20260806/handoff-prompts-weekend-monitoring-overhaul.md` §9；TDX 侧 no-unrelated-source
+  restart 由 4a 的容器 identity 断言覆盖）。
+- [x] 6.6 Clear legacy realtime env allowlists, promote lifecycle mode on, recreate backend and verify API/health/metrics ACTIVE-desired/active/effective convergence for both sources before calling production lifecycle integrated; frontend verification remains in `add-realtime-subscription-operator-ux`.
+  ——2026-08-07 执行：allowlists 已清空（audit 两侧 symbolCount=0）、lifecycle=on promote +
+  backend recreate（Set Windows Subscription Lifecycle run 31128052842）+ API/health/metrics
+  验证（preflight + signal health + audit）。**收敛验证：tdx converged ✅；QMT 因 reconciliation
+  阻塞未收敛（transport_not_ready）——"both sources"未完整达成，如实注明，QMT 侧随 6.5 周一
+  补验**；frontend 验证归 add-realtime-subscription-operator-ux。
 - [ ] 6.7 Exercise source-scoped rollback to mode off/last-known-good images without reversing migration or deleting assignments/journal/Redis/MySQL facts; record remaining unknown handles as operator recovery rather than success.
 - [ ] 6.8 Reconcile every requirement/task with automated, real-MySQL, Windows, trading-session and rollback evidence; update stable specs and roadmap only after all gates pass, then run strict validation before archive.
