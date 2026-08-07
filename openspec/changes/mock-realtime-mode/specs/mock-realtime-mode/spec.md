@@ -42,6 +42,15 @@ conditional module expansion; it SHALL NOT introduce a second module class that 
 - **AND** subscriptions SHALL NOT be simulated in any other way: no fake terminal,
   convergence or desired-management logic runs inside the backend
 
+#### Scenario: Mock mode MAY shift the backend clock forward
+
+- **WHEN** `MIST_MOCK_MODE=true` and `MIST_MOCK_CLOCK_OFFSET_MS` is a positive integer
+- **THEN** the injected `Clock` SHALL report `Date.now() + offset` so that wall-clock-driven
+  logic (due admission, finalization cutoff, vwap consistency checks, relative TTL) advances
+  naturally while the host stays in real time
+- **AND** when `MIST_MOCK_CLOCK_OFFSET_MS` is unset or `0`, or mock mode is inactive,
+  the `Clock` SHALL report real wall-clock time (zero regression)
+
 #### Scenario: Mock mode is opt-in and defaults off
 
 - **WHEN** `MIST_MOCK_MODE` is unset or not `"true"`

@@ -31,4 +31,43 @@ describe('Clock', () => {
     expect(fake.now()).toBe(fixed);
     expect(fake.nowDate().getTime()).toBe(fixed);
   });
+
+  it('applies MIST_MOCK_CLOCK_OFFSET_MS in mock mode', () => {
+    process.env.MIST_MOCK_MODE = 'true';
+    process.env.MIST_MOCK_CLOCK_OFFSET_MS = '3600000';
+    try {
+      const clock = new Clock();
+      const before = Date.now();
+      const value = clock.now();
+      const after = Date.now();
+
+      expect(value).toBeGreaterThanOrEqual(before + 3_600_000);
+      expect(value).toBeLessThanOrEqual(after + 3_600_000);
+    } finally {
+      delete process.env.MIST_MOCK_MODE;
+      delete process.env.MIST_MOCK_CLOCK_OFFSET_MS;
+    }
+  });
+
+  it('keeps real wall-clock time when the offset is unset or zero', () => {
+    process.env.MIST_MOCK_MODE = 'true';
+    process.env.MIST_MOCK_CLOCK_OFFSET_MS = '0';
+    try {
+      const clock = new Clock();
+      expect(clock.now()).toBeLessThanOrEqual(Date.now());
+    } finally {
+      delete process.env.MIST_MOCK_MODE;
+      delete process.env.MIST_MOCK_CLOCK_OFFSET_MS;
+    }
+  });
+
+  it('ignores the offset outside mock mode', () => {
+    process.env.MIST_MOCK_CLOCK_OFFSET_MS = '3600000';
+    try {
+      const clock = new Clock();
+      expect(clock.now()).toBeLessThanOrEqual(Date.now());
+    } finally {
+      delete process.env.MIST_MOCK_CLOCK_OFFSET_MS;
+    }
+  });
 });
