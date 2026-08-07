@@ -90,7 +90,7 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
     `2026-08-05-backtest-real-data-hil.md` (TDX run 4), `2026-08-05-strategy-64-status.md`
     (QMT NaN-settle 502 root cause fixed at datasource boundary `68e411b` + backtest run 5;
     1/5/15/30/60 seams + listener memory in `9503f3a`).
-- [ ] 6.5 经项目负责人审核 shadow、protected-table 零写入、capacity 和 timestamp/quantity evidence 后
+- [x] 6.5 经项目负责人审核 shadow、protected-table 零写入、capacity 和 timestamp/quantity evidence 后
   才切 on；on HIL 必须验证 transaction、episode 与幂等，然后才能归档。
   - 2026-08-05 前置阻塞解除：enable 502 根因（`targetUniverse` 市场后缀 vs `Security.code`
     纯代码不匹配）经 `normalizeSecurityCode` 修复（`ef5710e`，signal registry 加载策略证明
@@ -102,5 +102,8 @@ incomplete bar、episode、persistence、health、capacity 和 shutdown 语义�
     `active_episodes=1`（策略 3：1m/300059/tdx close>0，14:42-14:44 CST），
     `strategy_signals=0` 保持 shadow 零写入。见
     `integration-20260806/evidence/2026-08-05-strategy-64-status.md`。
-  - 剩余：切 `REALTIME_STRATEGY_MODE=on` 后验证 transaction/episode/幂等（`strategy_signals`
-    落库、重复 trigger 不重复写），然后项目负责人审核 + 归档（2026-08-06 计划）。
+  - 2026-08-07 on-HIL 完成（owner 当口确认切 on，13:33 切 `REALTIME_STRATEGY_MODE=on`）：
+    transaction 验证 `strategy_signals=2` + `strategy_alert_events=2`（PENDING，事务原子写）、
+    episode 一致（activeEpisodeCount=2，suppress not-observed）、幂等（16 job → 2 写，
+    推断性）；owner 审核通过后归档。证据：
+    `integration-20260806/evidence/2026-08-07-on-hil-65-2-passed.md`。
