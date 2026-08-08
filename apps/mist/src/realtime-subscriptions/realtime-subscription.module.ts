@@ -7,7 +7,6 @@ import { RealtimeSubscriptionService } from './realtime-subscription.service';
 import { RealtimeSubscriptionRuntimeRegistry } from './realtime-subscription-runtime.registry';
 import { RealtimeSubscriptionLifecycleCoordinator } from './realtime-subscription-lifecycle.coordinator';
 import { RealtimeSubscriptionLifecycleObservationStore } from './realtime-subscription-lifecycle-observation.store';
-import { RealtimeSubscriptionLifecycleDiagnosticController } from './realtime-subscription-lifecycle-diagnostic.controller';
 
 @Global()
 @Module({
@@ -15,10 +14,7 @@ import { RealtimeSubscriptionLifecycleDiagnosticController } from './realtime-su
     TypeOrmModule.forFeature([RealtimeSubscriptionAssignment]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [
-    RealtimeSubscriptionController,
-    RealtimeSubscriptionLifecycleDiagnosticController,
-  ],
+  controllers: [RealtimeSubscriptionController],
   providers: [
     RealtimeSubscriptionService,
     RealtimeSubscriptionRuntimeRegistry,

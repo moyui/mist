@@ -14,7 +14,6 @@ import { Module } from '@nestjs/common';
 import { TdxRealtimeStore } from './realtime.store';
 import { TdxRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
 import { TdxRealtimeClient } from './realtime.client';
-import { TdxRealtimeDiagnosticController } from './realtime-diagnostic.controller';
 import { RealtimeIngressModule } from '../../../realtime/realtime-ingress.module';
 
 @Module({
@@ -26,6 +25,6 @@ import { RealtimeIngressModule } from '../../../realtime/realtime-ingress.module
     TdxRealtimeAllowlistResolver,
     TdxRealtimeClient,
   ],
-  controllers: [TdxRealtimeDiagnosticController],
+  controllers: [],
 })
 export class TdxRealtimeModule {}

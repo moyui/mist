@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { QmtRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
-import { QmtRealtimeDiagnosticController } from './realtime-diagnostic.controller';
 import { QmtRealtimeClient } from './realtime.client';
 import { QmtRealtimeStore } from './realtime.store';
 import { RealtimeIngressModule } from '../../../realtime/realtime-ingress.module';
@@ -12,6 +11,6 @@ import { RealtimeIngressModule } from '../../../realtime/realtime-ingress.module
     QmtRealtimeClient,
     QmtRealtimeStore,
   ],
-  controllers: [QmtRealtimeDiagnosticController],
+  controllers: [],
 })
 export class QmtRealtimeModule {}

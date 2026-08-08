@@ -10,7 +10,6 @@ import { OpenCandleAggregator } from './candle/open-candle-aggregator';
 import { CandleFinalizer } from './candle/candle-finalizer';
 import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
 import { RealtimeMarketObservabilityService } from './realtime-market-observability.service';
-import { RealtimeCandleDiagnosticController } from './candle/realtime-candle-diagnostic.controller';
 import { RealtimeCandleHealthService } from './candle/realtime-candle-health.service';
 import { isMockMode, resolveRealtimeStrategyMode } from '@app/config';
 import { RealtimeStrategyHandoffModule } from './strategy-trigger/realtime-strategy-handoff.module';
@@ -43,7 +42,7 @@ const mockSourceConfigRepository = {
       resolveRealtimeStrategyMode(process.env.REALTIME_STRATEGY_MODE),
     ),
   ],
-  controllers: [RealtimeCandleDiagnosticController],
+  controllers: [],
   providers: [
     RealtimeSnapshotIngressService,
     RealtimeSecurityAllowlistService,

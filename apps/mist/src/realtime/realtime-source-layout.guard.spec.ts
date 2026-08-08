@@ -10,7 +10,6 @@ describe('realtime source layout', () => {
     'realtime/realtime.client.ts',
     'realtime/realtime.store.ts',
     'realtime/realtime-allowlist.resolver.ts',
-    'realtime/realtime-diagnostic.controller.ts',
     'realtime/native-snapshot.converter.ts',
   ])('keeps the shared provider responsibility at %s', (relativePath) => {
     expect(existsSync(join(sourceRoot, 'tdx', relativePath))).toBe(true);
@@ -26,6 +25,10 @@ describe('realtime source layout', () => {
     'qmt/realtime/qmt-realtime.client.ts',
     'tdx/realtime/in-memory-realtime.store.ts',
     'qmt/realtime/in-memory-qmt-realtime.store.ts',
+    // shrink-monitoring-to-blackbox-probe: diagnostic readback controllers
+    // were removed with the blackbox exporter; the shared provider
+    // responsibility no longer includes them.
+    'realtime/realtime-diagnostic.controller.ts',
   ])('does not restore a retired source path %s', (relativePath) => {
     expect(existsSync(join(sourceRoot, relativePath))).toBe(false);
   });
