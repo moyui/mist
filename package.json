@@ -36,7 +36,7 @@
     "ci:contracts": "node tools/test-ci-contracts.mjs",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:coverage": "jest --coverage --runInBand --watchman=false",
+    "test:coverage": "jest --coverage --runInBand --watchman=false --forceExit",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "prepare": "husky"
   },
