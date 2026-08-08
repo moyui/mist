@@ -32,7 +32,7 @@
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "test:ci": "jest --runInBand --watchman=false",
+    "test:ci": "jest --runInBand --watchman=false --forceExit",
     "ci:contracts": "node tools/test-ci-contracts.mjs",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
