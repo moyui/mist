@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { installHttpRequestContext } from '@app/transport/http';
+import { initTelemetry } from '@app/otel';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  initTelemetry({ serviceName: 'mist-backend' });
   const app = await NestFactory.create(AppModule);
   installHttpRequestContext(app);
 

@@ -1,6 +1,18 @@
 import type { CandleFinalizerDiagnostics } from './candle-finalizer';
-import type { RealtimeQuantityRejectionObservation } from '../realtime-market-observability.service';
+import type {
+  RealtimeQuantityField,
+  RealtimeQuantityRejectReason,
+} from '../realtime-quantity-validation.error';
+import type { RealtimeSource } from '../realtime.types';
 import type { RealtimeStrategyHandoffObservation } from '../strategy-trigger/realtime-strategy-handoff-observability.service';
+
+export interface RealtimeQuantityRejectionObservation {
+  source: RealtimeSource;
+  field: RealtimeQuantityField;
+  reason: RealtimeQuantityRejectReason;
+  total: number;
+  lastFailureAtMs: number;
+}
 
 export type RealtimeCandleProductMode = 'off' | 'shadow' | 'on';
 

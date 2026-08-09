@@ -9,8 +9,6 @@ import { RealtimeRedisService } from './realtime-redis.service';
 import { OpenCandleAggregator } from './candle/open-candle-aggregator';
 import { CandleFinalizer } from './candle/candle-finalizer';
 import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
-import { RealtimeMarketObservabilityService } from './realtime-market-observability.service';
-import { RealtimeCandleHealthService } from './candle/realtime-candle-health.service';
 import { isMockMode, resolveRealtimeStrategyMode } from '@app/config';
 import { RealtimeStrategyHandoffModule } from './strategy-trigger/realtime-strategy-handoff.module';
 import { RealtimeStrategyStartupCompensationService } from './strategy-trigger/realtime-strategy-startup-compensation.service';
@@ -51,8 +49,6 @@ const mockSourceConfigRepository = {
     OpenCandleAggregator,
     CandleFinalizer,
     RealtimeMarketDataProductService,
-    RealtimeMarketObservabilityService,
-    RealtimeCandleHealthService,
     RealtimeStrategyStartupCompensationService,
     RealtimeStrategyHandoffObservabilityService,
     ...(isMockMode()
@@ -69,7 +65,6 @@ const mockSourceConfigRepository = {
     RealtimeSecurityAllowlistService,
     Clock,
     RealtimeRedisService,
-    RealtimeMarketObservabilityService,
   ],
 })
 export class RealtimeIngressModule {}

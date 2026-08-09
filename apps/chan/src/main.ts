@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { installHttpRequestContext } from '@app/transport/http';
+import { initTelemetry } from '@app/otel';
 import { ChanAppModule } from './chan-app.module';
 import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
+  initTelemetry({ serviceName: 'chan-api' });
   const app = await NestFactory.create(ChanAppModule);
   installHttpRequestContext(app);
 

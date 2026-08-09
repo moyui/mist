@@ -22,27 +22,72 @@
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["jest", "node"],
+    "types": [
+      "jest",
+      "node"
+    ],
     "paths": {
-      "@app/config": ["libs/config/src"],
-      "@app/config/*": ["libs/config/src/*"],
-      "@app/utils": ["libs/utils/src"],
-      "@app/utils/*": ["libs/utils/src/*"],
-      "@app/shared-data": ["libs/shared-data/src"],
-      "@app/shared-data/*": ["libs/shared-data/src/*"],
-      "@app/timezone": ["libs/timezone/src"],
-      "@app/timezone/*": ["libs/timezone/src/*"],
-      "@app/constants": ["libs/constants/src"],
-      "@app/constants/*": ["libs/constants/src/*"],
-      "@app/transport/http": ["libs/transport/src/http/index.ts"],
-      "@app/transport/rpc": ["libs/transport/src/rpc/index.ts"],
-      "@app/backtest": ["libs/backtest/src/index.ts"],
-      "@app/signal": ["libs/signal/src/index.ts"],
-      "@app/strategy": ["libs/strategy/src/index.ts"],
-      "@app/chancore": ["libs/chancore/src/index.ts"],
-      "@app/decimal": ["libs/decimal/src/index.ts"],
-      "@app/realtime": ["libs/realtime/src/index.ts"]
+      "@app/config": [
+        "libs/config/src"
+      ],
+      "@app/config/*": [
+        "libs/config/src/*"
+      ],
+      "@app/utils": [
+        "libs/utils/src"
+      ],
+      "@app/utils/*": [
+        "libs/utils/src/*"
+      ],
+      "@app/shared-data": [
+        "libs/shared-data/src"
+      ],
+      "@app/shared-data/*": [
+        "libs/shared-data/src/*"
+      ],
+      "@app/timezone": [
+        "libs/timezone/src"
+      ],
+      "@app/timezone/*": [
+        "libs/timezone/src/*"
+      ],
+      "@app/constants": [
+        "libs/constants/src"
+      ],
+      "@app/constants/*": [
+        "libs/constants/src/*"
+      ],
+      "@app/transport/http": [
+        "libs/transport/src/http/index.ts"
+      ],
+      "@app/transport/rpc": [
+        "libs/transport/src/rpc/index.ts"
+      ],
+      "@app/backtest": [
+        "libs/backtest/src/index.ts"
+      ],
+      "@app/signal": [
+        "libs/signal/src/index.ts"
+      ],
+      "@app/strategy": [
+        "libs/strategy/src/index.ts"
+      ],
+      "@app/chancore": [
+        "libs/chancore/src/index.ts"
+      ],
+      "@app/decimal": [
+        "libs/decimal/src/index.ts"
+      ],
+      "@app/realtime": [
+        "libs/realtime/src/index.ts"
+      ],
+      "@app/otel": [
+        "libs/otel/src/index.ts"
+      ]
     }
   },
-  "include": ["apps/**/*", "libs/**/*"]
+  "include": [
+    "apps/**/*",
+    "libs/**/*"
+  ]
 }

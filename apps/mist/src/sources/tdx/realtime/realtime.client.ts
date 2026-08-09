@@ -20,8 +20,6 @@ import {
   SubscriptionControlResult,
 } from '../../../realtime/realtime-subscription-control';
 import { RealtimeSnapshotIngressService } from '../../../realtime/realtime-snapshot-ingress.service';
-import { RealtimeMarketObservabilityService } from '../../../realtime/realtime-market-observability.service';
-import { RealtimeQuantityValidationError } from '../../../realtime/realtime-quantity-validation.error';
 import { convertTdxNativeSnapshot } from './native-snapshot.converter';
 import { TdxRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
 import { TdxRealtimeStore } from './realtime.store';
@@ -76,7 +74,6 @@ export class TdxRealtimeClient
     @Optional()
     private readonly ingress?: RealtimeSnapshotIngressService,
     @Optional()
-    private readonly observability?: RealtimeMarketObservabilityService,
     @Optional()
     private readonly subscriptionRuntime?: RealtimeSubscriptionRuntimeRegistry,
   ) {
@@ -342,15 +339,7 @@ export class TdxRealtimeClient
       });
       this.ingress?.handleSnapshot(snapshot);
       this.store.recordAccepted(decoded.data.capturedAt);
-    } catch (error) {
-      if (error instanceof RealtimeQuantityValidationError) {
-        this.observability?.recordQuantityRejection(
-          error.source,
-          error.field,
-          error.reason,
-          Date.now(),
-        );
-      }
+    } catch {
       this.store.recordReject(
         'converterError',
         providerSymbol,
