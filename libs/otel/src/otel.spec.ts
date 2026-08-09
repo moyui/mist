@@ -15,3 +15,33 @@ describe('initTelemetry', () => {
     delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
   });
 });
+
+import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
+import { trace } from '@opentelemetry/api';
+import { pinoTraceMixin } from './otel';
+
+describe('pinoTraceMixin', () => {
+  it('returns {} when no span is active', () => {
+    expect(pinoTraceMixin()).toEqual({});
+  });
+
+  it('stamps trace_id/span_id of the active span', () => {
+    const provider = new BasicTracerProvider();
+    trace.setGlobalTracerProvider(provider);
+    provider
+      .getTracer('pino-mixin-spec')
+      .startActiveSpan('mixin-test', (span) => {
+        const mixed = pinoTraceMixin();
+        expect(mixed.trace_id).toBe(span.spanContext().traceId);
+        expect(mixed.span_id).toBe(span.spanContext().spanId);
+        span.end();
+      });
+  });
+
+  it('returns {} for a non-recording span (no global provider)', () => {
+    // Reset global provider to noop by setting it to a fresh noop context.
+    trace.setGlobalTracerProvider(new BasicTracerProvider());
+    // Outside any span there is nothing active -> {}
+    expect(pinoTraceMixin()).toEqual({});
+  });
+});
