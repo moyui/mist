@@ -34,6 +34,10 @@ WORKDIR /app
 # Copy runtime dependencies and build output from builder stage.
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/dist ./dist
+# OTel SDK preload: must run before the webpack bundle loads http/express/pino
+# (RITM skips already-cached modules), so every node entrypoint uses
+# `node -r ./otel-preload.js ...`. See otel-preload.js header comment.
+COPY --from=builder --chown=app:app /app/otel-preload.js ./otel-preload.js
 COPY --from=builder --chown=app:app /app/test/fixtures/realtime ./test/fixtures/realtime
 COPY --from=builder --chown=app:app /app/tools/run-migrations.mjs ./tools/run-migrations.mjs
 COPY --from=builder --chown=app:app /app/deploy/database ./deploy/database
@@ -54,4 +58,5 @@ RUN chmod +x docker-entrypoint.sh
 
 USER app
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node", "dist/apps/mist/main.js"]
+# otel-preload.js must be loaded before any business module (see header).
+CMD ["node", "-r", "./otel-preload.js", "dist/apps/mist/main.js"]

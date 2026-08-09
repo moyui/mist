@@ -66,6 +66,7 @@
     "@opentelemetry/resources": "^2.10.0",
     "@opentelemetry/sdk-metrics": "^2.10.0",
     "@opentelemetry/sdk-node": "^0.221.0",
+    "@opentelemetry/sdk-trace-base": "^2.10.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "@types/ws": "^8.18.1",
     "axios": "^1.7.9",
@@ -79,6 +80,7 @@
     "ioredis": "^5.11.1",
     "joi": "^18.0.2",
     "mysql2": "^3.12.0",
+    "nestjs-pino": "^4.6.1",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "technicalindicators": "3.1.0",
@@ -173,7 +175,8 @@
       "^@app/strategy$": "<rootDir>/libs/strategy/src/index.ts",
       "^@app/chancore$": "<rootDir>/libs/chancore/src/index.ts",
       "^@app/decimal$": "<rootDir>/libs/decimal/src/index.ts",
-      "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts"
+      "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts",
+      "^@app/otel$": "<rootDir>/libs/otel/src/index.ts"
     }
   },
   "pkg": {

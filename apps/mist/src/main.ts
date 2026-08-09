@@ -1,12 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { installHttpRequestContext } from '@app/transport/http';
+import { Logger } from 'nestjs-pino';
+import { registerCandleMetrics } from './realtime/observability/candle-metrics';
+import { CandleFinalizer } from './realtime/candle/candle-finalizer';
+import { RealtimeMarketDataProductService } from './realtime/candle/realtime-market-data-product.service';
 import { initTelemetry } from '@app/otel';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   initTelemetry({ serviceName: 'mist-backend' });
   const app = await NestFactory.create(AppModule);
+  app.useLogger(app.get(Logger));
+  registerCandleMetrics(
+    app.get(CandleFinalizer),
+    app.get(RealtimeMarketDataProductService),
+  );
   installHttpRequestContext(app);
 
   // Swagger API Documentation configuration

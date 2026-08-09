@@ -1,11 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { Logger } from 'nestjs-pino';
 import { initTelemetry } from '@app/otel';
 import { SignalAppModule } from './signal-app.module';
 
 async function bootstrap(): Promise<void> {
   initTelemetry({ serviceName: 'signal' });
   const app = await NestFactory.create(SignalAppModule);
+  app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
   app.connectMicroservice<MicroserviceOptions>(
     {

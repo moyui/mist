@@ -18,6 +18,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'path';
+import { LoggerModule } from 'nestjs-pino';
+import { pinoTraceMixin } from '@app/otel';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ChanModule } from './chan/chan.module';
@@ -34,6 +37,13 @@ import { RealtimeSubscriptionModule } from './realtime-subscriptions/realtime-su
 
 @Module({
   imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.LOG_LEVEL ?? 'info',
+        autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
+        mixin: pinoTraceMixin, // 活动 OTel span 的 trace_id/span_id 盖到日志上
+      },
+    }),
     HttpTransportModule,
     ConfigModule.forRoot({
       isGlobal: true,

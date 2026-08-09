@@ -61,16 +61,35 @@ interface QuantityState {
 export class OpenCandleAggregator {
   private readonly series = new Map<string, MarketSeriesState>();
 
+  /**
+   * Skip counts for the four reasons not tracked by the product layer
+   * (late_after_grace / candidate_capacity_exceeded are counted there).
+   * Exposed via diagnostics() for OTel observable metrics.
+   */
+  private readonly skipCounts: Partial<
+    Record<
+      | 'out_of_session'
+      | 'no_event_time'
+      | 'duplicate_or_late'
+      | 'not_aggregation_eligible',
+      number
+    >
+  > = {};
+
   applySnapshot(
     snapshot: CanonicalRealtimeSnapshot,
     options: ApplySnapshotOptions = {},
   ): ApplySnapshotOutcome {
     if (snapshot.eventTime === null || !snapshot.quality.aggregationEligible) {
+      this.skipCounts['no_event_time'] =
+        (this.skipCounts['no_event_time'] ?? 0) + 1;
       return { kind: 'skipped', reason: 'no_event_time' };
     }
 
     const bucket = resolveCandleBucket(snapshot.eventTime);
     if (bucket === null) {
+      this.skipCounts['out_of_session'] =
+        (this.skipCounts['out_of_session'] ?? 0) + 1;
       return { kind: 'skipped', reason: 'out_of_session' };
     }
     if (
@@ -111,6 +130,8 @@ export class OpenCandleAggregator {
 
     if (!owner.current) {
       if (!isValidPrice(snapshot.prices.last)) {
+        this.skipCounts['not_aggregation_eligible'] =
+          (this.skipCounts['not_aggregation_eligible'] ?? 0) + 1;
         return { kind: 'skipped', reason: 'not_aggregation_eligible' };
       }
       owner.current = this.openCandidate(
@@ -190,6 +211,15 @@ export class OpenCandleAggregator {
     candidateCount: number;
     invalidCandidateCount: number;
     frozenCandidateCount: number;
+    skipTotals: Partial<
+      Record<
+        | 'out_of_session'
+        | 'no_event_time'
+        | 'duplicate_or_late'
+        | 'not_aggregation_eligible',
+        number
+      >
+    >;
   } {
     let candidateCount = 0;
     let invalidCandidateCount = 0;
@@ -207,6 +237,7 @@ export class OpenCandleAggregator {
       candidateCount,
       invalidCandidateCount,
       frozenCandidateCount,
+      skipTotals: { ...this.skipCounts },
     };
   }
 

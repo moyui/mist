@@ -48,6 +48,17 @@ export interface RealtimeCandleRuntimeObservation {
     candidateCount: number;
     invalidCandidateCount: number;
     frozenCandidateCount: number;
+    /** Four skip reasons counted by the aggregator (the other two are
+     * product-layer counters lateAfterGraceTotal/candidateCapacityExceededTotal). */
+    skipTotals?: Partial<
+      Record<
+        | 'out_of_session'
+        | 'no_event_time'
+        | 'duplicate_or_late'
+        | 'not_aggregation_eligible',
+        number
+      >
+    >;
     sealedTotal: number;
     discardTotals: CandleFinalizerDiagnostics['discardTotals'];
     lateAfterGraceTotal: number;

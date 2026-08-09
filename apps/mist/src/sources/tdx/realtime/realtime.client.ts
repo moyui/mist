@@ -19,6 +19,9 @@ import {
   SubscriptionControlFailure,
   SubscriptionControlResult,
 } from '../../../realtime/realtime-subscription-control';
+import { Logger } from '@nestjs/common';
+import { SpanStatusCode } from '@opentelemetry/api';
+import { withCandleSpan } from '../../../realtime/observability/tracer';
 import { RealtimeSnapshotIngressService } from '../../../realtime/realtime-snapshot-ingress.service';
 import { convertTdxNativeSnapshot } from './native-snapshot.converter';
 import { TdxRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
@@ -55,6 +58,7 @@ export type TdxRealtimeDesiredPoster = (
 export class TdxRealtimeClient
   implements OnModuleInit, OnModuleDestroy, RealtimeSubscriptionControl
 {
+  private readonly logger = new Logger(this.constructor.name);
   private readonly wsUrl: string;
   private readonly reconnectDelayMs: number;
   private readonly controlTimeoutMs: number;
@@ -291,61 +295,86 @@ export class TdxRealtimeClient
   }
 
   private handleSnapshot(message: Record<string, unknown>): void {
-    if (!this.transportReady) {
-      this.store.recordReject(
-        'validationError',
-        null,
-        'TDX_REALTIME_READY_REQUIRED',
-      );
-      return;
-    }
-    let decoded;
-    try {
-      decoded = decodeRealtimeNativeMapMessage(message, 'tdx');
-    } catch (error) {
-      this.store.recordReject(
-        error instanceof RealtimeNativeMapDecodeError
-          ? 'contractMismatch'
-          : 'decodeError',
-        null,
-        error instanceof Error ? error.message : 'TDX_REALTIME_FRAME_INVALID',
-      );
-      return;
-    }
-    const [providerSymbol, value] = Object.entries(decoded.data.native)[0];
-    if (!TDX_SYMBOL_PATTERN.test(providerSymbol) || !isRecord(value)) {
-      this.store.recordReject(
-        'validationError',
-        providerSymbol,
-        'TDX_REALTIME_NATIVE_INVALID',
-      );
-      return;
-    }
-    const allowlistEntry = this.allowlist.resolveEffective(providerSymbol);
-    if (!allowlistEntry) {
-      this.store.recordReject(
-        'symbolNotAuthorized',
-        providerSymbol,
-        'TDX_REALTIME_SYMBOL_NOT_AUTHORIZED',
-      );
-      return;
-    }
-    try {
-      const snapshot = convertTdxNativeSnapshot({
-        securityId: allowlistEntry.securityId,
-        providerSymbol,
-        capturedAt: decoded.data.capturedAt,
-        native: value,
-      });
-      this.ingress?.handleSnapshot(snapshot);
-      this.store.recordAccepted(decoded.data.capturedAt);
-    } catch {
-      this.store.recordReject(
-        'converterError',
-        providerSymbol,
-        'TDX_REALTIME_CONVERTER_FAILED',
-      );
-    }
+    withCandleSpan('candle.snapshot.process', (span) => {
+      span.setAttribute('source', 'tdx');
+      const reject = (reason: string, symbol: string | null) => {
+        span.addEvent('rejected', { reason });
+        span.setStatus({ code: SpanStatusCode.ERROR, message: reason });
+        this.logger.warn(
+          `candle reject reason=${reason} symbol=${symbol ?? '-'}`,
+        );
+      };
+      if (!this.transportReady) {
+        reject('transport_not_ready', null);
+        this.store.recordReject(
+          'validationError',
+          null,
+          'TDX_REALTIME_READY_REQUIRED',
+        );
+        return;
+      }
+      let decoded;
+      try {
+        decoded = decodeRealtimeNativeMapMessage(message, 'tdx');
+      } catch (error) {
+        const reason =
+          error instanceof RealtimeNativeMapDecodeError
+            ? 'contract_mismatch'
+            : 'decode_error';
+        reject(reason, null);
+        this.store.recordReject(
+          error instanceof RealtimeNativeMapDecodeError
+            ? 'contractMismatch'
+            : 'decodeError',
+          null,
+          error instanceof Error ? error.message : 'TDX_REALTIME_FRAME_INVALID',
+        );
+        return;
+      }
+      const [providerSymbol, value] = Object.entries(decoded.data.native)[0];
+      span.setAttribute('symbol', providerSymbol);
+      span.setAttribute('capturedAt', decoded.data.capturedAt);
+      if (!TDX_SYMBOL_PATTERN.test(providerSymbol) || !isRecord(value)) {
+        reject('symbol_invalid', providerSymbol);
+        this.store.recordReject(
+          'validationError',
+          providerSymbol,
+          'TDX_REALTIME_NATIVE_INVALID',
+        );
+        return;
+      }
+      const allowlistEntry = this.allowlist.resolveEffective(providerSymbol);
+      if (!allowlistEntry) {
+        reject('not_authorized', providerSymbol);
+        this.store.recordReject(
+          'symbolNotAuthorized',
+          providerSymbol,
+          'TDX_REALTIME_SYMBOL_NOT_AUTHORIZED',
+        );
+        return;
+      }
+      try {
+        const snapshot = convertTdxNativeSnapshot({
+          securityId: allowlistEntry.securityId,
+          providerSymbol,
+          capturedAt: decoded.data.capturedAt,
+          native: value,
+        });
+        this.logger.log(
+          `candle ingest start source=tdx symbol=${providerSymbol} capturedAt=${decoded.data.capturedAt}`,
+        );
+        this.ingress?.handleSnapshot(snapshot);
+        this.store.recordAccepted(decoded.data.capturedAt);
+        span.setStatus({ code: SpanStatusCode.OK });
+      } catch {
+        reject('converter_error', providerSymbol);
+        this.store.recordReject(
+          'converterError',
+          providerSymbol,
+          'TDX_REALTIME_CONVERTER_FAILED',
+        );
+      }
+    });
   }
 
   private handleControlResponse(message: Record<string, unknown>): void {

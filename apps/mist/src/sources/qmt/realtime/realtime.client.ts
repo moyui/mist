@@ -19,6 +19,9 @@ import {
   SubscriptionControlFailure,
   SubscriptionControlResult,
 } from '../../../realtime/realtime-subscription-control';
+import { Logger } from '@nestjs/common';
+import { SpanStatusCode } from '@opentelemetry/api';
+import { withCandleSpan } from '../../../realtime/observability/tracer';
 import { RealtimeSnapshotIngressService } from '../../../realtime/realtime-snapshot-ingress.service';
 import { convertQmtNativeSnapshot } from './native-snapshot.converter';
 import { QmtRealtimeAllowlistResolver } from './realtime-allowlist.resolver';
@@ -47,6 +50,7 @@ interface PendingControl {
 export class QmtRealtimeClient
   implements OnModuleInit, OnModuleDestroy, RealtimeSubscriptionControl
 {
+  private readonly logger = new Logger(this.constructor.name);
   private readonly wsUrl: string;
   private readonly reconnectDelayMs: number;
   private readonly controlTimeoutMs: number;
@@ -283,62 +287,90 @@ export class QmtRealtimeClient
   }
 
   private handleSnapshot(message: Record<string, unknown>): void {
-    if (!this.transportReady) {
-      this.store.recordReject(
-        'validationError',
-        null,
-        'QMT_REALTIME_READY_REQUIRED',
-      );
-      return;
-    }
-    let decoded;
-    try {
-      decoded = decodeRealtimeNativeMapMessage(message, 'qmt');
-    } catch (error) {
-      this.store.recordReject(
-        error instanceof RealtimeNativeMapDecodeError
-          ? 'contractMismatch'
-          : 'decodeError',
-        null,
-        error instanceof Error ? error.message : 'QMT_REALTIME_FRAME_INVALID',
-      );
-      return;
-    }
-    for (const [providerSymbol, value] of Object.entries(decoded.data.native)) {
-      if (!QMT_SYMBOL_PATTERN.test(providerSymbol) || !isRecord(value)) {
+    withCandleSpan('candle.snapshot.process', (span) => {
+      span.setAttribute('source', 'qmt');
+      const reject = (reason: string, symbol: string | null) => {
+        span.addEvent('rejected', { reason });
+        span.setStatus({ code: SpanStatusCode.ERROR, message: reason });
+        this.logger.warn(
+          `candle reject reason=${reason} symbol=${symbol ?? '-'}`,
+        );
+      };
+      if (!this.transportReady) {
+        reject('transport_not_ready', null);
         this.store.recordReject(
           'validationError',
-          providerSymbol,
-          'QMT_REALTIME_NATIVE_INVALID',
+          null,
+          'QMT_REALTIME_READY_REQUIRED',
         );
-        continue;
+        return;
       }
-      const allowlistEntry = this.allowlist.resolveEffective(providerSymbol);
-      if (!allowlistEntry) {
-        this.store.recordReject(
-          'symbolNotAuthorized',
-          providerSymbol,
-          'QMT_REALTIME_SYMBOL_NOT_AUTHORIZED',
-        );
-        continue;
-      }
+      let decoded;
       try {
-        const snapshot = convertQmtNativeSnapshot({
-          securityId: allowlistEntry.securityId,
-          providerSymbol,
-          capturedAt: decoded.data.capturedAt,
-          native: value,
-        });
-        this.ingress?.handleSnapshot(snapshot);
-        this.store.recordAccepted(decoded.data.capturedAt);
-      } catch {
+        decoded = decodeRealtimeNativeMapMessage(message, 'qmt');
+      } catch (error) {
+        const reason =
+          error instanceof RealtimeNativeMapDecodeError
+            ? 'contract_mismatch'
+            : 'decode_error';
+        reject(reason, null);
         this.store.recordReject(
-          'converterError',
-          providerSymbol,
-          'QMT_REALTIME_CONVERTER_FAILED',
+          error instanceof RealtimeNativeMapDecodeError
+            ? 'contractMismatch'
+            : 'decodeError',
+          null,
+          error instanceof Error ? error.message : 'QMT_REALTIME_FRAME_INVALID',
         );
+        return;
       }
-    }
+      for (const [providerSymbol, value] of Object.entries(
+        decoded.data.native,
+      )) {
+        span.setAttribute('symbol', providerSymbol);
+        span.setAttribute('capturedAt', decoded.data.capturedAt);
+        if (!QMT_SYMBOL_PATTERN.test(providerSymbol) || !isRecord(value)) {
+          reject('symbol_invalid', providerSymbol);
+          this.store.recordReject(
+            'validationError',
+            providerSymbol,
+            'QMT_REALTIME_NATIVE_INVALID',
+          );
+          return;
+        }
+        const allowlistEntry = this.allowlist.resolveEffective(providerSymbol);
+        if (!allowlistEntry) {
+          reject('not_authorized', providerSymbol);
+          this.store.recordReject(
+            'symbolNotAuthorized',
+            providerSymbol,
+            'QMT_REALTIME_SYMBOL_NOT_AUTHORIZED',
+          );
+          return;
+        }
+        try {
+          const snapshot = convertQmtNativeSnapshot({
+            securityId: allowlistEntry.securityId,
+            providerSymbol,
+            capturedAt: decoded.data.capturedAt,
+            native: value,
+          });
+          this.logger.log(
+            `candle ingest start source=qmt symbol=${providerSymbol} capturedAt=${decoded.data.capturedAt}`,
+          );
+          this.ingress?.handleSnapshot(snapshot);
+          this.store.recordAccepted(decoded.data.capturedAt);
+        } catch {
+          reject('converter_error', providerSymbol);
+          this.store.recordReject(
+            'converterError',
+            providerSymbol,
+            'QMT_REALTIME_CONVERTER_FAILED',
+          );
+          return;
+        }
+      }
+      span.setStatus({ code: SpanStatusCode.OK });
+    });
   }
 
   private handleControlResponse(message: Record<string, unknown>): void {

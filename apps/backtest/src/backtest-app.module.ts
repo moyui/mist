@@ -17,6 +17,9 @@ import {
   StrategyVersion,
 } from '@app/shared-data';
 import { RpcTransportModule } from '@app/transport/rpc';
+import { LoggerModule } from 'nestjs-pino';
+import { pinoTraceMixin } from '@app/otel';
+
 import { BacktestCommandController } from './backtest-command.controller';
 import { BacktestHealthController } from './backtest-health.controller';
 import { BacktestHealthStateService } from './backtest-health-state.service';
@@ -27,6 +30,13 @@ import { BacktestStartupService } from './backtest-startup.service';
 
 @Module({
   imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.LOG_LEVEL ?? 'info',
+        autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
+        mixin: pinoTraceMixin, // 活动 OTel span 的 trace_id/span_id 盖到日志上
+      },
+    }),
     RpcTransportModule,
     ConfigModule.forRoot({
       isGlobal: true,

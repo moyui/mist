@@ -21,6 +21,8 @@ import { RealtimeSecurityAllowlistService } from '../realtime-security-allowlist
 import type { CanonicalRealtimeSnapshot } from '../realtime.types';
 import type { RealtimeSource } from '../realtime.types';
 import { OpenCandleAggregator } from './open-candle-aggregator';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
+import { withCandleSpan } from '../observability/tracer';
 import { CandleFinalizer } from './candle-finalizer';
 import { KeyedQueue } from './keyed-queue';
 import {
@@ -177,8 +179,18 @@ export class RealtimeMarketDataProductService
    * snapshot to the per-market-series queue for ordered aggregation + Redis writes.
    */
   handleSnapshot(snapshot: CanonicalRealtimeSnapshot): void {
-    if (this.stopping || this.mode === 'off' || !this.redis.isAvailable())
+    if (this.stopping || this.mode === 'off' || !this.redis.isAvailable()) {
+      const reason = this.stopping
+        ? 'stopping'
+        : this.mode === 'off'
+          ? 'mode_off'
+          : 'redis_unavailable';
+      trace.getActiveSpan()?.addEvent('ingest_gated', { reason });
+      this.logger.warn(
+        `candle ingest_gated reason=${reason} securityId=${snapshot.securityId} source=${snapshot.source}`,
+      );
       return;
+    }
 
     const acceptedAt = this.clock.now();
     const key = marketSeriesKey(snapshot.securityId, snapshot.source);
@@ -189,8 +201,11 @@ export class RealtimeMarketDataProductService
     if (!accepted) {
       this.snapshotOverflowCount++;
       this.snapshotOverflowLastFailureAtMs = acceptedAt;
+      trace.getActiveSpan()?.addEvent('queue_overflow', {
+        securityId: snapshot.securityId,
+      });
       this.logger.warn(
-        `Queue overflow for ${key}; marking candle queue_overflow.`,
+        `candle queue_overflow securityId=${snapshot.securityId} key=${key}`,
       );
       const bucket = snapshot.eventTime
         ? resolveCandleBucket(snapshot.eventTime)
@@ -211,7 +226,15 @@ export class RealtimeMarketDataProductService
     acceptedAt: number,
   ): Promise<void> {
     const client = this.redis.client;
-    if (!client) return;
+    if (!client) {
+      trace.getActiveSpan()?.addEvent('redis_client_unavailable', {
+        securityId: snapshot.securityId,
+      });
+      this.logger.warn(
+        `candle redis_client_unavailable securityId=${snapshot.securityId} source=${snapshot.source}`,
+      );
+      return;
+    }
 
     const snapshotBucket = snapshot.eventTime
       ? resolveCandleBucket(snapshot.eventTime)
@@ -221,6 +244,13 @@ export class RealtimeMarketDataProductService
       this.startupEligibleBucketStartMs !== null &&
       snapshotBucket.bucketStartMs < this.startupEligibleBucketStartMs
     ) {
+      trace.getActiveSpan()?.addEvent('startup_boundary_skip', {
+        securityId: snapshot.securityId,
+        bucketStartMs: snapshotBucket.bucketStartMs,
+      });
+      this.logger.warn(
+        `candle startup_boundary_skip securityId=${snapshot.securityId} bucket=${snapshotBucket.bucketStartMs}`,
+      );
       return;
     }
 
@@ -235,12 +265,20 @@ export class RealtimeMarketDataProductService
       graceMs: effectiveGraceMs,
     });
 
+    const activeSpan = trace.getActiveSpan();
     switch (outcome.kind) {
       case 'skipped':
         if (outcome.reason === 'late_after_grace') {
           this.lateAfterGraceCount++;
         } else if (outcome.reason === 'candidate_capacity_exceeded') {
           this.candidateCapacityExceededCount++;
+        } else {
+          // 4 reasons not counted before (no_event_time/out_of_session/
+          // duplicate_or_late/not_aggregation_eligible) — span event + warn.
+          activeSpan?.addEvent('skipped', { reason: outcome.reason });
+          this.logger.warn(
+            `candle skipped reason=${outcome.reason} securityId=${snapshot.securityId} source=${snapshot.source}`,
+          );
         }
         return;
 
@@ -343,6 +381,14 @@ export class RealtimeMarketDataProductService
       acceptedAt >
       bucket.bucketEndMs + this.effectiveGraceMs(bucket.bucketStartMs)
     ) {
+      // Silent return before — now observable.
+      trace.getActiveSpan()?.addEvent('due_registration_too_late', {
+        securityId: identity.securityId,
+        bucketStartMs: bucket.bucketStartMs,
+      });
+      this.logger.warn(
+        `candle due_registration_too_late securityId=${identity.securityId} bucket=${bucket.bucketStartMs}`,
+      );
       return false;
     }
 
@@ -394,6 +440,13 @@ export class RealtimeMarketDataProductService
       return true;
     } catch (error) {
       this.dueRegistrationFailureCount++;
+      trace.getActiveSpan()?.addEvent('due_registration_failed', {
+        securityId: identity.securityId,
+        bucketStartMs: bucket.bucketStartMs,
+      });
+      this.logger.warn(
+        `candle due_registration_failed securityId=${identity.securityId} bucket=${bucket.bucketStartMs}`,
+      );
       // Deterministic rejections (record byte limit, expired trading day) only
       // accumulate; transient runtime errors (MULTI/EXEC null or throw) also
       // refresh the timestamp that drives the windowed degraded verdict.
@@ -469,8 +522,11 @@ export class RealtimeMarketDataProductService
       try {
         decoded = decodeDueMember(member);
       } catch (error) {
-        this.logger.error(
-          `Rejected malformed due member: ${
+        trace.getActiveSpan()?.addEvent('malformed_due_member', {
+          member,
+        });
+        this.logger.warn(
+          `candle malformed_due_member member=${member} error=${
             error instanceof Error ? error.message : String(error)
           }`,
         );
@@ -489,8 +545,11 @@ export class RealtimeMarketDataProductService
         this.dueAdmissionOverflowCount++;
         this.dueAdmissionOverflowLastFailureAtMs = now;
         this.dueInFlight.delete(member);
+        trace.getActiveSpan()?.addEvent('due_admission_overflow', {
+          securityId: decoded.securityId,
+        });
         this.logger.warn(
-          `Due queue admission overflow for securityId=${decoded.securityId} source=${decoded.source}; due remains pending.`,
+          `candle due_admission_overflow securityId=${decoded.securityId} source=${decoded.source}; due remains pending.`,
         );
       }
     }
@@ -648,6 +707,7 @@ export class RealtimeMarketDataProductService
       },
       candle: {
         ...aggregator,
+        skipTotals: aggregator.skipTotals,
         sealedTotal: finalizer.sealedTotal,
         discardTotals: finalizer.discardTotals,
         lateAfterGraceTotal: this.lateAfterGraceCount,
@@ -693,75 +753,109 @@ export class RealtimeMarketDataProductService
     decoded: ReturnType<typeof decodeDueMember>,
     now: number,
   ): Promise<void> {
-    if (await this.isAlreadySealed(client, tradingDay, decoded)) {
-      await client.zrem(dueKey(tradingDay), member);
-      this.aggregator.releaseCandidate(
-        decoded.securityId,
-        decoded.source,
-        decoded.bucketStartMs,
-      );
-      this.clearDueTracking(member);
-      return;
-    }
-
-    const hardHorizon =
-      decoded.bucketStartMs +
-      60_000 +
-      FINALIZATION_HARD_HORIZON_MS +
-      (isSessionTerminalBucket(decoded.bucketStartMs)
-        ? this.terminalGraceMs
-        : 0);
-    if (now >= hardHorizon) {
-      await this.releaseAtHardHorizon(client, tradingDay, member, decoded);
-      return;
-    }
-
-    const sealed = this.aggregator.freezeCandidate(
-      decoded.securityId,
-      decoded.source,
-      decoded.bucketStartMs,
-    );
-    if (sealed) {
-      const committed = await this.finalizer.seal(client, sealed, now);
-      if (committed) {
-        this.aggregator.commitCandidate(
+    await withCandleSpan('candle.due.finalize', async (span) => {
+      span.setAttribute('source', decoded.source);
+      span.setAttribute('securityId', decoded.securityId);
+      span.setAttribute('bucketStartMs', decoded.bucketStartMs);
+      if (await this.isAlreadySealed(client, tradingDay, decoded)) {
+        span.addEvent('already_sealed');
+        await client.zrem(dueKey(tradingDay), member);
+        this.aggregator.releaseCandidate(
           decoded.securityId,
           decoded.source,
           decoded.bucketStartMs,
         );
         this.clearDueTracking(member);
+        return;
+      }
+
+      const hardHorizon =
+        decoded.bucketStartMs +
+        60_000 +
+        FINALIZATION_HARD_HORIZON_MS +
+        (isSessionTerminalBucket(decoded.bucketStartMs)
+          ? this.terminalGraceMs
+          : 0);
+      if (now >= hardHorizon) {
+        span.addEvent('finalization_horizon_exceeded');
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'hard_horizon' });
+        this.logger.warn(
+          `candle finalization_horizon_exceeded securityId=${decoded.securityId} bucket=${decoded.bucketStartMs}`,
+        );
+        await this.releaseAtHardHorizon(client, tradingDay, member, decoded);
+        return;
+      }
+
+      const sealed = this.aggregator.freezeCandidate(
+        decoded.securityId,
+        decoded.source,
+        decoded.bucketStartMs,
+      );
+      if (sealed) {
+        const committed = await this.finalizer.seal(client, sealed, now);
+        if (committed) {
+          this.aggregator.commitCandidate(
+            decoded.securityId,
+            decoded.source,
+            decoded.bucketStartMs,
+          );
+          this.clearDueTracking(member);
+          if (sealed.validity === 'valid') {
+            span.addEvent('sealed');
+            span.setStatus({ code: SpanStatusCode.OK });
+            this.logger.log(
+              `candle finalize source=${decoded.source} bucket=${decoded.bucketStartMs} result=sealed`,
+            );
+          } else {
+            span.addEvent('discarded', {
+              reason: sealed.invalidReason ?? 'invalid',
+            });
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: sealed.invalidReason ?? 'invalid',
+            });
+            this.logger.warn(
+              `candle finalize source=${decoded.source} bucket=${decoded.bucketStartMs} result=discarded reason=${sealed.invalidReason ?? 'invalid'}`,
+            );
+          }
+          this.publishFinalization(
+            sealed.validity === 'valid'
+              ? this.sealedTrigger(sealed)
+              : this.discardedTrigger(
+                  sealed.securityId,
+                  sealed.source,
+                  sealed.bucketStartMs,
+                ),
+          );
+        }
+        return;
+      }
+
+      const reason = this.expectedDueMembers.has(member)
+        ? 'no_snapshot'
+        : 'backend_restart_open_state_lost';
+      span.addEvent('discarded', { reason });
+      span.setStatus({ code: SpanStatusCode.ERROR, message: reason });
+      this.logger.warn(
+        `candle discarded reason=${reason} securityId=${decoded.securityId} bucket=${decoded.bucketStartMs}`,
+      );
+      const committed = await this.finalizer.discardDue(
+        client,
+        decoded,
+        reason,
+        now,
+      );
+      if (committed) {
+        this.clearDueTracking(member);
         this.publishFinalization(
-          sealed.validity === 'valid'
-            ? this.sealedTrigger(sealed)
-            : this.discardedTrigger(
-                sealed.securityId,
-                sealed.source,
-                sealed.bucketStartMs,
-              ),
+          this.discardedTrigger(
+            decoded.securityId,
+            decoded.source,
+            decoded.bucketStartMs,
+          ),
         );
       }
-      return;
-    }
-
-    const reason = this.expectedDueMembers.has(member)
-      ? 'no_snapshot'
-      : 'backend_restart_open_state_lost';
-    const committed = await this.finalizer.discardDue(
-      client,
-      decoded,
-      reason,
-      now,
-    );
-    if (committed) {
-      this.clearDueTracking(member);
-      this.publishFinalization(
-        this.discardedTrigger(
-          decoded.securityId,
-          decoded.source,
-          decoded.bucketStartMs,
-        ),
-      );
-    }
+    });
   }
 
   private sealedTrigger(candle: {

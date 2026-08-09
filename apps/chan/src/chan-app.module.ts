@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { chanEnvSchema } from '@app/config';
+import { LoggerModule } from 'nestjs-pino';
+import { pinoTraceMixin } from '@app/otel';
+
 import { ChanModule } from '../../mist/src/chan/chan.module';
 import * as path from 'path';
 import { HealthController } from './health.controller';
@@ -17,6 +20,13 @@ import { HttpTransportModule } from '@app/transport/http';
 
 @Module({
   imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.LOG_LEVEL ?? 'info',
+        autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
+        mixin: pinoTraceMixin, // 活动 OTel span 的 trace_id/span_id 盖到日志上
+      },
+    }),
     HttpTransportModule,
     ConfigModule.forRoot({
       isGlobal: true,

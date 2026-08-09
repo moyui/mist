@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CanonicalRealtimeSnapshot } from './realtime.types';
 import type { RealtimeSource } from './realtime.types';
 import { RealtimeMarketDataProductService } from './candle/realtime-market-data-product.service';
+import { trace } from '@opentelemetry/api';
 import { marketSeriesKey } from './candle/market-series-key';
 import { resolveCandleBucket } from './candle/candle-bucket.util';
 
@@ -42,6 +43,13 @@ export class RealtimeSnapshotIngressService {
         if (key.startsWith(prefix)) this.latestBySeries.delete(key);
       }
       this.latestBySecurity.delete(snapshot.securityId);
+      trace.getActiveSpan()?.addEvent('trading_day_rollover', {
+        securityId: snapshot.securityId,
+        tradingDay: bucket.tradingDay,
+      });
+      this.logger.log(
+        `candle trading_day_rollover securityId=${snapshot.securityId} day=${bucket.tradingDay}`,
+      );
     }
     if (bucket) {
       this.tradingDayBySecurity.set(snapshot.securityId, bucket.tradingDay);
@@ -54,8 +62,13 @@ export class RealtimeSnapshotIngressService {
     try {
       this.product?.handleSnapshot(snapshot);
     } catch (error) {
-      this.logger.error(
-        `Realtime candle sink failed after latest acceptance for securityId=${snapshot.securityId} source=${snapshot.source}: ${
+      // Not silent anymore: span event + warn log (previously only log).
+      trace.getActiveSpan()?.addEvent('product_sink_failed', {
+        securityId: snapshot.securityId,
+        source: snapshot.source,
+      });
+      this.logger.warn(
+        `candle product_sink_failed securityId=${snapshot.securityId} source=${snapshot.source} error=${
           error instanceof Error ? error.message : String(error)
         }`,
       );

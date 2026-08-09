@@ -20,6 +20,9 @@ import {
   StrategyVersion,
 } from '@app/shared-data';
 import * as path from 'node:path';
+import { LoggerModule } from 'nestjs-pino';
+import { pinoTraceMixin } from '@app/otel';
+
 import { SignalHealthController } from './signal-health.controller';
 import { SignalRegistryController } from './signal-registry.controller';
 import { SignalRealtimeModule } from './realtime/signal-realtime.module';
@@ -27,6 +30,13 @@ import { SignalRegistryModule } from './signal-registry.module';
 
 @Module({
   imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.LOG_LEVEL ?? 'info',
+        autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
+        mixin: pinoTraceMixin, // 活动 OTel span 的 trace_id/span_id 盖到日志上
+      },
+    }),
     RpcTransportModule,
     ConfigModule.forRoot({
       isGlobal: true,

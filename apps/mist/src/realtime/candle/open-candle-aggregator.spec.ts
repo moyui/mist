@@ -474,6 +474,7 @@ describe('OpenCandleAggregator', () => {
       candidateCount: 1,
       invalidCandidateCount: 0,
       frozenCandidateCount: 1,
+      skipTotals: {},
     });
   });
 });

@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { Logger } from 'nestjs-pino';
 import { initTelemetry } from '@app/otel';
 import { BacktestAppModule } from './backtest-app.module';
 
 async function bootstrap(): Promise<void> {
   initTelemetry({ serviceName: 'backtest' });
   const app = await NestFactory.create(BacktestAppModule);
+  app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
   const config = app.get(ConfigService);
   app.connectMicroservice<MicroserviceOptions>(
