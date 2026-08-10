@@ -12,8 +12,8 @@
   active changes 和现有同步 Backtest 影响链。
 - [x] 1.3 运行现有 Backtest controller/service、schema integrity 和完整 backend 基线，区分自动化通过
   与环境阻塞。
-- [ ] 1.4 只读审计真实 `schema_migrations`、BacktestRun/BacktestSignalResult 存量、物理列、named
-  constraints 和 index；候选 migration 编号或无存量假设不成立时停止 DDL。
+- [x] 1.4 只读审计真实 `schema_migrations`、BacktestRun/BacktestSignalResult 存量、物理列、named
+  constraints 和 index；候选 migration 编号或无存量假设不成立时停止 DDL。  ——2026-08-10 完成（evidence/2026-08-10-production-audit.md）：016 migration 已应用、target_issues 列+run_time_id 复合索引已生效、runs=5/results=28、物理列/FK/索引完整。
 
 ## 2. Runtime、RPC 与 Admission
 
