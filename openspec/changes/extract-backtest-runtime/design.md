@@ -862,6 +862,88 @@ source、time range 和有序 historical K，在相同算法版本下产生相�
 change 在共同 transport/domain/evaluation contract 稳定后可独立推进，不互相导入 app 源码，也不
 共享未隔离的工作队列。
 
+### 12. 5.2 OTel 指标与日志面（OpenObserve 口径）
+
+#### 12.1 指标清单与来源（10 + 1）
+
+全部镜像 `candle-metrics.ts` 模式：`metrics.getMeter('backtest','0.1.0')` +
+observable gauge，`main.ts` 在 `initTelemetry` 后注册一次、模块级 `_registered` 幂等。
+数据源 = `BacktestHealthStateService.snapshot()` + 新增只读 `diagnostics()` +
+`BacktestAdmissionService` 的 `activeCount()/waitingCount()`。
+
+| 指标 | 来源 |
+|---|---|
+| `mist_backtest_ready` | `state==='ready'` |
+| `mist_backtest_active_runs` | admission.activeCount() |
+| `mist_backtest_waiting_runs` | admission.waitingCount() |
+| `mist_backtest_capacity_total` | `BACKTEST_QUEUE_CAPACITY??8` |
+| `mist_backtest_command_total{outcome}` | 4 个现有 counter |
+| `mist_backtest_run_total{status}` | 现有 counter |
+| `mist_backtest_duration_seconds` | `lastRunDurationSeconds` |
+| `mist_backtest_persistence_total{outcome}` | `resultBatchCount` / `resultBatchFailureCount` |
+| `mist_backtest_failure_total{reason}` | `diagnostics().failureTotals`（新增） |
+| `mist_backtest_target_issue_total` | `diagnostics().targetIssueTotals`（新增） |
+| `mist_startup_compensation_total{outcome}` | compensation.snapshot().outcome |
+
+> **指标面是初始基线，不锁用途**：与 O1/O2a 同款——先导出、语义清晰、低基数；运行中
+> 遇到盲区/噪音/基数问题（08-07 TDX 断流教训：先有指标才能发现问题），直接在后续迭代
+> 调整指标清单与 label，属正常演进，不视为 spec 承诺变更。
+
+#### 12.2 数据缺口补齐（最小附加，纯观察）
+
+- `failure_total{reason}`：health-state 加 per-reason Map（`recordRunFailed` 内按
+  `safeFailureClass(code)` 累加，11 值有界）+ 只读 `diagnostics()`；不动 `snapshot()`/VO
+- `target_issue_total`：executor `replay` 两处 `issues.push` 后各加
+  `health.recordTargetIssue(code)`（issues 是局部变量，进程内零累计——只读口造不出数据；
+  唯一业务流触碰，纯打点）
+
+#### 12.3 日志面（与 O1/O2a 同纪律：判断点必有日志，带 trace_id）
+
+机制：服务内 `private readonly logger = new Logger(X.name)`（@nestjs/common），经
+`main.ts` 的 `app.useLogger(app.get(Logger))` 路由到 pino，`LoggerModule.forRoot` 的
+`pinoTraceMixin` 自动盖 trace_id——**零新依赖**。
+
+生命周期日志（info）：
+- `[info] backtest command accepted runId=...`
+- `[info] backtest run completed runId=... durationMs=...`
+- `[info] backtest startup reconciled pending=... failed=...`
+- `[info] startup compensation completed submitted=...`（mist 侧）
+
+判断点日志：级别纪律与 O1 同——**info=生命周期、warn=拒绝/数据质量判断点、
+error=真实失败**（拒绝是业务结果不是故障，失败才升 error；现状 error 不降级）。
+
+warn（拒绝/数据质量）：
+- `[warn] backtest command rejected reason=queue_full/not_ready/run_failed runId=...`
+- `[warn] backtest target_issue code=SECURITY_NOT_FOUND/NO_HISTORICAL_BARS securityCode=...`
+
+error（真实失败）：
+- `[error] Backtest run ${runId} failed reason=<11 类枚举>`（现有日志补 reason 字段，不降级）
+- `[error] backtest persistence_batch_failed runId=...`（flushResults catch，runId 取
+  batch 行 backtestRunId）
+- `[error] backtest startup_failure kind=queue_full/unavailable count=...`
+- `[error] startup compensation failed submitted=...`（mist 侧，**现状已有**，核对即可）
+
+日志纪律：`reason/code/kind` 有界枚举；`runId/securityCode` 可进日志字段（排查用）但
+**不是 metric label**；原始错误文本只进 `error=` 字段。
+
+#### 12.4 命名与语义定案
+
+- 补偿指标 = `mist_startup_compensation_total{outcome}`（**mist 命名空间**——补偿是 mist
+  机制不是 backtest 的；tasks 备选 `mist_backtest_lost_ack_total` 弃用）
+- 一次性 outcome 状态标记：`observe(1, {outcome})`，不做累计、不导 `submitted`
+- `duration_seconds` 不带 `_total`（last-value gauge）
+- 零值语义：固定枚举点（command 4 点/run 2 点/persistence 2 点）零值照发（series 稳定）；
+  按实际累计点（failure/target_issue）零值跳过（防 label 膨胀，镜像 candle skip gauge）
+
+#### 12.5 验证路径（2026-08-10 用户拍板）
+
+- backtest 侧：InMemoryMetricExporter 单测锁值/label + **生产 OO 验证**（mock-env 无
+  MySQL 且 `backtestEnvSchema` 强制 `mysql_server_*` 必填、无 mock-mode 逃生口，不扩展
+  mock-env；tasks 5.2 原文"mock 环境或生产"合规）
+- mist 侧：单测 + mock 栈 OO 验证（backend 已在 mock 栈，outcome=not_enabled 证明导出链通）
+- 部署：`REALTIME_PRODUCTIZATION_MODE=shadow` 显式传（schema 缓存 422 坑——未传会被
+  归一化 off；422 时 set-windows-* 补设）；`REALTIME_STRATEGY_MODE=on` 保持不被重置
+
 ## Risks / Trade-offs
 
 - [现有同步 POST 契约与异步 worker 冲突] → POST 固定为

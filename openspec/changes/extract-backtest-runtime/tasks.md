@@ -72,24 +72,39 @@
 
 - [x] 5.1 增加单实例 Backtest image/build、Compose service、内部 HTTP/RPC 配置、PowerShell defaults、
   deploy/start order 和 health contract；`mist-backend` 不以 Compose healthy 硬依赖 Backtest。
-- [ ] 5.2 增加 Backtest 与 Mist 补偿链路的 **OTel 指标（OpenObserve 口径）** 与 contract tests
-  ——monitoring/exporter 已随 OTel 迁移退役（2026-08-10 决策），不再产出 prometheus 指标：
-  - `[backtest]` `apps/backtest/src/observability/backtest-metrics.ts`：镜像
-    `candle-metrics.ts` 模式（`metrics.getMeter('backtest','0.1.0')` + observable gauges，
-    `main.ts` 在 `initTelemetry` 后注册一次、幂等），低基数：
-    `mist_backtest_ready`（scoped readiness）、`mist_backtest_active_runs` /
-    `mist_backtest_waiting_runs`（admission）、`mist_backtest_capacity_total`、
-    `mist_backtest_command_total{outcome}`、`mist_backtest_run_total{status}`、
-    `mist_backtest_duration_seconds`、`mist_backtest_persistence_total{outcome}`、
-    `mist_backtest_failure_total{reason}`、`mist_backtest_target_issue_total`。
-  - `[mist]` 一次性 startup-compensation/lost-ACK outcome 指标：apps/mist
-    `realtime-strategy-startup-compensation.service.ts` 的 outcome 输出
-    `mist_backtest_lost_ack_total{outcome}`（或 mist 命名空间，实施时定名）。
-  - `[backtest tests]` `backtest-metrics.spec.ts` 镜像 `candle-metrics.spec.ts`：
-    注册幂等、gauge 反映进程内状态、低基数 label 断言。
-  - `[mist tests]` compensation outcome 指标单测。
-  - 验证：mock 环境（tools/mock-env）或生产 OpenObserve 可见 `mist_backtest_*`。
-  - Backtest health 与 command outcomes 已实现；本任务只补指标导出层。
+- [ ] 5.2 增加 Backtest 与 Mist 补偿链路的 **OTel 指标与判断点日志（OpenObserve 口径）**
+  ——monitoring/exporter 已随 OTel 迁移退役（2026-08-10 决策），不再产出 prometheus 指标；
+  spec delta 见 `specs/backtest-otel-metrics/spec.md`，设计见 design.md §12：
+  - [ ] 5.2.1 新建 `apps/backtest/src/observability/backtest-metrics.ts`：
+        `registerBacktestMetrics(health, admission)`，10 个 observable gauge（ready /
+        active_runs / waiting_runs / capacity_total / command_total{outcome} /
+        run_total{status} / duration_seconds / persistence_total{outcome} /
+        failure_total{reason} / target_issue_total），镜像 `candle-metrics.ts`
+        （`metrics.getMeter('backtest','0.1.0')`，`main.ts` 在 `initTelemetry` 后注册一次、
+        幂等），低基数。
+  - [ ] 5.2.2 `backtest-health-state.service.ts` 最小附加：`failureTotals` Map
+        （`recordRunFailed` 按 `safeFailureClass` 累加）+ `targetIssueTotals` Map +
+        `recordTargetIssue(code)` + 只读 `diagnostics()`；**不动 `snapshot()`/VO**。
+  - [ ] 5.2.3 `backtest-run.executor.ts`：`replay` 两处 `issues.push` 后各补一行
+        `recordTargetIssue('SECURITY_NOT_FOUND'|'NO_HISTORICAL_BARS')`（纯观察打点）。
+  - [ ] 5.2.4 新建 `apps/mist/src/realtime/observability/startup-compensation-metrics.ts`：
+        `mist_startup_compensation_total{outcome}`（命名定案：**mist 命名空间**，弃用
+        `mist_backtest_lost_ack_total`），`observe(1,{outcome})`，幂等；**不改补偿服务**。
+  - [ ] 5.2.5 `apps/backtest/src/main.ts` + `apps/mist/src/main.ts` 各注册一处。
+  - [ ] 5.2.6 backtest 判断点日志（design §12.3）：warn = command rejected /
+        target_issue；error = run failed（现有日志补 reason 字段）/ persistence_batch_failed /
+        startup_failure；info = command accepted / run completed / startup reconciled——
+        Nest Logger + `pinoTraceMixin` 带 trace_id（executor 已有 logger L68，admission/
+        startup 新增）。
+  - [ ] 5.2.7 mist 补偿 outcome 日志**现状已满足**（completed → info L59-61 / failed →
+        error L65-69，含 submitted）——核对即可，零改动。
+  - [ ] 5.2.8 新建 `backtest-metrics.spec.ts`（镜像 `candle-metrics.spec.ts`：注册幂等、
+        gauge 值反映进程内状态、低基数 label 断言、duration null 无 dataPoint）。
+  - [ ] 5.2.9 新建 `startup-compensation-metrics.spec.ts`（outcome 指标单测：value=1 +
+        outcome label + 幂等）。
+  - [ ] 5.2.10 验证：mock 环境验证 mist 侧（backend 在栈内，outcome=not_enabled）或生产
+        OpenObserve 可见 `mist_backtest_*`（§12.5 路径）；部署传 `productization=shadow`。
+  - 注：Backtest health 与 command outcomes 已实现；本任务只补指标导出层与日志层。
 - [ ] 5.3 运行 `mist`、`mist-deploy`、`mist-monitoring` 完整基线、strict OpenSpec、退役路径检索和
   `git diff --check`。
 - [ ] 5.4 在隔离真实 MySQL 执行 migration pre/postflight/readback、protected digest、first/middle page
