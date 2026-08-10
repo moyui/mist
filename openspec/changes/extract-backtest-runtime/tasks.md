@@ -54,8 +54,8 @@
 
 ## 4. Schema 与公共 API Cutover
 
-- [ ] 4.1 只有真实 preflight 通过后才新增最终 forward-only migration；分别处理 `target_issues` 与
-  result pagination index，并同步 ORM/raw SQL/audit/repair-forward。
+- [x] 4.1 只有真实 preflight 通过后才新增最终 forward-only migration；分别处理 `target_issues` 与
+  result pagination index，并同步 ORM/raw SQL/audit/repair-forward。  ——2026-08-10 勾选：016_backtest_target_issues_and_pagination_index.sql 已于 2026-08-05 07:23 生产应用（evidence/2026-08-10-production-audit.md §1），target_issues 列（DEFAULT_GENERATED）与 run_time_id 复合索引均已生效（§3/§4），preflight 即生产部署链本身；ORM/raw SQL/audit/repair-forward 同步随 016 部署验证。
 - [x] 4.2 保留 `/v1/strategy-backtests` owner 在 `apps/mist`，把 POST 改为 durable register + TCP
   accepted 后返回真实 202、`BacktestRunReceiptVo{runId,initialStatus=PENDING}` 和 Location；receipt 不为
   刷新当前状态增加 DB readback，当前状态只从 run GET 读取。
