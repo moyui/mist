@@ -48,21 +48,30 @@ export interface RealtimeCandleRuntimeObservation {
     candidateCount: number;
     invalidCandidateCount: number;
     frozenCandidateCount: number;
-    /** Four skip reasons counted by the aggregator (the other two are
-     * product-layer counters lateAfterGraceTotal/candidateCapacityExceededTotal). */
-    skipTotals?: Partial<
-      Record<
+    /** Skip counts with source+securityId attribution (aggregator layer,
+     * four reasons; the other two are product-layer counters below). */
+    skipTotals: Array<{
+      source: RealtimeSource;
+      securityId: number;
+      reason:
         | 'out_of_session'
         | 'no_event_time'
         | 'duplicate_or_late'
-        | 'not_aggregation_eligible',
-        number
-      >
-    >;
+        | 'not_aggregation_eligible';
+      total: number;
+    }>;
     sealedTotal: number;
     discardTotals: CandleFinalizerDiagnostics['discardTotals'];
-    lateAfterGraceTotal: number;
-    candidateCapacityExceededTotal: number;
+    lateAfterGraceTotal: Array<{
+      source: RealtimeSource;
+      securityId: number;
+      total: number;
+    }>;
+    candidateCapacityExceededTotal: Array<{
+      source: RealtimeSource;
+      securityId: number;
+      total: number;
+    }>;
     /** Frames accepted as price-only (either cumulative quantity absent). */
     quantityMissingFrameTotal: number;
     finalizationFailureTotal: number;

@@ -22,7 +22,12 @@ import {
  */
 export interface CandleFinalizerDiagnostics {
   sealedTotal: number;
-  discardTotals: Array<{ reason: InvalidReason; total: number }>;
+  discardTotals: Array<{
+    source: RealtimeSource;
+    securityId: number;
+    reason: InvalidReason;
+    total: number;
+  }>;
   finalizationFailureTotal: number;
   finalizationLastFailureAtMs: number | null;
   recordLimitBreachTotal: number;
@@ -56,7 +61,10 @@ export interface CandleFinalizerDiagnostics {
 export class CandleFinalizer {
   private readonly logger = new Logger(CandleFinalizer.name);
   private sealedTotal = 0;
-  private readonly discardTotals = new Map<InvalidReason, number>();
+  private readonly discardTotals = new Map<
+    string,
+    Map<InvalidReason, number>
+  >();
   private finalizationFailureTotal = 0;
   private finalizationLastFailureAtMs: number | null = null;
   private recordLimitBreachTotal = 0;
@@ -190,7 +198,11 @@ export class CandleFinalizer {
       if (candle.validity === 'valid') {
         this.sealedTotal++;
       } else if (candle.invalidReason) {
-        this.recordDiscard(candle.invalidReason);
+        this.recordDiscard(
+          candle.source,
+          candle.securityId,
+          candle.invalidReason,
+        );
       }
       return true;
     } catch (error) {
@@ -274,7 +286,7 @@ export class CandleFinalizer {
     try {
       const committed = (await multi.exec()) !== null;
       if (committed) {
-        this.recordDiscard(reason);
+        this.recordDiscard(decoded.source, decoded.securityId, reason);
       } else {
         this.recordFinalizationFailure(false, false, nowMs);
       }
@@ -294,8 +306,20 @@ export class CandleFinalizer {
     return {
       sealedTotal: this.sealedTotal,
       discardTotals: [...this.discardTotals.entries()]
-        .map(([reason, total]) => ({ reason, total }))
-        .sort((left, right) => left.reason.localeCompare(right.reason)),
+        .flatMap(([key, byReason]) => {
+          const [source, securityId] = key.split(':');
+          return [...byReason.entries()].map(([reason, total]) => ({
+            source: source as RealtimeSource,
+            securityId: Number(securityId),
+            reason,
+            total,
+          }));
+        })
+        .sort((left, right) =>
+          `${left.source}:${left.securityId}:${left.reason}`.localeCompare(
+            `${right.source}:${right.securityId}:${right.reason}`,
+          ),
+        ),
       finalizationFailureTotal: this.finalizationFailureTotal,
       finalizationLastFailureAtMs: this.finalizationLastFailureAtMs,
       recordLimitBreachTotal: this.recordLimitBreachTotal,
@@ -354,7 +378,15 @@ export class CandleFinalizer {
     if (!deterministic) this.finalizationLastFailureAtMs = nowMs;
   }
 
-  private recordDiscard(reason: InvalidReason): void {
-    this.discardTotals.set(reason, (this.discardTotals.get(reason) ?? 0) + 1);
+  private recordDiscard(
+    source: RealtimeSource,
+    securityId: number,
+    reason: InvalidReason,
+  ): void {
+    const key = `${source}:${securityId}`;
+    const byReason =
+      this.discardTotals.get(key) ?? new Map<InvalidReason, number>();
+    byReason.set(reason, (byReason.get(reason) ?? 0) + 1);
+    this.discardTotals.set(key, byReason);
   }
 }

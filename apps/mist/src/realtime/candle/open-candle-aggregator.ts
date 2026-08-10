@@ -66,15 +66,34 @@ export class OpenCandleAggregator {
    * (late_after_grace / candidate_capacity_exceeded are counted there).
    * Exposed via diagnostics() for OTel observable metrics.
    */
-  private readonly skipCounts: Partial<
-    Record<
+  private readonly skipCounts = new Map<
+    string,
+    Partial<
+      Record<
+        | 'out_of_session'
+        | 'no_event_time'
+        | 'duplicate_or_late'
+        | 'not_aggregation_eligible',
+        number
+      >
+    >
+  >();
+
+  /** Record a skip with source+securityId attribution (metrics label dims). */
+  private recordSkip(
+    source: RealtimeSource,
+    securityId: number,
+    reason:
       | 'out_of_session'
       | 'no_event_time'
       | 'duplicate_or_late'
       | 'not_aggregation_eligible',
-      number
-    >
-  > = {};
+  ): void {
+    const key = `${source}:${securityId}`;
+    const counts = this.skipCounts.get(key) ?? {};
+    counts[reason] = (counts[reason] ?? 0) + 1;
+    this.skipCounts.set(key, counts);
+  }
 
   /**
    * Frames accepted as price-only (either cumulative quantity absent). Their
@@ -88,15 +107,13 @@ export class OpenCandleAggregator {
     options: ApplySnapshotOptions = {},
   ): ApplySnapshotOutcome {
     if (snapshot.eventTime === null || !snapshot.quality.aggregationEligible) {
-      this.skipCounts['no_event_time'] =
-        (this.skipCounts['no_event_time'] ?? 0) + 1;
+      this.recordSkip(snapshot.source, snapshot.securityId, 'no_event_time');
       return { kind: 'skipped', reason: 'no_event_time' };
     }
 
     const bucket = resolveCandleBucket(snapshot.eventTime);
     if (bucket === null) {
-      this.skipCounts['out_of_session'] =
-        (this.skipCounts['out_of_session'] ?? 0) + 1;
+      this.recordSkip(snapshot.source, snapshot.securityId, 'out_of_session');
       return { kind: 'skipped', reason: 'out_of_session' };
     }
     if (
@@ -137,8 +154,11 @@ export class OpenCandleAggregator {
 
     if (!owner.current) {
       if (!isValidPrice(snapshot.prices.last)) {
-        this.skipCounts['not_aggregation_eligible'] =
-          (this.skipCounts['not_aggregation_eligible'] ?? 0) + 1;
+        this.recordSkip(
+          snapshot.source,
+          snapshot.securityId,
+          'not_aggregation_eligible',
+        );
         return { kind: 'skipped', reason: 'not_aggregation_eligible' };
       }
       owner.current = this.openCandidate(
@@ -219,15 +239,16 @@ export class OpenCandleAggregator {
     invalidCandidateCount: number;
     frozenCandidateCount: number;
     quantityMissingFrameCount: number;
-    skipTotals: Partial<
-      Record<
+    skipTotals: Array<{
+      source: RealtimeSource;
+      securityId: number;
+      reason:
         | 'out_of_session'
         | 'no_event_time'
         | 'duplicate_or_late'
-        | 'not_aggregation_eligible',
-        number
-      >
-    >;
+        | 'not_aggregation_eligible';
+      total: number;
+    }>;
   } {
     let candidateCount = 0;
     let invalidCandidateCount = 0;
@@ -246,7 +267,27 @@ export class OpenCandleAggregator {
       invalidCandidateCount,
       frozenCandidateCount,
       quantityMissingFrameCount: this.quantityMissingFrameCount,
-      skipTotals: { ...this.skipCounts },
+      skipTotals: [...this.skipCounts.entries()].flatMap(([key, counts]) => {
+        const [source, securityId] = key.split(':');
+        return (
+          Object.entries(counts) as Array<
+            [
+              (
+                | 'out_of_session'
+                | 'no_event_time'
+                | 'duplicate_or_late'
+                | 'not_aggregation_eligible'
+              ),
+              number,
+            ]
+          >
+        ).map(([reason, total]) => ({
+          source: source as RealtimeSource,
+          securityId: Number(securityId),
+          reason,
+          total,
+        }));
+      }),
     };
   }
 

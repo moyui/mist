@@ -64,16 +64,24 @@ describe('OpenCandleAggregator skip counters', () => {
     aggregator.applySnapshot(snap({ eventTime: '2026-08-09T00:00:00+08:00' }));
     const diag = aggregator.diagnostics();
     expect(diag.skipTotals).toBeDefined();
-    expect(diag.skipTotals?.['no_event_time']).toBe(1);
-    expect(diag.skipTotals?.['out_of_session']).toBe(1);
+    const noEventTime = diag.skipTotals.find(
+      (e) => e.reason === 'no_event_time',
+    );
+    expect(noEventTime?.total).toBe(1);
+    expect(noEventTime?.source).toBe('tdx');
+    const outOfSession = diag.skipTotals.find(
+      (e) => e.reason === 'out_of_session',
+    );
+    expect(outOfSession?.total).toBe(1);
   });
 
   it('does not count reasons tracked by the product layer', () => {
     const aggregator = new OpenCandleAggregator();
     const diag = aggregator.diagnostics();
-    expect('late_after_grace' in (diag.skipTotals ?? {})).toBe(false);
-    expect('candidate_capacity_exceeded' in (diag.skipTotals ?? {})).toBe(
-      false,
-    );
+    // The reason union type already excludes product-layer reasons; keep the
+    // behavioral assertion with a widening cast.
+    const reasons = diag.skipTotals.map((e) => e.reason as string);
+    expect(reasons).not.toContain('late_after_grace');
+    expect(reasons).not.toContain('candidate_capacity_exceeded');
   });
 });

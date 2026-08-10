@@ -100,8 +100,17 @@ export class RealtimeMarketDataProductService
   private snapshotOverflowLastFailureAtMs: number | null = null;
   private dueAdmissionOverflowCount = 0;
   private dueAdmissionOverflowLastFailureAtMs: number | null = null;
-  private lateAfterGraceCount = 0;
-  private candidateCapacityExceededCount = 0;
+  private readonly lateAfterGraceCounts = new Map<string, number>();
+  private readonly candidateCapacityExceededCounts = new Map<string, number>();
+
+  private recordCount(
+    counts: Map<string, number>,
+    source: string,
+    securityId: number,
+  ): void {
+    const key = `${source}:${securityId}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
   private quantityMissingFrameCount = 0;
   private dueScanFailureCount = 0;
   private dueScanLastFailureAtMs: number | null = null;
@@ -187,6 +196,7 @@ export class RealtimeMarketDataProductService
           ? 'mode_off'
           : 'redis_unavailable';
       trace.getActiveSpan()?.addEvent('ingest_gated', { reason });
+      trace.getActiveSpan()?.setAttribute('ingestGated', reason);
       this.logger.warn(
         `candle ingest_gated reason=${reason} securityId=${snapshot.securityId} source=${snapshot.source}`,
       );
@@ -205,6 +215,7 @@ export class RealtimeMarketDataProductService
       trace.getActiveSpan()?.addEvent('queue_overflow', {
         securityId: snapshot.securityId,
       });
+      trace.getActiveSpan()?.setAttribute('skippedReason', 'queue_overflow');
       this.logger.warn(
         `candle queue_overflow securityId=${snapshot.securityId} key=${key}`,
       );
@@ -231,6 +242,9 @@ export class RealtimeMarketDataProductService
       trace.getActiveSpan()?.addEvent('redis_client_unavailable', {
         securityId: snapshot.securityId,
       });
+      trace
+        .getActiveSpan()
+        ?.setAttribute('skippedReason', 'redis_client_unavailable');
       this.logger.warn(
         `candle redis_client_unavailable securityId=${snapshot.securityId} source=${snapshot.source}`,
       );
@@ -249,6 +263,12 @@ export class RealtimeMarketDataProductService
         securityId: snapshot.securityId,
         bucketStartMs: snapshotBucket.bucketStartMs,
       });
+      trace
+        .getActiveSpan()
+        ?.setAttribute('skippedReason', 'startup_boundary_skip');
+      trace
+        .getActiveSpan()
+        ?.setAttribute('bucketStartMs', snapshotBucket.bucketStartMs);
       this.logger.warn(
         `candle startup_boundary_skip securityId=${snapshot.securityId} bucket=${snapshotBucket.bucketStartMs}`,
       );
@@ -286,13 +306,45 @@ export class RealtimeMarketDataProductService
     switch (outcome.kind) {
       case 'skipped':
         if (outcome.reason === 'late_after_grace') {
-          this.lateAfterGraceCount++;
+          this.recordCount(
+            this.lateAfterGraceCounts,
+            snapshot.source,
+            snapshot.securityId,
+          );
+          activeSpan?.setAttribute('skippedReason', 'late_after_grace');
+          if (snapshotBucket) {
+            activeSpan?.setAttribute(
+              'bucketStartMs',
+              snapshotBucket.bucketStartMs,
+            );
+          }
         } else if (outcome.reason === 'candidate_capacity_exceeded') {
-          this.candidateCapacityExceededCount++;
+          this.recordCount(
+            this.candidateCapacityExceededCounts,
+            snapshot.source,
+            snapshot.securityId,
+          );
+          activeSpan?.setAttribute(
+            'skippedReason',
+            'candidate_capacity_exceeded',
+          );
+          if (snapshotBucket) {
+            activeSpan?.setAttribute(
+              'bucketStartMs',
+              snapshotBucket.bucketStartMs,
+            );
+          }
         } else {
           // 4 reasons not counted before (no_event_time/out_of_session/
           // duplicate_or_late/not_aggregation_eligible) — span event + warn.
           activeSpan?.addEvent('skipped', { reason: outcome.reason });
+          activeSpan?.setAttribute('skippedReason', outcome.reason);
+          if (snapshotBucket) {
+            activeSpan?.setAttribute(
+              'bucketStartMs',
+              snapshotBucket.bucketStartMs,
+            );
+          }
           this.logger.warn(
             `candle skipped reason=${outcome.reason} securityId=${snapshot.securityId} source=${snapshot.source}`,
           );
@@ -727,8 +779,26 @@ export class RealtimeMarketDataProductService
         skipTotals: aggregator.skipTotals,
         sealedTotal: finalizer.sealedTotal,
         discardTotals: finalizer.discardTotals,
-        lateAfterGraceTotal: this.lateAfterGraceCount,
-        candidateCapacityExceededTotal: this.candidateCapacityExceededCount,
+        lateAfterGraceTotal: [...this.lateAfterGraceCounts.entries()].map(
+          ([key, total]) => {
+            const [source, securityId] = key.split(':');
+            return {
+              source: source as RealtimeSource,
+              securityId: Number(securityId),
+              total,
+            };
+          },
+        ),
+        candidateCapacityExceededTotal: [
+          ...this.candidateCapacityExceededCounts.entries(),
+        ].map(([key, total]) => {
+          const [source, securityId] = key.split(':');
+          return {
+            source: source as RealtimeSource,
+            securityId: Number(securityId),
+            total,
+          };
+        }),
         quantityMissingFrameTotal: this.quantityMissingFrameCount,
         finalizationFailureTotal: finalizer.finalizationFailureTotal,
         finalizationLastFailureAtMs: finalizer.finalizationLastFailureAtMs,
@@ -820,6 +890,7 @@ export class RealtimeMarketDataProductService
           this.clearDueTracking(member);
           if (sealed.validity === 'valid') {
             span.addEvent('sealed');
+            span.setAttribute('verdict', 'sealed');
             span.setStatus({ code: SpanStatusCode.OK });
             this.logger.log(
               `candle finalize source=${decoded.source} bucket=${decoded.bucketStartMs} result=sealed`,
@@ -828,6 +899,11 @@ export class RealtimeMarketDataProductService
             span.addEvent('discarded', {
               reason: sealed.invalidReason ?? 'invalid',
             });
+            span.setAttribute('verdict', 'discarded');
+            span.setAttribute(
+              'discardReason',
+              sealed.invalidReason ?? 'invalid',
+            );
             span.setStatus({
               code: SpanStatusCode.ERROR,
               message: sealed.invalidReason ?? 'invalid',
@@ -853,6 +929,8 @@ export class RealtimeMarketDataProductService
         ? 'no_snapshot'
         : 'backend_restart_open_state_lost';
       span.addEvent('discarded', { reason });
+      span.setAttribute('verdict', 'discarded');
+      span.setAttribute('discardReason', reason);
       span.setStatus({ code: SpanStatusCode.ERROR, message: reason });
       this.logger.warn(
         `candle discarded reason=${reason} securityId=${decoded.securityId} bucket=${decoded.bucketStartMs}`,

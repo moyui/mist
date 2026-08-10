@@ -496,7 +496,7 @@ describe('OpenCandleAggregator', () => {
       invalidCandidateCount: 0,
       frozenCandidateCount: 1,
       quantityMissingFrameCount: 0,
-      skipTotals: {},
+      skipTotals: [],
     });
   });
 
