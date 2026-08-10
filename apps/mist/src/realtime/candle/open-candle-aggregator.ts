@@ -76,6 +76,13 @@ export class OpenCandleAggregator {
     >
   > = {};
 
+  /**
+   * Frames accepted as price-only (either cumulative quantity absent). Their
+   * quantity windows are held so bucket v/a always span the same frame set.
+   * Exposed via diagnostics() for OTel observable metrics.
+   */
+  private quantityMissingFrameCount = 0;
+
   applySnapshot(
     snapshot: CanonicalRealtimeSnapshot,
     options: ApplySnapshotOptions = {},
@@ -211,6 +218,7 @@ export class OpenCandleAggregator {
     candidateCount: number;
     invalidCandidateCount: number;
     frozenCandidateCount: number;
+    quantityMissingFrameCount: number;
     skipTotals: Partial<
       Record<
         | 'out_of_session'
@@ -237,6 +245,7 @@ export class OpenCandleAggregator {
       candidateCount,
       invalidCandidateCount,
       frozenCandidateCount,
+      quantityMissingFrameCount: this.quantityMissingFrameCount,
       skipTotals: { ...this.skipCounts },
     };
   }
@@ -312,14 +321,20 @@ export class OpenCandleAggregator {
     snapshot: CanonicalRealtimeSnapshot,
     preceding: BaselineTotals | null,
   ): CandidateSlot {
+    // Price-only frame rule: when either cumulative quantity is absent, both
+    // quantity windows are held (initialized from null) so bucket v/a always
+    // span the same frame set — a missing field must never fabricate a delta.
+    const quantityAvailable =
+      snapshot.cumulativeVolume !== null && snapshot.cumulativeAmount !== null;
+    if (!quantityAvailable) this.quantityMissingFrameCount++;
     const volume = initializeQuantity(
-      snapshot.cumulativeVolume,
+      quantityAvailable ? snapshot.cumulativeVolume : null,
       preceding?.tradingDay === bucket.tradingDay
         ? preceding.cumulativeVolume
         : null,
     );
     const amount = initializeQuantity(
-      snapshot.cumulativeAmount,
+      quantityAvailable ? snapshot.cumulativeAmount : null,
       preceding?.tradingDay === bucket.tradingDay
         ? preceding.cumulativeAmount
         : null,
@@ -389,6 +404,16 @@ export class OpenCandleAggregator {
     state.lastEventTime = snapshot.eventTime!;
     state.lastAppliedEventTimeMs = eventMs;
     state.closingSnapshot = toClosingSnapshot(snapshot);
+
+    // Price-only frame rule: when either cumulative quantity is absent, both
+    // quantity windows are held so bucket v/a always span the same frame set.
+    if (
+      snapshot.cumulativeVolume === null ||
+      snapshot.cumulativeAmount === null
+    ) {
+      this.quantityMissingFrameCount++;
+      return { kind: 'updated', bucket: bucketOf(state) };
+    }
 
     const volume = applyQuantityUpdate(
       readQuantity(state, 'volume'),
@@ -574,7 +599,9 @@ function initializeQuantity(
           baseline: preceding,
           first: null,
           last: preceding,
-          delta: '0',
+          // Missing quantity must stay null (never fabricated as zero) so a
+          // price-only bucket cannot seal a fake v/a of '0'.
+          delta: null,
           counterReset: false,
         };
   }

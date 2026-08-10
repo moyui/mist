@@ -63,6 +63,8 @@ export interface RealtimeCandleRuntimeObservation {
     discardTotals: CandleFinalizerDiagnostics['discardTotals'];
     lateAfterGraceTotal: number;
     candidateCapacityExceededTotal: number;
+    /** Frames accepted as price-only (either cumulative quantity absent). */
+    quantityMissingFrameTotal: number;
     finalizationFailureTotal: number;
     finalizationLastFailureAtMs: number | null;
     finalizationHorizonExceededTotal: number;
