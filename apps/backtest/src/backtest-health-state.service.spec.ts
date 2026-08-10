@@ -56,4 +56,27 @@ describe('BacktestHealthStateService', () => {
       state: 'ready',
     });
   });
+
+  it('accumulates per-reason failure and target issue totals via diagnostics', () => {
+    const health = new BacktestHealthStateService();
+    health.recordRunFailed('BACKTEST_EXECUTION_TIMEOUT', 1_000);
+    health.recordRunFailed('BACKTEST_EXECUTION_TIMEOUT', 2_000);
+    health.recordRunFailed('BACKTEST_DATABASE_ERROR', 500);
+    health.recordTargetIssue('SECURITY_NOT_FOUND');
+    health.recordTargetIssue('SECURITY_NOT_FOUND');
+    health.recordTargetIssue('NO_HISTORICAL_BARS');
+
+    expect([...health.diagnostics().failureTotals]).toEqual([
+      ['BACKTEST_EXECUTION_TIMEOUT', 2],
+      ['BACKTEST_DATABASE_ERROR', 1],
+    ]);
+    expect([...health.diagnostics().targetIssueTotals]).toEqual([
+      ['SECURITY_NOT_FOUND', 2],
+      ['NO_HISTORICAL_BARS', 1],
+    ]);
+    // the diagnostics surface stays out of the health VO contract
+    expect(health.snapshot().backtest.observations.lastFailureClass).toBe(
+      'BACKTEST_DATABASE_ERROR',
+    );
+  });
 });

@@ -100,12 +100,19 @@ export class BacktestRunExecutor {
     const startedAt = Date.now();
     try {
       await this.replay(claimed);
-      this.health.recordRunCompleted(Date.now() - startedAt);
+      const durationMs = Date.now() - startedAt;
+      this.health.recordRunCompleted(durationMs);
+      this.logger.log(
+        `backtest run completed runId=${runId} durationMs=${durationMs}`,
+      );
     } catch (error) {
       const failure = classifyFailure(error);
       this.health.recordRunFailed(failure.code, Date.now() - startedAt);
       await this.failAndCleanup(runId, failure);
-      this.logger.error(`Backtest run ${runId} failed`, errorTrace(error));
+      this.logger.error(
+        `Backtest run ${runId} failed reason=${failure.code}`,
+        errorTrace(error),
+      );
     }
   }
 
@@ -172,6 +179,10 @@ export class BacktestRunExecutor {
     for (const code of normalizedTargets) {
       if (!byCode.has(code)) {
         issues.push({ securityCode: code, code: 'SECURITY_NOT_FOUND' });
+        this.health.recordTargetIssue('SECURITY_NOT_FOUND');
+        this.logger.warn(
+          `backtest target_issue code=SECURITY_NOT_FOUND securityCode=${code}`,
+        );
         continue;
       }
       const security = byCode.get(code);
@@ -205,8 +216,13 @@ export class BacktestRunExecutor {
           signalCount += 1;
         },
       );
-      if (!outcome.hasBars)
+      if (!outcome.hasBars) {
         issues.push({ securityCode: code, code: 'NO_HISTORICAL_BARS' });
+        this.health.recordTargetIssue('NO_HISTORICAL_BARS');
+        this.logger.warn(
+          `backtest target_issue code=NO_HISTORICAL_BARS securityCode=${code}`,
+        );
+      }
     }
     await this.flushResults(results);
 
@@ -316,6 +332,9 @@ export class BacktestRunExecutor {
       this.health.recordResultBatch(pending.length, Date.now() - startedAt);
     } catch (error) {
       this.health.recordResultBatchFailure(Date.now() - startedAt);
+      this.logger.error(
+        `backtest persistence_batch_failed runId=${pending[0]?.backtestRunId}`,
+      );
       throw error;
     }
   }

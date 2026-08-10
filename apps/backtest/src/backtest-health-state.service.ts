@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { BacktestTargetIssueCode } from '@app/shared-data';
 import type { BacktestHealthVo } from './backtest-health.vo';
 
 @Injectable()
@@ -22,6 +23,8 @@ export class BacktestHealthStateService {
   private lastRunDurationSeconds: number | null = null;
   private lastResultBatchDurationSeconds: number | null = null;
   private lastFailureClass: string | null = null;
+  private readonly failureTotals = new Map<string, number>();
+  private readonly targetIssueTotals = new Map<string, number>();
   private oldestActiveStartedAtMs: number | null = null;
   private oldestWaitingEnqueuedAtMs: number | null = null;
 
@@ -69,7 +72,20 @@ export class BacktestHealthStateService {
   recordRunFailed(code: string, durationMs: number): void {
     this.runFailedCount += 1;
     this.lastRunDurationSeconds = toSeconds(durationMs);
-    this.lastFailureClass = safeFailureClass(code);
+    const failureClass = safeFailureClass(code);
+    this.lastFailureClass = failureClass;
+    this.failureTotals.set(
+      failureClass,
+      (this.failureTotals.get(failureClass) ?? 0) + 1,
+    );
+  }
+
+  /** Pure observation: counts a target issue per bounded BacktestTargetIssueCode. */
+  recordTargetIssue(code: BacktestTargetIssueCode): void {
+    this.targetIssueTotals.set(
+      code,
+      (this.targetIssueTotals.get(code) ?? 0) + 1,
+    );
   }
 
   recordResultBatch(rowCount: number, durationMs: number): void {
@@ -114,6 +130,20 @@ export class BacktestHealthStateService {
           lastFailureClass: this.lastFailureClass,
         },
       },
+    };
+  }
+
+  /**
+   * Read-only observation surface for the OTel metrics layer (5.2). Kept out
+   * of snapshot()/BacktestHealthVo so the health contract stays unchanged.
+   */
+  diagnostics(): {
+    failureTotals: ReadonlyMap<string, number>;
+    targetIssueTotals: ReadonlyMap<string, number>;
+  } {
+    return {
+      failureTotals: this.failureTotals,
+      targetIssueTotals: this.targetIssueTotals,
     };
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -12,6 +12,7 @@ import { BacktestHealthStateService } from './backtest-health-state.service';
 
 @Injectable()
 export class BacktestStartupService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(BacktestStartupService.name);
   constructor(
     @InjectRepository(BacktestRun)
     private readonly runs: Repository<BacktestRun>,
@@ -74,6 +75,9 @@ export class BacktestStartupService implements OnApplicationBootstrap {
     const overflowResult = await overflow.execute();
     if (overflowResult.affected) {
       this.health.recordStartupFailure('queue_full', overflowResult.affected);
+      this.logger.error(
+        `backtest startup_failure kind=queue_full count=${overflowResult.affected}`,
+      );
     }
     this.health.setCounts(0, 0);
     const startNow = this.admission.restorePending(
@@ -81,5 +85,8 @@ export class BacktestStartupService implements OnApplicationBootstrap {
     );
     this.admission.setReady(true);
     this.admission.startReserved(startNow);
+    this.logger.log(
+      `backtest startup reconciled admitted=${admittedIds.length}`,
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BacktestRun, BacktestRunStatus } from '@app/shared-data';
@@ -15,6 +15,7 @@ export type BacktestAdmissionResult =
 
 @Injectable()
 export class BacktestAdmissionService {
+  private readonly logger = new Logger(BacktestAdmissionService.name);
   private readonly active = new Set<number>();
   private readonly waiting: number[] = [];
   private readonly waitingSet = new Set<number>();
@@ -90,10 +91,14 @@ export class BacktestAdmissionService {
   private async acceptOne(runId: number): Promise<BacktestAdmissionResult> {
     if (!this.ready) {
       this.health.recordCommand('not_ready');
+      this.logger.warn(
+        `backtest command rejected reason=not_ready runId=${runId}`,
+      );
       return { accepted: false, code: 'not_ready' };
     }
     if (this.active.has(runId) || this.waitingSet.has(runId)) {
       this.health.recordCommand('accepted');
+      this.logger.log(`backtest command accepted runId=${runId}`);
       return { accepted: true };
     }
 
@@ -101,10 +106,14 @@ export class BacktestAdmissionService {
     if (!run) throw new Error(`backtest run ${runId} does not exist`);
     if (run.status === BacktestRunStatus.FAILED) {
       this.health.recordCommand('run_failed');
+      this.logger.warn(
+        `backtest command rejected reason=run_failed runId=${runId}`,
+      );
       return { accepted: false, code: 'run_failed' };
     }
     if (run.status !== BacktestRunStatus.PENDING) {
       this.health.recordCommand('accepted');
+      this.logger.log(`backtest command accepted runId=${runId}`);
       return { accepted: true };
     }
 
@@ -114,9 +123,13 @@ export class BacktestAdmissionService {
     const reservation = this.reservePending(runId);
     if (!reservation.accepted) {
       this.health.recordCommand('queue_full');
+      this.logger.warn(
+        `backtest command rejected reason=queue_full runId=${runId}`,
+      );
       return reservation;
     }
     this.health.recordCommand('accepted');
+    this.logger.log(`backtest command accepted runId=${runId}`);
     if (reservation.startNow) this.start(runId);
     return { accepted: true };
   }
