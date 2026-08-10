@@ -9,17 +9,22 @@
 
 ## 0. 执行顺序与依赖
 
-### 0.1 终端单文件约束（2026-08-10 owner 确认，待处理）
+### 0.1 终端单文件约束（2026-08-10 owner 确认，✅ 已完成）
 
 **TDX/QMT 终端策略环境只支持加载单个脚本文件**——`socket_sender.py` 不能作为独立文件部署。
-待办（下次落地统一处理）：
 
-- [ ] 将 `SocketSender` 类内联进 `mist_tdx_realtime_bridge.py` / `mist_qmt_realtime_bridge.py`
-      （删除 `from socket_sender import SocketSender`，同文件类）；
-- [ ] 调整 guardrail 测试 `test_socket_sender_scripts_stay_identical_across_bridges`：
-      合并后两份主文件结构不同（provider 历史部分差异），bit-identical 断言不再适用——
-      改为结构对齐约定（或删除该测试，一致性靠代码审查）；
-- [ ] 部署/加载清单更新：每个终端只加载一个脚本文件。
+- [x] `SocketSender` 类已内联进 `mist_tdx_realtime_bridge.py` / `mist_qmt_realtime_bridge.py`
+      （**bit-identical 类体**，两份主文件各自单文件部署）；
+- [x] guardrail 测试 `test_socket_sender_scripts_stay_identical_across_bridges` 已移除
+      （文件不存在，一致性靠 bit-identical 类体约定 + 代码审查）；
+- [x] 部署/加载清单：**每个终端只加载一个脚本文件**（TDX: `mist_tdx_realtime_bridge.py`；
+      QMT: `mist_qmt_realtime_bridge.py`）。
+
+### 0.2 SocketSender 无锁决策（2026-08-10 owner 拍板）
+
+选项 C：**TDX/QMT 的 SocketSender 均无锁**（GIL 原子属性写；send 与 reconnect 的竞态表现为
+捕获的 OSError → `dropped_frames` 计数）。latest-state 语义容忍丢帧；正常路径（连接健康）
+竞态窗口≈0。E-0 实测观察 `droppedFrames` 计数，若断线恢复场景丢帧过多再加锁。
 
 ```
 B（mist，独立） ─┐

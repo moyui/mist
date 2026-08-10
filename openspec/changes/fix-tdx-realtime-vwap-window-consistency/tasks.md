@@ -68,6 +68,7 @@
 
 ## 待办（2026-08-10 owner 确认）
 
-- [ ] **终端单文件约束**：TDX/QMT 终端只支持加载单个脚本——`socket_sender.py` 需内联进
-      各自 bridge 主文件（删 `from socket_sender import`）；guardrail 一致性测试调整；
-      详见 implementation-plan §0.1
+- [x] **终端单文件约束（已完成 77e5cf7）**：`SocketSender` 已内联进两份 bridge 主文件
+      （bit-identical 类体）；guardrail 一致性测试移除；每终端单文件部署；
+- [ ] **SocketSender 无锁观测（E-0）**：选项 C 已拍板（无锁，竞态=丢帧计数）；
+      E-0 实测观察 `droppedFrames`，断线恢复场景丢帧过多则加锁（implementation-plan §0.2）
