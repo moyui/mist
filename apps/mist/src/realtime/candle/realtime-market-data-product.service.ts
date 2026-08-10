@@ -102,6 +102,7 @@ export class RealtimeMarketDataProductService
   private dueAdmissionOverflowLastFailureAtMs: number | null = null;
   private lateAfterGraceCount = 0;
   private candidateCapacityExceededCount = 0;
+  private quantityMissingFrameCount = 0;
   private dueScanFailureCount = 0;
   private dueScanLastFailureAtMs: number | null = null;
   private dueRegistrationFailureCount = 0;
@@ -252,6 +253,22 @@ export class RealtimeMarketDataProductService
         `candle startup_boundary_skip securityId=${snapshot.securityId} bucket=${snapshotBucket.bucketStartMs}`,
       );
       return;
+    }
+
+    // Price-only frame observability: either cumulative quantity absent →
+    // the aggregator holds both quantity windows (window-consistency rule).
+    if (
+      snapshot.cumulativeVolume === null ||
+      snapshot.cumulativeAmount === null
+    ) {
+      this.quantityMissingFrameCount++;
+      trace.getActiveSpan()?.addEvent('quantity_missing_frame', {
+        securityId: snapshot.securityId,
+        source: snapshot.source,
+      });
+      this.logger.warn(
+        `candle quantity_missing_frame securityId=${snapshot.securityId} source=${snapshot.source}`,
+      );
     }
 
     // Session-terminal buckets (11:30 / 15:00) absorb post-close tail frames
@@ -712,6 +729,7 @@ export class RealtimeMarketDataProductService
         discardTotals: finalizer.discardTotals,
         lateAfterGraceTotal: this.lateAfterGraceCount,
         candidateCapacityExceededTotal: this.candidateCapacityExceededCount,
+        quantityMissingFrameTotal: this.quantityMissingFrameCount,
         finalizationFailureTotal: finalizer.finalizationFailureTotal,
         finalizationLastFailureAtMs: finalizer.finalizationLastFailureAtMs,
         finalizationHorizonExceededTotal: this.finalizationHorizonExceededCount,

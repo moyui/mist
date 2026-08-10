@@ -326,7 +326,9 @@ describe('OpenCandleAggregator', () => {
     });
   });
 
-  it('handles volume and amount independently', () => {
+  it('holds both quantity windows when frames carry partial quantities', () => {
+    // Price-only frame rule (B): when either cumulative quantity is absent,
+    // neither window advances — v/a must always span the same frame set.
     const agg = new OpenCandleAggregator();
     agg.applySnapshot(
       snap({
@@ -357,12 +359,31 @@ describe('OpenCandleAggregator', () => {
       }),
     );
 
+    // The 09:31 bucket never saw a dual-field frame: v/a stay null (held).
     expect(agg.freezeCandidate(1, 'tdx', bucketStart(sh(9, 31)))).toMatchObject(
       {
-        volume: '25.00000001',
-        amount: '200',
-        closingCumulativeVolume: '125.00000001',
-        closingCumulativeAmount: '1200',
+        volume: null,
+        amount: null,
+        closingCumulativeVolume: '100',
+        closingCumulativeAmount: '1000',
+      },
+    );
+    agg.commitCandidate(1, 'tdx', bucketStart(sh(9, 31)));
+
+    // The first dual-field frame resumes both windows from the same baseline.
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 32),
+        cumulativeVolume: '140',
+        cumulativeAmount: '1450',
+      }),
+    );
+    expect(agg.freezeCandidate(1, 'tdx', bucketStart(sh(9, 32)))).toMatchObject(
+      {
+        volume: '40',
+        amount: '450',
+        closingCumulativeVolume: '140',
+        closingCumulativeAmount: '1450',
       },
     );
   });
@@ -474,7 +495,97 @@ describe('OpenCandleAggregator', () => {
       candidateCount: 1,
       invalidCandidateCount: 0,
       frozenCandidateCount: 1,
+      quantityMissingFrameCount: 0,
       skipTotals: {},
     });
+  });
+
+  it('seals null v/a when every frame of a bucket lacks quantities', () => {
+    const agg = new OpenCandleAggregator();
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30),
+        cumulativeVolume: null,
+        cumulativeAmount: null,
+      }),
+      {
+        priorClosingTotals: {
+          tradingDay: '20260728',
+          cumulativeVolume: '100',
+          cumulativeAmount: '1000',
+        },
+      },
+    );
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 20),
+        cumulativeVolume: null,
+        cumulativeAmount: null,
+      }),
+    );
+
+    const frozen = agg.freezeCandidate(1, 'tdx', bucketStart(sh(9, 30)))!;
+    // Missing quantities stay null — never fabricated as a fake zero bucket.
+    expect(frozen.volume).toBeNull();
+    expect(frozen.amount).toBeNull();
+    // Baseline is preserved for the next bucket.
+    expect(frozen.closingCumulativeVolume).toBe('100');
+    expect(frozen.closingCumulativeAmount).toBe('1000');
+    expect(agg.diagnostics().quantityMissingFrameCount).toBe(2);
+  });
+
+  it('resumes the shared quantity window from the next dual-field frame', () => {
+    const agg = new OpenCandleAggregator();
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30),
+        cumulativeVolume: null,
+        cumulativeAmount: null,
+      }),
+      {
+        priorClosingTotals: {
+          tradingDay: '20260728',
+          cumulativeVolume: '100',
+          cumulativeAmount: '1000',
+        },
+      },
+    );
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 20),
+        cumulativeVolume: '150',
+        cumulativeAmount: '2000',
+      }),
+    );
+
+    const frozen = agg.freezeCandidate(1, 'tdx', bucketStart(sh(9, 30)))!;
+    // Both windows advance from the same baseline on the first dual-field frame.
+    expect(frozen.volume).toBe('50');
+    expect(frozen.amount).toBe('1000');
+  });
+
+  it('price-only frames never trigger counter_reset invalidation', () => {
+    const agg = new OpenCandleAggregator();
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30),
+        cumulativeVolume: '100',
+        cumulativeAmount: '1000',
+      }),
+    );
+    agg.applySnapshot(
+      snap({
+        eventTime: sh(9, 30, 20),
+        last: 9.5,
+        cumulativeVolume: null,
+        cumulativeAmount: null,
+      }),
+    );
+
+    const open = agg.peekOpen(1, 'tdx');
+    expect(open?.validity).toBe('valid');
+    expect(open?.invalidReason).toBeNull();
+    // Price state still advances on the price-only frame.
+    expect(open?.close).toBe(9.5);
   });
 });
