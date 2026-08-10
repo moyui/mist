@@ -9,6 +9,18 @@
 
 ## 0. 执行顺序与依赖
 
+### 0.1 终端单文件约束（2026-08-10 owner 确认，待处理）
+
+**TDX/QMT 终端策略环境只支持加载单个脚本文件**——`socket_sender.py` 不能作为独立文件部署。
+待办（下次落地统一处理）：
+
+- [ ] 将 `SocketSender` 类内联进 `mist_tdx_realtime_bridge.py` / `mist_qmt_realtime_bridge.py`
+      （删除 `from socket_sender import SocketSender`，同文件类）；
+- [ ] 调整 guardrail 测试 `test_socket_sender_scripts_stay_identical_across_bridges`：
+      合并后两份主文件结构不同（provider 历史部分差异），bit-identical 断言不再适用——
+      改为结构对齐约定（或删除该测试，一致性靠代码审查）；
+- [ ] 部署/加载清单更新：每个终端只加载一个脚本文件。
+
 ```
 B（mist，独立） ─┐
 A（mist-deploy）─┤ 可并行，无依赖

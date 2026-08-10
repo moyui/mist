@@ -65,3 +65,9 @@
 - C（bridge 轮询 3s→1s）：datasource 仓 + provider 行为变更
 - D（contract 量额必填化）：wire 契约 + 四仓 fixture sha256 同步
 - capture-realtime-provider-anomalies 的采集实现（本 change 只对齐分类词汇）
+
+## 待办（2026-08-10 owner 确认）
+
+- [ ] **终端单文件约束**：TDX/QMT 终端只支持加载单个脚本——`socket_sender.py` 需内联进
+      各自 bridge 主文件（删 `from socket_sender import`）；guardrail 一致性测试调整；
+      详见 implementation-plan §0.1
