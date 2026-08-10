@@ -1,24 +1,14 @@
-import { initTelemetry, shutdownTelemetry } from './otel';
-
-describe('initTelemetry', () => {
-  it('skips silently when no OTLP endpoint is configured (no-op guard)', () => {
-    delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-    expect(() => initTelemetry({ serviceName: 'test' })).not.toThrow();
-    expect(() => shutdownTelemetry()).not.toThrow();
-  });
-
-  it('initializes when endpoint is configured and is idempotent', () => {
-    process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:5080';
-    expect(() => initTelemetry({ serviceName: 'test' })).not.toThrow();
-    // second call must not throw or re-create the SDK
-    expect(() => initTelemetry({ serviceName: 'test-again' })).not.toThrow();
-    delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-  });
-});
-
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
-import { trace } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
+import { context, trace } from '@opentelemetry/api';
 import { pinoTraceMixin } from './otel';
+
+// Without an SDK the global context manager is never installed, and
+// startActiveSpan's context.with() would not propagate. Install the same
+// AsyncLocalStorage manager the SDK uses (NodeSDK/register does this in prod).
+beforeAll(() => {
+  context.setGlobalContextManager(new AsyncLocalStorageContextManager());
+});
 
 describe('pinoTraceMixin', () => {
   it('returns {} when no span is active', () => {
@@ -38,10 +28,9 @@ describe('pinoTraceMixin', () => {
       });
   });
 
-  it('returns {} for a non-recording span (no global provider)', () => {
-    // Reset global provider to noop by setting it to a fresh noop context.
+  it('returns {} for a non-recording span', () => {
+    // Global provider without an active span -> nothing recording.
     trace.setGlobalTracerProvider(new BasicTracerProvider());
-    // Outside any span there is nothing active -> {}
     expect(pinoTraceMixin()).toEqual({});
   });
 });

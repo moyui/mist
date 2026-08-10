@@ -34,10 +34,9 @@ WORKDIR /app
 # Copy runtime dependencies and build output from builder stage.
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/dist ./dist
-# OTel SDK preload: must run before the webpack bundle loads http/express/pino
-# (RITM skips already-cached modules), so every node entrypoint uses
-# `node -r ./otel-preload.js ...`. See otel-preload.js header comment.
-COPY --from=builder --chown=app:app /app/otel-preload.js ./otel-preload.js
+# OTel SDK must init before the webpack bundle loads http/express/pino (RITM
+# skips already-cached modules), so every node entrypoint runs the official
+# `-r @opentelemetry/auto-instrumentations-node/register` (otel-observability-gaps G0).
 COPY --from=builder --chown=app:app /app/test/fixtures/realtime ./test/fixtures/realtime
 COPY --from=builder --chown=app:app /app/tools/run-migrations.mjs ./tools/run-migrations.mjs
 COPY --from=builder --chown=app:app /app/deploy/database ./deploy/database
@@ -58,5 +57,5 @@ RUN chmod +x docker-entrypoint.sh
 
 USER app
 ENTRYPOINT ["./docker-entrypoint.sh"]
-# otel-preload.js must be loaded before any business module (see header).
-CMD ["node", "-r", "./otel-preload.js", "dist/apps/mist/main.js"]
+# Official OTel register entry must load before any business module.
+CMD ["node", "-r", "@opentelemetry/auto-instrumentations-node/register", "dist/apps/mist/main.js"]

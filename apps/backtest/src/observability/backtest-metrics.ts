@@ -6,7 +6,7 @@ let _registered = false;
 
 /**
  * Register existing process-local backtest counters as OTel observable gauges
- * (extract-backtest-runtime 5.2, design §12). Call once after initTelemetry
+ * (extract-backtest-runtime 5.2, design §12). Call once after SDK init (official register)
  * with DI-resolved service instances. Idempotent.
  */
 export function registerBacktestMetrics(

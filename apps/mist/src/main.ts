@@ -7,11 +7,9 @@ import { registerStartupCompensationMetrics } from './realtime/observability/sta
 import { CandleFinalizer } from './realtime/candle/candle-finalizer';
 import { RealtimeMarketDataProductService } from './realtime/candle/realtime-market-data-product.service';
 import { RealtimeStrategyStartupCompensationService } from './realtime/strategy-trigger/realtime-strategy-startup-compensation.service';
-import { initTelemetry } from '@app/otel';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  initTelemetry({ serviceName: 'mist-backend' });
   const app = await NestFactory.create(AppModule);
   app.useLogger(app.get(Logger));
   registerCandleMetrics(

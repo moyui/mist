@@ -7,7 +7,7 @@ let _registered = false;
 /**
  * Register existing process-local candle counters as OTel observable gauges
  * (design D3, plan A: read values, zero business-logic changes). Call once
- * after initTelemetry with DI-resolved service instances. Idempotent.
+ * after SDK init (official register) with DI-resolved service instances. Idempotent.
  */
 export function registerCandleMetrics(
   finalizer: CandleFinalizer,
