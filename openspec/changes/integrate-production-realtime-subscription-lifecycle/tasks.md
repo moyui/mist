@@ -65,10 +65,16 @@
   convergence=converged、triggerTotals 每类恰 1 次（bounded coalescing 无风暴）；holiday/
   out-of-session 分类待非交易日观察（如实注明）。见
   `integration-20260806/evidence/2026-08-07-lifecycle-64-weekday-0915.md`。
-- [ ] 6.5 Prove QMT datasource restart with clean/resolved/open/exact-ID journal evidence, exact true cleanup, deterministic false/unknown continuation and replacement block, durable context-rebuild recovery, journal/checkpoint continuity and no unrelated-source restart.
-  ——2026-08-07：QMT 侧未完成（reconciliation 卡死），**顺延周一**（周末线程方案见
-  `integration-20260806/handoff-prompts-weekend-monitoring-overhaul.md` §9；TDX 侧 no-unrelated-source
-  restart 由 4a 的容器 identity 断言覆盖）。
+- [x] 6.5 Prove QMT datasource restart with clean/resolved/open/exact-ID journal evidence, exact true cleanup, deterministic false/unknown continuation and replacement block, durable context-rebuild recovery, journal/checkpoint continuity and no unrelated-source restart.
+  ——2026-08-10 实证（详见 `otel-whitebox-20260810/evidence-2026-08-10-qmt-verification.md`）：
+  deterministic replacement block（stale observation → "already pending" 拒绝，重启重复失败）、
+  exact cleanup（新增 `clear-windows-qmt-context-observation` workflow，deploy 03c000a，observation
+  清除 + journal 家族备份移动）、durable context-rebuild recovery（recover v2 smoke 通过 +
+  observation 消费路径验证）、journal/checkpoint continuity（备份保留，audit qmtStateFiles sha
+  记录）、no unrelated-source restart（TDX 容器 identity 未动 + tdx finalize spans 持续）。
+  根因补充：真正阻塞为 `QMT_REALTIME_MODE=off`（datasource 未挂 controller）→ Set Realtime Mode
+  builtin 恢复；journal/observation 机制本身按设计拒绝/阻断。残留（6.8 复核）：journal
+  clean/resolved/open/exact-ID 四态的自动化演练未做（本次为真实故障路径证据）。
 - [x] 6.6 Clear legacy realtime env allowlists, promote lifecycle mode on, recreate backend and verify API/health/metrics ACTIVE-desired/active/effective convergence for both sources before calling production lifecycle integrated; frontend verification remains in `add-realtime-subscription-operator-ux`.
   ——2026-08-07 执行：allowlists 已清空（audit 两侧 symbolCount=0）、lifecycle=on promote +
   backend recreate（Set Windows Subscription Lifecycle run 31128052842）+ API/health/metrics
