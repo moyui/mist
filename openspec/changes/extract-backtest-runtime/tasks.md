@@ -72,9 +72,24 @@
 
 - [x] 5.1 增加单实例 Backtest image/build、Compose service、内部 HTTP/RPC 配置、PowerShell defaults、
   deploy/start order 和 health contract；`mist-backend` 不以 Compose healthy 硬依赖 Backtest。
-- [ ] 5.2 增加 scoped readiness、active/waiting/capacity、command/run/duration/persistence/failure、
-  target issue 和 lost-ACK 低基数 monitoring 与 contract tests。Backtest health 与 command outcomes
-  已实现；Mist 侧一次性 startup-compensation/lost-ACK outcome 的 monitoring 仍待补齐。
+- [ ] 5.2 增加 Backtest 与 Mist 补偿链路的 **OTel 指标（OpenObserve 口径）** 与 contract tests
+  ——monitoring/exporter 已随 OTel 迁移退役（2026-08-10 决策），不再产出 prometheus 指标：
+  - `[backtest]` `apps/backtest/src/observability/backtest-metrics.ts`：镜像
+    `candle-metrics.ts` 模式（`metrics.getMeter('backtest','0.1.0')` + observable gauges，
+    `main.ts` 在 `initTelemetry` 后注册一次、幂等），低基数：
+    `mist_backtest_ready`（scoped readiness）、`mist_backtest_active_runs` /
+    `mist_backtest_waiting_runs`（admission）、`mist_backtest_capacity_total`、
+    `mist_backtest_command_total{outcome}`、`mist_backtest_run_total{status}`、
+    `mist_backtest_duration_seconds`、`mist_backtest_persistence_total{outcome}`、
+    `mist_backtest_failure_total{reason}`、`mist_backtest_target_issue_total`。
+  - `[mist]` 一次性 startup-compensation/lost-ACK outcome 指标：apps/mist
+    `realtime-strategy-startup-compensation.service.ts` 的 outcome 输出
+    `mist_backtest_lost_ack_total{outcome}`（或 mist 命名空间，实施时定名）。
+  - `[backtest tests]` `backtest-metrics.spec.ts` 镜像 `candle-metrics.spec.ts`：
+    注册幂等、gauge 反映进程内状态、低基数 label 断言。
+  - `[mist tests]` compensation outcome 指标单测。
+  - 验证：mock 环境（tools/mock-env）或生产 OpenObserve 可见 `mist_backtest_*`。
+  - Backtest health 与 command outcomes 已实现；本任务只补指标导出层。
 - [ ] 5.3 运行 `mist`、`mist-deploy`、`mist-monitoring` 完整基线、strict OpenSpec、退役路径检索和
   `git diff --check`。
 - [ ] 5.4 在隔离真实 MySQL 执行 migration pre/postflight/readback、protected digest、first/middle page
