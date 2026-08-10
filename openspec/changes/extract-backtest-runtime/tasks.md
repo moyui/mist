@@ -102,9 +102,19 @@
         gauge 值反映进程内状态、低基数 label 断言、duration null 无 dataPoint）。
   - [x] 5.2.9 新建 `startup-compensation-metrics.spec.ts`（outcome 指标单测：value=1 +
         outcome label + 幂等）。
-  - [ ] 5.2.10 验证：mock 环境验证 mist 侧（backend 在栈内，outcome=not_enabled）或生产
-        OpenObserve 可见 `mist_backtest_*`（§12.5 路径）；部署传 `productization=shadow`。
+  - [x] 5.2.10 验证：mock 环境验证 mist 侧（backend 在栈内，2026-08-10 实测
+        `mist_startup_compensation_total` value=1 + outcome=not_enabled）或生产 OpenObserve
+        可见 `mist_backtest_*`（§12.5 路径：生产 OO 已见 10 指标全量 + 补偿指标
+        outcome=completed，部署 run 31364321827，2026-08-10）；部署传
+        `productization=shadow`（已显式传，schema 缓存 422 时 set-windows-* 补设）。
   - 注：Backtest health 与 command outcomes 已实现；本任务只补指标导出层与日志层。
+  - 注（命名定案，2026-08-10）：补偿指标 = `mist_startup_compensation_total{outcome}`
+    （mist 命名空间，弃用 tasks 备选 `mist_backtest_lost_ack_total`——补偿是 mist 机制
+    不是 backtest 的）。
+  - 注（生产遥测 identity，2026-08-10）：验证中发现 otel-preload.js 默认
+    `OTEL_SERVICE_NAME ?? 'mist-backend'` 导致各 app 生产遥测 service_name 串名——已按
+    mist-deploy `8317453`（compose 各 node 服务显式 `OTEL_SERVICE_NAME`）修复并重部署验证
+    （backtest 指标 service_name='backtest'）。
 - [ ] 5.3 运行 `mist`、`mist-deploy`、`mist-monitoring` 完整基线、strict OpenSpec、退役路径检索和
   `git diff --check`。
 - [ ] 5.4 在隔离真实 MySQL 执行 migration pre/postflight/readback、protected digest、first/middle page
