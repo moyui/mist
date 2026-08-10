@@ -51,7 +51,7 @@
 ## 6. Cross-repository validation and production promotion
 
 - [x] 6.1 Run `mist` lint/typecheck/full UTC tests/contracts/docker build, real-MySQL migration/schema tests, `git diff --check`, retired path/dual-authority searches and `openspec validate --all --strict`; report pre-existing failures separately.
-- [ ] 6.2 Deploy matched candidate with lifecycle off, initialize/audit assignments, record repository SHAs/image tags/terminal bridge paths or platform-unavailable evidence/SHA-256 and verify no production mutation or protected-table change.
+- [x] 6.2 Deploy matched candidate with lifecycle off, initialize/audit assignments, record repository SHAs/image tags/terminal bridge paths or platform-unavailable evidence/SHA-256 and verify no production mutation or protected-table change.  ——2026-08-10 勾选（evidence/2026-08-10-62-deploy-assignments-evidence.md）：off 阶段=08-05 初始+08-06 意外期（时序偏差注明）、assignments 初始化+审计（assignmentReadback tdx2/qmt1、allowlist 空）、SHAs/image tags/bridge paths/platform-unavailable 全部记录、protected digest 6 表 SAME。
 - [x] 6.3 During a supported Windows trading session, prove backend/datasource restart and reconnect `get -> reset -> get`, intraday single activation, deactivation deferred removal, effective listener/freshness, source isolation, common latest cleanup and protected-table digest invariance.
   ——2026-08-07 交易时段取证（run 31149178628 + audit 31138772138）：backend restart + Redis AOF
   restart 后恢复生产（sealed 持续、hash 双保留）；reconnect `get->reset->get` 由 trigger 序列
