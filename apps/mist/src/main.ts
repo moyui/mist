@@ -3,8 +3,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { installHttpRequestContext } from '@app/transport/http';
 import { Logger } from 'nestjs-pino';
 import { registerCandleMetrics } from './realtime/observability/candle-metrics';
+import { registerStartupCompensationMetrics } from './realtime/observability/startup-compensation-metrics';
 import { CandleFinalizer } from './realtime/candle/candle-finalizer';
 import { RealtimeMarketDataProductService } from './realtime/candle/realtime-market-data-product.service';
+import { RealtimeStrategyStartupCompensationService } from './realtime/strategy-trigger/realtime-strategy-startup-compensation.service';
 import { initTelemetry } from '@app/otel';
 import { AppModule } from './app.module';
 
@@ -15,6 +17,9 @@ async function bootstrap() {
   registerCandleMetrics(
     app.get(CandleFinalizer),
     app.get(RealtimeMarketDataProductService),
+  );
+  registerStartupCompensationMetrics(
+    app.get(RealtimeStrategyStartupCompensationService),
   );
   installHttpRequestContext(app);
 
