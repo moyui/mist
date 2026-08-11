@@ -1,6 +1,9 @@
 import { Global, Module } from '@nestjs/common';
 import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
-import { SecuritySourceConfig } from '@app/shared-data';
+import {
+  RealtimeSubscriptionAssignment,
+  SecuritySourceConfig,
+} from '@app/shared-data';
 import type { Repository } from 'typeorm';
 import { RealtimeSnapshotIngressService } from './realtime-snapshot-ingress.service';
 import { RealtimeSecurityAllowlistService } from './realtime-security-allowlist.service';
@@ -15,10 +18,8 @@ import { RealtimeStrategyStartupCompensationService } from './strategy-trigger/r
 import { RealtimeStrategyHandoffObservabilityService } from './strategy-trigger/realtime-strategy-handoff-observability.service';
 
 /**
- * Mock-mode in-memory SecuritySourceConfig repository. The allowlist service
- * only queries the DB when a non-empty allowlist is configured with
- * lifecycle=off (realtime-security-allowlist.service.ts:44-80); mock mode
- * keeps allowlists empty so this is never invoked. Any unexpected query
+ * Mock-mode in-memory SecuritySourceConfig repository. Mock mode keeps the
+ * allowlist in env (mock-only) so this is never invoked; any unexpected query
  * fails fast rather than silently returning an empty result.
  *
  * Declared before the @Module decorator so the providers array can reference
@@ -31,6 +32,14 @@ const mockSourceConfigRepository = {
     );
   },
 } as unknown as Repository<SecuritySourceConfig>;
+
+const mockAssignmentRepository = {
+  createQueryBuilder: () => {
+    throw new Error(
+      'mock mode: assignments repository is unavailable (coordinator not loaded)',
+    );
+  },
+} as unknown as Repository<RealtimeSubscriptionAssignment>;
 
 @Global()
 @Module({
@@ -57,6 +66,10 @@ const mockSourceConfigRepository = {
             provide: getRepositoryToken(SecuritySourceConfig),
             useValue: mockSourceConfigRepository,
           },
+          {
+            provide: getRepositoryToken(RealtimeSubscriptionAssignment),
+            useValue: mockAssignmentRepository,
+          },
         ]
       : []),
   ],
@@ -76,10 +89,17 @@ export function realtimeStrategyHandoffModulesForMode(
 }
 
 /**
- * Modules that require the SecuritySourceConfig repository. Mock mode
- * (MIST_MOCK_MODE=true) swaps the TypeORM forFeature for an in-memory stub;
- * production keeps the real repository.
+ * Modules that require the realtime persistence repositories. Mock mode
+ * (MIST_MOCK_MODE=true) swaps the TypeORM forFeature for in-memory stubs;
+ * production keeps the real repositories.
  */
 export function realtimePersistenceModulesForMode(isMock: boolean) {
-  return isMock ? [] : [TypeOrmModule.forFeature([SecuritySourceConfig])];
+  return isMock
+    ? []
+    : [
+        TypeOrmModule.forFeature([
+          SecuritySourceConfig,
+          RealtimeSubscriptionAssignment,
+        ]),
+      ];
 }

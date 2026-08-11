@@ -10,7 +10,9 @@ import {
 export type RealtimeLifecycleTrigger =
   | 'accepted_ready'
   | 'weekday_0915'
-  | 'intraday_activation';
+  | 'intraday_activation'
+  | 'scheduled_reconcile'
+  | 'auto_reconcile_enabled';
 
 interface SourceObservation {
   running: boolean;

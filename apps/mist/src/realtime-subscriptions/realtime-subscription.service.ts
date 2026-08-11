@@ -1,5 +1,4 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
@@ -22,6 +21,7 @@ import { InitializeRealtimeSubscriptionDto } from './dto/initialize-realtime-sub
 import { RealtimeSubscriptionQueryDto } from './dto/realtime-subscription-query.dto';
 import { RealtimeSubscriptionLifecycleCoordinator } from './realtime-subscription-lifecycle.coordinator';
 import { RealtimeSubscriptionLifecycleObservationStore } from './realtime-subscription-lifecycle-observation.store';
+import { RuntimeConfigService } from './runtime-config.service';
 import {
   REALTIME_ACTIVE_CAPACITY_LIMIT,
   REALTIME_ASSIGNMENT_SECURITY_UNIQUE,
@@ -56,11 +56,12 @@ export class RealtimeSubscriptionService {
     private readonly dataSource: TypeOrmDataSource,
     @InjectRepository(RealtimeSubscriptionAssignment)
     private readonly assignmentRepository: Repository<RealtimeSubscriptionAssignment>,
-    private readonly config: ConfigService,
     @Optional()
     private readonly lifecycleCoordinator?: RealtimeSubscriptionLifecycleCoordinator,
     @Optional()
     private readonly lifecycleObservations?: RealtimeSubscriptionLifecycleObservationStore,
+    @Optional()
+    private readonly runtimeConfig?: RuntimeConfigService,
   ) {}
 
   async initialize(
@@ -314,8 +315,11 @@ export class RealtimeSubscriptionService {
       throw new Error('Realtime assignment relation invariant is invalid');
     }
     const desired = security.status === SecurityStatus.ACTIVE;
+    // declarative-realtime-configuration: auto_reconcile switch is cached in
+    // memory by RuntimeConfigService (refreshed every scheduled round), so
+    // synchronous VO projection reads the cache instead of env.
     const lifecycleEnabled =
-      this.config.get<string>('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE') === 'on';
+      this.runtimeConfig?.getAutoReconcileCached() ?? false;
     const observation = this.lifecycleObservations?.project(
       sourceConfig.source,
       sourceConfig.formatCode,

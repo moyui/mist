@@ -1,49 +1,48 @@
-import {
-  DataSource,
-  SecuritySourceConfig,
-  SecurityType,
-} from '@app/shared-data';
+import { DataSource, SecurityStatus, SecurityType } from '@app/shared-data';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RealtimeSubscriptionAssignment } from '@app/shared-data';
 import { Repository } from 'typeorm';
 import { RealtimeSecurityAllowlistService } from './realtime-security-allowlist.service';
 
 function repositoryReturning(
-  rows: Array<{
-    formatCode: string;
-    securityId: number;
-    securityType: SecurityType;
-  }>,
+  rows: Array<{ formatCode: string; securityId: number }>,
 ) {
   const builder = {
+    select: jest.fn(),
+    addSelect: jest.fn(),
     innerJoin: jest.fn(),
     where: jest.fn(),
     andWhere: jest.fn(),
-    select: jest.fn(),
+    orderBy: jest.fn(),
     getRawMany: jest.fn().mockResolvedValue(rows),
   };
-  for (const method of ['innerJoin', 'where', 'andWhere', 'select'] as const) {
+  for (const method of [
+    'select',
+    'addSelect',
+    'innerJoin',
+    'where',
+    'andWhere',
+    'orderBy',
+  ] as const) {
     builder[method].mockReturnValue(builder);
   }
   return {
     repository: {
       createQueryBuilder: jest.fn().mockReturnValue(builder),
-    } as unknown as Repository<SecuritySourceConfig>,
+    } as unknown as Repository<RealtimeSubscriptionAssignment>,
     builder,
   };
 }
 
 describe('RealtimeSecurityAllowlistService', () => {
-  it('binds a source-specific exact formatCode to one active security identity', async () => {
+  it('loads assigned entries from DB assignments (declarative authority)', async () => {
     const { repository, builder } = repositoryReturning([
-      {
-        formatCode: '600030.SH',
-        securityId: 7,
-        securityType: SecurityType.STOCK,
-      },
+      { formatCode: '600030.SH', securityId: 7 },
+      { formatCode: '300502.SZ', securityId: 8 },
     ]);
     const service = new RealtimeSecurityAllowlistService(
-      new ConfigService({ TDX_REALTIME_ALLOWLIST: '600030.SH' }),
+      new ConfigService({}),
       repository,
     );
 
@@ -51,40 +50,52 @@ describe('RealtimeSecurityAllowlistService', () => {
 
     expect(service.isAuthorized(DataSource.TDX, '600030.SH')).toBe(true);
     expect(service.isAuthorized(DataSource.TDX, '600030.sh')).toBe(false);
+    expect(service.resolve(DataSource.TDX, '300502.SZ')).toEqual({
+      formatCode: '300502.SZ',
+      securityId: 8,
+    });
+    expect(builder.where).toHaveBeenCalledWith('security.type = :stock', {
+      stock: SecurityType.STOCK,
+    });
     expect(builder.andWhere).toHaveBeenCalledWith(
-      'BINARY cfg.format_code = :formatCode',
-      { formatCode: '600030.SH' },
+      'source_config.source = :source',
+      { source: DataSource.TDX },
     );
+    expect(builder.andWhere).toHaveBeenCalledWith(
+      'source_config.enabled = :enabled',
+      { enabled: true },
+    );
+    expect(builder.andWhere).toHaveBeenCalledWith('security.status = :status', {
+      status: SecurityStatus.ACTIVE,
+    });
   });
 
-  it('rejects a non-stock before provider quantity conversion', async () => {
+  it('refreshAssignedFromDb replaces the assigned set (external DB writes picked up)', async () => {
     const { repository } = repositoryReturning([
-      {
-        formatCode: '000300.SH',
-        securityId: 8,
-        securityType: SecurityType.INDEX,
-      },
+      { formatCode: '600030.SH', securityId: 7 },
     ]);
     const service = new RealtimeSecurityAllowlistService(
-      new ConfigService({ TDX_REALTIME_ALLOWLIST: '000300.SH' }),
+      new ConfigService({}),
       repository,
     );
+    await service.initialize(DataSource.TDX, 'TDX_REALTIME_ALLOWLIST');
+    expect(service.assignedCountFor(DataSource.TDX)).toBe(1);
 
-    await expect(
-      service.initialize(DataSource.TDX, 'TDX_REALTIME_ALLOWLIST'),
-    ).rejects.toThrow(/support STOCK only/);
-  });
+    // external write: symbol removed from DB assignments
+    repositoryReturning([]);
+    (repository.createQueryBuilder as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    });
 
-  it('fails closed for duplicate requested formatCodes', async () => {
-    const { repository } = repositoryReturning([]);
-    const service = new RealtimeSecurityAllowlistService(
-      new ConfigService({ QMT_REALTIME_ALLOWLIST: '300502.SZ,300502.SZ' }),
-      repository,
-    );
-
-    await expect(
-      service.initialize(DataSource.QMT, 'QMT_REALTIME_ALLOWLIST'),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await service.refreshAssignedFromDb(DataSource.TDX);
+    expect(service.assignedCountFor(DataSource.TDX)).toBe(0);
+    expect(service.isAuthorized(DataSource.TDX, '600030.SH')).toBe(false);
   });
 
   it('resolves env allowlist from memory in mock mode without a database lookup', async () => {
@@ -92,10 +103,7 @@ describe('RealtimeSecurityAllowlistService', () => {
     try {
       const { repository } = repositoryReturning([]);
       const service = new RealtimeSecurityAllowlistService(
-        new ConfigService({
-          TDX_REALTIME_ALLOWLIST: '600519.SH',
-          REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
-        }),
+        new ConfigService({ TDX_REALTIME_ALLOWLIST: '600519.SH' }),
         repository,
       );
 
@@ -131,18 +139,30 @@ describe('RealtimeSecurityAllowlistService', () => {
     }
   });
 
-  it('starts empty in lifecycle on mode and separates assigned control from effective ingress', async () => {
+  it('fails closed for duplicate mock env formatCodes', async () => {
     const { repository } = repositoryReturning([]);
     const service = new RealtimeSecurityAllowlistService(
-      new ConfigService({
-        REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
-        TDX_REALTIME_ALLOWLIST: '',
-      }),
+      new ConfigService({ QMT_REALTIME_ALLOWLIST: '300502.SZ,300502.SZ' }),
+      repository,
+    );
+    process.env.MIST_MOCK_MODE = 'true';
+    try {
+      await expect(
+        service.initialize(DataSource.QMT, 'QMT_REALTIME_ALLOWLIST'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    } finally {
+      delete process.env.MIST_MOCK_MODE;
+    }
+  });
+
+  it('separates assigned control from effective ingress', async () => {
+    const { repository } = repositoryReturning([]);
+    const service = new RealtimeSecurityAllowlistService(
+      new ConfigService({}),
       repository,
     );
 
     await service.initialize(DataSource.TDX, 'TDX_REALTIME_ALLOWLIST');
-    expect(repository.createQueryBuilder).not.toHaveBeenCalled();
     expect(service.list(DataSource.TDX)).toEqual([]);
 
     service.replaceAssigned(DataSource.TDX, [
@@ -169,7 +189,7 @@ describe('RealtimeSecurityAllowlistService', () => {
   it('rejects one provider symbol mapped to different assigned securities', () => {
     const { repository } = repositoryReturning([]);
     const service = new RealtimeSecurityAllowlistService(
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      new ConfigService({}),
       repository,
     );
     expect(() =>

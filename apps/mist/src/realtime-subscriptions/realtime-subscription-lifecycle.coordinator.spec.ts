@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { DataSource, SecurityStatus, SecurityType } from '@app/shared-data';
 import { RealtimeSubscriptionControl } from '../realtime/realtime-subscription-control';
 import {
@@ -9,12 +10,12 @@ import { RealtimeSubscriptionRuntimeRegistry } from './realtime-subscription-run
 import { RealtimeSubscriptionLifecycleObservationStore } from './realtime-subscription-lifecycle-observation.store';
 
 describe('RealtimeSubscriptionLifecycleCoordinator', () => {
-  it('does nothing in rollback mode', async () => {
+  it('skips convergence when auto_reconcile is off', async () => {
     const runtime = new RealtimeSubscriptionRuntimeRegistry();
     const control = buildControl();
     runtime.registerControl(DataSource.TDX, control);
-    const coordinator = buildCoordinator('off', runtime, ['600030.SH']);
-    coordinator.onModuleInit();
+    const coordinator = buildCoordinator(runtime, ['600030.SH'], false);
+    await coordinator.onModuleInit();
 
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     await settleRounds();
@@ -34,12 +35,16 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     };
     const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
       { createQueryBuilder: () => buildQuery(['600030.SH']) } as never,
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'off' }),
+      new ConfigService({}),
       runtime,
       fixedClock('2026-08-04T02:00:00Z'),
       observations,
       allowlist as never,
       ingressBoundary(),
+
+      runtimeConfigMock(true),
+
+      new SchedulerRegistry(),
     );
 
     await coordinator.refreshDesiredState(DataSource.TDX);
@@ -60,14 +65,18 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     const query = buildQuery(['600030.SH', '300502.SZ']);
     const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
       { createQueryBuilder: () => query } as never,
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      new ConfigService({}),
       runtime,
       fixedClock('2026-08-04T02:00:00Z'),
       new RealtimeSubscriptionLifecycleObservationStore(),
       allowlistBoundary(),
       ingressBoundary(),
+
+      runtimeConfigMock(true),
+
+      new SchedulerRegistry(),
     );
-    coordinator.onModuleInit();
+    await coordinator.onModuleInit();
 
     runtime.observeAcceptedReady(DataSource.TDX, 11);
     await settleRounds();
@@ -99,8 +108,8 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     const qmt = buildControl([], true);
     runtime.registerControl(DataSource.TDX, tdx);
     runtime.registerControl(DataSource.QMT, qmt);
-    const coordinator = buildCoordinator('on', runtime, []);
-    coordinator.onModuleInit();
+    const coordinator = buildCoordinator(runtime, []);
+    await coordinator.onModuleInit();
 
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     runtime.observeAcceptedReady(DataSource.TDX, 2);
@@ -125,8 +134,8 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
       return { success: { whole: null, singles: {} } };
     });
     runtime.registerControl(DataSource.QMT, control);
-    const coordinator = buildCoordinator('on', runtime, ['300502.SZ']);
-    coordinator.onModuleInit();
+    const coordinator = buildCoordinator(runtime, ['300502.SZ']);
+    await coordinator.onModuleInit();
 
     runtime.observeAcceptedReady(DataSource.QMT, 9);
     await settleRounds();
@@ -153,14 +162,16 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     const ingress = { removeSeries: jest.fn() };
     const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
       { createQueryBuilder: () => buildQuery([]) } as never,
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      new ConfigService({}),
       runtime,
       fixedClock('2026-08-04T02:00:00Z'),
       new RealtimeSubscriptionLifecycleObservationStore(),
       allowlist as never,
       ingress as never,
+      runtimeConfigMock(true),
+      new SchedulerRegistry(),
     );
-    coordinator.onModuleInit();
+    await coordinator.onModuleInit();
 
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     await waitFor(() =>
@@ -193,14 +204,18 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
       {
         createQueryBuilder: () => buildQuery(['300502.SZ', '600030.SH']),
       } as never,
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      new ConfigService({}),
       runtime,
       fixedClock('2026-08-04T02:00:00Z'),
       new RealtimeSubscriptionLifecycleObservationStore(),
       allowlistBoundary(),
       ingressBoundary(),
+
+      runtimeConfigMock(true),
+
+      new SchedulerRegistry(),
     );
-    coordinator.onModuleInit();
+    await coordinator.onModuleInit();
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     await waitFor(() =>
       expect(control.getSubscriptions).toHaveBeenCalledTimes(2),
@@ -245,14 +260,18 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
       ]);
     const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
       { createQueryBuilder: () => query } as never,
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      new ConfigService({}),
       runtime,
       fixedClock('2026-08-04T02:00:00Z'),
       new RealtimeSubscriptionLifecycleObservationStore(),
       allowlistBoundary(),
       ingressBoundary(),
+
+      runtimeConfigMock(true),
+
+      new SchedulerRegistry(),
     );
-    coordinator.onModuleInit();
+    await coordinator.onModuleInit();
 
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     await waitFor(() =>
@@ -285,14 +304,18 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     runtime.registerControl(DataSource.TDX, control);
     const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
       { createQueryBuilder: () => buildQuery(['600030.SH']) } as never,
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      new ConfigService({}),
       runtime,
       fixedClock('2026-08-04T02:00:00Z'),
       observations,
       allowlistBoundary(),
       ingressBoundary(),
+
+      runtimeConfigMock(true),
+
+      new SchedulerRegistry(),
     );
-    coordinator.onModuleInit();
+    await coordinator.onModuleInit();
 
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     await waitFor(() =>
@@ -330,14 +353,18 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     runtime.registerControl(DataSource.TDX, control);
     const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
       { createQueryBuilder: () => buildQuery(['600030.SH']) } as never,
-      new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on' }),
+      new ConfigService({}),
       runtime,
       fixedClock('2026-08-04T08:00:00Z'),
       new RealtimeSubscriptionLifecycleObservationStore(),
       allowlistBoundary(),
       ingressBoundary(),
+
+      runtimeConfigMock(true),
+
+      new SchedulerRegistry(),
     );
-    coordinator.onModuleInit();
+    await coordinator.onModuleInit();
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     await waitFor(() =>
       expect(control.getSubscriptions).toHaveBeenCalledTimes(2),
@@ -375,8 +402,8 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
       return { success: [] };
     });
     runtime.registerControl(DataSource.TDX, control);
-    const coordinator = buildCoordinator('on', runtime, ['600030.SH']);
-    coordinator.onModuleInit();
+    const coordinator = buildCoordinator(runtime, ['600030.SH']);
+    await coordinator.onModuleInit();
     runtime.observeAcceptedReady(DataSource.TDX, 1);
     await settleRounds();
 
@@ -387,6 +414,114 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
 
     expect(control.getSubscriptions).toHaveBeenCalledTimes(1);
     expect(control.syncSubscriptions).not.toHaveBeenCalled();
+  });
+
+  it('scheduled round picks up external DB writes (add/remove) within one interval', async () => {
+    const runtime = new RealtimeSubscriptionRuntimeRegistry();
+    const calls: string[] = [];
+    const control = buildControl(calls);
+    runtime.registerControl(DataSource.TDX, control);
+    const symbols = ['600030.SH', '300502.SZ'];
+    const coordinator = buildCoordinator(runtime, symbols);
+    await coordinator.onModuleInit();
+    runtime.observeAcceptedReady(DataSource.TDX, 1);
+    await settleRounds();
+    expect(calls).toContain('sync:600030.SH,300502.SZ');
+
+    // external DB write: 300502.SZ removed from assignments; the scheduled
+    // round must converge the full desired set (reset policy) without a
+    // restart or HTTP control endpoint
+    calls.length = 0;
+    symbols.length = 0;
+    symbols.push('600030.SH');
+    await (
+      coordinator as unknown as {
+        runScheduledReconciliation(): Promise<void>;
+      }
+    ).runScheduledReconciliation();
+    await settleRounds();
+
+    expect(calls).toContain('sync:600030.SH');
+    await coordinator.onModuleDestroy();
+  });
+
+  it('flipping auto_reconcile false→true triggers an immediate full alignment', async () => {
+    const runtime = new RealtimeSubscriptionRuntimeRegistry();
+    const calls: string[] = [];
+    const control = buildControl(calls);
+    runtime.registerControl(DataSource.TDX, control);
+    const flip = { value: false };
+    const runtimeConfig = {
+      getAutoReconcileCached: jest.fn(() => flip.value),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    } as never;
+    const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
+      { createQueryBuilder: () => buildQuery(['600030.SH']) } as never,
+      new ConfigService({}),
+      runtime,
+      fixedClock('2026-08-04T02:00:00Z'),
+      new RealtimeSubscriptionLifecycleObservationStore(),
+      allowlistBoundary(),
+      ingressBoundary(),
+      runtimeConfig,
+      new SchedulerRegistry(),
+    );
+    await coordinator.onModuleInit();
+    runtime.observeAcceptedReady(DataSource.TDX, 1);
+    await settleRounds();
+    expect(calls).not.toContain('sync:');
+
+    flip.value = true; // DB switch flips
+    await (
+      coordinator as unknown as {
+        runScheduledReconciliation(): Promise<void>;
+      }
+    ).runScheduledReconciliation();
+    await settleRounds();
+
+    expect(calls).toContain('sync:600030.SH');
+    await coordinator.onModuleDestroy();
+  });
+
+  it('flipping auto_reconcile true→false stops rounds and keeps existing subscriptions', async () => {
+    const runtime = new RealtimeSubscriptionRuntimeRegistry();
+    const calls: string[] = [];
+    const control = buildControl(calls);
+    runtime.registerControl(DataSource.TDX, control);
+    const flip = { value: true };
+    const runtimeConfig = {
+      getAutoReconcileCached: jest.fn(() => flip.value),
+      refresh: jest.fn().mockResolvedValue(undefined),
+    } as never;
+    const coordinator = new RealtimeSubscriptionLifecycleCoordinator(
+      { createQueryBuilder: () => buildQuery(['600030.SH']) } as never,
+      new ConfigService({}),
+      runtime,
+      fixedClock('2026-08-04T02:00:00Z'),
+      new RealtimeSubscriptionLifecycleObservationStore(),
+      allowlistBoundary(),
+      ingressBoundary(),
+      runtimeConfig,
+      new SchedulerRegistry(),
+    );
+    await coordinator.onModuleInit();
+    runtime.observeAcceptedReady(DataSource.TDX, 1);
+    await settleRounds();
+    expect(calls).toContain('sync:600030.SH');
+
+    flip.value = false;
+    calls.length = 0;
+    await (
+      coordinator as unknown as {
+        runScheduledReconciliation(): Promise<void>;
+      }
+    ).runScheduledReconciliation();
+    await settleRounds();
+
+    // no further convergence, existing subscription untouched (manual takeover)
+    expect(calls).not.toContain('sync:');
+    expect(calls).not.toContain('unsubscribe:');
+    await coordinator.onModuleDestroy();
   });
 });
 
@@ -402,19 +537,28 @@ describe('isIntradayAddWindow', () => {
 });
 
 function buildCoordinator(
-  mode: 'off' | 'on',
   runtime: RealtimeSubscriptionRuntimeRegistry,
   symbols: string[],
+  autoReconcile = true,
 ) {
   return new RealtimeSubscriptionLifecycleCoordinator(
     { createQueryBuilder: () => buildQuery(symbols) } as never,
-    new ConfigService({ REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: mode }),
+    new ConfigService({}),
     runtime,
     fixedClock('2026-08-04T02:00:00Z'),
     new RealtimeSubscriptionLifecycleObservationStore(),
     allowlistBoundary(),
     ingressBoundary(),
+    runtimeConfigMock(autoReconcile),
+    new SchedulerRegistry(),
   );
+}
+
+function runtimeConfigMock(autoReconcile: boolean) {
+  return {
+    getAutoReconcileCached: jest.fn(() => autoReconcile),
+    refresh: jest.fn().mockResolvedValue(undefined),
+  } as never;
 }
 
 function buildQuery(symbols: string[]) {

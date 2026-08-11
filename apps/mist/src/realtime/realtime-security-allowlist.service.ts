@@ -3,8 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
-  Security,
-  SecuritySourceConfig,
+  RealtimeSubscriptionAssignment,
   SecurityStatus,
   SecurityType,
 } from '@app/shared-data';
@@ -14,10 +13,6 @@ import { Repository } from 'typeorm';
 export interface RealtimeAllowlistEntry {
   formatCode: string;
   securityId: number;
-}
-
-interface ResolvedRealtimeAllowlistRow extends RealtimeAllowlistEntry {
-  securityType: SecurityType;
 }
 
 @Injectable()
@@ -34,8 +29,8 @@ export class RealtimeSecurityAllowlistService {
 
   constructor(
     private readonly config: ConfigService,
-    @InjectRepository(SecuritySourceConfig)
-    private readonly sourceConfigs: Repository<SecuritySourceConfig>,
+    @InjectRepository(RealtimeSubscriptionAssignment)
+    private readonly assignments: Repository<RealtimeSubscriptionAssignment>,
   ) {}
 
   async initialize(
@@ -45,9 +40,9 @@ export class RealtimeSecurityAllowlistService {
     if (this.assignedEntries.has(source)) return;
     if (isMockMode()) {
       // Mock mode has no coordinator module and no database; the env allowlist
-      // is the sole subscription source and resolves from memory with a stable
-      // placeholder securityId (never a DB lookup). LIFECYCLE_MODE is ignored:
-      // the coordinator (the on-mode authority) is not loaded in mock mode.
+      // remains the mock-only subscription source (env is NOT a production
+      // authority anymore — declarative-realtime-configuration). Resolves
+      // from memory with a stable placeholder securityId (never a DB lookup).
       const resolved = new Map<string, RealtimeAllowlistEntry>();
       for (const formatCode of this.parse(environmentName)) {
         resolved.set(formatCode, { formatCode, securityId: 1 });
@@ -56,41 +51,34 @@ export class RealtimeSecurityAllowlistService {
       this.effectiveEntries.set(source, new Map(resolved));
       return;
     }
-    if (
-      this.config.get<string>('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE') === 'on'
-    ) {
-      this.assignedEntries.set(source, new Map());
-      this.effectiveEntries.set(source, new Map());
-      return;
-    }
-    const requested = this.parse(environmentName);
-    const resolved = new Map<string, RealtimeAllowlistEntry>();
-    for (const formatCode of requested) {
-      const entry = await this.resolveExact(source, formatCode);
-      for (const [otherSource, otherEntries] of this.assignedEntries) {
-        if (
-          otherSource !== source &&
-          [...otherEntries.values()].some(
-            (other) => other.securityId === entry.securityId,
-          )
-        ) {
-          throw new BadRequestException(
-            `realtime securityId=${entry.securityId} is configured for both ${otherSource} and ${source}`,
-          );
-        }
-      }
-      resolved.set(formatCode, entry);
-      this.logger.log(
-        `${source} allowlist resolved: ${formatCode} -> securityId=${entry.securityId}`,
-      );
-    }
-    this.assignedEntries.set(source, resolved);
-    this.effectiveEntries.set(source, new Map(resolved));
-    if (requested.length === 0) {
-      this.logger.warn(
-        `${environmentName} is empty; realtime subscriptions remain empty`,
-      );
-    }
+    await this.refreshAssignedFromDb(source);
+  }
+
+  /**
+   * Declarative authority: assignments (DB) -> assignedEntries. Called by the
+   * coordinator's scheduled reconciliation round so external DB writes are
+   * picked up within one interval without a restart. Effective entries are
+   * left untouched here; the convergence path (replaceEffective) updates them.
+   */
+  async refreshAssignedFromDb(
+    source: DataSource.TDX | DataSource.QMT,
+  ): Promise<void> {
+    const rows = await this.assignments
+      .createQueryBuilder('assignment')
+      .select('source_config.format_code', 'formatCode')
+      .addSelect('security.id', 'securityId')
+      .innerJoin('assignment.security', 'security')
+      .innerJoin('assignment.sourceConfig', 'source_config')
+      .where('security.type = :stock', { stock: SecurityType.STOCK })
+      .andWhere('source_config.source = :source', { source })
+      .andWhere('source_config.enabled = :enabled', { enabled: true })
+      .andWhere('security.status = :status', { status: SecurityStatus.ACTIVE })
+      .orderBy('source_config.format_code', 'ASC')
+      .getRawMany<RealtimeAllowlistEntry>();
+    this.assignedEntries.set(source, exactEntryMap(rows));
+    this.logger.log(
+      `${source} allowlist refreshed from DB: ${rows.length} entries`,
+    );
   }
 
   isAuthorized(
@@ -104,6 +92,11 @@ export class RealtimeSecurityAllowlistService {
     source: DataSource.TDX | DataSource.QMT,
   ): readonly RealtimeAllowlistEntry[] {
     return [...(this.effectiveEntries.get(source)?.values() ?? [])];
+  }
+
+  /** Assigned (DB-declared) entry count per source (observability accessor). */
+  assignedCountFor(source: DataSource.TDX | DataSource.QMT): number {
+    return this.assignedEntries.get(source)?.size ?? 0;
   }
 
   resolve(
@@ -156,6 +149,7 @@ export class RealtimeSecurityAllowlistService {
     return removed;
   }
 
+  /** Mock-only env parsing (env is not a production authority). */
   private parse(environmentName: string): string[] {
     const requested = (this.config.get<string>(environmentName) ?? '')
       .split(',')
@@ -172,38 +166,6 @@ export class RealtimeSecurityAllowlistService {
       );
     }
     return requested;
-  }
-
-  private async resolveExact(
-    source: DataSource.TDX | DataSource.QMT,
-    formatCode: string,
-  ): Promise<RealtimeAllowlistEntry> {
-    const rows = await this.sourceConfigs
-      .createQueryBuilder('cfg')
-      .innerJoin(Security, 'sec', 'sec.id = cfg.security_id')
-      .where('cfg.source = :source', { source })
-      .andWhere('cfg.enabled = :enabled', { enabled: true })
-      .andWhere('sec.status = :status', { status: SecurityStatus.ACTIVE })
-      .andWhere('BINARY cfg.format_code = :formatCode', { formatCode })
-      .select([
-        'cfg.security_id AS securityId',
-        'cfg.format_code AS formatCode',
-        'sec.type AS securityType',
-      ])
-      .getRawMany<ResolvedRealtimeAllowlistRow>();
-
-    if (rows.length !== 1) {
-      throw new BadRequestException(
-        `${source} allowlist entry '${formatCode}' matched ${rows.length} records (expected exactly 1); realtime runtime fails closed`,
-      );
-    }
-    const [row] = rows;
-    if (row.securityType !== SecurityType.STOCK) {
-      throw new BadRequestException(
-        `${source} allowlist entry '${formatCode}' resolves to unsupported security type ${row.securityType}; realtime candle quantities support STOCK only`,
-      );
-    }
-    return { securityId: row.securityId, formatCode: row.formatCode };
   }
 }
 

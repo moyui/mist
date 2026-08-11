@@ -40,7 +40,6 @@ describe('mistEnvSchema data source configuration', () => {
       QMT_BASE_URL: 'http://127.0.0.1:9002',
       QMT_WS_CLIENT_ID: 'mist-backend-qmt-live',
       QMT_REALTIME_MODE: 'builtin',
-      QMT_REALTIME_ALLOWLIST: '600519.SH',
     });
 
     expect(error).toBeUndefined();
@@ -48,7 +47,6 @@ describe('mistEnvSchema data source configuration', () => {
     expect(value.QMT_WS_CLIENT_ID).toBe('mist-backend-qmt-live');
     expect(value.TDX_REALTIME_MODE).toBe('builtin');
     expect(value.QMT_REALTIME_MODE).toBe('builtin');
-    expect(value.QMT_REALTIME_ALLOWLIST).toBe('600519.SH');
   });
 
   it('defaults both realtime sources to builtin and rejects unknown modes', () => {
@@ -68,71 +66,6 @@ describe('mistEnvSchema data source configuration', () => {
       QMT_REALTIME_MODE: 'legacy',
     });
     expect(invalidQmt.error?.message).toContain('QMT_REALTIME_MODE');
-  });
-
-  it('accepts the explicit empty allowlists emitted by Docker Compose', () => {
-    const { error, value } = mistEnvSchema.validate({
-      ...baseEnv,
-      TDX_REALTIME_MODE: 'builtin',
-      TDX_REALTIME_ALLOWLIST: '',
-      QMT_REALTIME_MODE: 'builtin',
-      QMT_REALTIME_ALLOWLIST: '',
-    });
-
-    expect(error).toBeUndefined();
-    expect(value.TDX_REALTIME_ALLOWLIST).toBe('');
-    expect(value.QMT_REALTIME_ALLOWLIST).toBe('');
-  });
-
-  it('defaults production subscription lifecycle off', () => {
-    const { error, value } = mistEnvSchema.validate(baseEnv);
-
-    expect(error).toBeUndefined();
-    expect(value.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE).toBe('off');
-  });
-
-  it('accepts lifecycle on only with both legacy allowlists empty', () => {
-    const accepted = mistEnvSchema.validate({
-      ...baseEnv,
-      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
-      TDX_REALTIME_ALLOWLIST: '',
-      QMT_REALTIME_ALLOWLIST: '   ',
-    });
-    expect(accepted.error).toBeUndefined();
-    expect(accepted.value.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE).toBe('on');
-
-    for (const [name, value] of [
-      ['TDX_REALTIME_ALLOWLIST', '600030.SH'],
-      ['QMT_REALTIME_ALLOWLIST', '600519.SH'],
-    ] as const) {
-      const rejected = mistEnvSchema.validate({
-        ...baseEnv,
-        REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
-        [name]: value,
-      });
-      expect(rejected.error?.message).toContain(name);
-      expect(rejected.error?.message).toContain(
-        'REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on',
-      );
-    }
-  });
-
-  it('accepts lifecycle off with non-empty legacy allowlists', () => {
-    const accepted = mistEnvSchema.validate({
-      ...baseEnv,
-      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'off',
-      TDX_REALTIME_ALLOWLIST: '600519.SH',
-      QMT_REALTIME_ALLOWLIST: '300502.SZ',
-    });
-    expect(accepted.error).toBeUndefined();
-  });
-
-  it('rejects unsupported lifecycle modes', () => {
-    const { error } = mistEnvSchema.validate({
-      ...baseEnv,
-      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'shadow',
-    });
-    expect(error?.message).toContain('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE');
   });
 
   it('owns the realtime candle grace and queue defaults', () => {
@@ -257,15 +190,6 @@ describe('mistEnvSchema mock mode', () => {
     expect(error?.message).toContain(
       'REALTIME_CANDLE_QUEUE_MAX_PENDING_GLOBAL must be greater than or equal to REALTIME_CANDLE_QUEUE_MAX_PENDING_PER_SERIES',
     );
-  });
-
-  it('keeps lifecycle-on/allowlist conflict check in mock mode', () => {
-    const { error } = mistEnvSchema.validate({
-      MIST_MOCK_MODE: 'true',
-      REALTIME_SUBSCRIPTION_LIFECYCLE_MODE: 'on',
-      TDX_REALTIME_ALLOWLIST: '600030.SH',
-    });
-    expect(error?.message).toContain('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE=on');
   });
 });
 

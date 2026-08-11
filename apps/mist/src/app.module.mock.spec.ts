@@ -17,7 +17,6 @@ import { NestFactory } from '@nestjs/core';
 
 describe('AppModule mock-mode bootstrap', () => {
   const originalMockMode = process.env.MIST_MOCK_MODE;
-  const originalLifecycle = process.env.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE;
 
   afterEach(() => {
     if (originalMockMode === undefined) {
@@ -25,17 +24,10 @@ describe('AppModule mock-mode bootstrap', () => {
     } else {
       process.env.MIST_MOCK_MODE = originalMockMode;
     }
-    if (originalLifecycle === undefined) {
-      delete process.env.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE;
-    } else {
-      process.env.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE = originalLifecycle;
-    }
   });
 
   it('starts without MySQL when MIST_MOCK_MODE=true', async () => {
     process.env.MIST_MOCK_MODE = 'true';
-    // Align with .env.mock: lifecycle=on short-circuits allowlist DB lookup.
-    process.env.REALTIME_SUBSCRIPTION_LIFECYCLE_MODE = 'on';
     // Dynamic require is required: a top-level import would evaluate the
     // @Module decorator with MIST_MOCK_MODE unset (see file doc comment).
     // eslint-disable-next-line @typescript-eslint/no-require-imports

@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cron } from '@nestjs/schedule';
+import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
@@ -31,9 +31,11 @@ import {
   RealtimeLifecycleTrigger,
   RealtimeSubscriptionLifecycleObservationStore,
 } from './realtime-subscription-lifecycle-observation.store';
+import { RuntimeConfigService } from './runtime-config.service';
 
 const RECONCILIATION_DEADLINE_MS = 35_000;
 const SHUTDOWN_WAIT_MS = 1_000;
+const RECONCILE_INTERVAL_DEFAULT_MS = 60_000;
 
 interface SourceRoundState {
   running: Promise<void> | null;
@@ -97,10 +99,18 @@ export class RealtimeSubscriptionLifecycleCoordinator
     private readonly observations: RealtimeSubscriptionLifecycleObservationStore,
     private readonly allowlist: RealtimeSecurityAllowlistService,
     private readonly ingress: RealtimeSnapshotIngressService,
+    private readonly runtimeConfig: RuntimeConfigService,
+    private readonly scheduler: SchedulerRegistry,
   ) {}
 
-  onModuleInit(): void {
-    if (!this.isEnabled()) return;
+  async onModuleInit(): Promise<void> {
+    // Refresh the switch cache BEFORE mounting event subscriptions so the
+    // first accepted_ready (usually within seconds of startup) is gated by
+    // the real value, not the bootstrap default.
+    await this.runtimeConfig.refresh();
+    // Event subscriptions are always mounted (no mode gate): the
+    // auto_reconcile switch is evaluated at each trigger, so a started-off
+    // instance recovers when the switch flips to true.
     this.unsubscribeReady = this.runtime.subscribeReady((observation) => {
       this.handleAcceptedReady(observation);
     });
@@ -110,11 +120,22 @@ export class RealtimeSubscriptionLifecycleCoordinator
         this.applyEffectiveInventory(source, []);
       },
     );
+    const intervalMs = Number(
+      this.config.get('REALTIME_RECONCILE_INTERVAL_MS') ??
+        RECONCILE_INTERVAL_DEFAULT_MS,
+    );
+    const interval = setInterval(
+      () => void this.runScheduledReconciliation(),
+      intervalMs,
+    );
+    this.scheduler.addInterval('realtime-subscription-reconcile', interval);
   }
 
   /** Called only after the owning database transaction commits. */
   requestIncrementalReconciliation(source: RealtimeSubscriptionSource): void {
-    if (!this.isEnabled() || !isIntradayAddWindow(this.clock.nowDate())) return;
+    if (!this.autoReconcile() || !isIntradayAddWindow(this.clock.nowDate())) {
+      return;
+    }
     this.enqueue(source, 'incremental', 'intraday_activation');
   }
 
@@ -135,7 +156,7 @@ export class RealtimeSubscriptionLifecycleCoordinator
     timeZone: 'Asia/Shanghai',
   })
   runWeekday0915Barrier(): void {
-    if (!this.isEnabled() || this.shuttingDown) return;
+    if (this.shuttingDown || !this.autoReconcile()) return;
     for (const source of REALTIME_SUBSCRIPTION_SOURCES) {
       this.enqueue(source, 'reset', 'weekday_0915');
     }
@@ -143,6 +164,11 @@ export class RealtimeSubscriptionLifecycleCoordinator
 
   async onModuleDestroy(): Promise<void> {
     this.shuttingDown = true;
+    try {
+      this.scheduler.deleteInterval('realtime-subscription-reconcile');
+    } catch {
+      // interval was never registered (e.g. module init failed)
+    }
     this.unsubscribeReady?.();
     this.unsubscribeReady = null;
     this.unsubscribeDisconnected?.();
@@ -162,10 +188,32 @@ export class RealtimeSubscriptionLifecycleCoordinator
     ]);
   }
 
-  private isEnabled(): boolean {
-    return (
-      this.config.get<string>('REALTIME_SUBSCRIPTION_LIFECYCLE_MODE') === 'on'
-    );
+  /**
+   * Declarative convergence (pure declaration, no HTTP control endpoint):
+   * every scheduled round refreshes the auto_reconcile switch from the DB;
+   * when true, each source is reconciled with the reset policy (full
+   * syncSubscriptions alignment), so external assignment writes (add or
+   * remove) take effect within one interval without a restart. When the
+   * switch flips false→true, one immediate full alignment is triggered;
+   * true→false just stops further rounds (existing subscriptions are kept —
+   * manual takeover semantics).
+   */
+  private async runScheduledReconciliation(): Promise<void> {
+    if (this.shuttingDown) return;
+    const before = this.runtimeConfig.getAutoReconcileCached();
+    await this.runtimeConfig.refresh();
+    const after = this.runtimeConfig.getAutoReconcileCached();
+    if (!after) return;
+    if (!before && after) {
+      this.logger.log('auto_reconcile enabled: triggering full alignment');
+      for (const source of REALTIME_SUBSCRIPTION_SOURCES) {
+        this.enqueue(source, 'reset', 'auto_reconcile_enabled');
+      }
+      return;
+    }
+    for (const source of REALTIME_SUBSCRIPTION_SOURCES) {
+      this.enqueue(source, 'reset', 'scheduled_reconcile');
+    }
   }
 
   private handleAcceptedReady(
@@ -174,8 +222,18 @@ export class RealtimeSubscriptionLifecycleCoordinator
     if (this.shuttingDown) return;
     const state = this.states.get(observation.source);
     if (!state) return;
+    // Track the connection unconditionally so a later auto_reconcile flip
+    // (false→true) can converge immediately instead of waiting for a new
+    // reconnect; only the convergence enqueue is gated.
     state.latestConnectionId = observation.connectionId;
+    if (!this.autoReconcile()) return;
     this.enqueue(observation.source, 'reset', 'accepted_ready');
+  }
+
+  /** Auto-reconcile gate: false = manual management (no automatic
+   * convergence; existing subscriptions are kept). */
+  private autoReconcile(): boolean {
+    return this.runtimeConfig.getAutoReconcileCached();
   }
 
   private enqueue(

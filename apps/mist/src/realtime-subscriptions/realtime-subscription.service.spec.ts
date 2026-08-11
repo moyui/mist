@@ -62,8 +62,9 @@ function assignmentFixture(
 }
 
 describe('RealtimeSubscriptionService', () => {
-  const offConfig = { get: jest.fn().mockReturnValue('off') };
-  const onConfig = { get: jest.fn().mockReturnValue('on') };
+  const runtimeConfigTrue = {
+    getAutoReconcileCached: jest.fn(() => true),
+  };
 
   afterEach(() => {
     jest.restoreAllMocks();
@@ -100,8 +101,8 @@ describe('RealtimeSubscriptionService', () => {
     const service = new RealtimeSubscriptionService(
       dataSource as never,
       {} as never,
-      offConfig as never,
       lifecycleCoordinator as never,
+      undefined,
     );
 
     const result = await service.initialize({
@@ -164,7 +165,7 @@ describe('RealtimeSubscriptionService', () => {
           callback(manager),
       } as never,
       {} as never,
-      offConfig as never,
+      undefined,
     );
 
     const result = await service.initialize({
@@ -188,7 +189,7 @@ describe('RealtimeSubscriptionService', () => {
           callback(manager),
       } as never,
       {} as never,
-      offConfig as never,
+      undefined,
     );
 
     const result = await service.initialize({
@@ -229,7 +230,7 @@ describe('RealtimeSubscriptionService', () => {
           callback(manager),
       } as never,
       {} as never,
-      offConfig as never,
+      undefined,
     );
 
     const result = await service.initialize({
@@ -277,7 +278,7 @@ describe('RealtimeSubscriptionService', () => {
           callback(manager),
       } as never,
       {} as never,
-      offConfig as never,
+      undefined,
     );
 
     const result = await service.initialize({
@@ -315,7 +316,7 @@ describe('RealtimeSubscriptionService', () => {
           callback(manager),
       } as never,
       {} as never,
-      offConfig as never,
+      undefined,
     );
 
     const result = await service.initialize({
@@ -350,7 +351,9 @@ describe('RealtimeSubscriptionService', () => {
     const service = new RealtimeSubscriptionService(
       {} as never,
       repository as never,
-      onConfig as never,
+      undefined,
+      undefined,
+      runtimeConfigTrue as never,
     );
 
     const result = await service.list({ afterId: 7, limit: 20 });
@@ -386,9 +389,9 @@ describe('RealtimeSubscriptionService', () => {
     const service = new RealtimeSubscriptionService(
       {} as never,
       repository as never,
-      onConfig as never,
       undefined,
       observations,
+      runtimeConfigTrue as never,
     );
 
     const result = await service.list({ limit: 20 });
@@ -411,7 +414,7 @@ describe('RealtimeSubscriptionService', () => {
         getRepository: jest.fn(),
       } as never,
       {} as never,
-      offConfig as never,
+      undefined,
     );
     await expect(
       service.initialize({

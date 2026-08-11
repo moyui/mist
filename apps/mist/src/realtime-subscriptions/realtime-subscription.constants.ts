@@ -10,6 +10,10 @@ export type RealtimeSubscriptionSource =
 
 export const REALTIME_ACTIVE_CAPACITY_LIMIT = 5;
 
+/** runtime_configs key for the automatic-reconciliation switch. */
+export const RUNTIME_CONFIG_AUTO_RECONCILE =
+  'realtime_subscription_auto_reconcile';
+
 export const REALTIME_ASSIGNMENT_SECURITY_UNIQUE =
   'uq_realtime_subscription_assignments_security';
 export const REALTIME_ASSIGNMENT_SOURCE_CONFIG_UNIQUE =

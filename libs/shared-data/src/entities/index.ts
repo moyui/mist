@@ -5,6 +5,7 @@ export * from './k-extension-qmt.entity';
 export * from './security.entity';
 export * from './security-source-config.entity';
 export * from './realtime-subscription-assignment.entity';
+export * from './runtime-config.entity';
 export * from './strategy-definition.entity';
 export * from './strategy-version.entity';
 export * from './strategy-signal.entity';
