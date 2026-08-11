@@ -20,6 +20,11 @@ module.exports = function (options, webpack) {
       // in both worlds — otherwise the bundled copy sees a noop global
       // provider and all app-created spans are silently dropped.
       '@opentelemetry/api': 'commonjs @opentelemetry/api',
+      // pino must resolve at runtime (node_modules): webpack bundling breaks
+      // pino's transport worker __dirname (pino/lib/worker.js path), and
+      // external pino also lets instrumentation-pino's RITM hook patch it on
+      // first require (gaps B1).
+      pino: 'commonjs pino',
     },
     plugins: [
       ...(options.plugins ?? []),
