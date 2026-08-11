@@ -589,3 +589,95 @@ describe('OpenCandleAggregator', () => {
     expect(open?.close).toBe(9.5);
   });
 });
+
+import type { OpenCandleState } from './candle.types';
+import { toSealed } from './open-candle-aggregator';
+
+describe('toSealed VWAP bound correction', () => {
+  function makeState(
+    overrides: Partial<OpenCandleState> = {},
+  ): OpenCandleState {
+    return {
+      tradingDay: '2026-08-11',
+      source: 'tdx',
+      providerSymbol: '600519.SH',
+      securityId: 1,
+      session: 'morning',
+      bucketStartMs: 1786425000000,
+      bucketEndMs: 1786425060000,
+      open: 1350,
+      high: 1355,
+      low: 1350,
+      close: 1353,
+      volumeDelta: '10000',
+      amountDelta: '13525000',
+      baselineCumulativeVolume: '0',
+      baselineCumulativeAmount: '0',
+      firstCumulativeVolume: '0',
+      firstCumulativeAmount: '0',
+      lastCumulativeVolume: '10000',
+      lastCumulativeAmount: '13525000',
+      closingSnapshot: null,
+      firstEventTime: '2026-08-11T13:15:00+08:00',
+      lastEventTime: '2026-08-11T13:16:00+08:00',
+      lastAppliedEventTimeMs: 1786425060000,
+      validity: 'valid',
+      invalidReason: null,
+      quantityMissingFrameCount: 0,
+      ...overrides,
+    } as unknown as OpenCandleState;
+  }
+
+  it('corrects high when VWAP exceeds sampled high', () => {
+    const sealed = toSealed(
+      makeState({
+        high: 1355,
+        low: 1350,
+        volumeDelta: '10000',
+        amountDelta: '13560000',
+      }),
+    );
+    expect(sealed.high).toBe(1356); // vwap 1356 > high 1355
+    expect(sealed.low).toBe(1350);
+  });
+
+  it('corrects low when VWAP below sampled low', () => {
+    const sealed = toSealed(
+      makeState({
+        high: 1355,
+        low: 1350,
+        volumeDelta: '10000',
+        amountDelta: '13494000',
+      }),
+    );
+    expect(sealed.low).toBeCloseTo(1349.4, 1); // vwap 1349.4 < low 1350
+    expect(sealed.high).toBe(1355);
+  });
+
+  it('does not modify when VWAP within band', () => {
+    const sealed = toSealed(
+      makeState({
+        high: 1355,
+        low: 1350,
+        volumeDelta: '10000',
+        amountDelta: '13525000',
+      }),
+    );
+    expect(sealed.high).toBe(1355); // vwap 1352.5 within [1350,1355]
+    expect(sealed.low).toBe(1350);
+  });
+
+  it('does not correct when quantity is zero or null', () => {
+    const sealedNull = toSealed(
+      makeState({ volumeDelta: null, amountDelta: null }),
+    );
+    expect(sealedNull.high).toBe(1355);
+    expect(sealedNull.low).toBe(1350);
+
+    const sealedZero = toSealed(
+      makeState({ volumeDelta: '0', amountDelta: '0' }),
+    );
+    expect(sealedZero.high).toBe(1355);
+    expect(sealedZero.low).toBe(1350);
+  });
+});

@@ -592,7 +592,25 @@ function toClosingSnapshot(
   };
 }
 
-function toSealed(state: OpenCandleState): SealedCandle {
+export function toSealed(state: OpenCandleState): SealedCandle {
+  let high = state.high;
+  let low = state.low;
+
+  // VWAP bound correction: sealed high/low are sampled-band extrema (the
+  // min/max of observed last-price values). The authoritative VWAP
+  // (amount/volume, from real exchange trade totals) may fall outside the
+  // band when intrabucket price spikes land between samples. Clamp the band
+  // to include VWAP so the sealed candle is always self-consistent.
+  if (state.volumeDelta && state.amountDelta) {
+    const volume = Number(state.volumeDelta);
+    const amount = Number(state.amountDelta);
+    if (volume > 0 && amount > 0) {
+      const vwap = amount / volume;
+      high = Math.max(high, vwap);
+      low = Math.min(low, vwap);
+    }
+  }
+
   return {
     tradingDay: state.tradingDay,
     source: state.source,
@@ -602,8 +620,8 @@ function toSealed(state: OpenCandleState): SealedCandle {
     bucketStartMs: state.bucketStartMs,
     bucketEndMs: state.bucketEndMs,
     open: state.open,
-    high: state.high,
-    low: state.low,
+    high,
+    low,
     close: state.close,
     volume: state.volumeDelta,
     amount: state.amountDelta,
