@@ -31,14 +31,16 @@
 - events 保留（细节不删），attributes 是查询主路径。
 
 ### D3：日志进 OO 的实现路径（B1）
-- **A（定稿 2026-08-11）**：backend pino 日志经 OTLP logs 进 OO，采用 **pino 官方组织
-  `pino-opentelemetry-transport`**（v4.0.2）：
-  - pino transport worker 机制（与自研方案同构，但缓冲/重试/协议/severity 官方实现）；
-  - `pinoHttp.transport.target = 'pino-opentelemetry-transport'`（5 个 app）；
-  - trace_id/span_id 由主线程 pinoTraceMixin 注入 → LogRecord attributes（官方包不提升
-    顶层 traceId——依赖 instrumentation-pino 才能提升，webpack 场景不可用）→ OO 按
-    attributes['trace_id'] 检索（gaps 2.1 验证）；
-  - 可配置：OTel 标准 env（OTEL_BLRP_MAX_QUEUE_SIZE 等）。
+- **A（定稿 2026-08-11 二版）**：backend pino 日志经 OTLP logs 进 OO，采用 **OTel 官方
+  instrumentation-pino**（register 的 getNodeAutoInstrumentations 已含）+ LoggerProvider
+  （register env 默认 otlp）：
+  - `pino` webpack external（instrumentation-pino 的 RITM patch 前提——08-11 mock 实证
+    patch 成功）；
+  - 日志自动转 LogRecord（官方 logHook），**顶层 trace_id/span_id 由 instrumentation 注入**
+    （OO 按 trace_id 检索，已验证）；
+  - **无 pino transport、无 pinoTraceMixin**（二版修正：初版 transport + mixin 实测双发
+    ——每条日志 transport 与 instrumentation 各发一份，日志翻倍；改为单一官方路径后单发）；
+  - 可配置：OTel 标准 env（OTEL_BLRP_* / OTEL_LOGS_EXPORTER）。
 - **D3a 资源边界（治理审计 G5，§8 并发与资源）**：
   - transport 缓冲硬上限（如 1000 条或 10MB）；满则丢弃新日志并计数（
     `log_dropped_total` 若可打点）或降级 stderr

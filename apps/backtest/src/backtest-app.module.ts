@@ -18,7 +18,6 @@ import {
 } from '@app/shared-data';
 import { RpcTransportModule } from '@app/transport/rpc';
 import { LoggerModule } from 'nestjs-pino';
-import { pinoTraceMixin } from '@app/otel';
 
 import { BacktestCommandController } from './backtest-command.controller';
 import { BacktestHealthController } from './backtest-health.controller';
@@ -34,12 +33,6 @@ import { BacktestStartupService } from './backtest-startup.service';
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
         autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
-        mixin: pinoTraceMixin, // 活动 OTel span 的 trace_id/span_id 盖到日志上
-        transport: {
-          // 官方 pino transport：日志经 worker 线程发 OTLP logs 进 OpenObserve
-          // （gaps B1；endpoint 走 OTEL_EXPORTER_OTLP_ENDPOINT，缓冲/重试走 OTEL_BLRP_*）
-          target: 'pino-opentelemetry-transport',
-        },
       },
     }),
     RpcTransportModule,

@@ -38,7 +38,9 @@
     `skippedReason`（每帧 skip/accept 的原因，OO 可查询）；span events 保留。
 - **B. 日志进 OO**：
   - B1: backend pino 日志经 OTLP 进入 OO（logs 流），与 spans 同 trace_id 检索、可任意时间回溯
-    （解决 4/5/6 的根因——不依赖 docker logs tail）。
+    （解决 4/5/6 的根因——不依赖 docker logs tail）。采用官方 instrumentation-pino +
+    LoggerProvider（register env 默认 otlp），pino webpack external；无 transport/自研 mixin
+    （2026-08-11 二版定稿：初版 transport+mixin 实测双发，改单一官方路径）。
   - B2: 明确 OO 日志/指标查询方式文档化（窗口/聚合语义），脚本统一 UTC（引用 libs/timezone
     约定：内部 UTC、业务边界 Asia/Shanghai）。
 - **C. 已补项登记**：`read-windows-realtime-candle-closed`（closed hash + vwap 检查 + backend

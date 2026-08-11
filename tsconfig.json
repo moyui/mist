@@ -80,9 +80,6 @@
       ],
       "@app/realtime": [
         "libs/realtime/src/index.ts"
-      ],
-      "@app/otel": [
-        "libs/otel/src/index.ts"
       ]
     }
   },

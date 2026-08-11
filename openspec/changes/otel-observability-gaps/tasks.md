@@ -27,10 +27,11 @@
 ## 2. 日志进 OO（B）
 
 - [x] 2.1 验证 OO Rust 版 logs 流：OTLP logs 接收（/v1/logs）+ 检索（type=logs）可用；
-      并验证按 attributes['trace_id'] 过滤日志（官方 transport 方案下 trace_id 在 attributes）。
-- [x] 2.2 `pnpm add pino-opentelemetry-transport`（pino 官方组织 transport，v4.x）。
-- [x] 2.3 5 个 app LoggerModule.forRoot 加 `transport: { target: 'pino-opentelemetry-transport' }`；
-      pinoTraceMixin 保留（trace_id/span_id 进 LogRecord attributes）。
+      trace_id 顶层检索验证（c37fab 查询成功）。
+- [x] 2.2 `pino` webpack external（instrumentation-pino RITM patch 前提，mock 实证 patch 成功）。
+- [x] 2.3 日志走官方 instrumentation-pino（register 已含）→ LoggerProvider（env 默认 otlp）；
+      **无 transport、无 pinoTraceMixin**（初版 transport+mixin 实测双发（cnt=2），改单一官方
+      路径后单发——2026-08-11 二版修正）。
 - [x] 2.4 部署：复用 OTEL_EXPORTER_OTLP_ENDPOINT（logs 派生 /v1/logs）无新 env；可配置项走
       OTel 标准 env（OTEL_BLRP_*）；日志流量/留存观察。
 

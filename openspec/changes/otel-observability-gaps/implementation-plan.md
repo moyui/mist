@@ -114,27 +114,25 @@
 
 ### B1：日志进 OO（D3 统一 mist 仓 + D3a 可配置）
 
-> **方案定稿（2026-08-11 开源调研）**：采用 **pino 官方组织维护的
-> `pino-opentelemetry-transport`**（github.com/pinojs/pino-opentelemetry-transport，v4.0.2），
-> 放弃自研 logger-transport.js。理由：机制同构（pino transport worker）但缓冲/重试/协议/
-> severity 映射全官方；兼容已验证（pino 10.3.1 ✓ peer ^10、api-logs 0.221 ✓ ^0.220、
-> api ^1.9.1 ✓）；D3a"可配置"由 OTel 标准 env 天然满足（`OTEL_BLRP_MAX_QUEUE_SIZE` 等）。
+> **方案定稿（2026-08-11 二版）**：官方 **instrumentation-pino**（register 的
+> getNodeAutoInstrumentations 已含）+ LoggerProvider（register env 默认 otlp），
+> `pino` webpack external（RITM patch 前提，mock 实证 patch 成功）。**初版
+> （pino-opentelemetry-transport + pinoTraceMixin）实测双发**（同 body cnt=2：
+> transport 与 instrumentation 各发一份）——改单一官方路径，**无 transport、无
+> pinoTraceMixin、无自研 JS**。
 
 **H. 依赖**
-- `pnpm add pino-opentelemetry-transport`（新增唯一依赖；O1 的 OTel 依赖不动）
+- `pino` 成为直接依赖（webpack external 运行时解析，pnpm 顶层可见）；
+  `pino-opentelemetry-transport` 不引入（已 remove）
 
 **I. 5 个 app 的 `LoggerModule.forRoot`**（app.module.ts / chan / schedule / signal / backtest）
-- `pinoHttp` 加 `transport: { target: 'pino-opentelemetry-transport' }`
-  （target 是包名——pino 运行时在 worker 线程 resolve，不走 webpack，无打包问题）
-- `pinoTraceMixin` 保留（主线程注入 trace_id/span_id → 作为 LogRecord attributes；
-  transport 不做 trace 关联提升——官方包依赖 instrumentation-pino 做顶层 traceId，
-  我们 webpack 场景不可用，**trace_id 经 attributes 检索**——gaps 2.1 验证 OO
-  `attributes['trace_id']` 过滤）
-- env：复用 `OTEL_EXPORTER_OTLP_ENDPOINT`（logs endpoint 自动派生 `/v1/logs`）；
-  可配置项走 OTel 标准 env（OTEL_BLRP_* / OTEL_EXPORTER_OTLP_LOGS_*）
+- **无 transport、无 mixin 配置**（O1 的 mixin 移除；instrumentation-pino 官方注入
+  顶层 trace_id/span_id）
+- env：复用 `OTEL_EXPORTER_OTLP_ENDPOINT`（logs 派生 `/v1/logs`）；可配置走 OTel
+  标准 env（OTEL_BLRP_* / OTEL_LOGS_EXPORTER）
 
-**J. `libs/otel`**：**不加 LoggerProvider**（官方 transport 自带 sdk-logs 栈，避免双路径）；
-  `pinoTraceMixin` 不动
+**J. `libs/otel`**：**整体删除**（pinoTraceMixin 移除后无消费者；@app/otel 引用面
+  清零——5 处 module + jest mapper + tsconfig paths 同步删）
 
 ### B2：查询文档 + UTC
 

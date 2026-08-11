@@ -45,8 +45,8 @@ select * from mist_candle_skip_total where source = 'tdx' limit 20
 ## Logs（gaps B1 后）
 
 ```sql
--- 按 trace_id 过滤（pinoTraceMixin 注入 attributes.trace_id）
-select * from 'default' where attributes['trace_id'] = '<traceId>' limit 50
+-- 按 trace_id 过滤（instrumentation-pino 官方注入顶层 trace_id）
+select * from 'default' where trace_id = '<traceId>' limit 50
 -- 按 service 查
 select * from 'default' where service_name = 'mist-backend' order by _timestamp desc limit 50
 ```

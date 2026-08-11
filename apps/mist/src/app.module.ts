@@ -19,7 +19,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'path';
 import { LoggerModule } from 'nestjs-pino';
-import { pinoTraceMixin } from '@app/otel';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -41,12 +40,6 @@ import { RealtimeSubscriptionModule } from './realtime-subscriptions/realtime-su
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',
         autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
-        mixin: pinoTraceMixin, // 活动 OTel span 的 trace_id/span_id 盖到日志上
-        transport: {
-          // 官方 pino transport：日志经 worker 线程发 OTLP logs 进 OpenObserve
-          // （gaps B1；endpoint 走 OTEL_EXPORTER_OTLP_ENDPOINT，缓冲/重试走 OTEL_BLRP_*）
-          target: 'pino-opentelemetry-transport',
-        },
       },
     }),
     HttpTransportModule,
