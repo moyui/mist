@@ -31,30 +31,30 @@
 
 ## 3. workflow 处置
 
-- [ ] 3.1 退役 `inspect-windows-port.yml`（本 change 落地即删）。
-- [ ] 3.2 退役 `update-windows-tdx-bridge-script.yml`（本 change 落地即删）。
-- [ ] 3.3 `dump-windows-datasource-logs.yml` 降级标注（OO 查询为主，保留兜底；
+- [x] 3.1 退役 `inspect-windows-port.yml`（本 change 落地即删）。
+- [x] 3.2 退役 `update-windows-tdx-bridge-script.yml`（本 change 落地即删）。
+- [x] 3.3 `dump-windows-datasource-logs.yml` 降级标注（OO 查询为主，保留兜底；
       Change 1 落地后加注）。
 - [ ] 3.4 `set-tdx-allowlist-stress.yml` 退役登记（**执行由 Change 3 负责**，
       本 change 不删）。
 
 ## 4. 文档
 
-- [ ] 4.1 `docs/runbooks/windows-openssh-ops.md`：ssh 别名（~/.ssh/config
+- [x] 4.1 `docs/runbooks/windows-openssh-ops.md`：ssh 别名（~/.ssh/config
       Host mist-box）、常用命令速查（端口/终端脚本/docker logs 兜底）、密钥
       管理与轮换、Event Log 审计查询（D4/D6）。
-- [ ] 4.2 交接文档（otel-whitebox-20260810/）登记通道上线状态与用法。
+- [x] 4.2 交接文档（otel-whitebox-20260810/）登记通道上线状态与用法。
 
 ## 5. 验证
 
 - [ ] 5.1 macOS → 盒子端到端：key 认证、密码登录拒绝、防火墙内网放行/外网
       拒绝、端口检查与终端脚本更新两条路径复现（2.1/2.2 场景）。
-- [ ] 5.2 deploy 仓 CI 门禁：`test-enable-windows-openssh.ps1` + 既有
+- [x] 5.2 deploy 仓 CI 门禁：`test-enable-windows-openssh.ps1` + 既有
       `test-*.ps1` 全绿；`openspec validate windows-openssh-ops-channel --strict`。
 - [ ] 5.3 证据落盘 `evidence/`（启用输出、ssh 实测、workflow 退役清单）。
 
 ## 6. 提交（三步工作流）
 
-- [ ] 6.1 spec 确认通过后写实施计划（代码级）。
-- [ ] 6.2 实施计划确认后落地（分支 + 验证 + 合并）。
+- [x] 6.1 spec 确认通过后写实施计划（代码级）。
+- [x] 6.2 实施计划确认后落地（分支 + 验证 + 合并）。
 - [ ] 6.3 归档（delta 合并进 live specs 手动同步）。
