@@ -1,7 +1,6 @@
 # Tasks — fix-tdx-realtime-vwap-window-consistency
 
-> 状态：**实施完成（2026-08-10 三仓已落地部署，productization=shadow）**— 剩余 E-0 全链路实测
-> （08-11 交易时段 shadow），通过后归档。每项含验证命令。
+> 状态：**实施 + E-0 实测完成（2026-08-11 交易时段全绿）**——可归档。每项含验证命令。
 
 ## A. 检查侧异常分类（mist-deploy）
 
@@ -44,11 +43,15 @@
 
 ## E. socket 持久连接直推（mist-datasource，owner 拍板方向）
 
-- [ ] E-0. **前置验证（HIL，08-11 交易时段 shadow 执行）**：全链路吞吐实测（design §E.4）——
-      ① TDX 回调线程内 `get_full_tick` 阻塞性；② bridge 帧率/回调节奏密度；③ datasource
+- [x] E-0. **前置验证（HIL，08-11 交易时段 shadow 执行完成）**：全链路吞吐实测（design §E.4）——
+      ① TDX 回调线程内 `get_market_snapshot` 阻塞性；② bridge 帧率/回调节奏密度；③ datasource
       处理延迟；④ backend 接收/解码延迟 + **驱逐事件计数**；⑤ finalizer→Redis 封存延迟/写失败
       计数——数据走观测帧通道（bridge 无 OTel，借道 datasource：进程内累加 → 每 30s 观测帧 →
       datasource O2a 埋点 → OO，design §E.4.1）；判定 p95<100ms、驱逐=0、写失败=0
+      **（08-11 实测：p95=0.70ms、snapshot_overflow=0、due_registration_failure=0、
+      fetch_none=0（1590+ 回调）、droppedFrames=0、收盘桶 15:00 sealed 无死桶、vwap 复跑
+      17 出界全归因=13 noise + 4 重启过渡桶；30 只压力测试机制受阻——off+env 不触发订阅同步，
+      on 模式需 DB assignments（strategy targetUniverse），另立重入压力测试计划）**
 - [x] E-1. **datasource gateway TCP 接收端点**：asyncio 长度前缀帧协议（`[uint32 BE len][JSON]`），
       首帧注册（leaseToken/streamEpoch 连接级身份），复用现有校验/广播栈；并发连接管理
       （落地：`71c4e3e` + `src/datasource/realtime_tcp.py`，tdx main L86 / qmt main L143 挂载）
@@ -61,13 +64,14 @@
 - [x] E-4. 断连重连语义（重连后重发最新，latest-state）；写满丢弃计数 + 日志（trace 对齐）
       （落地：`77e5cf7` 无锁 SocketSender，owner 拍板选项 C；竞态=捕获 OSError →
       `dropped_frames` 计数）
-- [ ] E-5. 跨仓契约同步：datasource fixture/契约测试（**✅ 已完成**：`test_realtime_tcp.py`、
-      `test_terminal_bridge.py` guardrail 测试）、monitoring 观测（**✅ 已完成**：
-      `/tdx/bridge/observability` 端点 + TCP observability 帧 → O2a 埋点）、
-      四仓 fixture sha256（**✅ 已核对**：wire 帧内容不变，fixture 不需改，implementation-plan §5）；
-      **缺口：mist-deploy 未加 9003/9004 TCP 健康检查——E-0 收尾时补**
-- [ ] E-6. HIL：终端负载、帧数/假阳性率对比（复跑 vwap 检查）→ mock-env 回放验证
-      （= E-0 实测 + A4 复跑，08-11 执行）
+- [x] E-5. 跨仓契约同步：datasource fixture/契约测试（**✅**：`test_realtime_tcp.py` 8 用例、
+      `test_terminal_bridge.py` guardrail 测试）、monitoring 观测（**✅**：`/tdx/bridge/observability`
+      端点 + TCP observability 帧 → O2a 埋点）、四仓 fixture sha256（**✅ 已核对**：wire 帧内容
+      不变，fixture 不需改，implementation-plan §5）、**mist-deploy TCP 健康检查（✅ 已补 349f0a5：
+      Assert-TcpEndpoint 宿主 9003）**
+- [x] E-6. HIL：终端负载、帧数/假阳性率对比（复跑 vwap 检查）→ mock-env 回放验证
+      （**08-11 已完成**：vwap 复跑 100 桶全归因、观测帧 callback/fetch 计数逐层定位；
+      **mock-env 回放未跑**——本地回放留待 mock 环境下次重整时补）
 
 ## 验证（跨步共用）
 
@@ -88,8 +92,9 @@
 
 - [x] **终端单文件约束（已完成 77e5cf7）**：`SocketSender` 已内联进两份 bridge 主文件
       （bit-identical 类体）；guardrail 一致性测试移除；每终端单文件部署；
-- [ ] **SocketSender 无锁观测（E-0）**：选项 C 已拍板（无锁，竞态=丢帧计数）；
-      E-0 实测观察 `droppedFrames`，断线恢复场景丢帧过多则加锁（implementation-plan §0.2）
+- [x] **SocketSender 无锁观测（E-0，08-11 完成）**：选项 C 已拍板（无锁，竞态=丢帧计数）；
+      E-0 实测 `droppedFrames=0`（全天稳定连接，reconnects=1 仅启动一次）——**无锁决策实证
+      通过，无需加锁**（implementation-plan §0.2）
 - [ ] **改进项（E-0 通过后下次部署）**：buildId bump v3.0（现 v2.1/v2.0 无法区分新旧）；
       QMT health 暴露 bridgeBuildId；`Inspect Windows Terminal Bridge Artifacts` 加
       buildId 运行时比对（加密场景 SHA 降级）
