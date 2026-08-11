@@ -51,6 +51,23 @@ select * from 'default' where trace_id = '<traceId>' limit 50
 select * from 'default' where service_name = 'mist-backend' order by _timestamp desc limit 50
 ```
 
+### datasource 日志（O2b，datasource-logs-to-openobserve 后）
+
+tdx-datasource / qmt-datasource 的 Python logging 经 OTLP logs 进 OO：
+`service_name` 为 `tdx-datasource` / `qmt-datasource`（与 traces/metrics 一致），
+LogRecord 顶层携带完整 32-hex `trace_id`/`span_id`（与同 trace 的 spans 可聚合），
+日志内容为既有 `key=value` 结构化（如 `reason=`/`symbol=`）。stdout
+（docker logs）保留为兜底通道，OO 内每条日志单发。
+
+```sql
+-- 观测帧/reject 日志（reject warn 带 reason/symbol）
+select * from 'default' where service_name = 'tdx-datasource'
+  and body like '%ingest reject%' order by _timestamp desc limit 50
+
+-- 与 spans 同 trace 聚合（拿 span trace_id 反查日志）
+select * from 'default' where trace_id = '<traceId>' and service_name = 'tdx-datasource' limit 50
+```
+
 ## 已知限制
 
 - **span events 在 OO 不可查**（`skipped`/`ingest_gated` events 查询为空）——关键判定已提升为
