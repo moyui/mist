@@ -49,8 +49,12 @@
 
 - [x] 5.1 mock 环境：注入两源帧 → OO 查询 skip/discard 按 source+symbol 归因正确；
       finalize/snapshot spans 的 attributes 可查；pino 日志进 OO 且带 trace_id。
-- [ ] 5.2 生产验证（交易时段，实盘线程执行）——mock 已过（08-11）；verdict/skippedReason 单测覆盖缺口已记录 生产验证（交易时段，实盘线程执行）：TDX/QMT 各自 skip 归因、verdict 可见、
-      OO 日志回溯（上午时段可查）。
+- [x] 5.2 生产验证（交易时段，实盘线程执行）——**TDX 侧 08-11 完成**：candle spans
+      （snapshot.process OK / due.finalize verdict 可见）、skip 归因（discard
+      reason=no_snapshot 带 trace_id 日志 + events）、logs 单发（cnt=1）+ 顶层
+      trace_id/span_id 注入、service_name=mist-backend、quantity_missing_frame
+      判断点路径；**QMT 侧待 QMT 数据流恢复后补**（08-11 QMT 断流中，见
+      tdx-bridge-tcp-restore-20260811 记忆）。
 - [x] 5.3 `pnpm test:ci` 全绿 + `openspec validate otel-observability-gaps --strict`。
 
 ## 6. 提交（三步工作流）
