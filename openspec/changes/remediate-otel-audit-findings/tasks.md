@@ -23,7 +23,11 @@
 - [x] 2.4 CI 门禁（test-docker-compose-config.ps1）断言同步（必需项形态）。
 - [x] 2.5 轮换流程文档化（mist-deploy docs/）：改 OO 密码 → 重算 base64 → 更新 .env →
       重启 OO + 服务；历史凭据作废。
-- [ ] 2.6 部署验证：下次部署 OTLP traces/metrics/logs 仍 200（凭据显式传入）——待下次部署（secret 已设）。
+- [x] 2.6 部署验证：2026-08-11 部署（mist 8d2b546 / deploy 8dad56b，run 31479653808 全绿）：
+      OO_ROOT_USER_PASSWORD 从 GitHub secret 注入（空则 throw，部署无异常）；OTLP 用
+      新凭据验证——traces（mist-backend 597 spans/30min）、logs（1204 条）、metrics
+      （74 流持续写入，doc_time_max 实时）全部 200 入库；lifecycle 归一化 off 后补设 on
+      （run 31479992900）+ TDX/QMT 流量恢复（3min 窗口 732/1526 spans）。
 
 ## 3. G3：计数归因 + 词汇——✅ 已随 gaps A1 完成
 
