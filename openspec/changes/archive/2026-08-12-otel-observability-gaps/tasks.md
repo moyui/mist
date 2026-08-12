@@ -61,4 +61,4 @@
 
 - [x] 6.1 spec 确认通过后写实施计划（代码级）。
 - [x] 6.2 实施计划确认后落地。
-- [ ] 6.3 归档（--skip-specs；live specs 已含 O1/O2a 子 spec，delta 合并由手动同步）。
+- [x] 6.3 归档（--skip-specs；live specs 已含 O1/O2a 子 spec，delta 合并由手动同步）——2026-08-12 执行

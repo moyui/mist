@@ -95,6 +95,8 @@
 - [x] **SocketSender 无锁观测（E-0，08-11 完成）**：选项 C 已拍板（无锁，竞态=丢帧计数）；
       E-0 实测 `droppedFrames=0`（全天稳定连接，reconnects=1 仅启动一次）——**无锁决策实证
       通过，无需加锁**（implementation-plan §0.2）
-- [ ] **改进项（E-0 通过后下次部署）**：buildId bump v3.0（现 v2.1/v2.0 无法区分新旧）；
-      QMT health 暴露 bridgeBuildId；`Inspect Windows Terminal Bridge Artifacts` 加
-      buildId 运行时比对（加密场景 SHA 降级）
+- [x] **改进项（已由 decouple-bridge-callback-and-correct-vwap-bounds 承接完成）**：
+      buildId bump **v3.0 两桥均完成**（TDX A6 + QMT B5，mist-datasource 4869757/528decf）；
+      **QMT health 已暴露 bridgeBuildId**（08-12 实测 `mist-qmt-realtime-bridge-v3.0`）；
+      `Inspect Windows Terminal Bridge Artifacts` 的 buildId 运行时比对 → **被 SSH ops 通道取代**
+      （830152c 退役 workflow，scp + certutil SHA 校验 + runbook）
