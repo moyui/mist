@@ -115,8 +115,8 @@
 | P2 | **set-allowlist 工作流默认过时** | 待修 | 默认 `600030.SH`，生产实际 `300059.SZ`；writer 是 reconcile 语义，盲跑默认会改坏 allowlist。**改前先只读探 DB** |
 | P3 | **bridge inspect datasource_ref 钉旧 pin** | 待修 | 默认 `d1225e61`(v2.0)，不传会误报 bridge 不匹配；触发必须 `-f datasource_ref=<master SHA>` |
 | P4 | **lifecycle audit 假失败** | 已诊断 | `docker inspect mist-monitoring`（容器已退役）→ stale `$LASTEXITCODE=1`；数据已捕获但 upload step 被 success() 门控跳过。建议脚本末尾 `exit 0` 或修容器列表 |
-| P5 | **QMT 日志未入 OO（O2b 缺口）** | 待查 | OO 无 `qmt-datasource` service_name；TDX 11440 条正常。O2b 的 QMT 侧 OTel 日志导出未生效 |
-| P6 | **QMT 桥 inspect inconclusive** | 待运行时验 | 用户称终端正常；按版本号（buildId）验，需 QMT 平台运行时 `/health` 或 register 日志（非静态 sha） |
+| P5 | **QMT 日志未入 OO（O2b 缺口）** | ✅ 已解决 | **08-12 已解决**：根因 = QMT `platform_unavailable`（终端未登录）→ 无 ingest 日志产生 → OO 自然无入库（**非 O2b 代码缺陷**）。QMT 数据流恢复后 `qmt-datasource` 600 条/10min 正常入库（TDX 477 条对比），trace_id 完整 32-hex 顶层 |
+| P6 | **QMT 桥 inspect inconclusive** | ✅ 已解决 | **08-12 已解决**：`bridge.ready=True, realtime.state=running, lastQuoteAge=2.4s, subscriptions.ready=True, reconciliationRequired=False`；backend 日志 `candle ingest start source=qmt symbol=300502.SZ` 每 ~3s |
 | P7 | **mist-production 不需手动审批** | 已确认 | OpenSSH/部署均自动放行；`gh run approve` 在本 gh 版本不是子命令，但无需用 |
 
 > P1/P2/P3 已存记忆（`ops-changes-already-live-ride-along` / `allowlist-defaults-stale` / `bridge-inspect-stale-ref-default`）。
@@ -165,18 +165,18 @@
 ## 五、待办（开盘后 + 用户决策）
 
 ### 交易时段 HIL（9:30+）
-- [ ] candle 封存持续增长（`mist_candle_sealed_total`，300059.SZ + 600519.SH）
-- [ ] VWAP 出界复跑（v3.0 修正后理论 0）— 验证 F1/F2 实际影响
-- [ ] 观测帧 runtime：callback→fetch/send + droppedFrames=0 + fetch_none=0
-- [ ] **QMT 数据流恢复**（终端登录后 `qmt.snapshot.ingest` + candle）
-- [ ] **QMT 日志入 OO**（P5，O2b QMT 侧修复）
-- [ ] allowlist 免重启收敛 / auto_reconcile 切换（Change 3 tasks 6.4，SSH key 分发后或 DB direct）
+- [ ] candle 封存持续增长（`mist_candle_sealed_total`，300059.SZ + 600519.SH）— decouple/VWAP change 范畴
+- [ ] VWAP 出界复跑（v3.0 修正后理论 0）— 验证 F1/F2 实际影响（decouple change 范畴）
+- [ ] 观测帧 runtime：callback→fetch/send + droppedFrames=0 + fetch_none=0（decouple change 范畴）
+- [x] **QMT 数据流恢复**（08-12 已验证）：`bridge.ready=True, realtime.state=running, lastQuoteAge=2.4s`；backend 日志 `candle ingest start source=qmt symbol=300502.SZ` 每 ~3s
+- [x] **QMT 日志入 OO**（08-12 已验证）：`qmt-datasource` 600 条/10min（P5 根因 = QMT 之前无数据流，非 O2b 缺陷）
+- [x] **allowlist 免重启收敛 / auto_reconcile 切换**（Change 3 tasks 6.4，08-12 已验证）：false↔true DB UPDATE，backend StartedAt 全程不变，日志 `auto_reconcile enabled: triggering full alignment`，datasource sync_subscriptions success ×93、converged=2=desired
 
 ### 用户决策
 - [ ] **F1**：VWAP clamp 是否 round 到 2 位？（一个 `Math.round(vwap*100)/100` + 补测试）
 - [ ] **P2**：allowlist 默认值修复（`600030.SH`→`300059.SZ`）— 改 workflow yaml + commit，还是先只读探 DB？
 - [x] **SSH key 分发**（一次性手动，2026-08-12 已完成）：macOS `ssh-keygen -t ed25519 -f ~/.ssh/mist_ops_ed25519` → 经 `distribute-windows-openssh-key` workflow 装入 `administrators_authorized_keys` + ACL（SYSTEM+Administrators）→ sshd restart。**实测用户名 = `12705`**（Administrators 组成员，非 `moyui`；`moyui` 是 macOS 用户名，盒子不存在）；`ssh mist-box` 别名通过（`desktop-t3b1o2j\12705` / `DESKTOP-T3B1O2J`）。~/.ssh/config Host mist-box（User 12705）已配。
-- [ ] 归档：3 运维 change + decouple change（HIL 验过后）
+- [x] **归档**（08-12 已完成 3 运维 change）：`declarative-realtime-configuration`（5b979d0）+ `datasource-logs-to-openobserve` + `windows-openssh-ops-channel`（64f8ea7），全部 evidence 落盘 + tasks 全勾 + `openspec validate --all --strict` 68/68。**decouple change 待其 HIL（candle/VWAP/观测帧）后归档**。
 
 ### 本审查落盘
 - 本文件：`mist/otel-whitebox-20260810/2026-08-12-deploy-verify-and-quality-review.md`
