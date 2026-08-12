@@ -10,5 +10,6 @@ export * from './strategy-definition.entity';
 export * from './strategy-version.entity';
 export * from './strategy-signal.entity';
 export * from './strategy-alert-event.entity';
+export * from './strategy-alert-delivery.entity';
 export * from './backtest-run.entity';
 export * from './backtest-signal-result.entity';
