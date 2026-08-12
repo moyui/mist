@@ -11,7 +11,8 @@
 - Frontend：`mist-fe@90b77c5cbc6dbd016d93fce5d38469831b949209`
 - Datasource：`mist-datasource@d97e29f3aba61de3eb99baf523b8caa4fe7ab47a`
 - Deploy：`mist-deploy@d5f8f2bb7841cd5d3f05ed18d8da89eab55ddea1`
-- Monitoring：`mist-monitoring@048dda32d9adc6bcb3021bc849b747a94cd34a05`
+- Monitoring：`mist-monitoring@048dda32d9adc6bcb3021bc849b747a94cd34a05`（仓库已归档删除，
+  2026-08-12，观测迁移至 OTel + OpenObserve；该 SHA 仅作历史记录）
 - Skills：`mist-skills@86bd69b7f6f96be04cd17ad621af678a50e91b86`
 
 2026-07-27 已完成 datasource Docker cutover。上面的 2026-07-22 SHA 清单仍是上一轮
@@ -29,7 +30,7 @@ Windows Docker Desktop
   web-gateway :80
   tdx-datasource :9001
   qmt-datasource :9002
-  monitoring :9109
+  openobserve :5080（OTel 观测平台，替代已退役的 monitoring :9109 exporter）
   mist-migrate（一次性迁移任务）
 
 Windows 用户会话
@@ -87,7 +88,6 @@ gh run list --repo mist-trade/mist --workflow "Build Docker Images" --limit 5
 gh run list --repo mist-trade/mist-fe --workflow "Build Frontend Docker Image" --limit 5
 gh run list --repo mist-trade/mist-datasource --limit 5
 gh run list --repo mist-trade/mist-deploy --workflow "Test Deploy Scripts" --limit 5
-gh run list --repo mist-trade/mist-monitoring --limit 5
 gh run list --repo mist-trade/mist-skills --limit 5
 ```
 
@@ -204,7 +204,7 @@ curl --noproxy '*' http://www.moyui.mist/api/mist/app/hello
 curl --noproxy '*' http://www.moyui.mist/api/chan/app/hello
 curl --noproxy '*' http://<windows-lan-ip>:9001/health
 curl --noproxy '*' http://<windows-lan-ip>:9002/health
-curl --noproxy '*' http://<windows-lan-ip>:9109/metrics
+# 观测验证走 OpenObserve（:5080，OTel 遥测平台；旧 monitoring :9109 exporter 已退役）
 ```
 
 已知正确形状：
@@ -213,7 +213,8 @@ curl --noproxy '*' http://<windows-lan-ip>:9109/metrics
 - Mist、Chan、TDX health、QMT health 返回 200。
 - TDX health 包含 `tdxHttpReachable=true`、bridge owner 与收敛 revision。
 - QMT health 包含 `bridge.ready=true`、`ownerStale=false`。
-- exporter 包含 `mist_windows_exporter_up 1` 和 TDX bridge 指标。
+- 遥测（traces/metrics/logs）经 OpenObserve 查询（旧 exporter `mist_windows_exporter_up`
+  检查已随 monitoring 退役，2026-08-12）。
 - TDX 或 QMT realtime 为 `off` 时不要求对应 source 的 realtime 指标。
 
 ## 7. 完成与回滚

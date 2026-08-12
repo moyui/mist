@@ -212,8 +212,8 @@
 - **`mist`**：新增 `apps/backtest`，拆分 controller、command contract、executor、persistence
   orchestration 和 tests，建立 shared market-data replay capability，并增加与 NestJS 10 对齐的
   `@nestjs/microservices` 直接依赖。
-- **`mist-deploy` / `mist-monitoring`**：新增经确认的 service、配置、health、metrics、rollback
-  和 Windows appliance 验证。
+- **`mist-deploy`**（`mist-monitoring` 已归档删除 2026-08-12，观测走 OTel + OpenObserve）：
+  新增经确认的 service、配置、health、metrics、rollback 和 Windows appliance 验证。
 - **HTTP/API**：保留 `/v1/strategy-backtests` 路径；POST 成功提交后返回 `202 + runId + PENDING`
   和 run `Location`，当前状态与结果继续从既有 GET 资源读取。
 - **数据库**：复用 `BacktestRun` 作为任务登记和 `BacktestSignalResult` 作为结果边界；使用

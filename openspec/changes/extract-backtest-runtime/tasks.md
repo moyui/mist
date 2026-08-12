@@ -8,8 +8,9 @@
 
 - [x] 1.1 确认 `standardize-service-boundary-contracts` 和 `evolve-strategy-evaluation-contract` 已通过
   验收；`extract-chan-core` 不属于 Backtest 前置依赖。
-- [x] 1.2 记录 `mist`、`mist-deploy`、`mist-monitoring` 的 branch、HEAD、dirty/worktree、Compose、
-  active changes 和现有同步 Backtest 影响链。
+- [x] 1.2 记录 `mist`、`mist-deploy` 的 branch、HEAD、dirty/worktree、Compose、
+  active changes 和现有同步 Backtest 影响链（`mist-monitoring` 已归档删除 2026-08-12，
+  记录时仅剩四仓）。
 - [x] 1.3 运行现有 Backtest controller/service、schema integrity 和完整 backend 基线，区分自动化通过
   与环境阻塞。
 - [x] 1.4 只读审计真实 `schema_migrations`、BacktestRun/BacktestSignalResult 存量、物理列、named
@@ -115,7 +116,9 @@
     `OTEL_SERVICE_NAME ?? 'mist-backend'` 导致各 app 生产遥测 service_name 串名——已按
     mist-deploy `8317453`（compose 各 node 服务显式 `OTEL_SERVICE_NAME`）修复并重部署验证
     （backtest 指标 service_name='backtest'）。
-- [ ] 5.3 运行 `mist`、`mist-deploy`、`mist-monitoring` 完整基线、strict OpenSpec、退役路径检索和
+- [ ] 5.3 运行 `mist`、`mist-deploy` 完整基线（`mist-monitoring` 已归档删除 2026-08-12，
+  观测侧基线不再执行；见 retire-diagnostic-endpoints-to-structured-logs D6）、strict
+  OpenSpec、退役路径检索和
   `git diff --check`。
 - [ ] 5.4 在隔离真实 MySQL 执行 migration pre/postflight/readback、protected digest、first/middle page
   SQL shape、`SHOW INDEX` 和 representative `EXPLAIN`/大范围 replay 门禁。
