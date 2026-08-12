@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  NotificationChannel,
   Security,
   StrategyAlertDelivery,
   StrategyAlertDeliveryStatus,
@@ -50,7 +51,10 @@ export class AlertChannelDeliveryService {
     attemptsMade: number,
     maxAttempts: number,
   ): Promise<void> {
-    const { alertEventId, channel } = job;
+    const { alertEventId } = job;
+    // Bridge the contract's pure literal union to the NotificationChannel enum
+    // (used by the entity column + adapters). Values are guaranteed equal by decode.
+    const channel = toNotificationChannel(job.channel);
     const delivery = await this.deliveries.findOne({
       where: { strategyAlertEventId: alertEventId, channel },
     });
@@ -175,4 +179,8 @@ export class AlertChannelDeliveryService {
 function truncate(error?: string): string | null {
   if (!error) return null;
   return error.length > MAX_LAST_ERROR ? error.slice(0, MAX_LAST_ERROR) : error;
+}
+
+function toNotificationChannel(channel: 'qq' | 'wechat'): NotificationChannel {
+  return channel === 'qq' ? NotificationChannel.QQ : NotificationChannel.WECHAT;
 }

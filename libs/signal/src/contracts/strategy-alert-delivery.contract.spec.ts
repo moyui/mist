@@ -1,4 +1,3 @@
-import { NotificationChannel } from '@app/shared-data';
 import {
   alertDeliveryChannelJobId,
   alertDeliveryFanoutJobId,
@@ -32,9 +31,9 @@ describe('strategy-alert-delivery contract', () => {
       const decoded = decodeAlertDeliveryChannelJobV1({
         contractVersion: 1,
         alertEventId: 5,
-        channel: NotificationChannel.WECHAT,
+        channel: 'wechat',
       });
-      expect(decoded.channel).toBe(NotificationChannel.WECHAT);
+      expect(decoded.channel).toBe('wechat');
     });
 
     it('rejects an unknown channel', () => {
@@ -42,7 +41,7 @@ describe('strategy-alert-delivery contract', () => {
         decodeAlertDeliveryChannelJobV1({
           contractVersion: 1,
           alertEventId: 5,
-          channel: 'sms' as NotificationChannel,
+          channel: 'sms',
         }),
       ).toThrow(/channel must be qq or wechat/);
     });
@@ -66,12 +65,12 @@ describe('strategy-alert-delivery contract', () => {
       const qq = alertDeliveryChannelJobId({
         contractVersion: 1,
         alertEventId: 7,
-        channel: NotificationChannel.QQ,
+        channel: 'qq',
       });
       const wechat = alertDeliveryChannelJobId({
         contractVersion: 1,
         alertEventId: 7,
-        channel: NotificationChannel.WECHAT,
+        channel: 'wechat',
       });
       expect(qq).not.toBe(wechat);
       expect(qq).toBe('deliver-channel-v1-7-qq');

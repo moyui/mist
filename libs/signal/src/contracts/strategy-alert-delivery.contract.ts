@@ -1,11 +1,15 @@
-import { NotificationChannel } from '@app/shared-data';
-
 /**
  * BullMQ contract for proactive strategy alert delivery (deliver-strategy-notifications).
  * Producer (apps/signal) enqueues a fanout job per committed AlertEvent; the worker
  * (apps/notification) fans out to one channel job per configured channel, each retried
  * independently via BullMQ attempts/backoff.
+ *
+ * Pure domain contract: intentionally does NOT import @app/shared-data (forbidden for
+ * domain libs by the transport boundary guard). Channel values mirror the
+ * NotificationChannel enum but are defined here as a local literal union.
  */
+export type AlertDeliveryChannel = 'qq' | 'wechat';
+
 export const STRATEGY_ALERT_DELIVERY_BULLMQ_PREFIX = 'mist-bullmq';
 export const STRATEGY_ALERT_DELIVERY_QUEUE_NAME = 'strategy-alert-delivery';
 export const STRATEGY_ALERT_DELIVERY_FANOUT_JOB = 'deliver.fanout';
@@ -33,7 +37,7 @@ export interface AlertDeliveryFanoutJobV1 {
 export interface AlertDeliveryChannelJobV1 {
   readonly contractVersion: 1;
   readonly alertEventId: number;
-  readonly channel: NotificationChannel;
+  readonly channel: AlertDeliveryChannel;
 }
 
 const FANOUT_KEYS = Object.freeze(['contractVersion', 'alertEventId']);
@@ -101,10 +105,7 @@ export function decodeAlertDeliveryChannelJobV1(
       'deliver.channel alertEventId must be a positive safe integer',
     );
   }
-  if (
-    input.channel !== NotificationChannel.QQ &&
-    input.channel !== NotificationChannel.WECHAT
-  ) {
+  if (input.channel !== 'qq' && input.channel !== 'wechat') {
     throw new TypeError('deliver.channel channel must be qq or wechat');
   }
   return Object.freeze({
