@@ -60,6 +60,20 @@ export class AlertChannelDeliveryService {
       return; // idempotent skip
     }
 
+    const adapter = this.adapters.find((a) => a.channel === channel);
+    if (!adapter) {
+      // Short-circuit before loading evidence: no adapter for this channel
+      // (e.g. QQ deferred). Dead-letter and reconcile.
+      await this.markDelivery(
+        delivery.id,
+        StrategyAlertDeliveryStatus.DEAD_LETTERED,
+        delivery.attemptCount,
+        `no adapter configured for channel ${channel}`,
+      );
+      await this.reconcile(alertEventId);
+      return;
+    }
+
     const alertEvent = await this.alertEvents.findOne({
       where: { id: alertEventId },
     });
@@ -70,18 +84,6 @@ export class AlertChannelDeliveryService {
     const security = signal
       ? await this.securities.findOne({ where: { id: signal.securityId } })
       : null;
-
-    const adapter = this.adapters.find((a) => a.channel === channel);
-    if (!adapter) {
-      await this.markDelivery(
-        delivery.id,
-        StrategyAlertDeliveryStatus.DEAD_LETTERED,
-        delivery.attemptCount,
-        `no adapter configured for channel ${channel}`,
-      );
-      await this.reconcile(alertEventId);
-      return;
-    }
 
     const envelope = buildNotificationEnvelope(
       alertEvent,

@@ -53,11 +53,23 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
     WeComChannelAdapter,
     {
       provide: CHANNEL_ADAPTERS,
-      inject: [QqChannelAdapter, WeComChannelAdapter],
-      useFactory: (qq: QqChannelAdapter, wecom: WeComChannelAdapter) => [
-        qq,
-        wecom,
-      ],
+      inject: [QqChannelAdapter, WeComChannelAdapter, ConfigService],
+      useFactory: (
+        qq: QqChannelAdapter,
+        wecom: WeComChannelAdapter,
+        config: ConfigService,
+      ) => {
+        const enabled = new Set(
+          (config.get<string>('NOTIFICATION_CHANNELS') ?? '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        );
+        // Only adapters whose channel is listed in NOTIFICATION_CHANNELS are
+        // active. Keeps an unconfigured channel from dead-lettering every event
+        // (V1 ships WeCom-only via NOTIFICATION_CHANNELS=wechat).
+        return [qq, wecom].filter((a) => enabled.has(a.channel));
+      },
     },
   ],
 })
