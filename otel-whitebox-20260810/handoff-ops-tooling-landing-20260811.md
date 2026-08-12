@@ -92,22 +92,25 @@
 ### Change 2 — OpenSSH 通道
 
 ```
-[ ] 2.1 前置验证（tasks 1.0，必须先过）
-    runner 管理员权限：触发任意部署 workflow 看 Add-WindowsCapability 能否执行；
-                       不行则用管理员账户手动执行一次 enable 脚本（一次性）
-    网络可达：macOS `ping 192.168.31.182` + `nc -vz 192.168.31.182 22`（预期失败，22 未开）
-    不可达：停下讨论 Tailscale（spec 已记备选，不硬推）
+[x] 2.1 前置验证（tasks 1.0，已完成 2026-08-12）
+    runner 管理员权限：✅（enable workflow 成功执行 Add-WindowsCapability）
+    网络可达：✅ macOS `nc -vz 192.168.31.182 22` succeeded（22 已开）
 
-[ ] 2.2 启用（tasks 1.2）
-    触发 workflow：enable-windows-openssh（workflow_dispatch，self-hosted runner）
-    输出应含：sshd running、firewall rule added、public key fingerprint
+[x] 2.2 启用（tasks 1.2，已完成）
+    触发 workflow：enable-windows-openssh（run 31529973803）
+    输出：sshd running、firewall rule TCP22 仅 192.168.31.0/24、PasswordAuthentication no
 
-[ ] 2.3 密钥分发（tasks 1.3，一次性）
-    macOS：ssh-keygen -t ed25519 -f ~/.ssh/mist_ops_ed25519 -C "mist-ops"
-    公钥置入 C:\ProgramData\ssh\administrators_authorized_keys（admin 用户强制此文件，非 authorized_keys！）
-    ACL 修复：icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r
-              /grant "SYSTEM:(F)" /grant "Administrators:(F)"
-    Restart-Service sshd
+[x] 2.3 密钥分发（tasks 1.3，已完成 2026-08-12）
+    macOS：ssh-keygen -t ed25519 -f ~/.ssh/mist_ops_ed25519（已生成）
+    经 distribute-windows-openssh-key workflow（run 31551799125）装入
+    C:\ProgramData\ssh\administrators_authorized_keys + ACL（SYSTEM+Administrators）
+    sshd restart
+    **登录用户名 = 12705**（Administrators 组成员；盒子的 macOS 用户名 moyui 不存在）
+
+[x] 2.4 端到端实测（tasks 1.4/5.1，已完成）
+    macOS ~/.ssh/config Host mist-box（HostName 192.168.31.182 + User 12705 + IdentityFile）
+    `ssh mist-box "whoami"` → `desktop-t3b1o2j\12705` / `DESKTOP-T3B1O2J` ✅
+    密码登录：sshd_config PasswordAuthentication no（key-only）
 
 [ ] 2.4 端到端实测（tasks 1.4/5.1）
     macOS ~/.ssh/config 加 Host mist-box（HostName 192.168.31.182 + IdentityFile）

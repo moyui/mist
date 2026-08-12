@@ -5,7 +5,7 @@
 
 ## 1. 启用与安全（mist-deploy）
 
-- [ ] 1.0 前置验证：确认 self-hosted runner 账户具备管理员权限
+- [x] 1.0 前置验证：确认 self-hosted runner 账户具备管理员权限
       （`Add-WindowsCapability`/防火墙需要 elevation）；确认 macOS 与
       192.168.31.182 同网段可达（D3 前提，不可达则停下讨论 Tailscale）。
 - [ ] 1.1 新增 `scripts/enable-windows-openssh.ps1`（幂等）：**检测系统版本
@@ -16,10 +16,10 @@
 - [ ] 1.2 新增一次性 workflow `enable-windows-openssh.yml`（workflow_dispatch，
       self-hosted runner，调用 1.1 脚本）；`test-enable-windows-openssh.ps1`
       加入 CI 门禁（Assert 风格断言脚本内容/幂等性）。
-- [ ] 1.3 密钥分发：macOS 侧生成专用 keypair（独立用途，可加 passphrase），
+- [x] 1.3 密钥分发：macOS 侧生成专用 keypair（独立用途，可加 passphrase），
       公钥置入 `C:\ProgramData\ssh\administrators_authorized_keys`（ACL 仅
       SYSTEM + Administrators）（D2）。
-- [ ] 1.4 验证：macOS `ssh` 连通（key 认证成功、密码登录被拒）、
+- [x] 1.4 验证：macOS `ssh` 连通（key 认证成功、密码登录被拒）、
       `Test-NetConnection 22` 仅内网放行。
 
 ## 2. 本地工具迁移
@@ -47,7 +47,7 @@
 
 ## 5. 验证
 
-- [ ] 5.1 macOS → 盒子端到端：key 认证、密码登录拒绝、防火墙内网放行/外网
+- [x] 5.1 macOS → 盒子端到端：key 认证、密码登录拒绝、防火墙内网放行/外网
       拒绝、端口检查与终端脚本更新两条路径复现（2.1/2.2 场景）。
 - [x] 5.2 deploy 仓 CI 门禁：`test-enable-windows-openssh.ps1` + 既有
       `test-*.ps1` 全绿；`openspec validate windows-openssh-ops-channel --strict`。
