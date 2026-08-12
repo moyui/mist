@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import {
@@ -11,6 +11,8 @@ import { RealtimeSubscriptionRuntimeRegistry } from './realtime-subscription-run
 import { RealtimeSubscriptionLifecycleCoordinator } from './realtime-subscription-lifecycle.coordinator';
 import { RealtimeSubscriptionLifecycleObservationStore } from './realtime-subscription-lifecycle-observation.store';
 import { RuntimeConfigService } from './runtime-config.service';
+import { RealtimeSecurityAllowlistService } from '../realtime/realtime-security-allowlist.service';
+import { registerSubscriptionLifecycleMetrics } from '../realtime/observability/subscription-lifecycle-metrics';
 
 @Global()
 @Module({
@@ -33,4 +35,23 @@ import { RuntimeConfigService } from './runtime-config.service';
     RuntimeConfigService,
   ],
 })
-export class RealtimeSubscriptionModule {}
+export class RealtimeSubscriptionModule implements OnModuleInit {
+  constructor(
+    private readonly observations: RealtimeSubscriptionLifecycleObservationStore,
+    private readonly allowlist: RealtimeSecurityAllowlistService,
+    private readonly runtimeConfig: RuntimeConfigService,
+  ) {}
+
+  /**
+   * Lifecycle gauges register with their owning module. main.ts no longer
+   * resolves these providers, so mock mode (which excludes this module) boots
+   * without DI failures and simply has no lifecycle gauges.
+   */
+  onModuleInit() {
+    registerSubscriptionLifecycleMetrics(
+      this.observations,
+      this.allowlist,
+      () => this.runtimeConfig.getAutoReconcileCached(),
+    );
+  }
+}

@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import {
   RealtimeSubscriptionAssignment,
@@ -16,6 +16,8 @@ import { isMockMode, resolveRealtimeStrategyMode } from '@app/config';
 import { RealtimeStrategyHandoffModule } from './strategy-trigger/realtime-strategy-handoff.module';
 import { RealtimeStrategyStartupCompensationService } from './strategy-trigger/realtime-strategy-startup-compensation.service';
 import { RealtimeStrategyHandoffObservabilityService } from './strategy-trigger/realtime-strategy-handoff-observability.service';
+import { registerCandleMetrics } from './observability/candle-metrics';
+import { registerStartupCompensationMetrics } from './observability/startup-compensation-metrics';
 
 /**
  * Mock-mode in-memory SecuritySourceConfig repository. Mock mode keeps the
@@ -80,7 +82,24 @@ const mockAssignmentRepository = {
     RealtimeRedisService,
   ],
 })
-export class RealtimeIngressModule {}
+export class RealtimeIngressModule implements OnModuleInit {
+  constructor(
+    private readonly finalizer: CandleFinalizer,
+    private readonly product: RealtimeMarketDataProductService,
+    private readonly compensation: RealtimeStrategyStartupCompensationService,
+  ) {}
+
+  /**
+   * Observability registration follows module lifecycle: gauges live with the
+   * module that owns their data source. main.ts no longer resolves these
+   * providers, so modules excluded by mock mode simply don't register (and the
+   * bootstrap never crashes on missing providers).
+   */
+  onModuleInit() {
+    registerCandleMetrics(this.finalizer, this.product);
+    registerStartupCompensationMetrics(this.compensation);
+  }
+}
 
 export function realtimeStrategyHandoffModulesForMode(
   mode: 'off' | 'shadow' | 'on',

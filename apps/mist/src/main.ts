@@ -3,15 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { installHttpRequestContext } from '@app/transport/http';
 import { Logger } from 'nestjs-pino';
-import { registerCandleMetrics } from './realtime/observability/candle-metrics';
-import { registerSubscriptionLifecycleMetrics } from './realtime/observability/subscription-lifecycle-metrics';
-import { registerStartupCompensationMetrics } from './realtime/observability/startup-compensation-metrics';
-import { CandleFinalizer } from './realtime/candle/candle-finalizer';
-import { RealtimeMarketDataProductService } from './realtime/candle/realtime-market-data-product.service';
-import { RealtimeSecurityAllowlistService } from './realtime/realtime-security-allowlist.service';
-import { RealtimeSubscriptionLifecycleObservationStore } from './realtime-subscriptions/realtime-subscription-lifecycle-observation.store';
-import { RuntimeConfigService } from './realtime-subscriptions/runtime-config.service';
-import { RealtimeStrategyStartupCompensationService } from './realtime/strategy-trigger/realtime-strategy-startup-compensation.service';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -20,19 +11,6 @@ async function bootstrap() {
   const productizationMode =
     app.get(ConfigService).get<string>('REALTIME_PRODUCTIZATION_MODE') ?? 'off';
   app.get(Logger).log(`realtime productization mode=${productizationMode}`);
-  registerCandleMetrics(
-    app.get(CandleFinalizer),
-    app.get(RealtimeMarketDataProductService),
-  );
-  registerStartupCompensationMetrics(
-    app.get(RealtimeStrategyStartupCompensationService),
-  );
-  const runtimeConfig = app.get(RuntimeConfigService);
-  registerSubscriptionLifecycleMetrics(
-    app.get(RealtimeSubscriptionLifecycleObservationStore),
-    app.get(RealtimeSecurityAllowlistService),
-    () => runtimeConfig.getAutoReconcileCached(),
-  );
   installHttpRequestContext(app);
 
   // Swagger API Documentation configuration
