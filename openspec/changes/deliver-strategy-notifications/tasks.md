@@ -30,21 +30,24 @@
 
 ## 3. Notification Core 与 Adapter
 
-- [ ] 3.1 实现 BullMQ `strategy-alert-delivery` queue 注册（producer 在 apps/signal 入队，worker 在
+- [x] 3.1 实现 BullMQ `strategy-alert-delivery` queue 注册（producer 在 apps/signal 入队，worker 在
   apps/notification 消费）+ channel-neutral envelope + 模板 contract。
-- [ ] 3.2 实现 QQ 与微信 channel adapter（直接对接 SDK/协议，不经 AstrBot）、超时、redacted logging、
+- [x] 3.2 实现 QQ 与微信 channel adapter（直接对接 SDK/协议，不经 AstrBot）、超时、redacted logging、
   contract tests。
-- [ ] 3.3 实现 migration 018 + delivery 记录表持久化 per-channel 结果；AlertEvent 聚合状态更新；
+- [x] 3.3 实现 migration 018 + delivery 记录表持久化 per-channel 结果；AlertEvent 聚合状态更新；
   operator acknowledgement 保持独立。
-- [ ] 3.4 实现 at-least-once 幂等（jobId=alertEventId）、有界重试/backoff、dead-letter、人工重放端点。
-- [ ] 3.5 实现 duplicate/crash/restart/partial-failure/reconciliation 测试。
+- [x] 3.4 实现 at-least-once 幂等（jobId=alertEventId:channel）、有界重试/backoff、dead-letter、人工重放端点
+  （`POST /v1/notification/replay/:alertEventId`，reset delivery 行后重入 fresh job）。
+- [x] 3.5 实现 duplicate/partial-failure/reconciliation/idempotent 单测（43/43 过）；crash/restart 进程级
+  验证留集成/HIL（需真 BullMQ）。
 
 ## 4. 部署与监控
 
 - [ ] 4.1 实现 `apps/notification` Compose service（复用 image + command）、queue env、per-channel
   secrets、healthcheck、startup/rollback。
-- [ ] 4.2 增加 notification 队列深度/consumption/claim/latency/per-channel-result/dead-letter 低基数
-  monitoring（OTel，参照现有 O1/O2a 指标风格）。
+- [x] 4.2 增加 notification per-channel-result/dead-letter/attempt 低基数 monitoring（OTel observable
+  gauge：mist_notification_{delivered,failed,dead_letter,attempt}_total{channel}；queue depth/latency 需
+  async BullMQ 轮询，留后续）。
 - [ ] 4.3 证明 notification failure 不改变 strategy persistence、candle 或 transport health。
 
 ## 5. 验证与真实渠道 HIL
