@@ -69,6 +69,7 @@ export class TdxRealtimeClient
   private transportReady = false;
   private pendingControl: PendingControl | null = null;
   private connectionId = 0;
+  private lastMessageAt: string | null = null;
 
   constructor(
     config: ConfigService,
@@ -201,9 +202,15 @@ export class TdxRealtimeClient
   private connect(): void {
     if (this.shuttingDown) return;
     const connectionId = ++this.connectionId;
+    this.logger.log(
+      `tdx realtime ws event=connecting connectionId=${connectionId} wsUrl=${this.wsUrl}`,
+    );
     this.ws = new WebSocket(this.wsUrl);
     this.ws.on('open', () => {
       this.transportReady = false;
+      this.logger.log(
+        `tdx realtime ws event=connected connectionId=${connectionId}`,
+      );
       this.heartbeatTimer = setInterval(() => {
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify({ type: 'ping' }));
@@ -211,13 +218,26 @@ export class TdxRealtimeClient
       }, 30_000);
     });
     this.ws.on('message', (data: WebSocket.RawData) => {
+      this.lastMessageAt = new Date().toISOString();
       this.handleMessage(data.toString());
     });
     this.ws.on('error', (error) => {
+      this.logger.error(
+        `tdx realtime ws event=error connectionId=${connectionId} errorMessage=${error.message} lastMessageAt=${this.lastMessageAt ?? '-'}`,
+      );
       this.store.setError('TDX_REALTIME_WS_ERROR', error.message);
     });
     this.ws.on('close', () => {
       this.transportReady = false;
+      if (this.shuttingDown) {
+        this.logger.log(
+          `tdx realtime ws event=disconnected connectionId=${connectionId} lastMessageAt=${this.lastMessageAt ?? '-'} willReconnect=false`,
+        );
+      } else {
+        this.logger.warn(
+          `tdx realtime ws event=disconnected connectionId=${connectionId} lastMessageAt=${this.lastMessageAt ?? '-'} willReconnect=true`,
+        );
+      }
       this.subscriptionRuntime?.observeDisconnected(
         DataSource.TDX,
         connectionId,
@@ -227,6 +247,9 @@ export class TdxRealtimeClient
       if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
       if (!this.shuttingDown) {
+        this.logger.log(
+          `tdx realtime ws event=reconnecting connectionId=${connectionId} reconnectDelayMs=${this.reconnectDelayMs}`,
+        );
         this.reconnectTimer = setTimeout(
           () => this.connect(),
           this.reconnectDelayMs,
@@ -271,6 +294,9 @@ export class TdxRealtimeClient
       data['quality'] !== 'latest-state' ||
       !hasExactKeys(data, TDX_READY_DATA_KEYS)
     ) {
+      this.logger.warn(
+        `tdx realtime ws event=ready_rejected connectionId=${this.connectionId} reason=TDX_REALTIME_READY_CONTRACT_MISMATCH`,
+      );
       this.store.recordReject(
         'contractMismatch',
         null,
@@ -279,6 +305,9 @@ export class TdxRealtimeClient
       return;
     }
     this.transportReady = true;
+    this.logger.log(
+      `tdx realtime ws event=ready connectionId=${this.connectionId}`,
+    );
     this.store.markConnected();
     this.store.clearError();
     this.subscriptionRuntime?.observeAcceptedReady(
@@ -360,8 +389,13 @@ export class TdxRealtimeClient
           capturedAt: decoded.data.capturedAt,
           native: value,
         });
+        const nativeRecord = isRecord(value) ? value : {};
+        const nativeKeys = Object.keys(nativeRecord)
+          .sort()
+          .slice(0, 20)
+          .join(',');
         this.logger.log(
-          `candle ingest start source=tdx symbol=${providerSymbol} capturedAt=${decoded.data.capturedAt}`,
+          `candle ingest start source=tdx symbol=${providerSymbol} capturedAt=${decoded.data.capturedAt} nativeKeys=${nativeKeys} asOf=${nativeField(nativeRecord['AsOf'])} volume=${nativeField(nativeRecord['Volume'])} amount=${nativeField(nativeRecord['Amount'])}`,
         );
         this.ingress?.handleSnapshot(snapshot);
         this.store.recordAccepted(decoded.data.capturedAt);
@@ -479,6 +513,10 @@ const TDX_READY_DATA_KEYS = [
 ] as const;
 const RFC3339_PATTERN =
   /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
+
+function nativeField(value: unknown): string {
+  return value === undefined || value === null ? '-' : String(value);
+}
 
 function hasExactKeys(
   value: Record<string, unknown>,
