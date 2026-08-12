@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { installHttpRequestContext } from '@app/transport/http';
 import { Logger } from 'nestjs-pino';
@@ -16,6 +17,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useLogger(app.get(Logger));
+  const productizationMode =
+    app.get(ConfigService).get<string>('REALTIME_PRODUCTIZATION_MODE') ?? 'off';
+  app.get(Logger).log(`realtime productization mode=${productizationMode}`);
   registerCandleMetrics(
     app.get(CandleFinalizer),
     app.get(RealtimeMarketDataProductService),

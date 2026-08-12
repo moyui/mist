@@ -51,6 +51,10 @@
       结构不变）。
 - [ ] 5.6 验证：受影响脚本 dry-run / CI gate（test-*.ps1）PASS；
       `/internal/realtime` 全工作区检索为零（归档证据除外）。
+- [ ] 5.7 mode-isolation 适配：run-realtime-mode-isolation-hil.ps1 删
+      MetricsUrl/scrape/expectedMetric/传参 + workflow 删 metrics_url
+      （9109 已退役；health.realtimeMode 是验证证据）。
+- [ ] 5.8 mist main.ts bootstrap 打 `realtime productization mode=...` 启动日志。
 
 ## 6. 收尾
 

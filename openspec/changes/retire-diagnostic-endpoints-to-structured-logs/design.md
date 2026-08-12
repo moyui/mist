@@ -119,6 +119,21 @@ $line = docker logs mist-backend --since 5m 2>&1 |
 
 原则：只清 stale 引用，不动运行时代码；不恢复任何已删端点。
 
+### 4.1 mode-isolation HIL 适配（9109 metrics 退役）
+
+`run-realtime-mode-isolation-hil.ps1` 与 `run-windows-realtime-mode-isolation-hil.yml`
+曾 scrape `:9109/metrics`（monitoring exporter 已删，scrape 会炸）。实际
+`Wait-RealtimeModeEvidence` 只靠 datasource `/health` 的 `realtimeMode` 字段
+验证（metric 侧证据在 shrink 时已移除，`expectedMetric` 已为 `$null`）——
+9109 scrape 是纯残留：
+
+- 脚本：删 `MetricsUrl` 参数 + `Invoke-WebRequest` scrape + `expectedMetric`
+  逻辑 + 7 处 `-MetricsUrl` 传参；`health.realtimeMode` 保持为验证证据。
+- workflow：删 `metrics_url` 输入 + `MIST_METRICS_URL` env + 传参。
+- mist 启动日志：`bootstrap()` 打 `realtime productization mode=<off|shadow|on>`
+  （从 ConfigService 读，`?? 'off'`），作启动期证据与排障（mode-isolation
+  的 datasource mode 验证已由 `/health.realtimeMode` 承担，不依赖此日志）。
+
 ## 5. 验证路径
 
 - mist：`pnpm typecheck` / `pnpm lint:check` / `env TZ=UTC pnpm run test:ci` /
