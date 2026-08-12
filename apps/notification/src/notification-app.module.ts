@@ -5,7 +5,12 @@ import * as path from 'node:path';
 import { LoggerModule } from 'nestjs-pino';
 import { notificationEnvSchema } from '@app/config';
 import {
+  K,
+  KExtensionEf,
+  KExtensionQmt,
+  KExtensionTdx,
   Security,
+  SecuritySourceConfig,
   StrategyAlertDelivery,
   StrategyAlertEvent,
   StrategyDefinition,
@@ -49,7 +54,12 @@ import { NotificationHealthController } from './notification-health.controller';
           synchronize: false,
           logging: configService.get('NODE_ENV') !== 'production',
           entities: [
+            K,
+            KExtensionEf,
+            KExtensionTdx,
+            KExtensionQmt,
             Security,
+            SecuritySourceConfig,
             StrategyDefinition,
             StrategyVersion,
             StrategySignal,
