@@ -263,6 +263,29 @@ export const signalEnvSchema = commonEnvSchema.append({
 });
 
 /**
+ * Notification worker app environment. Consumes the strategy-alert-delivery
+ * BullMQ queue (MIST_REALTIME_REDIS_URL) and calls QQ/WeCom channel adapters
+ * directly. NOTIFICATION_CHANNELS is informational; adapters self-disable
+ * (permanent_failure) when their per-channel env is absent.
+ */
+export const notificationEnvSchema = commonEnvSchema.append({
+  PORT: Joi.number().port().default(8006),
+  MIST_REALTIME_REDIS_URL: Joi.string().uri().allow('').default(''),
+  NOTIFICATION_CHANNELS: Joi.string().default('qq,wechat'),
+  NOTIFICATION_QQ_BASE_URL: Joi.string().uri().allow('').default(''),
+  NOTIFICATION_QQ_ACCESS_TOKEN: Joi.string().allow('').default(''),
+  NOTIFICATION_QQ_TARGET: Joi.string().allow('').default(''),
+  NOTIFICATION_QQ_MESSAGE_TYPE: Joi.string()
+    .valid('group', 'private')
+    .default('group'),
+  NOTIFICATION_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
+  NOTIFICATION_HTTP_TIMEOUT_MS: Joi.number()
+    .integer()
+    .positive()
+    .default(10_000),
+});
+
+/**
  * Backtest owns the historical replay runtime and its internal TCP command
  * listener.  These limits are process admission/deadline controls, not
  * public request parameters.

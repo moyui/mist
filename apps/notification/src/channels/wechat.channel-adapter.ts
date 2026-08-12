@@ -1,0 +1,69 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NotificationChannel } from '@app/shared-data';
+import type { NotificationEnvelope } from '../delivery/notification-envelope';
+import type { ChannelAdapter, ChannelSendResult } from './channel-adapter.port';
+
+const DEFAULT_HTTP_TIMEOUT_MS = 10_000;
+
+interface WeComWebhookResponse {
+  errcode?: number;
+  errmsg?: string;
+}
+
+/**
+ * WeChat (WeCom group robot) channel adapter via the official webhook.
+ * POST <webhook> { msgtype:'text', text:{ content } }. errcode 0 = sent;
+ * anything else (incl. rate-limit 45009) = transient_failure (retried, then
+ * dead-lettered). Webhook URL stays in env only; never logged.
+ */
+@Injectable()
+export class WeComChannelAdapter implements ChannelAdapter {
+  readonly channel = NotificationChannel.WECHAT;
+
+  constructor(private readonly config: ConfigService) {}
+
+  async send(envelope: NotificationEnvelope): Promise<ChannelSendResult> {
+    const webhook = (
+      this.config.get<string>('NOTIFICATION_WECHAT_WEBHOOK') ?? ''
+    ).trim();
+    const timeoutMs =
+      this.config.get<number>('NOTIFICATION_HTTP_TIMEOUT_MS') ??
+      DEFAULT_HTTP_TIMEOUT_MS;
+
+    if (!webhook) {
+      return {
+        status: 'permanent_failure',
+        error:
+          'WeCom webhook not configured (NOTIFICATION_WECHAT_WEBHOOK missing)',
+      };
+    }
+
+    const body = JSON.stringify({
+      msgtype: 'text',
+      text: { content: envelope.message.summary },
+    });
+
+    try {
+      const res = await fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      const json = (await res.json()) as WeComWebhookResponse;
+      if (json.errcode === 0) {
+        return { status: 'sent' };
+      }
+      return {
+        status: 'transient_failure',
+        error: `WeCom errcode=${json.errcode ?? '?'} errmsg=${json.errmsg ?? ''}`,
+      };
+    } catch (error) {
+      return {
+        status: 'transient_failure',
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+}
