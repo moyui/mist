@@ -24,9 +24,9 @@
 
 ## 2. 本地工具迁移
 
-- [ ] 2.1 端口检查本地命令验证：`ssh mist-box "netstat -ano | findstr :9004"`
+- [x] 2.1 端口检查本地命令验证：`ssh mist-box "netstat -ano | findstr :9004"`
       + `tasklist | findstr <pid>` 复现 inspect-windows-port 输出（D5）。
-- [ ] 2.2 终端脚本更新流程验证：`scp` 桥脚本到终端路径 + `ssh` SHA256 校验 +
+- [x] 2.2 终端脚本更新流程验证：`scp` 桥脚本到终端路径 + `ssh` SHA256 校验 +
       重启 TdxW.exe 提示，复现 update-windows-tdx-bridge-script（D5）。
 
 ## 3. workflow 处置
@@ -51,10 +51,10 @@
       拒绝、端口检查与终端脚本更新两条路径复现（2.1/2.2 场景）。
 - [x] 5.2 deploy 仓 CI 门禁：`test-enable-windows-openssh.ps1` + 既有
       `test-*.ps1` 全绿；`openspec validate windows-openssh-ops-channel --strict`。
-- [ ] 5.3 证据落盘 `evidence/`（启用输出、ssh 实测、workflow 退役清单）。
+- [x] 5.3 证据落盘 `evidence/`（启用输出、ssh 实测、workflow 退役清单）。
 
 ## 6. 提交（三步工作流）
 
 - [x] 6.1 spec 确认通过后写实施计划（代码级）。
 - [x] 6.2 实施计划确认后落地（分支 + 验证 + 合并）。
-- [ ] 6.3 归档（delta 合并进 live specs 手动同步）。
+- [x] 6.3 归档（delta 合并进 live specs 手动同步）。

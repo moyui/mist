@@ -32,7 +32,7 @@
 ## 3. 验证
 
 - [x] 3.1 `uv run pytest`（85% 覆盖率门禁，CI 同款命令）全绿。
-- [ ] 3.2 `tools/mock-env/mock-verify.sh` 增加 `_search?type=logs` 断言：
+- [x] 3.2 `tools/mock-env/mock-verify.sh` 增加 `_search?type=logs` 断言：
       service_name=tdx-datasource 日志存在、按 trace_id 顶层可检索、单发（cnt=1）。
 - [x] 3.3 `openspec validate datasource-logs-to-openobserve --strict`（mist 仓根）。
 
@@ -46,13 +46,13 @@
 
 ## 5. 生产验证
 
-- [ ] 5.1 部署后（实盘线程/交易时段）：OO 查询 tdx-datasource logs（type=logs +
+- [x] 5.1 部署后（实盘线程/交易时段）：OO 查询 tdx-datasource logs（type=logs +
       service_name + trace_id 检索），确认 ingest 三条 lifecycle 日志 + reject
       warn 可见、单发、trace_id 与 spans 一致；QMT 侧待 QMT 数据流恢复后补。
-- [ ] 5.2 验证证据落盘 `evidence/`（查询语句 + 结果摘要，参照 O1/O2a 证据格式）。
+- [x] 5.2 验证证据落盘 `evidence/`（查询语句 + 结果摘要，参照 O1/O2a 证据格式）。
 
 ## 6. 提交（三步工作流）
 
 - [x] 6.1 spec 确认通过后写实施计划（代码级）。
 - [x] 6.2 实施计划确认后落地（worktree 分支 + 单测 + 验证 + 合并）。
-- [ ] 6.3 归档（delta 合并进 live specs 由手动同步，参照 gaps 6.3）。
+- [x] 6.3 归档（delta 合并进 live specs 由手动同步，参照 gaps 6.3）。
