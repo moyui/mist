@@ -63,10 +63,13 @@ dual-write 窗口可接受；transactional outbox 作为后续可选强化，不
 attempt_count、last_error、provider_message_id、sent_at 等）。QQ/微信各自一行；AlertEvent 主状态表达
 聚合结果（全渠道成功→DELIVERED；任一渠道 dead-letter→FAILED），不新增枚举值。
 
-### 6. Channel adapter 直接对接 QQ/微信 SDK
+### 6. Channel adapter 直接对接渠道协议/SDK
 
 不经 AstrBot / mist-skills。adapter 发送规范 envelope，返回 bounded result（sent/failed/transient），
-凭据只经部署 secret/env 注入，日志/evidence 脱敏。
+凭据只经部署 secret/env 注入，日志/evidence 脱敏。**首批渠道决策（2026-08-12 owner 拍板）**：
+- **企业微信**：群机器人 webhook（云端 API、POST JSON、无月度配额、仅 20 条/分钟速率限）——adapter 已实现，V1 启用。
+- **QQ via NapCat**（OneBot HTTP）：adapter 已实现，但**默认不启用**（`NOTIFICATION_CHANNELS=wechat`）。NapCat 当前在开发 MacBook、生产够不着；待迁到 Windows 生产机后启用（`NOTIFICATION_CHANNELS=wechat,qq`，计划周末迁移）。
+- **QQ 官方 bot 已排除**：腾讯 2025-04 起收敛/下线主动消息推送能力（方向改"被动触发+回复"），告警是无触发主动推送，官方平台不兼容——不再探索此路。
 
 ### 7. 独立故障域
 
@@ -78,8 +81,9 @@ notifier 与 evaluation 独立 health/mode；delivery 失败不回滚 Signal/Ale
 - [渠道成功但状态写回失败] → at-least-once + 幂等 + per-channel 记录；不宣称 exactly-once。
 - [凭据泄漏] → secrets 只经部署边界注入；日志脱敏。
 - [渠道不可用阻塞策略] → notifier 独立 health/mode，失败不回滚。
-- [QQ/微信协议稳定性] → 个人微信无官方 bot API，需灰协议；具体协议/库选择（企业微信 vs 个人微信、
-  NapCat vs 官方 QQ bot）在实施计划阶段确认，可能影响可用性与维护成本。
+- [NapCat 灰协议/封号] → QQ via NapCat 非官方协议，有封号风险；adapter 已隔离在单文件 + channel filter
+  后、默认不启用（`NOTIFICATION_CHANNELS=wechat`）；启用前需将 NapCat 迁到 Windows 生产常开机。
+  QQ 官方 bot 因 2025-04 主动消息下线已排除，不再考虑。
 
 ## Migration Plan
 
@@ -93,7 +97,7 @@ notifier 与 evaluation 独立 health/mode；delivery 失败不回滚 Signal/Ale
 
 ## Implementation Planning Items（留到实施计划阶段确认，不阻塞 spec）
 
-- QQ/微信具体协议与库选择（个人微信 vs 企业微信；NapCat vs 官方 QQ bot API）。
+- ~~QQ/微信协议选型~~ → 已定（2026-08-12）：企业微信 webhook + QQ via NapCat；官方 QQ bot 排除（2025-04 主动消息下线）。剩余：NapCat 迁 Windows 机后启用 QQ（计划周末）。
 - delivery 记录 worker 写入路径（直连 MySQL vs 回调 backend API）。
 - message template contract（字段、格式、脱敏）。
 - AlertEvent 聚合状态更新时机（同步于最后渠道 vs 异步）。

@@ -9,8 +9,9 @@ evaluation 之后以独立故障域、独立验收交付，不能耦合策略、
 - 建立独立 notification worker app（`apps/notification`），从 Mist-owned PENDING AlertEvent 边界消费待投递事件。
 - 消费模型采用 BullMQ sibling queue（`strategy-alert-delivery`），复用现有 Redis；AlertEvent 落库
   commit 后由 producer 入队，worker 消费，retry/backoff/DLQ 由 BullMQ 承载。
-- 定义 channel-neutral envelope，并通过 per-channel adapter 直接对接 QQ 与微信的协议/SDK 发送，不经
-  AstrBot 或 mist-skills runtime。
+- 定义 channel-neutral envelope，并通过 per-channel adapter 直接对接渠道协议：企业微信 webhook（V1
+  启用）+ QQ via NapCat OneBot（adapter 已写，默认不启用 `NOTIFICATION_CHANNELS=wechat`，待 NapCat 迁
+  Windows 机后启用）；QQ 官方 bot 因 2025-04 主动消息能力下线已排除。不经 AstrBot 或 mist-skills runtime。
 - 投递语义为 at-least-once（不承诺 exactly-once），幂等以 AlertEvent `dedupeKey` + BullMQ `jobId`
   保证；有界重试（指数退避）耗尽入 dead-letter，支持人工重放。
 - 新增 forward-only migration（018）与独立 delivery 记录表，承载 per-channel fan-out 状态（QQ 成功 /

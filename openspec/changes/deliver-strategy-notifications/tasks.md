@@ -14,7 +14,8 @@
 
 ## 2. 渠道与消费语义逐项评审门禁
 
-- [x] 2.1 首批渠道评审：QQ + 微信，直接对接 SDK（不经 AstrBot）。——owner 2026-08-12 拍板。
+- [x] 2.1 首批渠道评审：企业微信 webhook（V1 启用）+ QQ via NapCat OneBot（adapter 已写，默认不启用，
+  待 NapCat 迁 Windows 机后启用）。QQ 官方 bot 排除（2025-04 主动消息能力下线，告警无触发主动推送不兼容）。——owner 2026-08-12 拍板。
 - [x] 2.2 消费模型评审：BullMQ sibling queue `strategy-alert-delivery`，复用现有 Redis；outbox 作后续
   可选强化，不在首批。——owner 2026-08-12 拍板（参考 Novu/Svix/outbox OSS 惯例）。
 - [x] 2.3 可靠性语义评审：at-least-once + dedupeKey/jobId 幂等 + 5 次指数退避 + dead-letter + 人工
