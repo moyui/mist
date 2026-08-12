@@ -1,19 +1,21 @@
 ## Purpose
 
-Strategy scheduler alert delivery hardens the production strategy loop by
-running scheduled scans after completed K-line collection and letting external
-consumers record alert delivery outcomes through Mist backend APIs.
+Strategy alert delivery hardens the production strategy loop by persisting
+strategy alert events and letting external consumers record delivery outcomes
+through Mist backend APIs. Scheduled scan execution in the schedule app is
+retired (2026-08): realtime evaluation in the signal runtime owns scan
+execution, and the schedule app is not part of the production stack.
+
 ## Requirements
 ### Requirement: Schedule Shall Not Own Public Strategy APIs
 
-The schedule app SHALL host strategy scan jobs only and SHALL NOT expose public
-strategy REST APIs.
+The schedule app SHALL NOT expose public strategy REST APIs. Scan execution is
+owned by the realtime signal runtime, not by the schedule app.
 
 #### Scenario: Schedule module is inspected
 
 - **WHEN** schedule module wiring is inspected
-- **THEN** it MUST import reusable strategy providers without mounting
-  `/v1/strategies`, `/v1/strategy-signals`,
+- **THEN** it MUST NOT mount `/v1/strategies`, `/v1/strategy-signals`,
   `/v1/strategy-alert-events`, or `/v1/strategy-backtests` controllers
 
 ### Requirement: Alert Delivery State Shall Be Recorded
