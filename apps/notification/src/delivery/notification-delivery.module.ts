@@ -80,5 +80,6 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
       },
     },
   ],
+  exports: [AlertReplayService],
 })
 export class NotificationDeliveryModule {}
