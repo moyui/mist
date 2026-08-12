@@ -34,7 +34,6 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
     ]),
     BullModule.forRootAsync({
       inject: [ConfigService],
-      extraOptions: { manualRegistration: true },
       useFactory(config: ConfigService) {
         return {
           prefix: STRATEGY_ALERT_DELIVERY_BULLMQ_PREFIX,
