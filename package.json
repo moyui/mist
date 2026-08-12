@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "nest build",
-    "build:docker": "nest build mist && nest build backtest && nest build chan && nest build signal && nest build realtime-subscription-hil",
+    "build:docker": "nest build mist && nest build backtest && nest build chan && nest build signal && nest build realtime-subscription-hil && nest build notification",
     "build:hil": "nest build realtime-subscription-hil",
     "db:migrate": "node tools/run-migrations.mjs",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
@@ -24,6 +24,7 @@
     "start:dev:chan": "nest start chan",
     "start:dev:signal": "nest start signal",
     "start:dev:backtest": "nest start backtest",
+    "start:dev:notification": "nest start notification",
     "start:debug": "nest start --debug --watch",
     "start:debug:chan": "nest start chan --debug --watch",
     "start:prod": "node dist/apps/mist/main",
