@@ -1,47 +1,56 @@
 ## 1. 后置启动门禁与现状审计
 
 - [x] 1.1 确认 `run-realtime-strategy-evaluation` 已通过 shadow/on 集成门禁并真实产生可消费的 PENDING
-  AlertEvent，Signal/context evidence shape 已由 HIL 固定，且项目负责人明确恢复本 change。该项完成前，
-  1.2–5.4 全部暂停，不创建 notification 实施 worktree，不修改代码/schema/deploy/monitoring，不申请或
-  接入生产渠道凭据；seeded fixture、旧 manual scan 或字段存在只能用于未来开发，不能满足恢复门禁。
-  ——2026-08-07 三条件全部满足：① on 门禁通过（on-HIL PASSED，strategy_signals=2 落库，evidence
-  `integration-20260806/evidence/2026-08-07-on-hil-65-2-passed.md`）；② **真实产生可消费 PENDING
-  AlertEvent=2**（strategy_alert_events 行数实证，audit run 31151313143）+ evidence shape 由
-  on-HIL 固定；③ owner 2026-08-07 明确恢复（勾选本任务即为恢复信号）。**1.2–5.4 解除暂停**。
-- [ ] 1.2 恢复后重新审计 AlertEvent/Signal schema、delivery APIs、stable specs、真实 producer evidence、
-  notification worktree 和真实部署状态；尤其核对 stable Purpose 与
-  `Schedule Shall Not Own Public Strategy APIs` 正文中的 schedule scan owner 遗留语义，不得把当前
-  审计结论视为届时仍然有效。
-- [ ] 1.3 建立 AlertEvent → claim → template → channel → result → monitoring/deploy 影响链。
+  AlertEvent，Signal/context evidence shape 已由 HIL 固定，且项目负责人明确恢复本 change。
+  ——2026-08-07 三条件全部满足（on-HIL PASSED，strategy_signals=2，evidence shape 固定，owner 恢复）。
+- [x] 1.2 重新审计 AlertEvent/Signal schema、delivery APIs、stable specs、真实 producer evidence、部署状态。
+  ——2026-08-12 审计完成：AlertEvent entity/table/producer 均在且 stable；producer 在 apps/signal
+  `LiveStrategyPersistenceService`，被 `REALTIME_STRATEGY_MODE=on` 门控；生产盘中实证产出真实 PENDING
+  事件（16 条积压）；delivery API 在 apps/mist（delivered/failed/ack，无 FSM guard、无 claim 端点）；
+  BullMQ 已铺好（strategy-trigger queue），单 Redis 同时供 market-data+BullMQ；apps/schedule 是
+  market-data collector 且未部署；stable capability 已被 `8554702` 改写，schedule-scan-owner 表述已不存在。
+- [x] 1.3 建立 AlertEvent → enqueue → BullMQ claim → channel adapter → per-channel result →
+  monitoring/deploy 影响链。
 
 ## 2. 渠道与消费语义逐项评审门禁
 
-- [ ] 2.1 向项目负责人评审首批渠道、目标入口、认证、模板和 message evidence。
-- [ ] 2.2 比较数据库 claim、queue 和 transactional-outbox 候选，提交并发与 crash-window 矩阵。
-- [ ] 2.3 向项目负责人评审 timeout、幂等、retry/backoff、dead-letter、人工重放和部分成功语义。
-- [ ] 2.4 向项目负责人评审现有 AlertEvent schema 是否足够及任何 migration/兼容/回滚方案。
-- [ ] 2.5 向项目负责人评审 notification worker app、queue/Redis、secrets、health 和 deploy topology。
-- [ ] 2.6 将全部接受结论写回 design/specs；必须使用 REMOVED delta 删除 schedule scan owner 遗留
-  requirement，并约束归档同步时重写 stable Purpose；未确认前不得实现 worker、schema 或渠道 adapter。
+- [x] 2.1 首批渠道评审：QQ + 微信，直接对接 SDK（不经 AstrBot）。——owner 2026-08-12 拍板。
+- [x] 2.2 消费模型评审：BullMQ sibling queue `strategy-alert-delivery`，复用现有 Redis；outbox 作后续
+  可选强化，不在首批。——owner 2026-08-12 拍板（参考 Novu/Svix/outbox OSS 惯例）。
+- [x] 2.3 可靠性语义评审：at-least-once + dedupeKey/jobId 幂等 + 5 次指数退避 + dead-letter + 人工
+  重放；不承诺 exactly-once。最终数值留实施计划。——owner 2026-08-12 拍板。
+- [x] 2.4 schema 评审：拆表——migration 018 + 独立 delivery 记录表承载 per-channel fan-out；AlertEvent
+  主状态复用现有枚举表达聚合结果。——owner 2026-08-12 拍板。
+- [x] 2.5 部署形态评审：独立 app `apps/notification`，复用 image + command 切换，参照 signal service
+  block；per-channel secrets 经部署边界注入。——owner 2026-08-12 拍板。
+- [x] 2.6 将全部接受结论写回 design/specs：REMOVED delta 因 `8554702` 已改目标 body 而 drop，仅保留
+  ADDED proactive-delivery requirement；astrbot-integration spec 不碰（direct SDK 绕过 AstrBot）。
+  ——owner 2026-08-12 拍板。
 
 ## 3. Notification Core 与 Adapter
 
-- [ ] 3.1 实现接受后的 bounded claim/consume、channel-neutral envelope 和模板 contract。
-- [ ] 3.2 实现首批 channel adapter、timeout、redacted logging 和 contract tests。
-- [ ] 3.3 实现 delivery result persistence，并保持 operator acknowledgement 独立。
-- [ ] 3.4 实现 duplicate/crash/restart/partial failure/reconciliation tests。
+- [ ] 3.1 实现 BullMQ `strategy-alert-delivery` queue 注册（producer 在 apps/signal 入队，worker 在
+  apps/notification 消费）+ channel-neutral envelope + 模板 contract。
+- [ ] 3.2 实现 QQ 与微信 channel adapter（直接对接 SDK/协议，不经 AstrBot）、超时、redacted logging、
+  contract tests。
+- [ ] 3.3 实现 migration 018 + delivery 记录表持久化 per-channel 结果；AlertEvent 聚合状态更新；
+  operator acknowledgement 保持独立。
+- [ ] 3.4 实现 at-least-once 幂等（jobId=alertEventId）、有界重试/backoff、dead-letter、人工重放端点。
+- [ ] 3.5 实现 duplicate/crash/restart/partial-failure/reconciliation 测试。
 
 ## 4. 部署与监控
 
-- [ ] 4.1 实现接受后的 notification worker Compose/env/secrets/health/startup/rollback。
-- [ ] 4.2 增加 consumption/claim/latency/channel result/failure 低基数 monitoring。
+- [ ] 4.1 实现 `apps/notification` Compose service（复用 image + command）、queue env、per-channel
+  secrets、healthcheck、startup/rollback。
+- [ ] 4.2 增加 notification 队列深度/consumption/claim/latency/per-channel-result/dead-letter 低基数
+  monitoring（OTel，参照现有 O1/O2a 指标风格）。
 - [ ] 4.3 证明 notification failure 不改变 strategy persistence、candle 或 transport health。
 
 ## 5. 验证与真实渠道 HIL
 
-- [ ] 5.1 运行受影响仓库完整基线、真实 MySQL/queue、strict OpenSpec 和 `git diff --check`；检索 active
-  change 与 living spec，确认 schedule scan owner 语义不会继续生效。
-- [ ] 5.2 使用受控测试接收端验证 dry-run/shadow、duplicate 和 result writeback。
-- [ ] 5.3 在凭据脱敏条件下完成首批真实渠道 success/failure/restart HIL。
-- [ ] 5.4 向项目负责人逐项审阅 HIL、retry/partial-failure、rollback evidence，以及 stable Purpose/
-  requirement 同步结果后才归档。
+- [ ] 5.1 运行受影响仓库完整基线、真实 MySQL/queue、strict OpenSpec validate 和 `git diff --check`；
+  检索 active change 与 living spec，确认 schedule-scan-owner 语义不再生效。
+- [ ] 5.2 使用受控测试接收端验证 dry-run/shadow、fan-out、duplicate 与 per-channel result writeback。
+- [ ] 5.3 在凭据脱敏条件下完成首批真实渠道（QQ/微信）success/failure/restart HIL。
+- [ ] 5.4 向项目负责人逐项审阅 HIL、retry/partial-failure、rollback evidence，以及 stable spec 同步
+  结果后才归档。

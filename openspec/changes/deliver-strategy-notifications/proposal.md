@@ -1,41 +1,46 @@
 ## Why
 
-现有策略链路只能持久化 PENDING AlertEvent，并提供人工或外部消费者回写状态的 API；没有受控的
-主动通知 worker。通知需要在 realtime evaluation 之后以独立故障域和独立验收交付。
+策略链路已能在生产持久化 PENDING AlertEvent（`REALTIME_STRATEGY_MODE=on`，2026-08-12 实证盘中持续产出，
+16 条积压无人消费），但没有受控的主动投递 worker 把这些事件送达外部渠道。通知必须在 realtime
+evaluation 之后以独立故障域、独立验收交付，不能耦合策略、candle 或 transport。
 
 ## What Changes
 
-- 将本 change 明确置于 realtime evaluation 之后延期实施；当前 artifacts 只保留已确认的所有权边界和
-  待评审问题，不因为 AlertEvent 字段已经存在就提前启动 worker、渠道、schema、部署或凭据工作。
-- 建立独立 notification worker，从 Mist-owned PENDING AlertEvent 边界消费待投递事件。
-- 定义 channel-neutral notification envelope，并通过 adapter 对接经确认的首批入口。
-- 保持策略规则和 Signal 生成归 Mist strategy runtime 所有；AstrBot/WeCom 等渠道不得执行策略。
-- 将 delivery status 与 operator acknowledgement 分开。
-- 不复用 `apps/schedule` 作为 notification owner。
-- 显式移除 stable capability 中“`apps/schedule` 承载 strategy scan jobs”的遗留 requirement；归档同步时
-  重写其 Purpose，保留 delivery result、Skills consumer 和 acknowledgement 契约。
-- 首批渠道、消费方式、并发 claim、超时、失败语义、幂等、重试、dead-letter、凭据和 HIL 均为
-  实施前逐项评审项；本 proposal 不预先授权新增数据库字段或严格状态机。
+- 建立独立 notification worker app（`apps/notification`），从 Mist-owned PENDING AlertEvent 边界消费待投递事件。
+- 消费模型采用 BullMQ sibling queue（`strategy-alert-delivery`），复用现有 Redis；AlertEvent 落库
+  commit 后由 producer 入队，worker 消费，retry/backoff/DLQ 由 BullMQ 承载。
+- 定义 channel-neutral envelope，并通过 per-channel adapter 直接对接 QQ 与微信的协议/SDK 发送，不经
+  AstrBot 或 mist-skills runtime。
+- 投递语义为 at-least-once（不承诺 exactly-once），幂等以 AlertEvent `dedupeKey` + BullMQ `jobId`
+  保证；有界重试（指数退避）耗尽入 dead-letter，支持人工重放。
+- 新增 forward-only migration（018）与独立 delivery 记录表，承载 per-channel fan-out 状态（QQ 成功 /
+  微信失败可独立表达），与 AlertEvent 主状态、operator acknowledgement 分开。
+- 策略规则与 Signal 生成归 Mist strategy runtime（`apps/signal`）所有；channel adapter 不执行策略。
+- delivery status 与 operator acknowledgement 保持独立状态转换。
+- 不复用 `apps/schedule`（保持 disabled）作为 notification owner。
+- mist-skills / AstrBot 不在本 change 范围：push 由独立 worker 直接对接渠道 SDK 承担，AstrBot 继续其
+  pull-only skill 消费不变。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `strategy-notification-delivery`: 定义 PENDING AlertEvent 到外部渠道的受控投递与结果记录边界。
+- `strategy-notification-delivery`: PENDING AlertEvent 经独立 BullMQ worker 到 QQ/微信的受控投递、
+  per-channel 结果记录、at-least-once 可靠性与 dead-letter/replay 边界。
 
 ### Modified Capabilities
 
-- `strategy-scheduler-alert-delivery`: 删除 schedule scan owner 遗留语义；保留 delivery result、Skills
-  consumer 和 acknowledgement 契约，并由独立 notification worker 接管主动投递。
-- `monitoring-health-alerts`: 增加 notification consumption、channel result 和 delivery failure 观测。
-- `windows-docker-appliance`: 仅在渠道和运行时评审确认后增加 notification worker 部署边界。
+- `strategy-scheduler-alert-delivery`: 增加 proactive delivery 归属独立 worker 的 requirement
+  （`apps/schedule` 保持 disabled，不 poll/send 策略告警，投递由 queue 驱动）。
+- `monitoring-health-alerts`: 增加 notification 队列深度/consumption/per-channel 结果/dead-letter 观测，
+  与策略 evaluation health 分离。
+- `windows-docker-appliance`: 增加 notification worker 专用 service 的部署、secrets、health、rollback 边界。
 
 ## Impact
 
-- **交付顺序**：当前 change 明确延期。只有 `run-realtime-strategy-evaluation` 已稳定产生真实可消费的
-  PENDING AlertEvent、相应集成证据通过且项目负责人明确恢复本 change 后，才开始现状审计和逐项评审；
-  在此之前不得实现或部署 notification worker/channel adapter，也不得申请生产渠道凭据。
-- **`mist`**：AlertEvent query/claim/result adapter；是否修改 schema 取决于后续明确评审。
-- **`mist-skills` / 渠道集成**：只消费 Mist 事件和回写结果，不承载策略计算。
-- **`mist-deploy` / `mist-monitoring`**：worker 配置、secrets、health、metrics 和真实渠道 HIL。
-- **不包含**：策略规则、市场数据、K context、portfolio 或 `apps/schedule` 启用。
+- **mist**: delivery 记录表（migration 018）+ producer 入队 + per-channel 结果持久化；AlertEvent 主状态
+  表达聚合投递结果；现有 delivered/failed/ack API 保留供外部/人工使用。
+- **mist-deploy**: `apps/notification` service（复用 image + command 切换）、queue env、per-channel
+  secrets、healthcheck、startup/rollback。
+- **mist-monitoring**: notification consumption/claim/latency/per-channel-result/dead-letter 低基数指标。
+- **不包含**：策略规则、市场数据、K context、portfolio、`apps/schedule` 启用、mist-skills/AstrBot。

@@ -1,94 +1,100 @@
 ## Context
 
-Mist 已持久化 PENDING AlertEvent，并允许外部调用 delivered/failed/ack API，但生产没有主动策略通知
-worker。旧 stable spec 把 schedule scan 与外部 skill polling 混在同一 capability；新架构要求通知
-成为 Signal/AlertEvent 之后的独立故障域。
-
-旧 stable requirement `Schedule Shall Not Own Public Strategy APIs` 的标题仍符合边界，但正文却要求
-`apps/schedule` 承载 strategy scan jobs。若只追加“独立 worker”要求，归档后会让冲突契约并存。
+Mist 已持久化 PENDING AlertEvent（生产 `REALTIME_STRATEGY_MODE=on`，2026-08-12 实证盘中持续产出），并允许
+外部调用 delivered/failed/ack API 回写状态，但生产没有主动策略通知 worker，16 条 PENDING 积压即现状。
+本 change 的通知层是 Signal/AlertEvent 之后的独立故障域。
 
 ## Delivery Order
 
-本 change 当前**明确延期实施**。这不是因为 Signal/AlertEvent 字段尚未定义，而是因为 candle、生产
-订阅生命周期、realtime evaluation、backtest/runtime 和相应部署验收仍有未完成工作；现在同时展开
-notification 会增加并行故障域和未决设计数量。
+本 change 已于 2026-08-07 解除延期（on-HIL 通过、真实 PENDING AlertEvent 产出、owner 恢复三条件满足），
+并于 2026-08-12 完成现状审计与逐项评审，所有可靠性决策已由 owner 拍板（见 Decisions）。审计确认：
 
-延期期间仅保留本 change 的 proposal/design/delta specs/tasks 作为后续边界，不启动代码、worktree、
-schema migration、渠道 adapter、Compose/monitoring 或生产 secrets 工作。恢复条件固定为：
-
-1. `run-realtime-strategy-evaluation` 已通过其 shadow/on 集成门禁，并真实产生可读取的 PENDING
-   AlertEvent；不得只用 seeded fixture 或旧 manual scan 证明该条件。
-2. Signal/context evidence 的实际持久化 shape 已由 realtime HIL 固定，notification 不再猜测消息字段。
-3. 项目负责人根据当时剩余工作重新确认优先级，并明确恢复本 change。
-
-满足恢复条件后，现有 AlertEvent/Signal 字段和测试 fixture 可以作为实现输入；恢复前不得借“字段已经
-存在”提前决定 claim、retry、channel 或 migration。
+- AlertEvent entity/table/producer 均在，stable；生产盘中持续产出真实 PENDING 事件（非 fixture）。
+- 代码层 `apps/schedule` 已是 market-data collector，不碰 strategy scan/Signal/AlertEvent，且未部署。
+- stable capability `strategy-scheduler-alert-delivery` 的 Purpose 与 requirement body 已被 `8554702`
+  改写，"schedule 承载 scan" 的表述已不存在——因此本 change 不再需要 REMOVED delta，改为仅 ADDED
+  proactive-delivery 归属 requirement。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 让 Mist-owned PENDING AlertEvent 被独立 worker 受控消费。
-- 使用 channel-neutral envelope 和 channel adapters。
-- 记录投递结果，同时保持 acknowledgement 独立。
-- 对凭据、超时、并发和真实渠道提供可审计门禁。
+- 让 Mist-owned PENDING AlertEvent 被独立 BullMQ worker 受控消费。
+- 使用 channel-neutral envelope 与直接对接 QQ/微信 SDK 的 channel adapters。
+- per-channel 记录投递结果，acknowledgement 独立。
+- at-least-once + 幂等 + 有界重试 + dead-letter + 人工重放。
 
 **Non-Goals:**
 
-- 不执行策略、不读取 datasource、不计算指标或 K。
+- 不执行策略、不读 datasource、不计算指标或 K。
 - 不启用 `apps/schedule`。
-- 不在未评审前新增 attempt/retry/dead-letter schema。
-- 不预设首批渠道或主动 QQ/微信能力。
+- 不承诺 exactly-once。
+- 不经 AstrBot / mist-skills 投递。
+- 不在本 change 修改 AlertEvent 主状态枚举（聚合结果复用现有 PENDING/DELIVERED/FAILED/ACKED）。
 
 ## Decisions
 
 ### 1. PENDING AlertEvent 是唯一输入
 
-notifier 不监听 raw market trigger，也不重新运行 strategy。消息内容从不可变 Signal/context evidence
-和受控模板构建。
+notifier 不监听 raw market trigger，不重新运行 strategy。消息内容从不可变 Signal/context evidence
+与受控模板构建。
 
-### 2. 独立 worker，不借用 schedule
+### 2. BullMQ sibling queue，不借用 schedule，不强求 outbox
 
-worker 使用独立 app/runtime boundary。具体部署是否与 strategy queue 共用基础设施必须在实施前
-评审，不能从当前 Compose 推断。
+worker 是独立 app `apps/notification`，消费专用 queue `strategy-alert-delivery`（复用现有 Redis）。
+producer（`apps/signal` 的 `LiveStrategyPersistenceService`）在 AlertEvent commit 后入队。BullMQ 原生
+承载 retry/backoff/dead-letter。Mist 规模（个人 A 股、每日信号有限）下 producer 同进程入队的
+dual-write 窗口可接受；transactional outbox 作为后续可选强化，不在首批引入。
 
-遗留 requirement `Schedule Shall Not Own Public Strategy APIs` 必须显式删除，不能只用新增要求覆盖。
-归档同步时，stable capability 的 Purpose 也必须重写，不再描述“completed K-line collection 后运行
-scheduled scans”。其余 delivery result、Skills consumer 和 operator acknowledgement 契约继续保留。
+### 3. at-least-once + 幂等，不追求 exactly-once
 
-### 3. Channel adapter 不拥有业务状态
+业界共识（Svix/Novu/Stripe/outbox）：跨网络边界 exactly-once 不可行。幂等靠 BullMQ `jobId=alertEventId`
++ AlertEvent 既有 `dedupeKey`；channel adapter 对同 AlertEvent 重复发送容忍。
 
-adapter 只发送规范 envelope 并返回受控 result。delivery status 由 Mist 持久化；operator ack 不由
-channel success 自动替代。
+### 4. 有界重试 + dead-letter + 人工重放
 
-### 4. 可靠性语义暂停到逐项评审
+重试参数面向交易告警价值衰减定制（不像 Svix 的 24h/8 次面向不可控 webhook）：单次 SDK 超时 ~10s，
+5 次指数退避（~5s→30s→2m→10m→30m），耗尽入 dead-letter；提供 replay 不重跑策略。具体数值在实施计划
+最终敲定。
 
-claim/lease、并发、重试、backoff、dead-letter、provider idempotency、模板、secrets 和渠道顺序
-尚未授权。必须先核实现有 schema 与真实渠道能力，再更新本 design/spec。
+### 5. 拆表：独立 delivery 记录，per-channel fan-out
+
+新增 migration 018 + delivery 记录表（如 `strategy_alert_deliveries`：alertEventId、channel、status、
+attempt_count、last_error、provider_message_id、sent_at 等）。QQ/微信各自一行；AlertEvent 主状态表达
+聚合结果（全渠道成功→DELIVERED；任一渠道 dead-letter→FAILED），不新增枚举值。
+
+### 6. Channel adapter 直接对接 QQ/微信 SDK
+
+不经 AstrBot / mist-skills。adapter 发送规范 envelope，返回 bounded result（sent/failed/transient），
+凭据只经部署 secret/env 注入，日志/evidence 脱敏。
+
+### 7. 独立故障域
+
+notifier 与 evaluation 独立 health/mode；delivery 失败不回滚 Signal/AlertEvent，不阻塞 candle/transport。
 
 ## Risks / Trade-offs
 
-- [无 claim 语义导致重复发送] → 在选择消费模型前不实现并发 notifier。
-- [渠道成功但状态写回失败] → 评审 provider idempotency 与 reconciliation，不宣称 exactly-once。
-- [凭据泄漏] → secrets 只经部署 secret/env 边界注入，日志和 evidence 脱敏。
-- [渠道不可用阻塞策略] → notifier 与 evaluation 独立 health/mode，失败不回滚 Signal。
+- [dual-write 窗口丢 1 条] → Mist 规模可接受；后续可叠 outbox。
+- [渠道成功但状态写回失败] → at-least-once + 幂等 + per-channel 记录；不宣称 exactly-once。
+- [凭据泄漏] → secrets 只经部署边界注入；日志脱敏。
+- [渠道不可用阻塞策略] → notifier 独立 health/mode，失败不回滚。
+- [QQ/微信协议稳定性] → 个人微信无官方 bot API，需灰协议；具体协议/库选择（企业微信 vs 个人微信、
+  NapCat vs 官方 QQ bot）在实施计划阶段确认，可能影响可用性与维护成本。
 
 ## Migration Plan
 
-1. 等待 Delivery Order 的三项恢复条件满足；延期期间不启动 notification 实施。
-2. 恢复后重新审计 AlertEvent schema、现有 API、stable Purpose/requirements、真实 producer evidence
-   和渠道条件，
-   不直接沿用可能过期的当前代码假设。
-3. 与用户确认首批渠道及消费/失败语义。
-4. 更新 design/spec，以 REMOVED delta 删除 schedule scan owner 遗留 requirement 后再实现 worker 与 adapter。
-5. 归档同步时重写 stable Purpose，并检索 living spec 中不得残留 schedule scan owner 语义。
-6. 先 dry-run/shadow，再以测试接收端验证。
-7. 最后执行真实渠道 HIL；失败时关闭 notifier，不回滚策略事件。
+1. 实施 `apps/notification` worker + BullMQ producer 入队 + delivery 记录表（migration 018）+ QQ/微信
+   adapter。
+2. dry-run / shadow：受控接收端验证 fan-out、幂等、result writeback。
+3. 真实渠道 HIL：凭据脱敏条件下 success/failure/restart 验证。
+4. 失败时关闭 notifier，不回滚策略事件。
+5. 归档同步：检索 living spec 确认无 schedule-scan-owner 残留语义；stable Purpose 已由 `8554702`
+   对齐，无需重写。
 
-## Open Questions
+## Implementation Planning Items（留到实施计划阶段确认，不阻塞 spec）
 
-- 首批渠道是 WeCom、AstrBot、微信还是受控 HTTP receiver。
-- worker 通过数据库 claim、queue 还是组合 outbox 消费。
-- 是否允许自动 retry、次数/backoff、dead-letter 和人工重放。
-- 当前 AlertEvent schema 是否足够，是否需要新的 forward-only migration。
-- 单渠道成功、多渠道部分失败的状态表达。
+- QQ/微信具体协议与库选择（个人微信 vs 企业微信；NapCat vs 官方 QQ bot API）。
+- delivery 记录 worker 写入路径（直连 MySQL vs 回调 backend API）。
+- message template contract（字段、格式、脱敏）。
+- AlertEvent 聚合状态更新时机（同步于最后渠道 vs 异步）。
+- 重试/超时最终数值。
