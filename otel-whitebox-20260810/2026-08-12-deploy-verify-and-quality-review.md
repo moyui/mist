@@ -112,7 +112,7 @@
 | ID | 问题 | 状态 | 说明 |
 |---|---|---|---|
 | P1 | **handoff "pending deploy" 误导** | 已澄清 | 3 运维 change 实际已 ride-along 上线；后续判断是否需部署先查 `git merge-base --is-ancestor` + `git diff --stat`，别只信文档 |
-| P2 | **set-allowlist 工作流默认过时** | 待修 | 默认 `600030.SH`，生产实际 `300059.SZ`；writer 是 reconcile 语义，盲跑默认会改坏 allowlist。**改前先只读探 DB** |
+| P2 | **set-allowlist 工作流默认过时** | ✅ 已修 | **08-12 已修**（mist-deploy `995b358`）：tdx_symbols 默认 `600030.SH,600519.SH`→`300059.SZ,600519.SH`；qmt_symbols 默认 `300502.SZ,000001.SZ`→`300502.SZ`（对齐生产 assignments）。test-workflow-config 加防回归断言。盲跑默认现在=生产现状（writer 是 reconcile 语义，改坏风险消除） |
 | P3 | **bridge inspect datasource_ref 钉旧 pin** | 待修 | 默认 `d1225e61`(v2.0)，不传会误报 bridge 不匹配；触发必须 `-f datasource_ref=<master SHA>` |
 | P4 | **lifecycle audit 假失败** | 已诊断 | `docker inspect mist-monitoring`（容器已退役）→ stale `$LASTEXITCODE=1`；数据已捕获但 upload step 被 success() 门控跳过。建议脚本末尾 `exit 0` 或修容器列表 |
 | P5 | **QMT 日志未入 OO（O2b 缺口）** | ✅ 已解决 | **08-12 已解决**：根因 = QMT `platform_unavailable`（终端未登录）→ 无 ingest 日志产生 → OO 自然无入库（**非 O2b 代码缺陷**）。QMT 数据流恢复后 `qmt-datasource` 600 条/10min 正常入库（TDX 477 条对比），trace_id 完整 32-hex 顶层 |
@@ -173,8 +173,8 @@
 - [x] **allowlist 免重启收敛 / auto_reconcile 切换**（Change 3 tasks 6.4，08-12 已验证）：false↔true DB UPDATE，backend StartedAt 全程不变，日志 `auto_reconcile enabled: triggering full alignment`，datasource sync_subscriptions success ×93、converged=2=desired
 
 ### 用户决策
-- [ ] **F1**：VWAP clamp 是否 round 到 2 位？（一个 `Math.round(vwap*100)/100` + 补测试）
-- [ ] **P2**：allowlist 默认值修复（`600030.SH`→`300059.SZ`）— 改 workflow yaml + commit，还是先只读探 DB？
+- [x] **F1**：VWAP clamp **不做 round**（用户拍板 08-12：不 round 到 2 位；sub-cent 精度影响可忽略，实时 sealed OHLC 保留 vwap 原始精度）
+- [x] **P2**：allowlist 默认值修复（08-12 已修，mist-deploy `995b358`）：tdx→`300059.SZ,600519.SH`、qmt→`300502.SZ`；test-workflow-config 断言锁定
 - [x] **SSH key 分发**（一次性手动，2026-08-12 已完成）：macOS `ssh-keygen -t ed25519 -f ~/.ssh/mist_ops_ed25519` → 经 `distribute-windows-openssh-key` workflow 装入 `administrators_authorized_keys` + ACL（SYSTEM+Administrators）→ sshd restart。**实测用户名 = `12705`**（Administrators 组成员，非 `moyui`；`moyui` 是 macOS 用户名，盒子不存在）；`ssh mist-box` 别名通过（`desktop-t3b1o2j\12705` / `DESKTOP-T3B1O2J`）。~/.ssh/config Host mist-box（User 12705）已配。
 - [x] **归档**（08-12 已完成 3 运维 change）：`declarative-realtime-configuration`（5b979d0）+ `datasource-logs-to-openobserve` + `windows-openssh-ops-channel`（64f8ea7），全部 evidence 落盘 + tasks 全勾 + `openspec validate --all --strict` 68/68。**decouple change 待其 HIL（candle/VWAP/观测帧）后归档**。
 
