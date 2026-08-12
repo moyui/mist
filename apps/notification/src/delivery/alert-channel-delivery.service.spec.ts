@@ -5,6 +5,7 @@ import {
 } from '@app/shared-data';
 import type { ChannelAdapter } from '../channels/channel-adapter.port';
 import { AlertChannelDeliveryService } from './alert-channel-delivery.service';
+import { NotificationDeliveryCounters } from './notification-delivery-counters';
 
 type Repo = {
   findOne: jest.Mock;
@@ -51,6 +52,7 @@ describe('AlertChannelDeliveryService', () => {
   let deliveries: Repo;
   let adapter: jest.Mocked<ChannelAdapter>;
   let service: AlertChannelDeliveryService;
+  let counters: NotificationDeliveryCounters;
 
   beforeEach(() => {
     alertEvents = mockRepo();
@@ -58,12 +60,14 @@ describe('AlertChannelDeliveryService', () => {
     securities = mockRepo();
     deliveries = mockRepo();
     adapter = { channel: WECHAT, send: jest.fn() };
+    counters = new NotificationDeliveryCounters();
     service = new AlertChannelDeliveryService(
       alertEvents as any,
       signals as any,
       securities as any,
       deliveries as any,
       [adapter],
+      counters,
     );
   });
 
@@ -241,6 +245,7 @@ describe('AlertChannelDeliveryService', () => {
       securities as any,
       deliveries as any,
       [], // no adapters configured
+      counters,
     );
     deliveries.findOne.mockResolvedValueOnce(delivery({ channel: QQ }));
     alertEvents.findOne.mockResolvedValueOnce({

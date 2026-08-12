@@ -16,15 +16,16 @@ import {
   type ChannelSendResult,
 } from '../channels/channel-adapter.port';
 import { buildNotificationEnvelope } from './notification-envelope';
+import { NotificationDeliveryCounters } from './notification-delivery-counters';
 
 const MAX_LAST_ERROR = 1024;
 
 /**
  * Handles deliver.channel: loads evidence, builds the channel-neutral envelope,
- * calls the channel adapter, writes the per-channel delivery result, and
- * reconciles the AlertEvent aggregate status. Transient failures throw so
- * BullMQ retries; permanent failures and exhausted retries dead-letter without
- * throwing (job completes; the DB row is the source of truth).
+ * calls the channel adapter, writes the per-channel delivery result, records
+ * metrics, and reconciles the AlertEvent aggregate status. Transient failures
+ * throw so BullMQ retries; permanent failures and exhausted retries dead-letter
+ * without throwing (job completes; the DB row is the source of truth).
  */
 @Injectable()
 export class AlertChannelDeliveryService {
@@ -41,6 +42,7 @@ export class AlertChannelDeliveryService {
     private readonly deliveries: Repository<StrategyAlertDelivery>,
     @Inject(CHANNEL_ADAPTERS)
     private readonly adapters: readonly ChannelAdapter[],
+    private readonly counters: NotificationDeliveryCounters,
   ) {}
 
   async run(
@@ -62,8 +64,8 @@ export class AlertChannelDeliveryService {
 
     const adapter = this.adapters.find((a) => a.channel === channel);
     if (!adapter) {
-      // Short-circuit before loading evidence: no adapter for this channel
-      // (e.g. QQ deferred). Dead-letter and reconcile.
+      // Short-circuit before loading evidence: no adapter for this channel.
+      this.counters.recordDeadLetter(channel);
       await this.markDelivery(
         delivery.id,
         StrategyAlertDeliveryStatus.DEAD_LETTERED,
@@ -101,8 +103,10 @@ export class AlertChannelDeliveryService {
         error: error instanceof Error ? error.message : String(error),
       };
     }
+    this.counters.recordAttempt(channel);
 
     if (result.status === 'sent') {
+      this.counters.recordSent(channel);
       await this.deliveries.update(delivery.id, {
         status: StrategyAlertDeliveryStatus.SENT,
         attemptCount: attemptNo,
@@ -111,6 +115,9 @@ export class AlertChannelDeliveryService {
         lastError: null,
       });
       await this.reconcile(alertEventId);
+      this.logger.log(
+        `delivered event=${alertEventId} channel=${channel} attempt=${attemptNo}`,
+      );
       return;
     }
 
@@ -119,6 +126,7 @@ export class AlertChannelDeliveryService {
     const newStatus = terminal
       ? StrategyAlertDeliveryStatus.DEAD_LETTERED
       : StrategyAlertDeliveryStatus.FAILED;
+    this.counters.recordFailure(channel);
     await this.markDelivery(delivery.id, newStatus, attemptNo, result.error);
     await this.reconcile(alertEventId);
 
@@ -127,8 +135,9 @@ export class AlertChannelDeliveryService {
         `transient delivery failure channel=${channel} event=${alertEventId}: ${result.error ?? 'unknown'}`,
       );
     }
+    this.counters.recordDeadLetter(channel);
     this.logger.warn(
-      `delivery dead-lettered channel=${channel} event=${alertEventId}: ${result.error ?? 'exhausted retries'}`,
+      `delivery dead-lettered channel=${channel} event=${alertEventId} attempt=${attemptNo}: ${result.error ?? 'exhausted retries'}`,
     );
   }
 

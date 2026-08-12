@@ -17,7 +17,11 @@ import { CHANNEL_ADAPTERS } from '../channels/channel-adapter.port';
 import { QqChannelAdapter } from '../channels/qq.channel-adapter';
 import { WeComChannelAdapter } from '../channels/wechat.channel-adapter';
 import { AlertChannelDeliveryService } from './alert-channel-delivery.service';
+import { AlertDeliveryQueueService } from './alert-delivery-queue.service';
 import { AlertFanoutService } from './alert-fanout.service';
+import { AlertReplayService } from './alert-replay.service';
+import { NotificationDeliveryCounters } from './notification-delivery-counters';
+import { NotificationMetricsBootstrap } from './notification-metrics-bootstrap';
 import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
 
 @Module({
@@ -46,9 +50,13 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
     BullModule.registerQueue({ name: STRATEGY_ALERT_DELIVERY_QUEUE_NAME }),
   ],
   providers: [
+    AlertDeliveryQueueService,
     AlertFanoutService,
     AlertChannelDeliveryService,
+    AlertReplayService,
     StrategyAlertDeliveryWorker,
+    NotificationDeliveryCounters,
+    NotificationMetricsBootstrap,
     QqChannelAdapter,
     WeComChannelAdapter,
     {

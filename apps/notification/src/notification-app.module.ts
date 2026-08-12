@@ -13,6 +13,7 @@ import {
   StrategyVersion,
 } from '@app/shared-data';
 import { NotificationDeliveryModule } from './delivery/notification-delivery.module';
+import { NotificationAdminController } from './notification-admin.controller';
 import { NotificationHealthController } from './notification-health.controller';
 
 @Module({
@@ -64,6 +65,6 @@ import { NotificationHealthController } from './notification-health.controller';
     }),
     NotificationDeliveryModule,
   ],
-  controllers: [NotificationHealthController],
+  controllers: [NotificationHealthController, NotificationAdminController],
 })
 export class NotificationAppModule {}

@@ -11,6 +11,11 @@ interface WeComWebhookResponse {
   errmsg?: string;
 }
 
+// WeCom webhook errcodes that indicate a permanent config error (do not retry).
+// 93000 = invalid webhook, 93001 = webhook disabled. Others (e.g. 45009 rate
+// limit, 60020 IP not whitelisted) are treated as transient.
+const PERMANENT_ERRCODES = new Set<number>([93000, 93001]);
+
 /**
  * WeChat (WeCom group robot) channel adapter via the official webhook.
  * POST <webhook> { msgtype:'text', text:{ content } }. errcode 0 = sent;
@@ -55,8 +60,9 @@ export class WeComChannelAdapter implements ChannelAdapter {
       if (json.errcode === 0) {
         return { status: 'sent' };
       }
+      const permanent = PERMANENT_ERRCODES.has(json.errcode ?? -1);
       return {
-        status: 'transient_failure',
+        status: permanent ? 'permanent_failure' : 'transient_failure',
         error: `WeCom errcode=${json.errcode ?? '?'} errmsg=${json.errmsg ?? ''}`,
       };
     } catch (error) {

@@ -270,7 +270,7 @@ export const signalEnvSchema = commonEnvSchema.append({
  */
 export const notificationEnvSchema = commonEnvSchema.append({
   PORT: Joi.number().port().default(8006),
-  MIST_REALTIME_REDIS_URL: Joi.string().uri().allow('').default(''),
+  MIST_REALTIME_REDIS_URL: Joi.string().uri().required(),
   NOTIFICATION_CHANNELS: Joi.string().default('wechat'),
   NOTIFICATION_QQ_BASE_URL: Joi.string().uri().allow('').default(''),
   NOTIFICATION_QQ_ACCESS_TOKEN: Joi.string().allow('').default(''),

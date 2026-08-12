@@ -53,14 +53,16 @@ export class QqChannelAdapter implements ChannelAdapter {
       [targetField]: Number(target),
       message: [{ type: 'text', data: { text: envelope.message.summary } }],
     });
+    // NapCat OneBot 11 HTTP accepts access_token as a query param (the form its
+    // default HTTP server reliably checks). Avoids header/auth-config ambiguity.
+    const endpoint = token
+      ? `${baseUrl.replace(/\/$/, '')}/send_msg?access_token=${encodeURIComponent(token)}`
+      : `${baseUrl.replace(/\/$/, '')}/send_msg`;
 
     try {
-      const res = await fetch(`${baseUrl.replace(/\/$/, '')}/send_msg`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body,
         signal: AbortSignal.timeout(timeoutMs),
       });
