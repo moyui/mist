@@ -16,6 +16,7 @@ import { SignalRegistryModule } from '../signal-registry.module';
 import { SignalRegistryService } from '../signal-registry.service';
 import { SignalRealtimeStartupService } from './signal-realtime-startup.service';
 import { LiveStrategyPersistenceService } from './live-strategy-persistence.service';
+import { StrategyAlertDeliveryHandoffModule } from './notification/strategy-alert-delivery-handoff.module';
 import { resolveRealtimeStrategyMode } from '@app/config';
 import { SignalRuntimeObservabilityService } from '../signal-runtime-observability.service';
 
@@ -36,6 +37,7 @@ import { SignalRuntimeObservabilityService } from '../signal-runtime-observabili
       },
     }),
     BullModule.registerQueue({ name: STRATEGY_TRIGGER_QUEUE_NAME }),
+    StrategyAlertDeliveryHandoffModule,
   ],
   providers: [
     SignalRealtimeRedisService,

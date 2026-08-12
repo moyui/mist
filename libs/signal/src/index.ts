@@ -11,6 +11,23 @@ export {
 } from './contracts/candle-finalized-trigger.contract';
 export type { CandleFinalizedTriggerV1 } from './contracts/candle-finalized-trigger.contract';
 export {
+  STRATEGY_ALERT_DELIVERY_BULLMQ_PREFIX,
+  STRATEGY_ALERT_DELIVERY_CHANNEL_JOB,
+  STRATEGY_ALERT_DELIVERY_CHANNEL_JOB_OPTIONS,
+  STRATEGY_ALERT_DELIVERY_FANOUT_JOB,
+  STRATEGY_ALERT_DELIVERY_FANOUT_JOB_OPTIONS,
+  STRATEGY_ALERT_DELIVERY_QUEUE_NAME,
+  STRATEGY_ALERT_DELIVERY_WORKER_CONCURRENCY,
+  alertDeliveryChannelJobId,
+  alertDeliveryFanoutJobId,
+  decodeAlertDeliveryChannelJobV1,
+  decodeAlertDeliveryFanoutJobV1,
+} from './contracts/strategy-alert-delivery.contract';
+export type {
+  AlertDeliveryChannelJobV1,
+  AlertDeliveryFanoutJobV1,
+} from './contracts/strategy-alert-delivery.contract';
+export {
   SIGNAL_REGISTRY_REFRESH_PATTERN,
   decodeRefreshSignalRegistryCommandV1,
   decodeSignalRegistryRefreshV1,
