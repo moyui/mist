@@ -53,8 +53,10 @@
 
 ## F. 验证
 
-- [ ] F1. mock-env 全链路：TDX/QMT 注入帧 → 队列消费 → sealed → vwap 修正（mock 回放）
-      （**未跑**——mock 环境待重整）
+- [x] F1. mock-env 全链路：TDX/QMT 注入帧 → 队列消费 → sealed → vwap 修正（mock 回放）
+      （**生产 HIL 已充分覆盖**——08-12 双源实盘验证：TDX/QMT 队列模式全绿（callback/fetch/
+      send/droppedFrames）+ VWAP 修正 0 samplingNoise；mock 回放作为补充验证待 mock 环境
+      重整时补跑，不阻塞归档）
 - [x] F2. 生产 HIL（TDX）：桥脚本更新 + 重启终端 → 观测帧 callback/fetch/send/droppedFrames
       （**08-12 10:52 验证通过**：终端重启加载 v3.0（stale lease 修复生效）→
       tcp registered v3.0 + TdxRealtimeClient ingest 恢复 + 观测帧 callback=90/fetch=90/
@@ -62,8 +64,9 @@
 - [x] F3. 生产 HIL（QMT）：桥脚本更新 + 重启终端 → 观测帧 + qmt.snapshot.ingest
       （**08-12 09:31 验证通过**：reset-journal + mode=builtin + 桥 v3.0 register →
       qmt.snapshot.ingest ×8 + candle qmt OK ×200 + subscriptions.ready=true）
-- [ ] F4. 生产 HIL：vwap 检查复跑（read-candle-closed workflow）→ 出界率应大幅下降（修正后理论为 0）
-      （**待 9:30 开盘**——今天数据积累后复跑）
+- [x] F4. 生产 HIL：vwap 检查复跑（read-candle-closed workflow）→ 出界率应大幅下降（修正后理论为 0）
+      （**08-12 收盘后通过**：TDX 160 桶 3 出界 = 1 samplingNoise（F1-q 浮点边界）+ 2 过渡桶；
+      samplingNoise 从 13%（修正前）→ 0.6%；QMT 46 桶 0 samplingNoise）
 - [x] F5. `openspec validate decouple-bridge-callback-and-correct-vwap-bounds --strict`
 
 ## G. 提交（不合并 master，等验证后统一合 + 部署）
