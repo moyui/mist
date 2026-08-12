@@ -20,7 +20,7 @@ changes, but its status was not rebased after later work completed. The
 | Change | Current state | Roadmap treatment |
 | --- | --- | --- |
 | `preview-chan-bi-phases` | completed and archived | G0 prerequisite completed; canonical phase-preview spec is synced |
-| `repair-chan-bi-overlap-rendering` | completed and archived | G1 analysis-correctness prerequisite completed with backend, frontend, and browser evidence |
+| `repair-chan-bi-overlap-rendering` | completed (archive record missing) | G1 analysis-correctness prerequisite; **no archive record exists in this tree as of 2026-08-12 — evidence-chain gap to reconcile at roadmap archive time** |
 | `add-bigqmt-datasource-bridge` | completed and archived | G1 native-history evidence preserved; realtime ownership and HIL completed by `converge-theme-a-realtime-bridges` |
 | `experimental-tdx-realtime-slice` | completed and archived | TDX native snapshot transport accepted with Windows HIL evidence |
 | `converge-theme-a-realtime-bridges` | completed and archived | TDX and QMT realtime transport HIL accepted; Theme A gate released |
@@ -127,8 +127,10 @@ verification evidence preserved in the archive.
 
 G1 combines datasource availability with the correctness of analysis rendered
 from that data. Its Chan correctness prerequisite is complete through
-`repair-chan-bi-overlap-rendering`, and the real full-QMT native history matrix
-is complete with evidence in `add-bigqmt-datasource-bridge`.
+`repair-chan-bi-overlap-rendering` (note: no archive record exists in this tree
+as of 2026-08-12 — evidence-chain gap to reconcile at roadmap archive time), and
+the real full-QMT native history matrix is complete with evidence in
+`add-bigqmt-datasource-bridge`.
 
 The TDX and QMT realtime transport concerns were settled by
 `experimental-tdx-realtime-slice` and `converge-theme-a-realtime-bridges`.
@@ -165,27 +167,36 @@ operator console, or the G4 repeatability re-audit.
 With G1 accepted, G2 creates one focused child change, provisionally named
 `complete-production-operations-readiness`. It reuses, rather than reimplements:
 
-- deployed monitoring and watchdog foundations;
+- the deployed OpenObserve platform (OTLP metrics/traces/logs) and the archived
+  observability changes (otel-foundation, otel-observability-gaps,
+  datasource-logs-to-openobserve) — Prometheus, Grafana, the Go exporter, and
+  the Mac watchdog were retired in 2026-08 and are not foundations;
 - completed health and alert-delivery repairs;
 - normal datasource management workflows;
 - explicit TDX recovery workflows and guard contracts; and
-- the initial query-style AstrBot/Mist integration.
+- the initial query-style mist-skills/AstrBot integration.
 
 The child change owns the remaining status, diagnosis, alert classification,
 notification, and controlled-recovery experience. It must choose the first
-supported recovery backend—runbook-only, GitHub Actions dispatch, or a local
-authenticated endpoint—and must keep read-only diagnosis separate from
-state-changing recovery.
+supported recovery backend — GitHub Actions dispatch (existing recovery
+workflows) or the SSH direct channel (`windows-openssh-ops-channel`, archived
+2026-08-12), with runbook-only as fallback; the local authenticated endpoint
+option is superseded by the SSH channel unless a concrete need reappears — and
+must keep read-only diagnosis separate from state-changing recovery.
 
 ### Decision 6: G3 consumes stable operations contracts
 
 G3 retains the child name `improve-frontend-operator-console`. It starts only
-after G2 defines stable status and error contracts. Its scope is limited to:
+after G2 defines stable status and error contracts. As of 2026-08-12 the
+settings/realtime-subscriptions operator page is already delivered
+(`add-realtime-subscription-operator-ux`, 19/20), and the same-origin constraint
+is already satisfied (the page routes only through /api/mist). Remaining scope:
 
-- datasource health and provider readiness;
+- dashboard live-data integration (currently mock data) and datasource/provider
+  health surfaces, with the observation entry pointed at the OpenObserve UI
+  (:5080);
 - last successful collection and freshness information;
 - empty-data and recoverable-error explanations;
-- same-origin backend/gateway calls rather than direct datasource access; and
 - focused tests, production build evidence, and browser verification.
 
 Strategy editing and signal/backtest UX remain owned by the separate strategy
@@ -194,14 +205,15 @@ platform capability.
 ### Decision 7: G4 re-audits repeatability before creating work
 
 The old roadmap named ruff, pyright, Watchman/Jest, network-fetched fonts, and
-Python dependency resolution. Those observations may have changed. G4 must
-reproduce each issue against current repository refs before creating or
-continuing `tighten-tooling-and-build-repeatability`.
-
-Fixed observations are recorded as completed or dropped. Reproducible issues
-become explicit tasks with exact commands and repository ownership. Independent
-issues may be split into smaller child changes instead of being forced into one
-tooling omnibus.
+Python dependency resolution. As of 2026-08-12 all four observations no longer
+reproduce against current refs: Jest runs with --forceExit --watchman=false
+(ratchet changes archived 2026-08-07); datasource CI runs ruff check + pyright
+and enforces the coverage gate; the frontend uses the local system font stack
+(no next/font/google); the ruff pin and uv.lock are aligned. G4 therefore
+records them as completed or dropped and does not create
+`tighten-tooling-and-build-repeatability` unless a new reproducible failure
+appears. Independent issues may still be split into smaller child changes
+instead of being forced into one tooling omnibus.
 
 ### Decision 8: Child changes own implementation and evidence
 
