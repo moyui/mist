@@ -55,11 +55,13 @@
 
 - [ ] F1. mock-env 全链路：TDX/QMT 注入帧 → 队列消费 → sealed → vwap 修正（mock 回放）
       （**未跑**——mock 环境待重整）
-- [ ] F2. 生产 HIL（TDX）：桥脚本更新 + 重启终端 → 观测帧 callback/fetch/send/droppedFrames
-      （**08-12 凌晨部分验证**：桥 v3.0 SHA exact + ingest 活 + allowlist 2 entries；
-      **待 9:30 开盘**确认观测帧 droppedFrames=0 + fetch_none=0 持续）
-- [ ] F3. 生产 HIL（QMT）：桥脚本更新 + 重启终端 → 观测帧 + qmt.snapshot.ingest
-      （**待 QMT 数据流恢复**——终端登录后验证；QMT 日志入 OO 缺口 O2b P5）
+- [x] F2. 生产 HIL（TDX）：桥脚本更新 + 重启终端 → 观测帧 callback/fetch/send/droppedFrames
+      （**08-12 10:52 验证通过**：终端重启加载 v3.0（stale lease 修复生效）→
+      tcp registered v3.0 + TdxRealtimeClient ingest 恢复 + 观测帧 callback=90/fetch=90/
+      fetch_none=0/send_dropped=0/droppedFrames=0/connected=true + candle tdx OK ×98 + sealed 增长）
+- [x] F3. 生产 HIL（QMT）：桥脚本更新 + 重启终端 → 观测帧 + qmt.snapshot.ingest
+      （**08-12 09:31 验证通过**：reset-journal + mode=builtin + 桥 v3.0 register →
+      qmt.snapshot.ingest ×8 + candle qmt OK ×200 + subscriptions.ready=true）
 - [ ] F4. 生产 HIL：vwap 检查复跑（read-candle-closed workflow）→ 出界率应大幅下降（修正后理论为 0）
       （**待 9:30 开盘**——今天数据积累后复跑）
 - [x] F5. `openspec validate decouple-bridge-callback-and-correct-vwap-bounds --strict`
