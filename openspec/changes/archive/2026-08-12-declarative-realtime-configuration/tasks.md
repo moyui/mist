@@ -68,7 +68,7 @@
       pnpm run test:ci` 全绿。
 - [x] 6.2 deploy 仓：`test-*.ps1` 门禁全绿（含 migration/脚本断言）。
 - [x] 6.3 `openspec validate declarative-realtime-configuration --strict`。
-- [ ] 6.4 生产 HIL（实盘线程/交易时段）：改 DB assignments（ssh 通道）→
+- [x] 6.4 生产 HIL（实盘线程/交易时段）：改 DB assignments（ssh 通道）→
       ≤60s 自动收敛（OO gauge converged 变化）→ 免重启；auto_reconcile
       false→true 迁移验证；evidence 落盘。
 
@@ -76,4 +76,4 @@
 
 - [x] 7.1 spec 确认通过后写实施计划（代码级）。
 - [x] 7.2 实施计划确认后落地（worktree 分支 + 单测 + 验证 + 合并）。
-- [ ] 7.3 归档（delta 合并进 live specs 手动同步）。
+- [x] 7.3 归档（delta 合并进 live specs 手动同步）。
