@@ -24,16 +24,28 @@ case requiring retrospective confirmation).
 - **WHEN** a downward segment is in progress
 - **THEN** its characteristic sequence MUST consist of the upward Bi, each element carrying that Bi's high/low
 
-#### Scenario: Characteristic-sequence inclusion is processed
-- **WHEN** two adjacent characteristic-sequence elements have an overlapping interval
+#### Scenario: Characteristic-sequence inclusion is processed within the segment
+- **WHEN** two adjacent characteristic-sequence elements before a candidate turning point have an
+  overlapping interval
 - **THEN** they MUST be merged using the same directional inclusion rule as K-line containment
-- **AND** the post-inclusion sequence (standard characteristic sequence) MUST be the basis for fenxing detection
+- **AND** the post-inclusion sequence (standard characteristic sequence) MUST supply the fenxing's
+  first element
 
 #### Scenario: A directional fenxing is identified
 - **WHEN** the standard characteristic sequence is evaluated for an upward segment
 - **THEN** it MUST consider only top fenxing
 - **WHEN** the standard characteristic sequence is evaluated for a downward segment
 - **THEN** it MUST consider only bottom fenxing
+
+#### Scenario: The termination fenxing uses the lesson-71 boundary elements
+- **WHEN** a candidate turning point (the start of a reverse Bi) is evaluated
+- **THEN** the fenxing MUST be checked on three elements: the first element = the last standard
+  characteristic-sequence element before the turning point, the second element = the reverse Bi from
+  the turning point (raw), and the third element = the next reverse Bi (raw)
+- **AND** the first and second elements MUST NOT be merged by inclusion (they are boundary elements
+  across the turning point, not elements of the same characteristic sequence)
+- **AND** the fenxing MUST require the second element's extremum to be the most extreme of the three
+  (bottom fenxing's low lowest for a downward segment, top fenxing's high highest for an upward segment)
 
 #### Scenario: Termination is confirmed without a gap (first case)
 - **WHEN** a characteristic-sequence fenxing forms and its first and second elements have NO gap (their intervals
