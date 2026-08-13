@@ -183,7 +183,10 @@ export class QmtRealtimeClient
       this.pendingControl = { expectedType, symbol, resolve, timeout };
       try {
         this.ws?.send(JSON.stringify(request));
-      } catch {
+      } catch (error) {
+        this.logger.warn(
+          `ws send failed error=${error instanceof Error ? error.message : String(error)}`,
+        );
         clearTimeout(timeout);
         this.pendingControl = null;
         resolve(localFailure(symbol, 'QMT_SUBSCRIPTION_CONTROL_SEND_FAILED'));
@@ -393,7 +396,10 @@ export class QmtRealtimeClient
           );
           this.ingress?.handleSnapshot(snapshot);
           this.store.recordAccepted(decoded.data.capturedAt);
-        } catch {
+        } catch (error) {
+          this.logger.warn(
+            `converter error source=qmt symbol=${providerSymbol} error=${error instanceof Error ? error.message : String(error)}`,
+          );
           reject('converter_error', providerSymbol);
           this.store.recordReject(
             'converterError',
