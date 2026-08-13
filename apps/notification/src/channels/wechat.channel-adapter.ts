@@ -29,12 +29,13 @@ const PERMANENT_ERRCODES = new Set<number>([93000, 93001]);
 export class WeComChannelAdapter implements ChannelAdapter {
   readonly channel = NotificationChannel.WECHAT;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly webhookEnvName = 'NOTIFICATION_WECHAT_WEBHOOK',
+  ) {}
 
   async send(message: ChannelMessage): Promise<ChannelSendResult> {
-    const webhook = (
-      this.config.get<string>('NOTIFICATION_WECHAT_WEBHOOK') ?? ''
-    ).trim();
+    const webhook = (this.config.get<string>(this.webhookEnvName) ?? '').trim();
     const timeoutMs =
       this.config.get<number>('NOTIFICATION_HTTP_TIMEOUT_MS') ??
       DEFAULT_HTTP_TIMEOUT_MS;
@@ -42,8 +43,7 @@ export class WeComChannelAdapter implements ChannelAdapter {
     if (!webhook) {
       return {
         status: 'permanent_failure',
-        error:
-          'WeCom webhook not configured (NOTIFICATION_WECHAT_WEBHOOK missing)',
+        error: `WeCom webhook not configured (${this.webhookEnvName} missing)`,
       };
     }
 

@@ -283,6 +283,10 @@ export const notificationEnvSchema = commonEnvSchema.append({
     .integer()
     .positive()
     .default(10_000),
+  // OO health-alert receiver (add-oo-health-alerts). Token unset => 401 (safe
+  // default); WeCom bot unset => WeCom send permanent_failure (QQ/日志 fallback).
+  OO_ALERT_RECEIVER_TOKEN: Joi.string().allow('').default(''),
+  OO_ALERT_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
 });
 
 /**

@@ -6,6 +6,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { notificationEnvSchema } from '@app/config';
 import { NOTIFICATION_ENTITIES } from './notification-entities';
 import { NotificationDeliveryModule } from './delivery/notification-delivery.module';
+import { OoAlertModule } from './oo-alert/oo-alert.module';
 import { NotificationAdminController } from './notification-admin.controller';
 import { NotificationHealthController } from './notification-health.controller';
 
@@ -50,6 +51,7 @@ import { NotificationHealthController } from './notification-health.controller';
       inject: [ConfigService],
     }),
     NotificationDeliveryModule,
+    OoAlertModule,
   ],
   controllers: [NotificationHealthController, NotificationAdminController],
 })
