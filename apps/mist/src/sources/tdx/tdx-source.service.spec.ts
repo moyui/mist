@@ -537,7 +537,72 @@ describe('TdxSource', () => {
         low: 10.0,
         close: 10.2,
         volume: '1200.125',
-        amount: '12345.6',
+        // TDX historical amount is provider-native 万元 → canonical yuan (×10000).
+        amount: '123456000',
+      });
+    });
+
+    it.each<
+      [
+        string,
+        { amount?: string | null; volume?: string },
+        { volume?: string | null; amount?: string | null },
+      ]
+    >([
+      [
+        'converts 万元 amount to yuan exactly (600519 daily)',
+        { amount: '737346.25', volume: '5512752' },
+        { amount: '7373462500', volume: '5512752' },
+      ],
+      [
+        'keeps volume as share value',
+        { volume: '5512752' },
+        { volume: '5512752', amount: '7373462500' },
+      ],
+      [
+        'passes null amount through',
+        { amount: null },
+        { amount: null, volume: '5512752' },
+      ],
+    ])('%s', async (_, barOverrides, expectedQuantity) => {
+      mockAxiosPost.mockResolvedValueOnce({
+        data: {
+          ok: true,
+          provider: 'tdx',
+          data: {
+            bars: [
+              {
+                symbol: '600519.SH',
+                period: '1d',
+                barTime: '2026-07-31T15:00:00+08:00',
+                open: 1350.0,
+                high: 1360.0,
+                low: 1340.0,
+                close: 1350.6,
+                volume: '5512752',
+                amount: '737346.25',
+                provider: 'tdx',
+                receivedAt: '2026-07-31T15:00:02+08:00',
+                ...barOverrides,
+              },
+            ],
+          },
+          meta: null,
+          error: null,
+        },
+      });
+
+      const result = await service.fetchK({
+        code: '600519',
+        formatCode: '600519.SH',
+        period: Period.DAY,
+        startDate: new Date('2026-07-31T00:00:00+08:00'),
+        endDate: new Date('2026-07-31T23:59:59+08:00'),
+      });
+
+      expect(result[0]).toMatchObject({
+        volume: expectedQuantity.volume,
+        amount: expectedQuantity.amount,
       });
     });
 
