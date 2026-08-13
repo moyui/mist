@@ -1,4 +1,4 @@
-# OpenSpec 缺口清单（2026-08-12 晚复核）
+# OpenSpec 缺口清单（2026-08-13 复核）
 
 > 本文件是 Mist 平台 OpenSpec 缺口全景的**唯一权威清单**。基于 2026-08-11/08-12 多轮
 > 逐字复核（proposal/tasks）+ spec 契约 vs 代码比对。**更新任何 change 状态时同步修订本文件。**
@@ -6,11 +6,12 @@
 ## 状态速览
 
 - `specs/`：52 个已采纳 spec
-- `changes/`：**6 个 active change**（`archive/` 下 90+ 已归档）
+- `changes/`：**5 个 active change**（`archive/` 下 90+ 已归档）
 - 08-12 归档大名单（9 个）：remediate-otel-audit-findings、fix-tdx-realtime-vwap-window-consistency
   （E-0 全绿）、otel-observability-gaps（6.3）、decouple-bridge-callback-and-correct-vwap-bounds
   （F4 过：TDX 出界 13%→0.6%）、retire-diagnostic-endpoints（已部署验证）、datasource-logs-to-openobserve、
   declarative-realtime-configuration、windows-openssh-ops-channel、**define-mist-production-roadmap（本会话，G2-G4 处置完毕）**
+- 08-13 归档（1 个）：restore-mock-env-candle-assertions（tasks 22/22 + validate 通过；2.3 N/A、6.x 外部完成）
 
 ---
 
@@ -35,7 +36,6 @@
 | Change | 进度 | 剩余项 |
 |---|---|---|
 | `capture-realtime-provider-anomalies` | 0/14 | **被动契约**：等真实 incident 才执行，不阻塞正常路径；禁止 fault injection；TDX/QMT negative branch 的承接方 |
-| `restore-mock-env-candle-assertions` | **19/22** | 08-12 创建：mock-verify.sh 注释掉的 candle 断言改 OO 证据源；spec 6 决策点已确认 + 实施计划已批准；帧新鲜度 30s 硬判已删（用户拍板）；剩 3 项未勾（落地曾被 mock backend 启动崩溃阻塞——RuntimeConfigService DI 缺失，见 [[mock-mode-lifecycle-desync-20260812]]，后续已推进） |
 
 ---
 
