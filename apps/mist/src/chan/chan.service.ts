@@ -49,13 +49,10 @@ export class ChanService {
     };
   }
 
-  // 画段（线段，特征序列法）
+  // 画段（线段，特征序列法；入参 = createBi 返回值 ChanBiTwoPhaseResult，返回确认后的段数组）
   createDuan(createBiDto: CreateBiDto) {
-    const result = ChanCore.createDuan(createBiDto.k.map(toChanK));
-    return {
-      phaseA: result.phaseA.map(toDuanVo),
-      phaseB: result.phaseB.map(toDuanVo),
-    };
+    const bis = ChanCore.createBi(createBiDto.k.map(toChanK));
+    return ChanCore.createDuan(bis).map(toDuanVo);
   }
 
   analyze(createBiDto: CreateBiDto) {

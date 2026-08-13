@@ -11,10 +11,9 @@ The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade w
 - **AND** `createChannels` MUST derive Bi internally and consume Bi Phase B before deriving Channel output
 
 #### Scenario: A caller invokes a Duan operation
-- **WHEN** a caller requests Duan (segment) output from ordered raw `ChanK` input
-- **THEN** it MUST invoke `ChanCore.createDuan`
-- **AND** `createDuan` MUST derive Bi internally and consume Bi Phase B before deriving Duan output
-- **AND** it MUST NOT re-derive Bi with a different algorithm than `createBi`
+- **WHEN** a caller requests Duan (segment) output from the Bi two-phase result
+- **THEN** it MUST invoke `ChanCore.createDuan` with the `ChanBiTwoPhaseResult` returned by `createBi`
+- **AND** `createDuan` MUST consume Bi Phase B from that result before deriving Duan output
 
 #### Scenario: An internal algorithm component is implemented
 - **WHEN** Trend, K merge, Bi, Channel, Duan or a supporting helper is added under `libs/chancore`

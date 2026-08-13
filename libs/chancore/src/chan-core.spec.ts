@@ -29,7 +29,7 @@ describe('ChanCore public facade', () => {
     expect(ChanCore.findFenxings([])).toEqual([]);
     expect(ChanCore.createBi([])).toEqual({ phaseA: [], phaseB: [] });
     expect(ChanCore.createChannels([])).toEqual({ phaseA: [], phaseB: [] });
-    expect(ChanCore.createDuan([])).toEqual({ phaseA: [], phaseB: [] });
+    expect(ChanCore.createDuan({ phaseA: [], phaseB: [] })).toEqual([]);
   });
 
   it.each([
@@ -37,7 +37,6 @@ describe('ChanCore public facade', () => {
     ['findFenxings', ChanCore.findFenxings],
     ['createBi', ChanCore.createBi],
     ['createChannels', ChanCore.createChannels],
-    ['createDuan', ChanCore.createDuan],
   ] as const)('validates input at the %s facade', (_name, operation) => {
     const invalid = [makeK({ volume: 10 as unknown as string })];
 
@@ -71,14 +70,14 @@ describe('ChanCore public facade', () => {
       fenxings: ChanCore.findFenxings(orderedK),
       bis: ChanCore.createBi(orderedK),
       channels: ChanCore.createChannels(orderedK),
-      duans: ChanCore.createDuan(orderedK),
+      duans: ChanCore.createDuan(ChanCore.createBi(orderedK)),
     };
     const second = {
       mergedK: ChanCore.mergeK(orderedK),
       fenxings: ChanCore.findFenxings(orderedK),
       bis: ChanCore.createBi(orderedK),
       channels: ChanCore.createChannels(orderedK),
-      duans: ChanCore.createDuan(orderedK),
+      duans: ChanCore.createDuan(ChanCore.createBi(orderedK)),
     };
 
     expect(second).toEqual(first);

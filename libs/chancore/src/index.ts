@@ -15,7 +15,6 @@ export type {
   ChanChannel,
   ChanChannelTwoPhaseResult,
   ChanDuan,
-  ChanDuanTwoPhaseResult,
   ChanFenxing,
   ChanK,
   ChanMergedK,

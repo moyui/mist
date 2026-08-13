@@ -58,13 +58,9 @@ export interface ChanDuan {
   readonly startBi: ChanBi | null;           // ≡ ChanBi.startFenxing 上一层
   readonly endBi: ChanBi | null;             // Complete 非 null；尾段 null
 }
-
-export interface ChanDuanTwoPhaseResult {
-  readonly phaseA: readonly ChanDuan[];
-  readonly phaseB: readonly ChanDuan[];
-}
 ```
 
+> 段**无** `ChanDuanTwoPhaseResult`：`createDuan` 返回确认后的 `ChanDuan[]` 单数组（用户拍板删除 phaseA）。
 > `DuanType/DuanStatus` 与 `BiType/BiStatus` 同构但**独立命名**（不合并），保清晰；值与语义一一对应。
 
 ## 4. libs/chancore — 段算法（internal/duan.ts）
@@ -165,14 +161,12 @@ export const orderedDedupIds = (ids: readonly number[]): number[]   // 保序去
 ## 5. libs/chancore — facade（chan-core.ts）
 
 ```ts
-static createDuan(orderedK: readonly ChanK[]): ChanDuanTwoPhaseResult {
-  assertChanKSeries(orderedK);
-  const mergedK = new KMergeCalculator().merge(orderedK);
-  const bis = new BiCalculator().getBi(mergedK);
-  return new DuanCalculator().createDuan(bis.phaseB);
+static createDuan(bis: ChanBiTwoPhaseResult): readonly ChanDuan[] {
+  return new DuanCalculator().createDuan(bis);
 }
 ```
-链路 `K → 合并K → 笔(phaseB) → 段`，与 `createChannels` 同源宽笔。
+入参 = `createBi` 返回值（组合 `createDuan(createBi(k))`），`DuanCalculator` 消费 phaseB。不再内部做
+`mergeK/Bi`（那是 `createBi` 的职责）。返回确认后的段单数组。
 
 ## 6. libs/chancore — barrel（index.ts）
 

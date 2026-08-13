@@ -60,8 +60,3 @@ export interface ChanDuan {
   startBi: ChanBi | null;
   endBi: ChanBi | null;
 }
-
-export interface ChanDuanTwoPhaseResult {
-  phaseA: ChanDuan[];
-  phaseB: ChanDuan[];
-}

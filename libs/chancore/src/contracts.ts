@@ -141,8 +141,3 @@ export interface ChanDuan {
   readonly startBi: ChanBi | null;
   readonly endBi: ChanBi | null;
 }
-
-export interface ChanDuanTwoPhaseResult {
-  readonly phaseA: readonly ChanDuan[];
-  readonly phaseB: readonly ChanDuan[];
-}

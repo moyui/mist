@@ -4,7 +4,7 @@ import {
   FenxingType,
   TrendDirection,
 } from '../contracts';
-import type { ChanBi, ChanDuan, ChanDuanTwoPhaseResult } from '../contracts';
+import type { ChanBi, ChanBiTwoPhaseResult, ChanDuan } from '../contracts';
 import { ChanInvariantError } from '../errors';
 import { collectBiRangeStats } from './duan-range';
 
@@ -46,31 +46,25 @@ interface SegmentEnd {
 }
 
 export class DuanCalculator {
-  createDuan(bis: readonly ChanBi[]): ChanDuanTwoPhaseResult {
+  /**
+   * 入参 = `createBi` 的返回值 `ChanBiTwoPhaseResult`（段显式消费笔的两阶段结果）。
+   * 特征序列法消费 phaseB（最终笔）。返回确认后的段序列（单数组，无 phaseA）。
+   */
+  createDuan(bisResult: ChanBiTwoPhaseResult): ChanDuan[] {
+    const bis = bisResult.phaseB;
     if (bis.length < 3) {
-      return { phaseA: [], phaseB: [] };
+      return [];
     }
-    return {
-      phaseA: this.segment(bis, false),
-      phaseB: this.segment(bis, true),
-    };
+    return this.segment(bis);
   }
 
-  /** 按 requireCase2Confirmation 切分整条笔序列为段序列。 */
-  private segment(
-    bis: readonly ChanBi[],
-    requireCase2Confirmation: boolean,
-  ): ChanDuan[] {
+  /** 切分整条笔序列为确认后的段序列（case-1 直接确认 + case-2 倒推确认）。 */
+  private segment(bis: readonly ChanBi[]): ChanDuan[] {
     const out: ChanDuan[] = [];
     let startIdx = 0;
     while (startIdx < bis.length) {
       const direction = bis[startIdx].trend;
-      const end = this.findSegmentEnd(
-        bis,
-        startIdx,
-        direction,
-        requireCase2Confirmation,
-      );
+      const end = this.findSegmentEnd(bis, startIdx, direction);
       if (end === null) {
         out.push(
           this.buildDuan(
@@ -100,14 +94,12 @@ export class DuanCalculator {
   /**
    * 从 segStartIdx 起为方向 direction 的段找终止点。
    * 同向笔属段体（跳过）；反向笔入特征序列（含包含处理）。
-   * - requireCase2Confirmation=false：凡分型即返回（phaseA 候选视图）。
-   * - =true：无缺口分型直接返回；有缺口分型需 case2Confirmed 倒推确认，否则继续扫描下一分型。
+   * 无缺口分型直接确认终止；有缺口分型需 case2Confirmed 倒推确认，否则继续扫描下一分型。
    */
   private findSegmentEnd(
     bis: readonly ChanBi[],
     segStartIdx: number,
     direction: TrendDirection,
-    requireCase2Confirmation: boolean,
   ): SegmentEnd | null {
     let featureSeq: FeatureElement[] = [];
     for (let i = segStartIdx; i < bis.length; i++) {
@@ -128,10 +120,7 @@ export class DuanCalculator {
         continue; // 退化：分型中间反向笔恰为段首下一笔，跳过等待下一分型
       }
       const reverseStart = fenxing.middle.biIndex;
-      if (
-        !requireCase2Confirmation ||
-        !this.hasGap(fenxing.first, fenxing.middle)
-      ) {
+      if (!this.hasGap(fenxing.first, fenxing.middle)) {
         return { endIdx, nextStart: reverseStart };
       }
       // 第二种情况（有缺口）：需反方向新段特征序列也出分型才倒推确认

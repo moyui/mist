@@ -6,7 +6,7 @@ import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { ChannelTwoPhaseVo } from './vo/channel.vo';
 import { BiTwoPhaseVo } from './vo/bi.vo';
-import { DuanTwoPhaseVo } from './vo/duan.vo';
+import { DuanVo } from './vo/duan.vo';
 import { MergedKVo } from './vo/merged-k.vo';
 import { FenxingVo } from './vo/fenxing.vo';
 import { IndicatorQueryDto } from '../indicator/dto/query/indicator-query.dto';
@@ -195,13 +195,14 @@ export class ChanController {
   @ApiOperation({
     summary: 'Create Duan (segments)',
     description:
-      'Identifies and creates Duan (line segments) from Bi using the characteristic-sequence method (Chan Theory). Returns a two-phase result: phaseA (characteristic-sequence fenxing candidates) and phaseB (confirmed segments).',
+      'Identifies and creates Duan (line segments) from Bi using the characteristic-sequence method (Chan Theory). Returns the confirmed segment list.',
   })
   @ApiEnvelopeResponse({
     status: 200,
     description:
-      'Returns an API envelope whose data contains the two-phase Duan result { phaseA, phaseB }',
-    type: DuanTwoPhaseVo,
+      'Returns an API envelope whose data contains the confirmed Duan list',
+    type: DuanVo,
+    isArray: true,
   })
   async postDuan(@Body() queryDto: IndicatorQueryDto) {
     const { startDate, endDate } = this.parseQueryDateRange(queryDto);

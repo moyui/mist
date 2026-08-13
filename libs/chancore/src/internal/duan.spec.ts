@@ -1,15 +1,14 @@
 import { BiStatus, BiType, DuanType, TrendDirection } from '../contracts';
-import type { ChanBi } from '../contracts';
+import type { ChanBi, ChanBiTwoPhaseResult } from '../contracts';
 import { DuanCalculator } from './duan';
 
 describe('DuanCalculator (特征序列法)', () => {
-  it('returns empty two-phase result for fewer than 3 Bi', () => {
+  it('returns empty for fewer than 3 Bi in phaseB', () => {
     const calc = new DuanCalculator();
-    expect(calc.createDuan([])).toEqual({ phaseA: [], phaseB: [] });
-    expect(calc.createDuan([makeBi('up', 8, 4, 0)])).toEqual({
-      phaseA: [],
-      phaseB: [],
-    });
+    expect(calc.createDuan({ phaseA: [], phaseB: [] })).toEqual([]);
+    expect(
+      calc.createDuan({ phaseA: [], phaseB: [makeBi('up', 8, 4, 0)] }),
+    ).toEqual([]);
   });
 
   it('ends a segment at the fenxing extremum Bi when there is no gap (case 1)', () => {
@@ -24,12 +23,10 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('up', 13, 6, 6),
     ];
 
-    const result = new DuanCalculator().createDuan(bis);
+    const result = new DuanCalculator().createDuan({ phaseA: [], phaseB: bis });
 
-    expect(result.phaseA).toHaveLength(2);
-    expect(result.phaseB).toHaveLength(2);
-
-    const seg = result.phaseB[0];
+    expect(result).toHaveLength(2);
+    const seg = result[0];
     expect(seg.type).toBe(DuanType.Complete);
     expect(seg.trend).toBe(TrendDirection.Up);
     expect(seg.high).toBe(11);
@@ -37,8 +34,8 @@ describe('DuanCalculator (特征序列法)', () => {
     expect(seg.originBis).toHaveLength(3); // bi[0..2]
     expect(seg.endBi).toBe(bis[2]);
 
-    expect(result.phaseB[1].type).toBe(DuanType.UnComplete);
-    expect(result.phaseB[1].endBi).toBeNull();
+    expect(result[1].type).toBe(DuanType.UnComplete);
+    expect(result[1].endBi).toBeNull();
   });
 
   it('confirms a gap fenxing via the reverse segment fenxing (case 2 confirmed)', () => {
@@ -58,29 +55,27 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('up', 11, 6, 10), // f4
     ];
 
-    const result = new DuanCalculator().createDuan(bis);
+    const result = new DuanCalculator().createDuan({ phaseA: [], phaseB: bis });
 
-    // phaseB：向上段(bi0-2，经 case-2 倒推确认) + 向下段(bi3-7，case-1) + 尾段(bi8-10)
-    expect(result.phaseB).toHaveLength(3);
-    const upSeg = result.phaseB[0];
+    // 向上段(bi0-2，经 case-2 倒推确认) + 向下段(bi3-7，case-1) + 尾段(bi8-10)
+    expect(result).toHaveLength(3);
+    const upSeg = result[0];
     expect(upSeg.type).toBe(DuanType.Complete);
     expect(upSeg.trend).toBe(TrendDirection.Up);
     expect(upSeg.high).toBe(13); // 原极值
     expect(upSeg.endBi).toBe(bis[2]);
 
-    const downSeg = result.phaseB[1];
+    const downSeg = result[1];
     expect(downSeg.trend).toBe(TrendDirection.Down);
     expect(downSeg.type).toBe(DuanType.Complete);
     expect(downSeg.startBi).toBe(bis[3]);
 
-    expect(result.phaseB[2].type).toBe(DuanType.UnComplete);
-    // case 2 在此例与候选视图对齐：phaseA 同样 3 段
-    expect(result.phaseA).toHaveLength(3);
+    expect(result[2].type).toBe(DuanType.UnComplete);
   });
 
   it('does not end a segment on an unconfirmed gap fenxing (case 2 not confirmed)', () => {
-    // 与上例同前半段（向上段 case-2 缺口分型），但反方向新段特征序列元素不足（无底分型）、且未越过极值。
-    // 第二种情况未确认 → 原段继续延伸 → phaseB 整段为未完成尾段；phaseA（凡分型即终止）则把它切成两段。
+    // 向上段 case-2 缺口分型，但反方向新段特征序列元素不足（无底分型）、且未越过极值。
+    // 第二种情况未确认 → 原段继续延伸 → 整条为未完成尾段。
     const bis: ChanBi[] = [
       makeBi('up', 8, 4, 0),
       makeBi('down', 8, 5, 1), // e1
@@ -91,18 +86,12 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('up', 10, 7, 6), // 反方向新段特征序列仅 2 元素，无法成底分型
     ];
 
-    const result = new DuanCalculator().createDuan(bis);
+    const result = new DuanCalculator().createDuan({ phaseA: [], phaseB: bis });
 
-    // phaseB：缺口的第二种未确认 → 整条为未完成段（不停在 e2）
-    expect(result.phaseB).toHaveLength(1);
-    expect(result.phaseB[0].type).toBe(DuanType.UnComplete);
-    expect(result.phaseB[0].endBi).toBeNull();
-    expect(result.phaseB[0].originBis).toHaveLength(7); // bi[0..6]
-
-    // phaseA（候选视图，凡分型即终止）：向上段(bi0-2) + 尾段(bi3-6) → 与 phaseB 不同
-    expect(result.phaseA).toHaveLength(2);
-    expect(result.phaseA[0].type).toBe(DuanType.Complete);
-    expect(result.phaseA[0].endBi).toBe(bis[2]);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe(DuanType.UnComplete);
+    expect(result[0].endBi).toBeNull();
+    expect(result[0].originBis).toHaveLength(7); // bi[0..6]
   });
 
   it('is deterministic across repeated calls and does not mutate input', () => {
@@ -119,9 +108,10 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('down', 9, 6, 9),
       makeBi('up', 11, 6, 10),
     ];
+    const input: ChanBiTwoPhaseResult = { phaseA: bis, phaseB: bis };
     const calc = new DuanCalculator();
-    const first = calc.createDuan(bis);
-    const second = calc.createDuan(bis);
+    const first = calc.createDuan(input);
+    const second = calc.createDuan(input);
     expect(second).toEqual(first);
     expect(bis.map((b) => b.high)).toEqual([
       8, 8, 13, 13, 11, 11, 10, 10, 9, 9, 11,

@@ -4,19 +4,19 @@
 
 ### Requirement: ChanCore Shall Derive Duan From Bi Via The Standard Characteristic-Sequence Method
 
-ChanCore SHALL expose a stateless `createDuan(orderedK)` facade that derives Duan (段, segment) from the Phase B
-Bi sequence of the same input, using the standard characteristic-sequence method (缠论 line-segment division). The
-implementation SHALL follow the orthodox algorithm: maintain the current segment direction and its characteristic
-sequence, process characteristic-sequence inclusion, identify the directional fenxing, and confirm segment termination
-through the two gap cases (the second case requiring retrospective confirmation).
+ChanCore SHALL expose a stateless `createDuan(bis)` facade that consumes the `ChanBiTwoPhaseResult` returned by
+`createBi` (the two-phase Bi result, not raw K and not Phase B alone) and derives Duan (段, segment) using the
+standard characteristic-sequence method (缠论 line-segment division). The implementation SHALL follow the orthodox
+algorithm: maintain the current segment direction and its characteristic sequence, process characteristic-sequence
+inclusion, identify the directional fenxing, and confirm segment termination through the two gap cases (the second
+case requiring retrospective confirmation).
 
 #### Scenario: A Duan is derived from Bi
-- **WHEN** `createDuan` runs on ordered raw `ChanK` input
-- **THEN** it MUST derive merged K, then Bi Phase B, then derive Duan from that Bi Phase B sequence
-- **AND** it MUST NOT re-derive Bi with a different algorithm than `createBi`
+- **WHEN** a caller passes the `ChanBiTwoPhaseResult` returned by `createBi` to `createDuan`
+- **THEN** it MUST consume Bi Phase B from that result before deriving Duan
+- **AND** it MUST NOT re-derive Bi from raw K or with a different algorithm than `createBi`
 - **AND** the Duan algorithm MUST be the single-pass characteristic-sequence method, NOT the span-merge (`mergeSpans`)
-  fixed-point mechanism used by Bi Phase B and Channel (even though the result is packaged as `{ phaseA, phaseB }`
-  to mirror `createBi`'s return shape)
+  fixed-point mechanism used by Bi Phase B and Channel
 
 #### Scenario: The characteristic sequence is constructed
 - **WHEN** an upward segment is in progress
@@ -61,12 +61,10 @@ through the two gap cases (the second case requiring retrospective confirmation)
 
 ### Requirement: ChanDuan Output Contract Shall Mirror ChanBi
 
-`createDuan` SHALL return a `ChanDuanTwoPhaseResult { phaseA, phaseB }` aligned with `createBi`'s
-`ChanBiTwoPhaseResult`. `ChanDuan` SHALL mirror `ChanBi`'s field structure, with endpoint Bi in place of endpoint
-Fenxing and constituent Bi in place of constituent raw K. `phaseA` SHALL expose the characteristic-sequence-fenxing
-candidate Duan; `phaseB` SHALL expose the Duan confirmed after the two gap cases (including second-case
-retrospection). The characteristic sequence and its fenxings are internal algorithm intermediates and SHALL NOT be
-exposed as separate result fields.
+`createDuan` SHALL return a flat `readonly ChanDuan[]` (no phaseA/phaseB envelope) containing the confirmed Duan
+sequence. `ChanDuan` SHALL mirror `ChanBi`'s field structure, with endpoint Bi in place of endpoint Fenxing and
+constituent Bi in place of constituent raw K. The characteristic sequence and its fenxings are internal algorithm
+intermediates and SHALL NOT be exposed as separate result fields.
 
 #### Scenario: A complete Duan is emitted
 - **WHEN** `createDuan` emits a complete `ChanDuan`
@@ -76,16 +74,15 @@ exposed as separate result fields.
 - **AND** `originIds` MUST identify the raw K values covered by the constituent Bi
 - **AND** `startBi` and `endBi` MUST both be non-null for a complete Duan
 
-#### Scenario: Duan two-phase output is returned
+#### Scenario: The confirmed Duan list is returned
 - **WHEN** `createDuan` completes its characteristic-sequence fenxing detection and gap-case retrospection
-- **THEN** it MUST return both `phaseA` and `phaseB` as full `ChanDuan[]` values
-- **AND** `phaseA` MUST expose the characteristic-sequence-fenxing candidate Duan
-- **AND** `phaseB` MUST expose the Duan confirmed after the two gap cases (including second-case retrospection)
-- **AND** callers MUST NOT flatten, merge or omit either phase
+- **THEN** it MUST return the confirmed Duan as a flat `ChanDuan[]` in temporal order
+- **AND** each Duan MUST be either a confirmed complete Duan or the final uncomplete tail Duan
+- **AND** callers MUST NOT need to flatten, merge or select a phase
 
-#### Scenario: An empty approved K sequence is evaluated
-- **WHEN** `createDuan` receives an empty ordered K sequence
-- **THEN** it MUST return `{ phaseA: [], phaseB: [] }`
+#### Scenario: An empty Bi result is evaluated
+- **WHEN** `createDuan` receives a `ChanBiTwoPhaseResult` whose Phase B is empty
+- **THEN** it MUST return `[]`
 - **AND** no empty result MUST be represented as a database, contract or algorithm error
 
 ### Requirement: Existing Chan Output Shall Remain Unchanged By Duan Introduction

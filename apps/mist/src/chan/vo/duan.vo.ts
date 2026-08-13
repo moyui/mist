@@ -2,10 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { BiVo } from './bi.vo';
 import { DuanStatus, DuanType } from '../enums/duan.enum';
 import { TrendDirection } from '../enums/trend-direction.enum';
-import type {
-  ChanDuan,
-  ChanDuanTwoPhaseResult,
-} from '../types/chan-analysis.types';
+import type { ChanDuan } from '../types/chan-analysis.types';
 
 export class DuanVo implements ChanDuan {
   @ApiProperty({ type: String, format: 'date-time' })
@@ -32,12 +29,4 @@ export class DuanVo implements ChanDuan {
   startBi: BiVo | null = null;
   @ApiProperty({ type: () => BiVo, nullable: true })
   endBi: BiVo | null = null;
-}
-
-export class DuanTwoPhaseVo implements ChanDuanTwoPhaseResult {
-  @ApiProperty({ type: () => [DuanVo] })
-  phaseA!: DuanVo[];
-
-  @ApiProperty({ type: () => [DuanVo] })
-  phaseB!: DuanVo[];
 }

@@ -1,7 +1,7 @@
 import type {
   ChanBiTwoPhaseResult,
   ChanChannelTwoPhaseResult,
-  ChanDuanTwoPhaseResult,
+  ChanDuan,
   ChanFenxing,
   ChanK,
   ChanMergedK,
@@ -41,10 +41,11 @@ export class ChanCore {
     return new ChannelCalculator().createChannels(bis.phaseB);
   }
 
-  static createDuan(orderedK: readonly ChanK[]): ChanDuanTwoPhaseResult {
-    assertChanKSeries(orderedK);
-    const mergedK = new KMergeCalculator().merge(orderedK);
-    const bis = new BiCalculator().getBi(mergedK);
-    return new DuanCalculator().createDuan(bis.phaseB);
+  /**
+   * 入参 = `createBi` 的返回值 `ChanBiTwoPhaseResult`（段显式消费笔的两阶段结果，
+   * 组合方式：`createDuan(createBi(k))`）。返回确认后的段序列（无 phaseA）。
+   */
+  static createDuan(bis: ChanBiTwoPhaseResult): readonly ChanDuan[] {
+    return new DuanCalculator().createDuan(bis);
   }
 }

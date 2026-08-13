@@ -12,11 +12,11 @@
 
 ## 2. Contracts（library-owned 类型）
 
-- [ ] 2.1 在 `libs/chancore/src/contracts.ts` 新增 `DuanType`、`DuanStatus`、`ChanDuan`、`ChanDuanTwoPhaseResult`
-  （按 design §4，`ChanDuan` 镜像 `ChanBi`、`ChanDuanTwoPhaseResult` ≡ `ChanBiTwoPhaseResult`）。
+- [ ] 2.1 在 `libs/chancore/src/contracts.ts` 新增 `DuanType`、`DuanStatus`、`ChanDuan`
+  （按 design §4，`ChanDuan` 镜像 `ChanBi`；无 `ChanDuanTwoPhaseResult`，段返回单数组）。
 - [ ] 2.2 `ChanDuan` 字段：`startTime/endTime/high/low/trend/type/status/independentCount/originIds/
   originBis/startBi/endBi`（≡ ChanBi，端点/构成单元升一层）；`originIds` = 构成段所有笔 `originIds` 有序去重。
-- [ ] 2.3 返回结果对齐笔：`createDuan` 返回 `{ phaseA, phaseB }`；phaseA=特征序列分型候选段、phaseB=回溯确认成品。
+- [ ] 2.3 入参 = `createBi` 返回值 `ChanBiTwoPhaseResult`（非 K、非只传 phaseB）；返回确认后的 `ChanDuan[]` 单数组。
 - [ ] 2.4 barrel `src/index.ts` 导出新枚举/类型；不导出 internal calculator。
 
 ## 3. 段算法（标准特征序列法）
@@ -36,14 +36,14 @@
 
 ## 4. Facade
 
-- [ ] 4.1 `ChanCore.createDuan(orderedK)`：`assertChanKSeries → mergeK → Bi(phaseB) → DuanCalculator`。
-- [ ] 4.2 空输入：`{ phaseA: [], phaseB: [] }`（≡ 笔/中枢空输入契约），非错误。
+- [ ] 4.1 `ChanCore.createDuan(bis: ChanBiTwoPhaseResult)`：入参 = `createBi` 返回值，`DuanCalculator` 消费 phaseB。
+- [ ] 4.2 空输入：空 Bi 结果 → `[]`，非错误。
 - [ ] 4.3 不导出 internal calculator；`algorithmVersion` 保持 1。
 
 ## 5. HTTP 端点
 
-- [ ] 5.1 `chan.controller.ts` 新增 `POST /v1/chan/duan`，返回 `{ phaseA, phaseB }`（≡ `/v1/chan/bi`）。
-- [ ] 5.2 VO/mapper：`phaseA/phaseB` 的 `ChanDuan` 递归 `high/low`（含 `originBis` 递归），无 `highest/lowest`。
+- [ ] 5.1 `chan.controller.ts` 新增 `POST /v1/chan/duan`，返回确认后的 `DuanVo[]` 单数组。
+- [ ] 5.2 VO/mapper：`ChanDuan` 递归 `high/low`（含 `originBis` 递归），无 `highest/lowest`。
 - [ ] 5.3 OpenAPI response schema 正确引用 VO（非 request DTO）；contract test 断言字段存在/旧字段缺失。
 
 ## 6. 验证与交付

@@ -21,8 +21,8 @@ describe('ChanService HTTP boundary', () => {
     );
   });
 
-  it('returns an empty two-phase Duan result for empty K input', () => {
+  it('returns an empty Duan list for empty K input', () => {
     const result = service.createDuan({ k: [] });
-    expect(result).toEqual({ phaseA: [], phaseB: [] });
+    expect(result).toEqual([]);
   });
 });
