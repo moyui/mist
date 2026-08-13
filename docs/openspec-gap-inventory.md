@@ -6,12 +6,13 @@
 ## 状态速览
 
 - `specs/`：52 个已采纳 spec
-- `changes/`：**5 个 active change**（`archive/` 下 90+ 已归档）
+- `changes/`：**6 个 active change**（`archive/` 下 90+ 已归档）
 - 08-12 归档大名单（9 个）：remediate-otel-audit-findings、fix-tdx-realtime-vwap-window-consistency
   （E-0 全绿）、otel-observability-gaps（6.3）、decouple-bridge-callback-and-correct-vwap-bounds
   （F4 过：TDX 出界 13%→0.6%）、retire-diagnostic-endpoints（已部署验证）、datasource-logs-to-openobserve、
   declarative-realtime-configuration、windows-openssh-ops-channel、**define-mist-production-roadmap（本会话，G2-G4 处置完毕）**
 - 08-13 归档（1 个）：restore-mock-env-candle-assertions（tasks 22/22 + validate 通过；2.3 N/A、6.x 外部完成）
+- 08-13 新建（1 个）：fixed-point-candle-arithmetic（F1-q 门禁：candle 全链定点化，**已实施本地 commit ebf8848 未 push**，随下次部署）
 
 ---
 
@@ -36,6 +37,7 @@
 | Change | 进度 | 剩余项 |
 |---|---|---|
 | `capture-realtime-provider-anomalies` | 0/14 | **被动契约**：等真实 incident 才执行，不阻塞正常路径；禁止 fault injection；TDX/QMT negative branch 的承接方 |
+| `fixed-point-candle-arithmetic` | 12/12 | 08-13 创建并实施：F1-q 门禁（Decimal8 divideRoundHalfUp/roundToScale + toSealed 定点链 + 2 位不变式 + 契约 fixture）；**已实施本地 commit ebf8848 未 push**，随下次部署验证 |
 
 ---
 
