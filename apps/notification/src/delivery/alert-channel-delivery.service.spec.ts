@@ -50,6 +50,7 @@ describe('AlertChannelDeliveryService', () => {
   let signals: Repo;
   let securities: Repo;
   let deliveries: Repo;
+  let strategyDefinitions: Repo;
   let adapter: jest.Mocked<ChannelAdapter>;
   let service: AlertChannelDeliveryService;
   let counters: NotificationDeliveryCounters;
@@ -59,6 +60,7 @@ describe('AlertChannelDeliveryService', () => {
     signals = mockRepo();
     securities = mockRepo();
     deliveries = mockRepo();
+    strategyDefinitions = mockRepo();
     adapter = { channel: WECHAT, send: jest.fn() };
     counters = new NotificationDeliveryCounters();
     service = new AlertChannelDeliveryService(
@@ -66,6 +68,7 @@ describe('AlertChannelDeliveryService', () => {
       signals as any,
       securities as any,
       deliveries as any,
+      strategyDefinitions as any,
       [adapter],
       counters,
     );
@@ -244,6 +247,7 @@ describe('AlertChannelDeliveryService', () => {
       signals as any,
       securities as any,
       deliveries as any,
+      strategyDefinitions as any,
       [], // no adapters configured
       counters,
     );

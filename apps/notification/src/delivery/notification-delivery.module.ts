@@ -11,6 +11,7 @@ import {
   Security,
   StrategyAlertDelivery,
   StrategyAlertEvent,
+  StrategyDefinition,
   StrategySignal,
 } from '@app/shared-data';
 import { CHANNEL_ADAPTERS } from '../channels/channel-adapter.port';
@@ -30,6 +31,7 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
       StrategyAlertEvent,
       StrategySignal,
       Security,
+      StrategyDefinition,
       StrategyAlertDelivery,
     ]),
     BullModule.forRootAsync({

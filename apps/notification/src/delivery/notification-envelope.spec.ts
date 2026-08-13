@@ -12,63 +12,95 @@ const alertEvent = {
 } as StrategyAlertEvent;
 
 describe('buildNotificationEnvelope', () => {
-  it('builds summary from signal + security evidence', () => {
+  it('builds a shanghai-time, chinese-direction summary with strategy + period', () => {
     const signal = {
       securityId: 9,
+      strategyDefinitionId: 3,
       signalKind: 'entry',
-      signalTime: new Date('2026-08-12T09:35:00+08:00'),
-      contextSnapshot: {
-        triggerPrice: 12.5,
-        triggerTime: '2026-08-12T01:35:00Z',
-      },
+      period: 1,
+      signalTime: new Date('2026-08-13T01:30:00.000Z'), // 09:30 in UTC+8
+      contextSnapshot: { triggerPrice: 19.87 },
     } as unknown as StrategySignal;
-    const security = { code: '000001', name: '平安银行' } as any;
+    const security = { code: '300059', name: '东方财富' } as unknown;
+    const strategy = { name: '均线策略' } as unknown;
 
     const env = buildNotificationEnvelope(
       alertEvent,
       signal,
-      security,
+      security as any,
+      strategy as any,
       NotificationChannel.WECHAT,
     );
 
-    expect(env.alertEventId).toBe(42);
-    expect(env.dedupeKey).toBe('live-v1:..');
-    expect(env.channel).toBe(NotificationChannel.WECHAT);
-    expect(env.message.securityCode).toBe('000001');
-    expect(env.message.securityName).toBe('平安银行');
-    expect(env.message.signalKind).toBe('entry');
-    expect(env.message.triggerPrice).toBe(12.5);
-    expect(env.message.summary).toContain('000001');
-    expect(env.message.summary).toContain('平安银行');
-    expect(env.message.summary).toContain('entry');
-    expect(env.message.summary).toContain('12.5');
+    expect(env.message.securityCode).toBe('300059');
+    expect(env.message.securityName).toBe('东方财富');
+    expect(env.message.direction).toBe('买入');
+    expect(env.message.strategyName).toBe('均线策略');
+    expect(env.message.periodLabel).toBe('1m');
+    expect(env.message.triggerPrice).toBe(19.87);
+    // UTC 01:30 -> Shanghai 09:30
+    expect(env.message.signalTime).toContain('2026-08-13');
+    expect(env.message.signalTime).toContain('09:30');
+    expect(env.message.summary).toContain('300059');
+    expect(env.message.summary).toContain('东方财富');
+    expect(env.message.summary).toContain('买入');
+    expect(env.message.summary).toContain('19.87');
+    expect(env.message.summary).toContain('均线策略');
   });
 
-  it('falls back when signal/security are null', () => {
+  it('maps exit -> 卖出 and day period -> 日线', () => {
+    const signal = {
+      securityId: 9,
+      strategyDefinitionId: 3,
+      signalKind: 'exit',
+      period: 1440,
+      signalTime: new Date('2026-08-13T01:30:00.000Z'),
+      contextSnapshot: {},
+    } as unknown as StrategySignal;
+
     const env = buildNotificationEnvelope(
       alertEvent,
+      signal,
       null,
       null,
       NotificationChannel.QQ,
     );
-    // securityCode falls back to strategySignalId (no security/signal)
-    expect(env.message.securityCode).toBe('7');
+
+    expect(env.message.direction).toBe('卖出');
+    expect(env.message.periodLabel).toBe('日线');
+    expect(env.channel).toBe(NotificationChannel.QQ);
+  });
+
+  it('falls back when signal/security/strategy are null', () => {
+    const env = buildNotificationEnvelope(
+      alertEvent,
+      null,
+      null,
+      null,
+      NotificationChannel.QQ,
+    );
+    expect(env.message.securityCode).toBe('7'); // strategySignalId fallback
     expect(env.message.securityName).toBe('');
-    expect(env.message.signalKind).toBe('unknown');
+    expect(env.message.direction).toBe('signal');
+    expect(env.message.strategyName).toBe('');
+    expect(env.message.periodLabel).toBe('');
     expect(env.message.triggerPrice).toBeUndefined();
-    expect(env.message.summary).toContain('unknown');
   });
 
   it('ignores non-numeric triggerPrice in contextSnapshot', () => {
     const signal = {
       securityId: 9,
-      signalKind: 'exit',
+      strategyDefinitionId: 3,
+      signalKind: 'entry',
+      period: 1,
       signalTime: new Date(),
       contextSnapshot: { triggerPrice: 'not-a-number' },
     } as unknown as StrategySignal;
+
     const env = buildNotificationEnvelope(
       alertEvent,
       signal,
+      null,
       null,
       NotificationChannel.WECHAT,
     );

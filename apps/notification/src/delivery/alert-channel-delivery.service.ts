@@ -8,6 +8,7 @@ import {
   StrategyAlertDeliveryStatus,
   StrategyAlertEvent,
   StrategyAlertStatus,
+  StrategyDefinition,
   StrategySignal,
 } from '@app/shared-data';
 import type { AlertDeliveryChannelJobV1 } from '@app/signal';
@@ -41,6 +42,8 @@ export class AlertChannelDeliveryService {
     private readonly securities: Repository<Security>,
     @InjectRepository(StrategyAlertDelivery)
     private readonly deliveries: Repository<StrategyAlertDelivery>,
+    @InjectRepository(StrategyDefinition)
+    private readonly strategyDefinitions: Repository<StrategyDefinition>,
     @Inject(CHANNEL_ADAPTERS)
     private readonly adapters: readonly ChannelAdapter[],
     private readonly counters: NotificationDeliveryCounters,
@@ -90,11 +93,17 @@ export class AlertChannelDeliveryService {
     const security = signal
       ? await this.securities.findOne({ where: { id: signal.securityId } })
       : null;
+    const strategyDefinition = signal
+      ? await this.strategyDefinitions.findOne({
+          where: { id: signal.strategyDefinitionId },
+        })
+      : null;
 
     const envelope = buildNotificationEnvelope(
       alertEvent,
       signal,
       security,
+      strategyDefinition,
       channel,
     );
     const attemptNo = delivery.attemptCount + 1;
