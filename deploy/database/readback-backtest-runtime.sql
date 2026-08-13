@@ -10,7 +10,7 @@ SELECT
       AND `COLUMN_NAME` = 'target_issues'
       AND `COLUMN_TYPE` = 'json'
       AND `IS_NULLABLE` = 'NO'
-      AND LOWER(CAST(`COLUMN_DEFAULT` AS CHAR)) IN ('[]', '(json_array())')
+      AND LOWER(CAST(`COLUMN_DEFAULT` AS CHAR)) IN ('[]', 'json_array()', '(json_array())')
   ) AS `backtest_target_issues_ready`,
   (
     SELECT COUNT(*) = 1
@@ -29,7 +29,7 @@ SELECT
     ) AS pagination_index
   ) AS `backtest_result_pagination_index_ready`,
   (
-    SELECT COUNT(*) = 1
+    SELECT COUNT(*) >= 1
     FROM `information_schema`.`STATISTICS`
     WHERE `TABLE_SCHEMA` = DATABASE()
       AND `TABLE_NAME` = 'backtest_signal_results'
