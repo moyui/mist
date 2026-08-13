@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationChannel } from '@app/shared-data';
 import type {
@@ -31,7 +31,7 @@ export class WeComChannelAdapter implements ChannelAdapter {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly webhookEnvName = 'NOTIFICATION_WECHAT_WEBHOOK',
+    @Optional() private readonly webhookEnvName = 'NOTIFICATION_WECHAT_WEBHOOK',
   ) {}
 
   async send(message: ChannelMessage): Promise<ChannelSendResult> {
