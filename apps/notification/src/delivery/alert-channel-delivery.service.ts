@@ -109,7 +109,7 @@ export class AlertChannelDeliveryService {
     const attemptNo = delivery.attemptCount + 1;
     let result: ChannelSendResult;
     try {
-      result = await adapter.send(envelope);
+      result = await adapter.send({ text: envelope.message.summary });
     } catch (error) {
       result = {
         status: 'transient_failure',

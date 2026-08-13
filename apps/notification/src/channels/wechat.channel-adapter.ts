@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationChannel } from '@app/shared-data';
-import type { NotificationEnvelope } from '../delivery/notification-envelope';
-import type { ChannelAdapter, ChannelSendResult } from './channel-adapter.port';
+import type {
+  ChannelAdapter,
+  ChannelMessage,
+  ChannelSendResult,
+} from './channel-adapter.port';
 
 const DEFAULT_HTTP_TIMEOUT_MS = 10_000;
 
@@ -28,7 +31,7 @@ export class WeComChannelAdapter implements ChannelAdapter {
 
   constructor(private readonly config: ConfigService) {}
 
-  async send(envelope: NotificationEnvelope): Promise<ChannelSendResult> {
+  async send(message: ChannelMessage): Promise<ChannelSendResult> {
     const webhook = (
       this.config.get<string>('NOTIFICATION_WECHAT_WEBHOOK') ?? ''
     ).trim();
@@ -46,7 +49,7 @@ export class WeComChannelAdapter implements ChannelAdapter {
 
     const body = JSON.stringify({
       msgtype: 'text',
-      text: { content: envelope.message.summary },
+      text: { content: message.text },
     });
 
     try {

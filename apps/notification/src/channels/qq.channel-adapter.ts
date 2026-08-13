@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationChannel } from '@app/shared-data';
-import type { NotificationEnvelope } from '../delivery/notification-envelope';
-import type { ChannelAdapter, ChannelSendResult } from './channel-adapter.port';
+import type {
+  ChannelAdapter,
+  ChannelMessage,
+  ChannelSendResult,
+} from './channel-adapter.port';
 
 const DEFAULT_HTTP_TIMEOUT_MS = 10_000;
 
@@ -25,7 +28,7 @@ export class QqChannelAdapter implements ChannelAdapter {
 
   constructor(private readonly config: ConfigService) {}
 
-  async send(envelope: NotificationEnvelope): Promise<ChannelSendResult> {
+  async send(message: ChannelMessage): Promise<ChannelSendResult> {
     const baseUrl = (
       this.config.get<string>('NOTIFICATION_QQ_BASE_URL') ?? ''
     ).trim();
@@ -51,7 +54,7 @@ export class QqChannelAdapter implements ChannelAdapter {
     const body = JSON.stringify({
       message_type: messageType,
       [targetField]: Number(target),
-      message: [{ type: 'text', data: { text: envelope.message.summary } }],
+      message: [{ type: 'text', data: { text: message.text } }],
     });
     // NapCat OneBot 11 HTTP accepts access_token as a query param (the form its
     // default HTTP server reliably checks). Avoids header/auth-config ambiguity.

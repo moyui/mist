@@ -1,17 +1,25 @@
 import { NotificationChannel } from '@app/shared-data';
-import type { NotificationEnvelope } from '../delivery/notification-envelope';
 
 /**
- * Channel adapter contract (deliver-strategy-notifications). Each adapter sends a
- * channel-neutral envelope to one provider protocol/SDK and returns a bounded
- * result. Adapters are direct (not via AstrBot/mist-skills) and must redact
- * credentials from logs.
+ * Channel-neutral message body sent by adapters. Adapters only consume the
+ * text; strategy delivery builds it from AlertEvent evidence, infra alerts
+ * (OO health alerts) build it from the alert payload.
+ */
+export interface ChannelMessage {
+  readonly text: string;
+}
+
+/**
+ * Channel adapter contract (deliver-strategy-notifications + OO health alerts).
+ * Each adapter sends a channel-neutral message to one provider protocol/SDK and
+ * returns a bounded result. Adapters are direct (not via AstrBot/mist-skills)
+ * and must redact credentials from logs.
  */
 export const CHANNEL_ADAPTERS = Symbol('CHANNEL_ADAPTERS');
 
 export interface ChannelAdapter {
   readonly channel: NotificationChannel;
-  send(envelope: NotificationEnvelope): Promise<ChannelSendResult>;
+  send(message: ChannelMessage): Promise<ChannelSendResult>;
 }
 
 export interface ChannelSendResult {
