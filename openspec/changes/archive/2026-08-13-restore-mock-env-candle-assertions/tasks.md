@@ -1,7 +1,7 @@
 # Tasks: restore-mock-env-candle-assertions
 
 日期：2026-08-12
-状态：proposed（待确认）
+状态：archived（2026-08-13，tasks 全勾 + validate 通过）
 
 ## 1. main.ts 观测注册内聚（D6，mock 模式适配前置）
 
@@ -14,7 +14,9 @@
 
 - [x] 2.1 在 mock-env 运行状态下执行 `?type=metrics` 探针，查 `mist_candle_sealed_total`
 - [x] 2.2 记录探针结果：metrics API 可行 → 走 metrics 路径；不可行 → 走 logs fallback
-- [ ] 2.3 若 fallback 到 logs 路径：确认后端是否有封存成功的结构化日志；若无，停下来与用户讨论是否扩大 scope（D4 决策变更）
+      （**metrics 路径可行**：探针已取到 `mist_candle_sealed_total`，mock-verify.sh 3.4/3.5 走 `query_oo_metrics()`）
+- [x] 2.3 若 fallback 到 logs 路径：确认后端是否有封存成功的结构化日志；若无，停下来与用户讨论是否扩大 scope（D4 决策变更）
+      （**N/A**：D1 探针确认 metrics 路径可行，未 fallback 到 logs）
 
 ## 3. 恢复 candle 断言（mist-datasource mock-verify.sh）
 
@@ -40,5 +42,7 @@
 
 ## 6. 归档后（下游 unblock）
 
-- [ ] 6.1 `decouple-bridge-callback-and-correct-vwap-bounds` F1 可基于恢复的断言推进 mock 全链路 VWAP 回放
-- [ ] 6.2 `extract-backtest-runtime` 5.2.10 可在 mock-env 中验证 mist 补偿指标（替代当前 in-stack 绕过）
+- [x] 6.1 `decouple-bridge-callback-and-correct-vwap-bounds` F1 可基于恢复的断言推进 mock 全链路 VWAP 回放
+      （**已完成**：decouple 08-12 已归档，F1 修复 + F4 生产 HIL 通过）
+- [x] 6.2 `extract-backtest-runtime` 5.2.10 可在 mock-env 中验证 mist 补偿指标（替代当前 in-stack 绕过）
+      （**已完成**：5.2.10 已在 extract-backtest-runtime tasks 勾选，2026-08-10 实测）
