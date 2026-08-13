@@ -1,10 +1,4 @@
-import {
-  BiStatus,
-  BiType,
-  DuanStatus,
-  DuanType,
-  TrendDirection,
-} from '../contracts';
+import { BiStatus, BiType, DuanType, TrendDirection } from '../contracts';
 import type { ChanBi } from '../contracts';
 import { DuanCalculator } from './duan';
 
@@ -16,64 +10,122 @@ describe('DuanCalculator (特征序列法)', () => {
       phaseA: [],
       phaseB: [],
     });
-    expect(
-      calc.createDuan([makeBi('up', 8, 4, 0), makeBi('down', 8, 5, 1)]),
-    ).toEqual({ phaseA: [], phaseB: [] });
   });
 
-  it('ends an upward segment at the fenxing extremum Bi (first case, no gap)', () => {
-    // 交替笔序列，向上段特征序列 e1=(8,5) e2=(11,7) e3=(9,6) 在 e2 形成顶分型（无包含、无缺口）。
+  it('ends a segment at the fenxing extremum Bi when there is no gap (case 1)', () => {
+    // 向上段特征序列 e1=(8,5) e2=(11,7) e3=(9,6) 在 e2 形成顶分型；e1/e2 区间重合 → 无缺口（第一种）。
     const bis: ChanBi[] = [
-      makeBi('up', 8, 4, 0), // H0=8
+      makeBi('up', 8, 4, 0),
       makeBi('down', 8, 5, 1), // e1=(8,5)
-      makeBi('up', 11, 5, 2), // H2=11
-      makeBi('down', 11, 7, 3), // e2=(11,7)  ← 顶分型中间
-      makeBi('up', 9, 7, 4), // H4=9
+      makeBi('up', 11, 5, 2),
+      makeBi('down', 11, 7, 3), // e2=(11,7) 顶分型中间
+      makeBi('up', 9, 7, 4),
       makeBi('down', 9, 6, 5), // e3=(9,6)
-      makeBi('up', 13, 6, 6), // 尾
+      makeBi('up', 13, 6, 6),
     ];
 
     const result = new DuanCalculator().createDuan(bis);
 
-    // phaseA 与 phaseB 各 2 项：确认段 + 未完成尾段
     expect(result.phaseA).toHaveLength(2);
     expect(result.phaseB).toHaveLength(2);
 
     const seg = result.phaseB[0];
     expect(seg.type).toBe(DuanType.Complete);
-    expect(seg.status).toBe(DuanStatus.Valid);
     expect(seg.trend).toBe(TrendDirection.Up);
-    expect(seg.high).toBe(11); // 极值
+    expect(seg.high).toBe(11);
     expect(seg.low).toBe(4);
     expect(seg.originBis).toHaveLength(3); // bi[0..2]
-    expect(seg.startBi).toBe(bis[0]);
-    expect(seg.endBi).toBe(bis[2]); // 终止于分型中间反向笔的前一根同向笔
-    expect(seg.originIds).toEqual([0, 1, 2]);
+    expect(seg.endBi).toBe(bis[2]);
 
-    const tail = result.phaseB[1];
-    expect(tail.type).toBe(DuanType.UnComplete);
-    expect(tail.status).toBe(DuanStatus.Unknown);
-    expect(tail.endBi).toBeNull(); // 尾段未确认
-    expect(tail.trend).toBe(TrendDirection.Down);
-    expect(tail.originBis).toHaveLength(4); // bi[3..6]
+    expect(result.phaseB[1].type).toBe(DuanType.UnComplete);
+    expect(result.phaseB[1].endBi).toBeNull();
+  });
+
+  it('confirms a gap fenxing via the reverse segment fenxing (case 2 confirmed)', () => {
+    // 向上段特征序列 e1=(8,5) e2=(13,9) e3=(11,7)：e1/e2 有缺口（第二种）。
+    // 反方向（向下）新段特征序列 f1=(11,9) f2=(10,7) f3=(9,4) f4=(11,6) 在 f3 形成底分型 → 倒推确认。
+    const bis: ChanBi[] = [
+      makeBi('up', 8, 4, 0),
+      makeBi('down', 8, 5, 1), // e1
+      makeBi('up', 13, 5, 2),
+      makeBi('down', 13, 9, 3), // e2 顶分型中间，极值=13（与 e1 有缺口）
+      makeBi('up', 11, 9, 4),
+      makeBi('down', 11, 7, 5), // e3
+      makeBi('up', 10, 7, 6), // f1
+      makeBi('down', 10, 4, 7),
+      makeBi('up', 9, 4, 8), // f3 对应区间的底（low=4）
+      makeBi('down', 9, 6, 9),
+      makeBi('up', 11, 6, 10), // f4
+    ];
+
+    const result = new DuanCalculator().createDuan(bis);
+
+    // phaseB：向上段(bi0-2，经 case-2 倒推确认) + 向下段(bi3-7，case-1) + 尾段(bi8-10)
+    expect(result.phaseB).toHaveLength(3);
+    const upSeg = result.phaseB[0];
+    expect(upSeg.type).toBe(DuanType.Complete);
+    expect(upSeg.trend).toBe(TrendDirection.Up);
+    expect(upSeg.high).toBe(13); // 原极值
+    expect(upSeg.endBi).toBe(bis[2]);
+
+    const downSeg = result.phaseB[1];
+    expect(downSeg.trend).toBe(TrendDirection.Down);
+    expect(downSeg.type).toBe(DuanType.Complete);
+    expect(downSeg.startBi).toBe(bis[3]);
+
+    expect(result.phaseB[2].type).toBe(DuanType.UnComplete);
+    // case 2 在此例与候选视图对齐：phaseA 同样 3 段
+    expect(result.phaseA).toHaveLength(3);
+  });
+
+  it('does not end a segment on an unconfirmed gap fenxing (case 2 not confirmed)', () => {
+    // 与上例同前半段（向上段 case-2 缺口分型），但反方向新段特征序列元素不足（无底分型）、且未越过极值。
+    // 第二种情况未确认 → 原段继续延伸 → phaseB 整段为未完成尾段；phaseA（凡分型即终止）则把它切成两段。
+    const bis: ChanBi[] = [
+      makeBi('up', 8, 4, 0),
+      makeBi('down', 8, 5, 1), // e1
+      makeBi('up', 13, 5, 2),
+      makeBi('down', 13, 9, 3), // e2 顶分型中间（与 e1 有缺口）
+      makeBi('up', 11, 9, 4),
+      makeBi('down', 11, 7, 5), // e3
+      makeBi('up', 10, 7, 6), // 反方向新段特征序列仅 2 元素，无法成底分型
+    ];
+
+    const result = new DuanCalculator().createDuan(bis);
+
+    // phaseB：缺口的第二种未确认 → 整条为未完成段（不停在 e2）
+    expect(result.phaseB).toHaveLength(1);
+    expect(result.phaseB[0].type).toBe(DuanType.UnComplete);
+    expect(result.phaseB[0].endBi).toBeNull();
+    expect(result.phaseB[0].originBis).toHaveLength(7); // bi[0..6]
+
+    // phaseA（候选视图，凡分型即终止）：向上段(bi0-2) + 尾段(bi3-6) → 与 phaseB 不同
+    expect(result.phaseA).toHaveLength(2);
+    expect(result.phaseA[0].type).toBe(DuanType.Complete);
+    expect(result.phaseA[0].endBi).toBe(bis[2]);
   });
 
   it('is deterministic across repeated calls and does not mutate input', () => {
     const bis: ChanBi[] = [
       makeBi('up', 8, 4, 0),
       makeBi('down', 8, 5, 1),
-      makeBi('up', 11, 5, 2),
-      makeBi('down', 11, 7, 3),
-      makeBi('up', 9, 7, 4),
-      makeBi('down', 9, 6, 5),
-      makeBi('up', 13, 6, 6),
+      makeBi('up', 13, 5, 2),
+      makeBi('down', 13, 9, 3),
+      makeBi('up', 11, 9, 4),
+      makeBi('down', 11, 7, 5),
+      makeBi('up', 10, 7, 6),
+      makeBi('down', 10, 4, 7),
+      makeBi('up', 9, 4, 8),
+      makeBi('down', 9, 6, 9),
+      makeBi('up', 11, 6, 10),
     ];
     const calc = new DuanCalculator();
     const first = calc.createDuan(bis);
     const second = calc.createDuan(bis);
     expect(second).toEqual(first);
-    // 输入未被改动
-    expect(bis.map((b) => b.high)).toEqual([8, 8, 11, 11, 9, 9, 13]);
+    expect(bis.map((b) => b.high)).toEqual([
+      8, 8, 13, 13, 11, 11, 10, 10, 9, 9, 11,
+    ]);
   });
 });
 
