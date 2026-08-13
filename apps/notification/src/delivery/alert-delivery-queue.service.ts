@@ -92,6 +92,20 @@ export class AlertDeliveryQueueService implements OnModuleDestroy {
     );
   }
 
+  /** BullMQ job counts by state, for the queue-depth metric. */
+  async snapshotCounts(): Promise<{
+    waiting: number;
+    active: number;
+    delayed: number;
+  }> {
+    const c = await this.queue.getJobCounts('waiting', 'active', 'delayed');
+    return {
+      waiting: c.waiting ?? 0,
+      active: c.active ?? 0,
+      delayed: c.delayed ?? 0,
+    };
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.queue.close();
   }

@@ -4,19 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'node:path';
 import { LoggerModule } from 'nestjs-pino';
 import { notificationEnvSchema } from '@app/config';
-import {
-  K,
-  KExtensionEf,
-  KExtensionQmt,
-  KExtensionTdx,
-  Security,
-  SecuritySourceConfig,
-  StrategyAlertDelivery,
-  StrategyAlertEvent,
-  StrategyDefinition,
-  StrategySignal,
-  StrategyVersion,
-} from '@app/shared-data';
+import { NOTIFICATION_ENTITIES } from './notification-entities';
 import { NotificationDeliveryModule } from './delivery/notification-delivery.module';
 import { NotificationAdminController } from './notification-admin.controller';
 import { NotificationHealthController } from './notification-health.controller';
@@ -53,19 +41,7 @@ import { NotificationHealthController } from './notification-health.controller';
           timezone: '+08:00',
           synchronize: false,
           logging: configService.get('NODE_ENV') !== 'production',
-          entities: [
-            K,
-            KExtensionEf,
-            KExtensionTdx,
-            KExtensionQmt,
-            Security,
-            SecuritySourceConfig,
-            StrategyDefinition,
-            StrategyVersion,
-            StrategySignal,
-            StrategyAlertEvent,
-            StrategyAlertDelivery,
-          ],
+          entities: NOTIFICATION_ENTITIES,
           poolSize: 10,
           connectorPackage: 'mysql2' as const,
           extra: { authPlugins: 'sha256_password', connectTimeout: 5_000 },

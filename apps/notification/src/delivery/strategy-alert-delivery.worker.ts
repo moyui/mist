@@ -4,6 +4,7 @@ import {
   STRATEGY_ALERT_DELIVERY_BULLMQ_PREFIX,
   STRATEGY_ALERT_DELIVERY_CHANNEL_JOB,
   STRATEGY_ALERT_DELIVERY_FANOUT_JOB,
+  STRATEGY_ALERT_DELIVERY_JOB_TIMEOUT_MS,
   STRATEGY_ALERT_DELIVERY_QUEUE_NAME,
   STRATEGY_ALERT_DELIVERY_WORKER_CONCURRENCY,
   decodeAlertDeliveryChannelJobV1,
@@ -30,6 +31,32 @@ export class StrategyAlertDeliveryWorker extends WorkerHost {
   }
 
   async process(job: Job<AnyDeliveryJob, void, string>): Promise<void> {
+    // Per-job hard deadline (governance §8): adapter calls are already bounded by
+    // NOTIFICATION_HTTP_TIMEOUT_MS; this caps the whole job incl. DB writes + reconcile.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        this.dispatch(job),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `notification job ${job.name} exceeded ${STRATEGY_ALERT_DELIVERY_JOB_TIMEOUT_MS}ms deadline`,
+                ),
+              ),
+            STRATEGY_ALERT_DELIVERY_JOB_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  private async dispatch(
+    job: Job<AnyDeliveryJob, void, string>,
+  ): Promise<void> {
     switch (job.name) {
       case STRATEGY_ALERT_DELIVERY_FANOUT_JOB:
         return await this.fanout.run(decodeAlertDeliveryFanoutJobV1(job.data));

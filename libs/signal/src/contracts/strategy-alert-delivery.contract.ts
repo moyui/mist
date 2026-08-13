@@ -15,6 +15,9 @@ export const STRATEGY_ALERT_DELIVERY_QUEUE_NAME = 'strategy-alert-delivery';
 export const STRATEGY_ALERT_DELIVERY_FANOUT_JOB = 'deliver.fanout';
 export const STRATEGY_ALERT_DELIVERY_CHANNEL_JOB = 'deliver.channel';
 export const STRATEGY_ALERT_DELIVERY_WORKER_CONCURRENCY = 4;
+/** Per-job hard deadline. Adapter calls are already bounded by NOTIFICATION_HTTP_TIMEOUT_MS;
+ *  this caps the whole job (fan-out DB writes + channel send + reconcile). */
+export const STRATEGY_ALERT_DELIVERY_JOB_TIMEOUT_MS = 30_000;
 
 export const STRATEGY_ALERT_DELIVERY_FANOUT_JOB_OPTIONS = Object.freeze({
   attempts: 1,

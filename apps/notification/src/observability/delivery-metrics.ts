@@ -3,18 +3,23 @@ import type { NotificationDeliveryCounters } from '../delivery/notification-deli
 
 let registered = false;
 
+export interface QueueDepthSnapshot {
+  readonly waiting: number;
+  readonly active: number;
+  readonly delayed: number;
+}
+
 /**
- * Registers OTel observable gauges for notification delivery outcomes. Pull-model:
- * gauges read the process-local counters (no business-logic side effects). Meter is
- * obtained from the global MeterProvider installed by the
- * `@opentelemetry/auto-instrumentations-node/register` preload (compose command).
- *
- * Queue depth / latency are intentionally NOT covered here (they require async
- * BullMQ getJobCounts polling); this covers the spec's per-channel result +
- * dead-letter observability. Idempotent (single registration per process).
+ * Registers OTel observable gauges for notification delivery outcomes + queue
+ * depth. Counters are pull-model (process-local); queue depth is sampled async by
+ * the caller (NotificationMetricsBootstrap polls BullMQ getJobCounts every ~15s and
+ * caches; the gauge reads the cache). Meter comes from the global MeterProvider
+ * installed by the @opentelemetry/auto-instrumentations-node/register preload.
+ * Idempotent (single registration per process).
  */
 export function registerDeliveryMetrics(
   counters: NotificationDeliveryCounters,
+  queueDepth: () => QueueDepthSnapshot,
 ): void {
   if (registered) return;
   const meter = metrics.getMeter('mist-notification', '0.1.0');
@@ -55,6 +60,18 @@ export function registerDeliveryMetrics(
     'Total delivery attempts (process-local)',
     (s) => s.attempts,
   );
+
+  meter
+    .createObservableGauge('mist_notification_queue_depth', {
+      description:
+        'Strategy alert delivery BullMQ queue depth (waiting/active/delayed)',
+    })
+    .addCallback((result) => {
+      const snap = queueDepth();
+      result.observe(snap.waiting, { state: 'waiting' });
+      result.observe(snap.active, { state: 'active' });
+      result.observe(snap.delayed, { state: 'delayed' });
+    });
 
   registered = true;
 }

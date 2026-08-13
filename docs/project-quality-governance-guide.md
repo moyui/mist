@@ -250,7 +250,7 @@ Chan 当前为请求时实时派生计算，不写 MySQL。未来若重新持久
 
 - 收盘后 provider history sync 无限期延期且当前无 active change；不得启用 `apps/schedule` 自动写入。
 - `apps/schedule` 保留给后续职责设计，不恢复旧通用 scheduler。
-- AlertEvent 当前只要求能够发送；不擅自增加严格状态机、attempt、retry 或 dead-letter 字段。
+- AlertEvent 主表（`strategy_alert_events`）只保留聚合 `status`（PENDING/DELIVERED/ACKED/FAILED，枚举不变）+ 既有 delivered/failed/ack 回写 API；不在此主表加 attempt/retry/dead-letter 字段。per-channel attempt/retry/dead-letter 由独立 `strategy_alert_deliveries` 子表承载（deliver-strategy-notifications，owner 已批准 at-least-once + 5 次指数退避 + dead-letter + replay）；该 delivery 表是 AlertEvent 的 fan-out 子状态，不替代主表枚举，归档时须同步本条。
 - 当前产品范围不支持期货和期权；不得用股票字段语义推断未来衍生品 schema。
 - Strategy portfolio-level backtesting（组合级回测：资金/仓位/订单/费用/净值/收益）无限期延期；现行
   方向为 signal-level（`extract-backtest-runtime` + `evolve-strategy-evaluation-contract`）。不得合并

@@ -4,6 +4,13 @@
 -- authorized by confirmed spec (deliver-strategy-notifications, 2026-08-12).
 -- One row per (alert event x channel) so QQ/WeChat fan-out outcomes are recorded
 -- independently; AlertEvent status holds the aggregate result.
+--
+-- Postflight / readback (run audit-strategy-alert-deliveries.sql):
+--   SELECT COUNT(*) FROM strategy_alert_deliveries;            -- table readable
+--   SHOW CREATE TABLE strategy_alert_deliveries;               -- FK + unique present
+-- Repair-forward: additive only; rolling back the image leaves the empty table
+--   in place (harmless, no reader on old images). No backfill needed (rows are
+--   created lazily by the notification worker as events flow).
 
 CREATE TABLE IF NOT EXISTS `strategy_alert_deliveries` (
   `id` INT NOT NULL AUTO_INCREMENT,
