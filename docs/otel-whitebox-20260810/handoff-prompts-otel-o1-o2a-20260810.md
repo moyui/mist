@@ -20,7 +20,7 @@
 | mode | productization=**off**、lifecycle=**off**（部署归一化，符合预期）、strategy=**on 保持**（08-07 owner 拍板，本次未触碰） |
 
 ### 生产 OpenObserve（192.168.31.182:5080）
-- 凭据：`root@mist.local` / `Mist@2026!Observe`（**不是** mock 的 root@example.com）
+- 凭据：`<OO_USER_REDACTED>` / `<OO_PASSWORD_REDACTED>`（**不是** mock 的 <MOCK_USER_REDACTED>）
 - 已验证入库：mist-backend `GET` ×22（http instrumentation）、`tcp.connect`、`dns.lookup`
 - 已验证入库：mist-backend metrics（`mist_candle_*` 10 个 gauge + nodejs/v8js runtime metrics）
 - **修复前**（a6ce18e）生产 mist-backend 在 OO 里**零 spans** —— preload 修复是本次关键
@@ -54,7 +54,7 @@
 ## 四、待办序列（严格按序）
 
 ### 步骤 1：开盘后确认 candle spans（今天 09:30 后，优先级最高）
-生产 OO 查询（`curl -u root@mist.local:'Mist@2026!Observe'`）：
+生产 OO 查询（`curl -u <OO_USER_REDACTED>:'<OO_PASSWORD_REDACTED>'`）：
 ```sql
 select operation_name, count(*) from 'default'
 where service_name = 'mist-backend' and operation_name like 'candle%'
@@ -82,13 +82,13 @@ group by operation_name
 
 ```bash
 # 生产 OO spans（candle）
-curl -sS -u root@mist.local:'Mist@2026!Observe' -X POST \
+curl -sS -u <OO_USER_REDACTED>:'<OO_PASSWORD_REDACTED>' -X POST \
   "http://192.168.31.182:5080/api/default/_search?type=traces" \
   -H "Content-Type: application/json" \
   -d '{"query":{"sql":"select * from \'default\' where operation_name like \'candle%\' and service_name=\'mist-backend\' order by _timestamp desc limit 5","start_time":<now_us-2h>,"end_time":<now_us>},"size":5}'
 
 # 生产 metrics（按 stream 名查，type=metrics）
-curl -sS -u root@mist.local:'Mist@2026!Observe' -X POST \
+curl -sS -u <OO_USER_REDACTED>:'<OO_PASSWORD_REDACTED>' -X POST \
   "http://192.168.31.182:5080/api/default/_search?type=metrics" \
   -H "Content-Type: application/json" \
   -d '{"query":{"sql":"select * from mist_candle_sealed_total limit 3","start_time":<us>,"end_time":<us>},"size":3}'

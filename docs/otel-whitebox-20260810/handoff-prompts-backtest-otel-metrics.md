@@ -72,7 +72,7 @@ OpenObserve 可见；单测/契约测试全绿；勾选 tasks 5.2。
 - **本地验证**：`pnpm typecheck`、`pnpm lint:check`、`env TZ=UTC pnpm run test:ci`
   （**带 `--forceExit`**——mist CI 挂死教训）、`openspec validate --changes`。
 - **mock 验证**：`mist-datasource/tools/mock-env/` 起栈 → OO（mock 凭据
-  root@example.com:Complexpass#123）查询 `mist_backtest_*` 指标入库
+  <MOCK_USER_REDACTED>:<MOCK_PASSWORD_REDACTED>）查询 `mist_backtest_*` 指标入库
   （`POST /api/default/_search?type=metrics`，微秒时间窗口）。
 - **完成后**：勾 tasks 5.2（附 mock/单测证据）→ 合 master → 部署后生产 OO 可见性确认
   （部署方式见 O1 handoff §六；**必传 productization=shadow**，schema 缓存 422 时用

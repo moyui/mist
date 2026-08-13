@@ -64,7 +64,7 @@ source label，5 分钟即可归因，无需绕 backend 日志 + 下午实测的
   external、startActiveSpan 2.x 手动 end（withCandleSpan helper）、pino 打包进 bundle 无法被
   instrumentation-pino patch（用 pinoTraceMixin）、指标注册在 initTelemetry 后且幂等。
 - **OO 查询**：`POST /api/default/_search?type=traces|metrics|logs`，微秒时间窗口，字段在 hit
-  顶层；生产凭据 root@mist.local:Mist@2026!Observe（mock 是 root@example.com:Complexpass#123）。
+  顶层；生产凭据 <OO_USER_REDACTED>:<OO_PASSWORD_REDACTED>（mock 是 <MOCK_USER_REDACTED>:<MOCK_PASSWORD_REDACTED>）。
 - **分支**：mist `feat/otel-observability-attribution`（O2b）从 master 建 worktree；O3 涉及
   mist-deploy 时 deploy 侧分支或直接 master（按部署惯例，CI 门禁 test-*.ps1 注意）。
 - **验证**：typecheck/lint/test:ci（带 --forceExit）/validate；mock 环境（tools/mock-env）起栈

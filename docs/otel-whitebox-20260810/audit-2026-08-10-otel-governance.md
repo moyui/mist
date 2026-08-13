@@ -37,7 +37,7 @@
 - 建议（gaps 决策）：preload 为唯一初始化路径；initTelemetry 删除或显式降级为 no-op 壳
 
 ### G2 详情【中】生产凭据默认值（§5 必须停下讨论）
-- 证据：compose.yaml 4 处 `OO_OTLP_AUTH_BASE64:-cm9vdEBtaXN0...`（= base64("root@mist.local:Mist@2026!Observe") 可逆解）；`.env.example:66` 同值；`deploy-defaults.ps1` 无该变量（部署链未显式管理）
+- 证据：compose.yaml 4 处 `OO_OTLP_AUTH_BASE64:-cm9vdEBtaXN0...`（= base64("<OO_USER_REDACTED>:<OO_PASSWORD_REDACTED>") 可逆解）；`.env.example:66` 同值；`deploy-defaults.ps1` 无该变量（部署链未显式管理）
 - 影响链：compose 默认 → 容器 env → OTLP Authorization header——凭据以可解形态常驻 git 历史
 - §5 依据：生产真实配置与代码推断不一致（默认值即生产凭据）——AI 不得机械决定，**用户拍板**（收敛为 `.env` 必需项 / 移除默认）
 - 边界：repo 可见性未确认（影响严重度）；同仓 `OO_ROOT_USER_PASSWORD` .env 默认同样明文（O0 引入）

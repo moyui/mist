@@ -36,10 +36,10 @@
 
 ### F3【中】OTLP 凭据 base64 默认值进仓库
 - 状态：已确认
-- 证据：`mist-deploy/docker/compose.yaml:94,124,157,209`——`OO_OTLP_AUTH_BASE64:-cm9vdEBtaXN0LmxvY2FsOk1pc3RAMjAyNiFPYnNlcnZl`（= base64("root@mist.local:Mist@2026!Observe")，可逆解出生产 OO 凭据）
+- 证据：`mist-deploy/docker/compose.yaml:94,124,157,209`——`OO_OTLP_AUTH_BASE64:-<OO_AUTH_BASE64_REDACTED>`（= base64("<OO_USER_REDACTED>:<OO_PASSWORD_REDACTED>")，可逆解出生产 OO 凭据）
 - Producer → wire → consumer：compose 默认值 → 容器 env → OTLP Authorization header；`.env` 可覆盖但默认即生产凭据
 - 实际后果：凭据以可解 base64 常驻 git 历史；repo 若外泄即生产 OO 管理面暴露
-- 边界/例外：repo 为私有（待确认）；同仓另有 `OO_ROOT_USER_PASSWORD` 的 .env 默认（`Mist@2026!Observe`）同样明文——但那是 compose 变量默认，本 finding 聚焦 OTLP header 的 base64 形态
+- 边界/例外：repo 为私有（待确认）；同仓另有 `OO_ROOT_USER_PASSWORD` 的 .env 默认（`<OO_PASSWORD_REDACTED>`）同样明文——但那是 compose 变量默认，本 finding 聚焦 OTLP header 的 base64 形态
 - 验证方法：base64 -d 解出明文；确认 repo 可见性
 
 ### F4【中】service_name 双来源，preload fallback 默认串名（已修复，待部署）

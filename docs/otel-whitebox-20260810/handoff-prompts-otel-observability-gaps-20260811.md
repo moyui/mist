@@ -23,7 +23,7 @@
 | mist 镜像 | `65a1053`（prev bc1fdf2） |
 | datasource / frontend | `7cb8630` / `ea4632a0`（未变） |
 | mode | productization=**shadow**（显式传）、lifecycle=off、strategy=on（未触碰） |
-| 生产 OO | 192.168.31.182:5080（root@mist.local / Mist@2026!Observe） |
+| 生产 OO | 192.168.31.182:5080（<OO_USER_REDACTED> / <OO_PASSWORD_REDACTED>） |
 | 生产验证 | ✅ mist-backend GET spans、logs 单发、service_name=mist-backend |
 | ⚠️ **candle spans 生产空** | tdx-datasource poll/result 流动（桥连接正常）但 `tdx.snapshot.ingest` 无——**行情帧未进 snapshot 管道**（订阅/桥数据问题） |
 
@@ -52,7 +52,7 @@
 - 参考：`handoff-prompts-fix-tdx-quantity-vwap.md`（vwap 线程交接）
 
 ### 步骤 2：交易时段验证（gaps tasks 5.2，数据流恢复后）
-生产 OO 查询（`curl -u root@mist.local:'Mist@2026!Observe'`）：
+生产 OO 查询（`curl -u <OO_USER_REDACTED>:'<OO_PASSWORD_REDACTED>'`）：
 ```sql
 -- candle spans
 select operation_name, count(*) from 'default'
@@ -84,11 +84,11 @@ logs 单发（cnt=1）+ trace_id 关联。
 # mock 全链路（含 backend span/trace_id 断言）
 bash mist-datasource/tools/mock-env/mock-verify.sh
 # 生产 OO spans（candle）
-curl -sS -u root@mist.local:'Mist@2026!Observe' -X POST \
+curl -sS -u <OO_USER_REDACTED>:'<OO_PASSWORD_REDACTED>' -X POST \
   "http://192.168.31.182:5080/api/default/_search?type=traces" -H "Content-Type: application/json" \
   -d '{"query":{"sql":"select * from '\''default'\'' where operation_name like '\''candle%'\'' and service_name='\''mist-backend'\'' order by _timestamp desc limit 5","start_time":<now_us-2h>,"end_time":<now_us>},"size":5}'
 # 生产 logs
-curl -sS -u root@mist.local:'Mist@2026!Observe' -X POST \
+curl -sS -u <OO_USER_REDACTED>:'<OO_PASSWORD_REDACTED>' -X POST \
   "http://192.168.31.182:5080/api/default/_search?type=logs" -H "Content-Type: application/json" \
   -d '{"query":{"sql":"select * from '\''default'\'' where service_name='\''mist-backend'\'' order by _timestamp desc limit 20","start_time":<us>,"end_time":<us>},"size":20}'
 ```

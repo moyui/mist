@@ -232,13 +232,13 @@ git diff --check
 
 1. 合并 + push origin/master
 2. mock 栈验证 mist 侧（主 worktree 即 master：`bash tools/mock-env/run-mock.sh`）→
-   OO（root@example.com:Complexpass#123）`POST /api/default/_search?type=metrics` 微秒
+   OO（<MOCK_USER_REDACTED>:<MOCK_PASSWORD_REDACTED>）`POST /api/default/_search?type=metrics` 微秒
    窗口查 `mist_startup_compensation_total`（outcome=not_enabled，导出链通）
 3. tasks 5.2.1–5.2.10 勾选 + 命名注记（`mist_startup_compensation_total` 定案）→ commit 4
 4. 生产部署（Deploy Windows Mist Stack）：mist tag=新 master SHA + backtest tag；
    **显式传 productization=shadow**（schema 缓存 422 坑；422 时 set-windows-* 补设）；
    strategy=on 保持
-5. 生产 OO（192.168.31.182:5080，root@mist.local）：`mist_backtest_*` 10 指标 +
+5. 生产 OO（192.168.31.182:5080，<OO_USER_REDACTED>）：`mist_backtest_*` 10 指标 +
    `mist_startup_compensation_total` 入库证据 → tasks 注记；日志抽查（docker logs /
    OO 日志流，确认 trace_id）——日志通道落地时确认
 6. 归档 extract-backtest-runtime（勾完后 rename-only）
@@ -271,7 +271,7 @@ git diff --check
   6665770…）、frontend ea4632a0…、datasource fb38428…（prev 043519f…）、
   **productization=shadow 显式传**（lifecycle 输入命中 schema 缓存 422 → 不传，部署
   归一化 off 符合预期）
-- **生产 OO 验证 PASSED**（192.168.31.182:5080, root@mist.local）：
+- **生产 OO 验证 PASSED**（192.168.31.182:5080, <OO_USER_REDACTED>）：
   - `mist_backtest_ready`=1、`capacity_total`=8、`active_runs`/`waiting_runs`=0
   - `command_total` 4 点（accepted/queue_full/not_ready/run_failed label 全对）、
     `run_total` 2 点（completed/failed）、`persistence_total` 2 点（success/failure）
