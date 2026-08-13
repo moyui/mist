@@ -1,4 +1,10 @@
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import {
+  AFTERNOON_END_MIN,
+  AFTERNOON_START_MIN,
+  MORNING_END_MIN,
+  MORNING_START_MIN,
+} from '@app/timezone';
 import type { CandleBucket, CandleSession } from './candle.types';
 
 /**
@@ -22,12 +28,6 @@ import type { CandleBucket, CandleSession } from './candle.types';
  * timing (design mentions 16:10) and will be added in a follow-up.
  */
 const TIME_ZONE = 'Asia/Shanghai';
-
-// Session boundaries in zoned wall-clock minutes-of-day.
-const MORNING_START_MIN = 9 * 60 + 30; // 09:30
-const MORNING_END_MIN = 11 * 60 + 31; // 11:31 (half-open; 11:30 is last bucket)
-const AFTERNOON_START_MIN = 13 * 60; // 13:00
-const AFTERNOON_END_MIN = 15 * 60 + 1; // 15:01 (half-open; 15:00 is last bucket)
 
 /**
  * @param eventTimeIso - RFC3339 eventTime from the canonical snapshot.
