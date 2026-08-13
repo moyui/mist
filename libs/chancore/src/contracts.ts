@@ -141,3 +141,28 @@ export interface ChanDuan {
   readonly startBi: ChanBi | null;
   readonly endBi: ChanBi | null;
 }
+
+/**
+ * 段级中枢（Duan-level Channel）—— 以段为构成单元的中枢，镜像 ChanChannel。
+ * 中枢是"至少三个连续次级别走势类型所重叠的部分"（缠论原典17课）：无方向（无 trend）、
+ * 几何为对称重叠（zg=min 段高点、zd=max 段低点、gg/dd 极值）。
+ */
+export interface ChanDuanChannel {
+  readonly duans: readonly ChanDuan[]; // 构成中枢的段（枚举窗口/延伸后）
+  readonly zg: number; // 中枢上沿 = min(duans 高点)
+  readonly zd: number; // 中枢下沿 = max(duans 低点)
+  readonly gg: number; // 中枢最高 = max(duans 高点)
+  readonly dd: number; // 中枢最低 = min(duans 低点)
+  readonly level: ChannelLevel; // = ChannelLevel.Duan（接线）
+  readonly type: ChannelType;
+  readonly status: ChannelStatus;
+  readonly startId: number; // 原始 K id（首段起点）
+  readonly endId: number; // 原始 K id（末段终点）
+  readonly displayStartId: number; // 首段中间位置原始 K id
+  readonly displayEndId: number; // 末段中间位置原始 K id
+}
+
+export interface ChanDuanChannelTwoPhaseResult {
+  readonly phaseA: readonly ChanDuanChannel[];
+  readonly phaseB: readonly ChanDuanChannel[];
+}

@@ -6,6 +6,7 @@ import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { ChannelTwoPhaseVo } from './vo/channel.vo';
 import { BiTwoPhaseVo } from './vo/bi.vo';
+import { DuanChannelTwoPhaseVo } from './vo/duan-channel.vo';
 import { DuanVo } from './vo/duan.vo';
 import { MergedKVo } from './vo/merged-k.vo';
 import { FenxingVo } from './vo/fenxing.vo';
@@ -228,5 +229,44 @@ export class ChanController {
     }));
     const createBiDto: CreateBiDto = { k: kData };
     return this.chanService.createDuan(createBiDto);
+  }
+
+  @Post('duan-channel')
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute for Duan-level Channel creation
+  @ApiOperation({
+    summary: 'Create Duan-level Channels (段级中枢)',
+    description:
+      'Identifies and creates Duan-level Channels from Duan using symmetric-overlap geometry (Chan Theory). A Channel is a directionless overlap region of at least three consecutive sub-level trend types. Returns a two-phase result: phaseA (enumerated base candidates) and phaseB (merged final Channels).',
+  })
+  @ApiEnvelopeResponse({
+    status: 200,
+    description:
+      'Returns an API envelope whose data contains the two-phase Duan-level Channel result { phaseA, phaseB }',
+    type: DuanChannelTwoPhaseVo,
+  })
+  async postDuanChannel(@Body() queryDto: IndicatorQueryDto) {
+    const { startDate, endDate } = this.parseQueryDateRange(queryDto);
+
+    const kData = (
+      await this.indicatorService.findKData({
+        code: queryDto.code,
+        period: queryDto.period,
+        startDate,
+        endDate,
+        source: queryDto.source,
+      })
+    ).map((k) => ({
+      id: k.id,
+      symbol: k.security.code,
+      time: k.timestamp,
+      open: k.open,
+      high: k.high,
+      low: k.low,
+      close: k.close,
+      volume: k.volume,
+      amount: k.amount,
+    }));
+    const createBiDto: CreateBiDto = { k: kData };
+    return this.chanService.createDuanChannels(createBiDto);
   }
 }

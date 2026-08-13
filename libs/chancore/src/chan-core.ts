@@ -3,6 +3,7 @@ import type {
   ChanBiTwoPhaseResult,
   ChanChannelTwoPhaseResult,
   ChanDuan,
+  ChanDuanChannelTwoPhaseResult,
   ChanFenxing,
   ChanK,
   ChanMergedK,
@@ -11,6 +12,7 @@ import { assertChanKSeries } from './internal/assert-chan-k-series';
 import { BiCalculator } from './internal/bi';
 import { ChannelCalculator } from './internal/channel';
 import { DuanCalculator } from './internal/duan';
+import { DuanChannelCalculator } from './internal/duan-channel';
 import { KMergeCalculator } from './internal/k-merge';
 
 export class ChanCore {
@@ -48,5 +50,15 @@ export class ChanCore {
    */
   static createDuan(bis: readonly ChanBi[]): readonly ChanDuan[] {
     return new DuanCalculator().createDuan(bis);
+  }
+
+  /**
+   * 段级中枢：入参 = `createDuan` 的返回值 `ChanDuan[]`（组合方式
+   * `createDuanChannels(createDuan(createBi(k).phaseB))`）。几何对称重叠无方向，接线 ChannelLevel.Duan。
+   */
+  static createDuanChannels(
+    duans: readonly ChanDuan[],
+  ): ChanDuanChannelTwoPhaseResult {
+    return new DuanChannelCalculator().createDuanChannels(duans);
   }
 }

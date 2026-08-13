@@ -2,6 +2,7 @@ import type {
   ChanBi,
   ChanChannel,
   ChanDuan,
+  ChanDuanChannel,
   ChanFenxing,
   ChanK,
   ChanMergedK,
@@ -9,6 +10,7 @@ import type {
 import type { KVo } from '../indicator/vo/k.vo';
 import type { BiVo } from './vo/bi.vo';
 import type { ChannelVo } from './vo/channel.vo';
+import type { DuanChannelVo } from './vo/duan-channel.vo';
 import type { DuanVo } from './vo/duan.vo';
 import type { FenxingVo } from './vo/fenxing.vo';
 import type { MergedKVo } from './vo/merged-k.vo';
@@ -110,6 +112,23 @@ export function toDuanVo(duan: ChanDuan): DuanVo {
     originBis: duan.originBis.map(toBiVo),
     startBi: duan.startBi === null ? null : toBiVo(duan.startBi),
     endBi: duan.endBi === null ? null : toBiVo(duan.endBi),
+  };
+}
+
+export function toDuanChannelVo(channel: ChanDuanChannel): DuanChannelVo {
+  return {
+    duans: channel.duans.map(toDuanVo),
+    zg: channel.zg,
+    zd: channel.zd,
+    gg: channel.gg,
+    dd: channel.dd,
+    level: channel.level,
+    type: channel.type,
+    status: channel.status,
+    startId: channel.startId,
+    endId: channel.endId,
+    displayStartId: channel.displayStartId,
+    displayEndId: channel.displayEndId,
   };
 }
 

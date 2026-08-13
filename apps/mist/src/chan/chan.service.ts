@@ -6,6 +6,7 @@ import {
   toBiVo,
   toChanK,
   toChannelVo,
+  toDuanChannelVo,
   toDuanVo,
   toFenxingVo,
   toMergedKVo,
@@ -53,6 +54,17 @@ export class ChanService {
   createDuan(createBiDto: CreateBiDto) {
     const bis = ChanCore.createBi(createBiDto.k.map(toChanK));
     return ChanCore.createDuan(bis.phaseB).map(toDuanVo);
+  }
+
+  // 段级中枢（对称重叠无方向；入参 = createDuan 返回值 ChanDuan[]，返回两阶段）
+  createDuanChannels(createBiDto: CreateBiDto) {
+    const bis = ChanCore.createBi(createBiDto.k.map(toChanK));
+    const duans = ChanCore.createDuan(bis.phaseB);
+    const result = ChanCore.createDuanChannels(duans);
+    return {
+      phaseA: result.phaseA.map(toDuanChannelVo),
+      phaseB: result.phaseB.map(toDuanChannelVo),
+    };
   }
 
   analyze(createBiDto: CreateBiDto) {

@@ -25,4 +25,9 @@ describe('ChanService HTTP boundary', () => {
     const result = service.createDuan({ k: [] });
     expect(result).toEqual([]);
   });
+
+  it('returns an empty two-phase Duan-level Channel result for empty K input', () => {
+    const result = service.createDuanChannels({ k: [] });
+    expect(result).toEqual({ phaseA: [], phaseB: [] });
+  });
 });

@@ -13,6 +13,7 @@ import type {
   ChanBi,
   ChanChannel,
   ChanDuan,
+  ChanDuanChannel,
   ChanFenxing,
   ChanMergedK,
 } from '@app/chancore';
@@ -20,6 +21,7 @@ import {
   toBiVo,
   toChanK,
   toChannelVo,
+  toDuanChannelVo,
   toDuanVo,
   toFenxingVo,
   toMergedKVo,
@@ -178,6 +180,64 @@ describe('ChanCore HTTP mapper', () => {
     expect(duanVo).not.toHaveProperty('lowest');
     expect(duan.originIds).toEqual([1, 2, 3]);
     expect(duan.originBis[0].originIds).toEqual([1, 2]);
+  });
+
+  it('maps Duan-level Channel with nested Duan evidence without changing core output', () => {
+    const start = makeFenxing(1, FenxingType.Bottom, 10, 5);
+    const end = makeFenxing(2, FenxingType.Top, 15, 8);
+    const firstBi: ChanBi = {
+      startTime: new Date('2026-07-01T01:31:00.000Z'),
+      endTime: new Date('2026-07-01T01:35:00.000Z'),
+      high: 15,
+      low: 5,
+      trend: TrendDirection.Up,
+      type: BiType.Complete,
+      status: BiStatus.Valid,
+      independentCount: 5,
+      originIds: [1, 2],
+      originData: [],
+      startFenxing: start,
+      endFenxing: end,
+    };
+    const duan: ChanDuan = {
+      startTime: firstBi.startTime,
+      endTime: firstBi.endTime,
+      high: 20,
+      low: 4,
+      trend: TrendDirection.Up,
+      type: DuanType.Complete,
+      status: DuanStatus.Valid,
+      independentCount: 7,
+      originIds: [1, 2, 3],
+      originBis: [firstBi],
+      startBi: firstBi,
+      endBi: firstBi,
+    };
+    const duanChannel: ChanDuanChannel = {
+      duans: [duan],
+      zg: 18,
+      zd: 6,
+      gg: 20,
+      dd: 4,
+      level: ChannelLevel.Duan,
+      type: ChannelType.Complete,
+      status: ChannelStatus.Valid,
+      startId: 1,
+      endId: 3,
+      displayStartId: 2,
+      displayEndId: 2,
+    };
+
+    const vo = toDuanChannelVo(duanChannel);
+    vo.duans[0].originIds.push(9);
+
+    expect(vo).toMatchObject({ zg: 18, zd: 6, gg: 20, dd: 4 });
+    expect(vo.level).toBe(ChannelLevel.Duan);
+    expect(vo.duans[0]).toMatchObject({ high: 20, low: 4 });
+    expect(vo).not.toHaveProperty('trend'); // 中枢无方向
+    expect(vo).not.toHaveProperty('highest');
+    expect(vo).not.toHaveProperty('lowest');
+    expect(duanChannel.duans[0].originIds).toEqual([1, 2, 3]);
   });
 });
 

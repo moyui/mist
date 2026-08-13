@@ -30,6 +30,7 @@ describe('ChanCore public facade', () => {
     expect(ChanCore.createBi([])).toEqual({ phaseA: [], phaseB: [] });
     expect(ChanCore.createChannels([])).toEqual({ phaseA: [], phaseB: [] });
     expect(ChanCore.createDuan([])).toEqual([]);
+    expect(ChanCore.createDuanChannels([])).toEqual({ phaseA: [], phaseB: [] });
   });
 
   it.each([
@@ -71,6 +72,9 @@ describe('ChanCore public facade', () => {
       bis: ChanCore.createBi(orderedK),
       channels: ChanCore.createChannels(orderedK),
       duans: ChanCore.createDuan(ChanCore.createBi(orderedK).phaseB),
+      duanChannels: ChanCore.createDuanChannels(
+        ChanCore.createDuan(ChanCore.createBi(orderedK).phaseB),
+      ),
     };
     const second = {
       mergedK: ChanCore.mergeK(orderedK),
@@ -78,6 +82,9 @@ describe('ChanCore public facade', () => {
       bis: ChanCore.createBi(orderedK),
       channels: ChanCore.createChannels(orderedK),
       duans: ChanCore.createDuan(ChanCore.createBi(orderedK).phaseB),
+      duanChannels: ChanCore.createDuanChannels(
+        ChanCore.createDuan(ChanCore.createBi(orderedK).phaseB),
+      ),
     };
 
     expect(second).toEqual(first);

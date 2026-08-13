@@ -4,6 +4,7 @@ import { getSchemaPath } from '@nestjs/swagger';
 import { ChanController } from './chan.controller';
 import { ChannelTwoPhaseVo, ChannelVo } from './vo/channel.vo';
 import { BiTwoPhaseVo, BiVo } from './vo/bi.vo';
+import { DuanChannelTwoPhaseVo } from './vo/duan-channel.vo';
 import { DuanVo } from './vo/duan.vo';
 import { FenxingVo } from './vo/fenxing.vo';
 import { MergedKVo } from './vo/merged-k.vo';
@@ -16,7 +17,8 @@ describe('ChanController OpenAPI contract', () => {
       | 'postIndexBi'
       | 'postFenxing'
       | 'postChannel'
-      | 'postDuan',
+      | 'postDuan'
+      | 'postDuanChannel',
   ) {
     const responses = Reflect.getMetadata(
       DECORATORS.API_RESPONSE,
@@ -46,6 +48,13 @@ describe('ChanController OpenAPI contract', () => {
     expect(responseSchema('postDuan').allOf[1].properties.data).toEqual({
       type: 'array',
       items: { $ref: getSchemaPath(DuanVo) },
+    });
+    expect(responseSchema('postDuanChannel').allOf[1]).toEqual({
+      properties: {
+        success: { type: 'boolean', enum: [true] },
+        statusCode: { type: 'integer', enum: [200] },
+        data: { $ref: getSchemaPath(DuanChannelTwoPhaseVo) },
+      },
     });
   });
 
