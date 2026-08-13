@@ -158,5 +158,58 @@ describe('Decimal8', () => {
     expect(() => value.compare('1' as never)).toThrow(TypeError);
     expect(() => value.add('1' as never)).toThrow(TypeError);
     expect(() => value.subtract('1' as never)).toThrow(TypeError);
+    expect(() => value.divideRoundHalfUp('1' as never)).toThrow(TypeError);
+  });
+
+  it.each([
+    ['13560000', '10000', '1356'],
+    ['13494000', '10000', '1349.4'],
+    ['5371394900', '12126800', '442.93588581'],
+    ['1', '8', '0.125'],
+    ['1', '3', '0.33333333'],
+  ] as const)(
+    'divides %s / %s exactly with half-up rounding to scale-8',
+    (numerator, denominator, expected) => {
+      const result = Decimal8.parseCanonical(numerator).divideRoundHalfUp(
+        Decimal8.parseCanonical(denominator),
+      );
+      expect(result.formatCanonical()).toBe(expected);
+    },
+  );
+
+  it('rounds half up at scale-8 for exact midpoints', () => {
+    // 0.500000005: the 9th decimal is discarded by scale-8 rounding.
+    const value = Decimal8.parseCanonical('1').divideRoundHalfUp(
+      Decimal8.parseCanonical('2'),
+    );
+    expect(value.formatCanonical()).toBe('0.5');
+
+    const threeDigit = Decimal8.parseCanonical('1').divideRoundHalfUp(
+      Decimal8.parseCanonical('8'),
+    );
+    expect(threeDigit.formatCanonical()).toBe('0.125');
+  });
+
+  it('rejects division by zero or negative divisor', () => {
+    const value = Decimal8.parseCanonical('1');
+
+    expect(() => value.divideRoundHalfUp(Decimal8.ZERO)).toThrow(RangeError);
+  });
+
+  it.each([
+    [2, '1349.4286', '1349.43'],
+    [2, '1349.425', '1349.43'],
+    [2, '1349.4249', '1349.42'],
+    [0, '1349.5', '1350'],
+    [8, '1349.4286', '1349.4286'],
+  ] as const)('rounds %s to %s places half up', (places, input, expected) => {
+    const result = Decimal8.parseCanonical(input).roundToScale(places);
+    expect(result.formatCanonical()).toBe(expected);
+  });
+
+  it.each([-1, 9, 1.5])('rejects invalid round places %s', (places) => {
+    const value = Decimal8.parseCanonical('1');
+
+    expect(() => value.roundToScale(places)).toThrow(RangeError);
   });
 });

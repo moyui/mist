@@ -601,15 +601,27 @@ export function toSealed(state: OpenCandleState): SealedCandle {
   // (amount/volume, from real exchange trade totals) may fall outside the
   // band when intrabucket price spikes land between samples. Clamp the band
   // to include VWAP so the sealed candle is always self-consistent.
+  // Fixed-point contract (F1-q): amount/volume divide in Decimal8 (BigInt,
+  // scale-8) with half-up rounding to 2 decimals — no binary-float
+  // intermediate arithmetic.
   if (state.volumeDelta && state.amountDelta) {
-    const volume = Number(state.volumeDelta);
-    const amount = Number(state.amountDelta);
-    if (volume > 0 && amount > 0) {
-      const vwap = amount / volume;
+    const volume = Decimal8.parseCanonical(state.volumeDelta);
+    const amount = Decimal8.parseCanonical(state.amountDelta);
+    if (
+      volume.compare(Decimal8.ZERO) > 0 &&
+      amount.compare(Decimal8.ZERO) > 0
+    ) {
+      const vwapCents = amount.divideRoundHalfUp(volume).roundToScale(2);
+      const vwap = Number(vwapCents.formatCanonical());
       high = Math.max(high, vwap);
       low = Math.min(low, vwap);
     }
   }
+
+  // Fixed-point output contract: every sealed numeric field is 2-decimal
+  // (cents-exact, `v * 100` is an integer), matching MySQL DECIMAL(20,2).
+  // 北交所 3 位价格接入时重评（spec: fixed-point-candle-arithmetic）。
+  const toCents = (value: number): number => Math.round(value * 100) / 100;
 
   return {
     tradingDay: state.tradingDay,
@@ -619,10 +631,10 @@ export function toSealed(state: OpenCandleState): SealedCandle {
     session: state.session,
     bucketStartMs: state.bucketStartMs,
     bucketEndMs: state.bucketEndMs,
-    open: state.open,
-    high,
-    low,
-    close: state.close,
+    open: toCents(state.open),
+    high: toCents(high),
+    low: toCents(low),
+    close: toCents(state.close),
     volume: state.volumeDelta,
     amount: state.amountDelta,
     closingCumulativeVolume: state.lastCumulativeVolume,

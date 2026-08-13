@@ -93,6 +93,32 @@ export class Decimal8 {
     return Decimal8.fromScaled(this.scaledValue - other.scaledValue);
   }
 
+  /**
+   * Divide by another Decimal8, rounding half up to scale-eight.
+   * Non-negative operands only (Decimal8 is unsigned by design).
+   */
+  divideRoundHalfUp(other: Decimal8): Decimal8 {
+    assertDecimal8(other);
+    if (other.scaledValue <= 0n) {
+      throw new RangeError('division requires a positive Decimal8 divisor');
+    }
+    const numerator = this.scaledValue * DECIMAL8_SCALE;
+    const denominator = other.scaledValue;
+    const rounded = (numerator * 2n + denominator) / (2n * denominator);
+    return Decimal8.fromScaled(rounded);
+  }
+
+  /** Round to `places` decimal places (0..8), half up. Non-negative only. */
+  roundToScale(places: number): Decimal8 {
+    if (!Number.isInteger(places) || places < 0 || places > 8) {
+      throw new RangeError('places must be an integer in 0..8');
+    }
+    const factor = 10n ** BigInt(8 - places);
+    const half = factor / 2n;
+    const rounded = ((this.scaledValue + half) / factor) * factor;
+    return Decimal8.fromScaled(rounded);
+  }
+
   scaleByUnit(factor: Decimal8UnitFactor): Decimal8 {
     if (this.scaledValue < 0n) {
       throw new RangeError('unit scaling requires a non-negative Decimal8');

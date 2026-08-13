@@ -680,4 +680,42 @@ describe('toSealed VWAP bound correction', () => {
     expect(sealedZero.high).toBe(1355);
     expect(sealedZero.low).toBe(1350);
   });
+
+  it('seals VWAP with fixed-point sub-cent precision (F1-q regression)', () => {
+    // Real 300502.SZ bucket: amount 5,371,394,900 / volume 12,126,800
+    // → 442.93588581 (scale-8) → clamped/rounded 2-decimal 442.94.
+    const sealed = toSealed(
+      makeState({
+        high: 440,
+        low: 435,
+        volumeDelta: '12126800',
+        amountDelta: '5371394900',
+      }),
+    );
+    expect(sealed.high).toBe(442.94);
+    expect(sealed.low).toBe(435);
+  });
+
+  it('seals every numeric field to 2-decimal fixed point', () => {
+    // A 3-decimal sampled price (e.g. 北交所) is rounded at the output
+    // boundary; 2-decimal inputs are preserved exactly.
+    const sealed = toSealed(
+      makeState({
+        open: 1349.432,
+        high: 1355.123,
+        low: 1348.987,
+        close: 1352.5,
+      }),
+    );
+    expect(sealed.open).toBe(1349.43);
+    expect(sealed.high).toBe(1355.12);
+    expect(sealed.low).toBe(1348.99);
+    expect(sealed.close).toBe(1352.5);
+
+    for (const value of [sealed.open, sealed.high, sealed.low, sealed.close]) {
+      expect(Math.abs(value * 100 - Math.round(value * 100))).toBeLessThan(
+        1e-9,
+      );
+    }
+  });
 });
