@@ -34,13 +34,29 @@ export class OoAlertQueueService implements OnModuleDestroy {
     });
   }
 
-  async enqueue(job: OoAlertJobV1): Promise<void> {
+  /** Enqueue one OO health-alert job (jobId dedupes the same alert within a
+   *  one-minute window so a persistent anomaly does not spam WeCom/QQ). */
+  async enqueueAlert(job: OoAlertJobV1): Promise<void> {
     await this.queue.add(OO_ALERT_JOB, job, {
       jobId: `${job.alertName}:${windowStartMs(job.ts)}`,
       attempts: 3,
       backoff: { type: 'exponential', delay: 2_000 },
       removeOnComplete: 1_000,
     });
+  }
+
+  /** BullMQ job counts by state, for the queue-depth metric (L5: both queues). */
+  async snapshotCounts(): Promise<{
+    waiting: number;
+    active: number;
+    delayed: number;
+  }> {
+    const c = await this.queue.getJobCounts('waiting', 'active', 'delayed');
+    return {
+      waiting: c.waiting ?? 0,
+      active: c.active ?? 0,
+      delayed: c.delayed ?? 0,
+    };
   }
 
   onModuleDestroy(): Promise<void> {

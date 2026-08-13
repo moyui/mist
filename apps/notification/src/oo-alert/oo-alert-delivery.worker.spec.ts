@@ -1,5 +1,6 @@
 import { OoAlertDeliveryWorker } from './oo-alert-delivery.worker';
 import { buildInfraEnvelope } from './infra-alert.envelope';
+import { SEVERITY_BY_PREFIX } from './oo-alert.constants';
 
 function createWorker(channels = 'wechat') {
   const config = {
@@ -11,8 +12,6 @@ function createWorker(channels = 'wechat') {
   const counters = {
     recordSent: jest.fn(),
     recordFailure: jest.fn(),
-    recordAttempt: jest.fn(),
-    recordDeadLetter: jest.fn(),
   };
   const worker = new OoAlertDeliveryWorker(
     config as never,
@@ -77,5 +76,20 @@ describe('OoAlertDeliveryWorker', () => {
     wecom.send.mockResolvedValue({ status: 'permanent_failure', error: 'bad' });
     await worker.process({ data: JOB } as never);
     expect(counters.recordFailure).toHaveBeenCalledWith('WECHAT');
+  });
+});
+
+describe('SEVERITY_BY_PREFIX', () => {
+  it('covers every rules.json prefix (A1..A6) — L4 contract lock', () => {
+    // Must stay in lockstep with mist-deploy/oo-alerts/rules.json; the sync
+    // script enforces the same mapping on the deploy side.
+    expect(SEVERITY_BY_PREFIX).toEqual({
+      A1: 'P0',
+      A2: 'P0',
+      A3: 'P1',
+      A4: 'P1',
+      A5: 'P2',
+      A6: 'P2',
+    });
   });
 });

@@ -73,7 +73,7 @@ export class AlertChannelDeliveryService {
     if (!adapter) {
       // Short-circuit before loading evidence: no adapter for this channel.
       this.counters.recordDeadLetter(channel);
-      await this.markDelivery(
+      await this.updateDeliveryStatus(
         delivery.id,
         StrategyAlertDeliveryStatus.DEAD_LETTERED,
         delivery.attemptCount,
@@ -140,7 +140,12 @@ export class AlertChannelDeliveryService {
       ? StrategyAlertDeliveryStatus.DEAD_LETTERED
       : StrategyAlertDeliveryStatus.FAILED;
     this.counters.recordFailure(channel);
-    await this.markDelivery(delivery.id, newStatus, attemptNo, result.error);
+    await this.updateDeliveryStatus(
+      delivery.id,
+      newStatus,
+      attemptNo,
+      result.error,
+    );
     await this.reconcile(alertEventId);
 
     if (result.status === 'transient_failure' && !terminal) {
@@ -154,7 +159,7 @@ export class AlertChannelDeliveryService {
     );
   }
 
-  private async markDelivery(
+  private async updateDeliveryStatus(
     id: number,
     status: StrategyAlertDeliveryStatus,
     attemptCount: number,

@@ -7,8 +7,8 @@ import type {
   ChannelMessage,
 } from '../channels/channel-adapter.port';
 import { QqChannelAdapter } from '../channels/qq.channel-adapter';
-import { NotificationDeliveryCounters } from '../delivery/notification-delivery-counters';
 import { buildInfraEnvelope } from './infra-alert.envelope';
+import { OoAlertDeliveryCounters } from './oo-alert-delivery-counters';
 import {
   OO_ALERT_BULLMQ_PREFIX,
   OO_ALERT_JOB_TIMEOUT_MS,
@@ -37,7 +37,7 @@ export class OoAlertDeliveryWorker extends WorkerHost {
     config: ConfigService,
     @Inject(OO_ALERT_WECHAT_ADAPTER) private readonly wecom: ChannelAdapter,
     private readonly qq: QqChannelAdapter,
-    private readonly counters: NotificationDeliveryCounters,
+    private readonly counters: OoAlertDeliveryCounters,
   ) {
     super();
     const channels = new Set(
@@ -83,7 +83,7 @@ export class OoAlertDeliveryWorker extends WorkerHost {
     adapter: ChannelAdapter,
     envelope: ChannelMessage,
   ): Promise<void> {
-    const channel = String(adapter.channel);
+    const channel = channelLabel(adapter.channel);
     try {
       const result = await adapter.send(envelope);
       if (result.status === 'sent') {
@@ -106,4 +106,10 @@ export class OoAlertDeliveryWorker extends WorkerHost {
       throw error;
     }
   }
+}
+
+/** Metric label for a channel enum value (naming parity with the strategy
+ *  side's explicit toNotificationChannel bridge). */
+function channelLabel(channel: ChannelAdapter['channel']): string {
+  return channel;
 }

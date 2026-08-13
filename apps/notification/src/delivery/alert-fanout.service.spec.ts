@@ -3,6 +3,7 @@ import {
   StrategyAlertDeliveryStatus,
   StrategyAlertStatus,
 } from '@app/shared-data';
+import { QueryFailedError } from 'typeorm';
 import type { ChannelAdapter } from '../channels/channel-adapter.port';
 import { AlertFanoutService } from './alert-fanout.service';
 
@@ -113,14 +114,40 @@ describe('AlertFanoutService', () => {
     expect(queue.enqueueChannel).not.toHaveBeenCalled();
   });
 
-  it('swallows unique-constraint races on delivery save (concurrent fanout)', async () => {
+  it('swallows the exact delivery-row unique-constraint race (concurrent fanout)', async () => {
     alertEvents.findOne.mockResolvedValueOnce({ id: 5 });
     deliveries.findOne.mockResolvedValue(null);
-    deliveries.save.mockRejectedValueOnce(new Error('ER_DUP_ENTRY'));
+    deliveries.save.mockRejectedValueOnce(
+      dupError(
+        "Duplicate entry '5-wechat' for key 'strategy_alert_deliveries.uq_strategy_alert_deliveries_event_channel'",
+      ),
+    );
 
     await service.run({ contractVersion: 1, alertEventId: 5 });
 
     // still enqueued despite the dup-entry on save
     expect(queue.enqueueChannel).toHaveBeenCalledTimes(2);
   });
+
+  it('fails the job loudly when delivery-row save fails for a non-unique reason', async () => {
+    alertEvents.findOne.mockResolvedValueOnce({ id: 5 });
+    deliveries.findOne.mockResolvedValue(null);
+    const failure = new Error('connection lost');
+    deliveries.save.mockRejectedValueOnce(failure);
+
+    await expect(
+      service.run({ contractVersion: 1, alertEventId: 5 }),
+    ).rejects.toBe(failure);
+    // No channel job for a row that does not exist
+    expect(queue.enqueueChannel).not.toHaveBeenCalled();
+  });
 });
+
+function dupError(sqlMessage: string): Error {
+  const driver = Object.assign(new Error(sqlMessage), {
+    code: 'ER_DUP_ENTRY',
+    errno: 1062,
+    sqlMessage,
+  });
+  return new QueryFailedError('INSERT', [], driver);
+}

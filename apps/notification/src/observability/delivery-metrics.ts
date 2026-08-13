@@ -2,11 +2,19 @@ import { metrics } from '@opentelemetry/api';
 import type { NotificationDeliveryCounters } from '../delivery/notification-delivery-counters';
 
 let registered = false;
+let sweepRegistered = false;
 
 export interface QueueDepthSnapshot {
-  readonly waiting: number;
-  readonly active: number;
-  readonly delayed: number;
+  readonly strategy: Readonly<{
+    waiting: number;
+    active: number;
+    delayed: number;
+  }>;
+  readonly ooAlert: Readonly<{
+    waiting: number;
+    active: number;
+    delayed: number;
+  }>;
 }
 
 /**
@@ -61,17 +69,42 @@ export function registerDeliveryMetrics(
     (s) => s.attempts,
   );
 
+  const queues: ReadonlyArray<{
+    key: keyof QueueDepthSnapshot;
+    label: 'strategy' | 'oo_alert';
+  }> = [
+    { key: 'strategy', label: 'strategy' },
+    { key: 'ooAlert', label: 'oo_alert' },
+  ];
   meter
     .createObservableGauge('mist_notification_queue_depth', {
       description:
-        'Strategy alert delivery BullMQ queue depth (waiting/active/delayed)',
+        'Alert delivery BullMQ queue depth (waiting/active/delayed) by queue',
     })
     .addCallback((result) => {
       const snap = queueDepth();
-      result.observe(snap.waiting, { state: 'waiting' });
-      result.observe(snap.active, { state: 'active' });
-      result.observe(snap.delayed, { state: 'delayed' });
+      for (const { key, label } of queues) {
+        const depth = snap[key];
+        result.observe(depth.waiting, { state: 'waiting', queue: label });
+        result.observe(depth.active, { state: 'active', queue: label });
+        result.observe(depth.delayed, { state: 'delayed', queue: label });
+      }
     });
 
   registered = true;
+}
+
+/** Registers the sweep-recovery gauge (M2); idempotent, one registration per process. */
+export function registerSweepMetrics(recoveredTotal: () => number): void {
+  if (sweepRegistered) return;
+  const meter = metrics.getMeter('mist-notification', '0.1.0');
+  meter
+    .createObservableGauge('mist_notification_sweep_recovered_total', {
+      description:
+        'Stranded PENDING events re-enqueued by the delivery sweep (process-local)',
+    })
+    .addCallback((result) => {
+      result.observe(recoveredTotal());
+    });
+  sweepRegistered = true;
 }

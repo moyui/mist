@@ -7,9 +7,10 @@ import {
   StrategySignal,
   StrategySignalKind,
   StrategySignalSource,
+  isUniqueConstraintViolation,
 } from '@app/shared-data';
 import type { ShadowStrategyCandidate } from '@app/signal';
-import { DataSource as TypeOrmDataSource, QueryFailedError } from 'typeorm';
+import { DataSource as TypeOrmDataSource } from 'typeorm';
 import {
   STRATEGY_ALERT_DELIVERY_HANDOFF_PORT,
   type StrategyAlertDeliveryHandoffPort,
@@ -71,7 +72,9 @@ export class LiveStrategyPersistenceService {
       await this.enqueueDelivery(alertEventId);
       return 'created';
     } catch (error) {
-      if (isNamedAlertDedupeConflict(error)) return 'duplicate_skipped';
+      if (isUniqueConstraintViolation(error, ALERT_DEDUPE_CONSTRAINT)) {
+        return 'duplicate_skipped';
+      }
       throw error;
     }
   }
@@ -112,19 +115,4 @@ export function liveStrategyAlertDedupeKey(
     candidate.signalKind,
     candidate.signalTime.getTime(),
   ].join(':');
-}
-
-export function isNamedAlertDedupeConflict(error: unknown): boolean {
-  if (!(error instanceof QueryFailedError)) return false;
-  const driver = error.driverError as {
-    code?: unknown;
-    errno?: unknown;
-    sqlMessage?: unknown;
-  };
-  if (driver.code !== 'ER_DUP_ENTRY' || driver.errno !== 1062) return false;
-  if (typeof driver.sqlMessage !== 'string') return false;
-  const match = /for key '([^']+)'\s*$/.exec(driver.sqlMessage);
-  if (!match) return false;
-  const exactName = match[1].split('.').at(-1);
-  return exactName === ALERT_DEDUPE_CONSTRAINT;
 }

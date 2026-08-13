@@ -4,6 +4,7 @@ import { StrategyAlertEvent, StrategyAlertStatus } from '@app/shared-data';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { MarkStrategyAlertDeliveryDto } from '../dto/mark-strategy-alert-delivery.dto';
 import { QueryStrategyAlertEventDto } from '../dto/query-strategy-alert-event.dto';
+import { StrategyAlertEventVo } from '../vo/strategy-alert-event.vo';
 
 @Injectable()
 export class StrategyAlertEventService {
@@ -14,7 +15,7 @@ export class StrategyAlertEventService {
 
   async findAll(
     query: QueryStrategyAlertEventDto,
-  ): Promise<StrategyAlertEvent[]> {
+  ): Promise<StrategyAlertEventVo[]> {
     const where: FindOptionsWhere<StrategyAlertEvent> = {};
 
     if (query.status !== undefined) where.status = query.status;
@@ -22,40 +23,47 @@ export class StrategyAlertEventService {
       where.strategySignalId = Number(query.strategySignalId);
     }
 
-    return await this.alertEventRepository.find({
+    const events = await this.alertEventRepository.find({
       where,
       order: { createdAt: 'DESC' },
     });
+    return events.map(StrategyAlertEventVo.fromEntity);
   }
 
   async markDelivered(
     id: number,
     dto: MarkStrategyAlertDeliveryDto,
-  ): Promise<StrategyAlertEvent> {
+  ): Promise<StrategyAlertEventVo> {
     const event = await this.findEventOrThrow(id);
 
     event.status = StrategyAlertStatus.DELIVERED;
     event.deliveryResult = dto.deliveryResult ?? null;
-    return await this.alertEventRepository.save(event);
+    return StrategyAlertEventVo.fromEntity(
+      await this.alertEventRepository.save(event),
+    );
   }
 
   async markFailed(
     id: number,
     dto: MarkStrategyAlertDeliveryDto,
-  ): Promise<StrategyAlertEvent> {
+  ): Promise<StrategyAlertEventVo> {
     const event = await this.findEventOrThrow(id);
 
     event.status = StrategyAlertStatus.FAILED;
     event.deliveryResult = dto.deliveryResult ?? null;
-    return await this.alertEventRepository.save(event);
+    return StrategyAlertEventVo.fromEntity(
+      await this.alertEventRepository.save(event),
+    );
   }
 
-  async acknowledge(id: number): Promise<StrategyAlertEvent> {
+  async acknowledge(id: number): Promise<StrategyAlertEventVo> {
     const event = await this.findEventOrThrow(id);
 
     event.status = StrategyAlertStatus.ACKED;
     event.acknowledgedAt = new Date();
-    return await this.alertEventRepository.save(event);
+    return StrategyAlertEventVo.fromEntity(
+      await this.alertEventRepository.save(event),
+    );
   }
 
   private async findEventOrThrow(id: number): Promise<StrategyAlertEvent> {

@@ -12,7 +12,7 @@ function createController() {
     get: (key: string) =>
       key === 'OO_ALERT_RECEIVER_TOKEN' ? 'tok' : undefined,
   };
-  const queue = { enqueue: jest.fn() };
+  const queue = { enqueueAlert: jest.fn() };
   const timezone = { isTradingDay: jest.fn().mockResolvedValue(true) };
   const ctrl = new OoAlertReceiverController(
     config as never,
@@ -32,7 +32,7 @@ describe('OoAlertReceiverController', () => {
     await expect(
       ctrl.receive(undefined, { alertName: 'A1', ts: '2026-08-13T02:00:00Z' }),
     ).rejects.toMatchObject({ status: 401 });
-    expect(queue.enqueue).not.toHaveBeenCalled();
+    expect(queue.enqueueAlert).not.toHaveBeenCalled();
   });
 
   it('drops the alert outside a trading session', async () => {
@@ -43,7 +43,7 @@ describe('OoAlertReceiverController', () => {
       ts: '2026-08-13T02:00:00Z',
     });
     expect(res.accepted).toBe(false);
-    expect(queue.enqueue).not.toHaveBeenCalled();
+    expect(queue.enqueueAlert).not.toHaveBeenCalled();
   });
 
   it('enqueues the alert during a trading session with derived severity', async () => {
@@ -53,16 +53,26 @@ describe('OoAlertReceiverController', () => {
       ts: '2026-08-13T02:00:00Z',
     });
     expect(res.accepted).toBe(true);
-    expect(queue.enqueue).toHaveBeenCalledWith(
+    expect(queue.enqueueAlert).toHaveBeenCalledWith(
       expect.objectContaining({ alertName: 'A1', severity: 'P0' }),
     );
   });
 
-  it('defaults unknown alert names to P2 and missing ts to now', async () => {
+  it('rejects a payload with a missing ts (L1 — no fabricated timestamp)', async () => {
     const { ctrl, queue } = createController();
-    const res = await ctrl.receive('tok', { alertName: 'CUSTOM' });
+    const res = await ctrl.receive('tok', { alertName: 'A1' });
+    expect(res.accepted).toBe(false);
+    expect(queue.enqueueAlert).not.toHaveBeenCalled();
+  });
+
+  it('defaults unknown alert names to P2', async () => {
+    const { ctrl, queue } = createController();
+    const res = await ctrl.receive('tok', {
+      alertName: 'CUSTOM',
+      ts: '2026-08-13T02:00:00Z',
+    });
     expect(res.accepted).toBe(true);
-    expect(queue.enqueue).toHaveBeenCalledWith(
+    expect(queue.enqueueAlert).toHaveBeenCalledWith(
       expect.objectContaining({ alertName: 'CUSTOM', severity: 'P2' }),
     );
   });

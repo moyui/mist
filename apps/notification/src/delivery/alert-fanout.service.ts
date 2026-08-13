@@ -6,11 +6,15 @@ import {
   StrategyAlertDeliveryStatus,
   StrategyAlertEvent,
   StrategyAlertStatus,
+  isUniqueConstraintViolation,
 } from '@app/shared-data';
 import type { AlertDeliveryFanoutJobV1 } from '@app/signal';
 import type { ChannelAdapter } from '../channels/channel-adapter.port';
 import { CHANNEL_ADAPTERS } from '../channels/channel-adapter.port';
 import { AlertDeliveryQueueService } from './alert-delivery-queue.service';
+
+const DELIVERY_ROW_UNIQUE_CONSTRAINT =
+  'uq_strategy_alert_deliveries_event_channel';
 
 /**
  * Handles deliver.fanout: for one committed AlertEvent, ensures a pending
@@ -70,8 +74,20 @@ export class AlertFanoutService {
             status: StrategyAlertDeliveryStatus.PENDING,
             attemptCount: 0,
           });
-        } catch {
-          // unique-constraint race (concurrent fanout); row already exists
+        } catch (error) {
+          // Only the unique-constraint race (a concurrent fanout already saved
+          // this (event, channel) row) is expected; anything else must fail the
+          // job loudly — otherwise the row never exists, the channel job is
+          // silently dropped by the worker (no row => return), and the event
+          // disappears with no log and no metric.
+          if (
+            !isUniqueConstraintViolation(error, DELIVERY_ROW_UNIQUE_CONSTRAINT)
+          ) {
+            this.logger.error(
+              `fanout delivery row creation failed event=${alertEventId} channel=${channel}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            throw error;
+          }
         }
       }
       await this.queue.enqueueChannel(alertEventId, channel);

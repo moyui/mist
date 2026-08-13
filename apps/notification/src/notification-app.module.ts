@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'node:path';
 import { LoggerModule } from 'nestjs-pino';
@@ -12,6 +13,7 @@ import { NotificationHealthController } from './notification-health.controller';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',

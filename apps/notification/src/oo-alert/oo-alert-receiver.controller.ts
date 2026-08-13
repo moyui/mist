@@ -11,23 +11,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { TimezoneService, isInTradingHours } from '@app/timezone';
 import { OoAlertQueueService } from './oo-alert-queue.service';
-import type { OoAlertSeverity } from './oo-alert.constants';
+import { SEVERITY_BY_PREFIX } from './oo-alert.constants';
 
 interface OoAlertWebhookPayload {
   alertName?: unknown;
   ts?: unknown;
   [key: string]: unknown;
 }
-
-/** Rules file uses A1..A6 names; severity derives from the prefix. */
-const SEVERITY_BY_PREFIX: Record<string, OoAlertSeverity> = {
-  A1: 'P0',
-  A2: 'P0',
-  A3: 'P1',
-  A4: 'P1',
-  A5: 'P2',
-  A6: 'P2',
-};
 
 /**
  * OpenObserve alert webhook receiver. Token-authenticated; drops alerts that
@@ -62,8 +52,16 @@ export class OoAlertReceiverController {
       this.logger.warn('oo alert payload missing alertName');
       return { accepted: false };
     }
-    const ts =
-      typeof body['ts'] === 'string' ? body['ts'] : new Date().toISOString();
+    // Reject missing ts (L1): the OO template always renders
+    // {alert_start_time} as ISO; absence means template-contract drift and
+    // must surface, not be silently replaced with the current time.
+    const ts = typeof body['ts'] === 'string' ? body['ts'] : '';
+    if (!ts) {
+      this.logger.warn(
+        `oo alert payload missing ts alertName=${alertName} (template drift?)`,
+      );
+      return { accepted: false };
+    }
 
     const now = new Date();
     const tradingSession =
@@ -76,7 +74,7 @@ export class OoAlertReceiverController {
     }
 
     const prefix = alertName.slice(0, 2).toUpperCase();
-    await this.queue.enqueue({
+    await this.queue.enqueueAlert({
       alertName,
       severity: SEVERITY_BY_PREFIX[prefix] ?? 'P2',
       ts,

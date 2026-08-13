@@ -49,7 +49,7 @@ dead_letter 持续增长 = 渠道故障（webhook 失效 / NapCat 掉线）。
 ```bash
 # 重投某 AlertEvent 的 failed/dead_lettered 渠道（不重跑策略）
 docker exec mist-notification sh -lc \
-  'wget -qO- --post-data="" http://127.0.0.1:8006/v1/notification/replay/<alertEventId>'
+  'wget -qO- --post-data="" http://127.0.0.1:8006/internal/notification/replay/<alertEventId>'
 # endpoint 在 notification 容器内（V1 未挂 nginx 外部路由）；docker exec 可达。
 ```
 

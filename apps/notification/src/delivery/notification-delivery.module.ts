@@ -14,6 +14,7 @@ import {
   StrategyDefinition,
   StrategySignal,
 } from '@app/shared-data';
+import { OoAlertModule } from '../oo-alert/oo-alert.module';
 import { CHANNEL_ADAPTERS } from '../channels/channel-adapter.port';
 import { QqChannelAdapter } from '../channels/qq.channel-adapter';
 import { WeComChannelAdapter } from '../channels/wechat.channel-adapter';
@@ -23,6 +24,7 @@ import { AlertFanoutService } from './alert-fanout.service';
 import { AlertReplayService } from './alert-replay.service';
 import { NotificationDeliveryCounters } from './notification-delivery-counters';
 import { NotificationMetricsBootstrap } from './notification-metrics-bootstrap';
+import { PendingAlertDeliverySweepService } from './pending-alert-delivery-sweep.service';
 import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
 
 @Module({
@@ -49,6 +51,7 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
       },
     }),
     BullModule.registerQueue({ name: STRATEGY_ALERT_DELIVERY_QUEUE_NAME }),
+    OoAlertModule,
   ],
   providers: [
     AlertDeliveryQueueService,
@@ -58,6 +61,7 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
     StrategyAlertDeliveryWorker,
     NotificationDeliveryCounters,
     NotificationMetricsBootstrap,
+    PendingAlertDeliverySweepService,
     QqChannelAdapter,
     WeComChannelAdapter,
     {

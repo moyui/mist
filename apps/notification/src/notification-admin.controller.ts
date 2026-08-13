@@ -9,8 +9,13 @@ export interface ReplayResponse {
 /**
  * Operator-facing admin surface for the notification worker. Replay re-pushes a
  * failed/dead-lettered AlertEvent's deliveries without re-running strategy.
+ *
+ * Internal endpoint (remediate-alert-delivery-integrity L3): reachable only on
+ * the compose network (no host port mapping) — the network boundary is the
+ * access control, matching the /internal/ convention used by
+ * /internal/oo-alert-receiver.
  */
-@Controller('v1/notification')
+@Controller('internal/notification')
 export class NotificationAdminController {
   constructor(private readonly replayService: AlertReplayService) {}
 

@@ -39,7 +39,12 @@ describe('StrategyAlertEventService', () => {
       deliveryResult: { channel: 'astrbot', messageId: 'msg-1' },
       acknowledgedAt: null,
     });
-    expect(repository.save).toHaveBeenCalledWith(updated);
+    // save receives the modified entity; the public result is the VO view.
+    expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, status: StrategyAlertStatus.DELIVERED }),
+    );
+    expect(updated).toBeInstanceOf(Object);
+    expect(updated.constructor.name).toBe('StrategyAlertEventVo');
   });
 
   it('marks alert events failed with failure metadata', async () => {

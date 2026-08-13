@@ -1,7 +1,7 @@
 import { QueryFailedError } from 'typeorm';
+import { isUniqueConstraintViolation } from '@app/shared-data';
 import {
   LiveStrategyPersistenceService,
-  isNamedAlertDedupeConflict,
   liveStrategyAlertDedupeKey,
 } from './live-strategy-persistence.service';
 
@@ -54,15 +54,19 @@ describe('LiveStrategyPersistenceService', () => {
     await expect(service.persist(candidate())).resolves.toBe(
       'duplicate_skipped',
     );
-    expect(isNamedAlertDedupeConflict(exact)).toBe(true);
     expect(
-      isNamedAlertDedupeConflict(
+      isUniqueConstraintViolation(exact, 'uq_strategy_alert_events_dedupe_key'),
+    ).toBe(true);
+    expect(
+      isUniqueConstraintViolation(
         duplicateError("Duplicate entry 'x' for key 'some_other_unique'"),
+        'uq_strategy_alert_events_dedupe_key',
       ),
     ).toBe(false);
     expect(
-      isNamedAlertDedupeConflict(
+      isUniqueConstraintViolation(
         duplicateError('Duplicate entry without a named key'),
+        'uq_strategy_alert_events_dedupe_key',
       ),
     ).toBe(false);
   });
