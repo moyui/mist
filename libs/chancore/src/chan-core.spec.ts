@@ -29,7 +29,7 @@ describe('ChanCore public facade', () => {
     expect(ChanCore.findFenxings([])).toEqual([]);
     expect(ChanCore.createBi([])).toEqual({ phaseA: [], phaseB: [] });
     expect(ChanCore.createChannels([])).toEqual({ phaseA: [], phaseB: [] });
-    expect(ChanCore.createDuan({ phaseA: [], phaseB: [] })).toEqual([]);
+    expect(ChanCore.createDuan([])).toEqual([]);
   });
 
   it.each([
@@ -70,14 +70,14 @@ describe('ChanCore public facade', () => {
       fenxings: ChanCore.findFenxings(orderedK),
       bis: ChanCore.createBi(orderedK),
       channels: ChanCore.createChannels(orderedK),
-      duans: ChanCore.createDuan(ChanCore.createBi(orderedK)),
+      duans: ChanCore.createDuan(ChanCore.createBi(orderedK).phaseB),
     };
     const second = {
       mergedK: ChanCore.mergeK(orderedK),
       fenxings: ChanCore.findFenxings(orderedK),
       bis: ChanCore.createBi(orderedK),
       channels: ChanCore.createChannels(orderedK),
-      duans: ChanCore.createDuan(ChanCore.createBi(orderedK)),
+      duans: ChanCore.createDuan(ChanCore.createBi(orderedK).phaseB),
     };
 
     expect(second).toEqual(first);

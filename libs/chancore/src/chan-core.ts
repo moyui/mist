@@ -1,4 +1,5 @@
 import type {
+  ChanBi,
   ChanBiTwoPhaseResult,
   ChanChannelTwoPhaseResult,
   ChanDuan,
@@ -42,10 +43,10 @@ export class ChanCore {
   }
 
   /**
-   * 入参 = `createBi` 的返回值 `ChanBiTwoPhaseResult`（段显式消费笔的两阶段结果，
-   * 组合方式：`createDuan(createBi(k))`）。返回确认后的段序列（无 phaseA）。
+   * 入参 = `createBi` 返回值的 `phaseB`（`ChanBi[]` 最终笔数组，组合方式：
+   * `createDuan(createBi(k).phaseB)`）。返回确认后的段序列（无 phaseA）。
    */
-  static createDuan(bis: ChanBiTwoPhaseResult): readonly ChanDuan[] {
+  static createDuan(bis: readonly ChanBi[]): readonly ChanDuan[] {
     return new DuanCalculator().createDuan(bis);
   }
 }

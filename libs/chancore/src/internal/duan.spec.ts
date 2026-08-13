@@ -1,14 +1,12 @@
 import { BiStatus, BiType, DuanType, TrendDirection } from '../contracts';
-import type { ChanBi, ChanBiTwoPhaseResult } from '../contracts';
+import type { ChanBi } from '../contracts';
 import { DuanCalculator } from './duan';
 
 describe('DuanCalculator (特征序列法)', () => {
-  it('returns empty for fewer than 3 Bi in phaseB', () => {
+  it('returns empty for fewer than 3 Bi', () => {
     const calc = new DuanCalculator();
-    expect(calc.createDuan({ phaseA: [], phaseB: [] })).toEqual([]);
-    expect(
-      calc.createDuan({ phaseA: [], phaseB: [makeBi('up', 8, 4, 0)] }),
-    ).toEqual([]);
+    expect(calc.createDuan([])).toEqual([]);
+    expect(calc.createDuan([makeBi('up', 8, 4, 0)])).toEqual([]);
   });
 
   it('ends a segment at the fenxing extremum Bi when there is no gap (case 1)', () => {
@@ -23,7 +21,7 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('up', 13, 6, 6),
     ];
 
-    const result = new DuanCalculator().createDuan({ phaseA: [], phaseB: bis });
+    const result = new DuanCalculator().createDuan(bis);
 
     expect(result).toHaveLength(2);
     const seg = result[0];
@@ -55,7 +53,7 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('up', 11, 6, 10), // f4
     ];
 
-    const result = new DuanCalculator().createDuan({ phaseA: [], phaseB: bis });
+    const result = new DuanCalculator().createDuan(bis);
 
     // 向上段(bi0-2，经 case-2 倒推确认) + 向下段(bi3-7，case-1) + 尾段(bi8-10)
     expect(result).toHaveLength(3);
@@ -86,7 +84,7 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('up', 10, 7, 6), // 反方向新段特征序列仅 2 元素，无法成底分型
     ];
 
-    const result = new DuanCalculator().createDuan({ phaseA: [], phaseB: bis });
+    const result = new DuanCalculator().createDuan(bis);
 
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe(DuanType.UnComplete);
@@ -108,10 +106,9 @@ describe('DuanCalculator (特征序列法)', () => {
       makeBi('down', 9, 6, 9),
       makeBi('up', 11, 6, 10),
     ];
-    const input: ChanBiTwoPhaseResult = { phaseA: bis, phaseB: bis };
     const calc = new DuanCalculator();
-    const first = calc.createDuan(input);
-    const second = calc.createDuan(input);
+    const first = calc.createDuan(bis);
+    const second = calc.createDuan(bis);
     expect(second).toEqual(first);
     expect(bis.map((b) => b.high)).toEqual([
       8, 8, 13, 13, 11, 11, 10, 10, 9, 9, 11,

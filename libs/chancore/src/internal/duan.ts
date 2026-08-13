@@ -1,5 +1,5 @@
 import { DuanStatus, DuanType, TrendDirection } from '../contracts';
-import type { ChanBi, ChanBiTwoPhaseResult, ChanDuan } from '../contracts';
+import type { ChanBi, ChanDuan } from '../contracts';
 import { ChanInvariantError } from '../errors';
 import { collectBiRangeStats } from './duan-range';
 
@@ -36,11 +36,10 @@ interface SegmentEnd {
 
 export class DuanCalculator {
   /**
-   * 入参 = `createBi` 的返回值 `ChanBiTwoPhaseResult`（段显式消费笔的两阶段结果）。
-   * 特征序列法消费 phaseB（最终笔）。返回确认后的段序列（单数组，无 phaseA）。
+   * 入参 = `createBi` 返回值的 `phaseB`（`ChanBi[]`，最终笔数组）——段算法只消费最终笔，
+   * 不需要两阶段 envelope。返回确认后的段序列（单数组，无 phaseA）。
    */
-  createDuan(bisResult: ChanBiTwoPhaseResult): ChanDuan[] {
-    const bis = bisResult.phaseB;
+  createDuan(bis: readonly ChanBi[]): ChanDuan[] {
     if (bis.length < 3) {
       return [];
     }

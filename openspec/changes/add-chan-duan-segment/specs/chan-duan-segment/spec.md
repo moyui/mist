@@ -12,8 +12,8 @@ inclusion, identify the directional fenxing, and confirm segment termination thr
 case requiring retrospective confirmation).
 
 #### Scenario: A Duan is derived from Bi
-- **WHEN** a caller passes the `ChanBiTwoPhaseResult` returned by `createBi` to `createDuan`
-- **THEN** it MUST consume Bi Phase B from that result before deriving Duan
+- **WHEN** a caller passes the `ChanBi[]` Phase B sequence returned by `createBi` to `createDuan`
+- **THEN** it MUST derive Duan from that final Bi sequence directly (no two-phase envelope)
 - **AND** it MUST NOT re-derive Bi from raw K or with a different algorithm than `createBi`
 - **AND** the Duan algorithm MUST be the single-pass characteristic-sequence method, NOT the span-merge (`mergeSpans`)
   fixed-point mechanism used by Bi Phase B and Channel
@@ -92,8 +92,8 @@ intermediates and SHALL NOT be exposed as separate result fields.
 - **AND** each Duan MUST be either a confirmed complete Duan or the final uncomplete tail Duan
 - **AND** callers MUST NOT need to flatten, merge or select a phase
 
-#### Scenario: An empty Bi result is evaluated
-- **WHEN** `createDuan` receives a `ChanBiTwoPhaseResult` whose Phase B is empty
+#### Scenario: An empty Bi sequence is evaluated
+- **WHEN** `createDuan` receives an empty `ChanBi[]`
 - **THEN** it MUST return `[]`
 - **AND** no empty result MUST be represented as a database, contract or algorithm error
 
