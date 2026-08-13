@@ -116,12 +116,28 @@
     `OTEL_SERVICE_NAME ?? 'mist-backend'` 导致各 app 生产遥测 service_name 串名——已按
     mist-deploy `8317453`（compose 各 node 服务显式 `OTEL_SERVICE_NAME`）修复并重部署验证
     （backtest 指标 service_name='backtest'）。
-- [ ] 5.3 运行 `mist`、`mist-deploy` 完整基线（`mist-monitoring` 已归档删除 2026-08-12，
+- [x] 5.3 运行 `mist`、`mist-deploy` 完整基线（`mist-monitoring` 已归档删除 2026-08-12，
   观测侧基线不再执行；见 retire-diagnostic-endpoints-to-structured-logs D6）、strict
   OpenSpec、退役路径检索和
   `git diff --check`。
-- [ ] 5.4 在隔离真实 MySQL 执行 migration pre/postflight/readback、protected digest、first/middle page
+  （**2026-08-13 完成**：mist lint/typecheck/test:ci 1323/coverage 全绿；
+  mist-deploy 39 测试脚本 38 过（仅 test-mysql-backup-restore 因 Windows E: 盘依赖，
+  CI windows-latest 兜底）；openspec validate --all --strict 65/0；backtest 代码无
+  `/internal/realtime`/`:9109` 残留；git diff --check 两仓 clean。顺手修 2 个 retire/gaps
+  stale 断言：test-verify-tdx-stopped `/app/hello`、test-mode-isolation-hil `realtimeMode`
+  ——mist-deploy 74b8398 未 push）
+- [x] 5.4 在隔离真实 MySQL 执行 migration pre/postflight/readback、protected digest、first/middle page
   SQL shape、`SHOW INDEX` 和 representative `EXPLAIN`/大范围 replay 门禁。
+  （**2026-08-13 完成**：本地 Docker mysql:8.4（生产同版本）隔离容器，纯 SQL runner
+  （`run-migrations.mjs` + schema_migrations ledger，TypeORM synchronize:false）跑
+  001-015 → preflight（target_issues/index 缺失）→ apply 016 → postflight（target_issues
+  `json NOT NULL DEFAULT json_array()` + idx_run_time_id 3 列 BTREE 顺序对）→ SHOW INDEX
+  确认 → EXPLAIN（FORCE index `Extra:NULL` 无 filesort vs 默认 `Using filesort`，证明
+  pagination index 消除分页排序）→ first/middle page shape 一致（Using index）→ readback
+  三 ready=1 → protected digest（受保护表 k/k_extensions_*/strategy_signals/
+  strategy_alert_events 全在，016 additive 未触动）→ 补 017-018 完整 schema 18 条 ledger。
+  **抓到 2 个 readback bug 并修复**（e11edbe 未 push）：COLUMN_DEFAULT MySQL 8.4 不带括号、
+  identity COUNT(*)=1 应 >=1——生产 cutover 会误报阻塞）
 - [ ] 5.5 完成 Windows appliance restart/isolation 与 TDX/QMT 1m/日线 historical quantity HIL；未证明
   profile 时 quantity plan 保持 ineligible。
 - [ ] 5.6 经项目负责人审核数据库、API、runtime、deployment 和 HIL evidence 后，先部署并验收尚未接

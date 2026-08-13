@@ -23,7 +23,7 @@
 | Change | 进度 | 剩余项 | 阻塞/下一步 |
 |---|---|---|---|
 | `integrate-production-realtime-subscription-lifecycle` | 41/43 | 6.7 源级回滚演练（mode off/镜像回退，不动 migration/assignments/journal/Redis/MySQL 事实）；6.8 全量核对 + strict validation 后归档（6.6 注记 "both sources 未完整达成"，QMT 已随 6.5 补验） | 需 Windows appliance 手动演练窗口 |
-| `extract-backtest-runtime` | 31/36 | 5.3 三仓完整基线 + 退役路径检索；5.4 真实 MySQL migration pre/postflight + EXPLAIN 门禁；5.5 Windows appliance restart/isolation + TDX/QMT 1m/日线 **quantity HIL**（未证明 profile 前 quantity plan 保持 ineligible）；5.6 部署 cutover（先验收 backtest 再切 RPC-only mist-backend） | 5.2（OTel 指标）实质完成仅差勾选；5.6 受 mist-production 审批保护 |
+| `extract-backtest-runtime` | 33/36 | **5.3/5.4 已完成 2026-08-13**（mist+deploy 基线 + 隔离 mysql:8.4 跑 016 pre/postflight/EXPLAIN/readback，抓修 2 readback bug e11edbe）；剩 5.5 Windows appliance restart/isolation + TDX/QMT 1m/日线 **quantity HIL**（未证明 profile 前 quantity plan 保持 ineligible）；5.6 部署 cutover（先验收 backtest 再切 RPC-only mist-backend） | 5.6 受 mist-production 审批保护；5.5 需真机+行情窗口 |
 | `add-realtime-subscription-operator-ux` | 19/20 | 4.3 真机联测（**已 Deferred**：需 matched backend contract/image + terminal HIL；前端独立验证已完成） | 随下次真机窗口 |
 
 ### B. 延期已解除、待启动（价值闭环最后一步）
