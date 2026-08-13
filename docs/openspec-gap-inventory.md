@@ -6,9 +6,10 @@
 ## 状态速览
 
 - `specs/`：52 个已采纳 spec
-- `changes/`：**4 个 active change**（`archive/` 下 90+ 已归档）
+- `changes/`：**5 个 active change**（`archive/` 下 90+ 已归档）
 - **价值闭环已打通**（2026-08-13）：`deliver-strategy-notifications` 归档 —— 实时K→信号→PENDING→QQ/微信投递链全通
 - 08-13 归档（3 个）：restore-mock-env-candle-assertions（22/22）、**deliver-strategy-notifications**（21/21，价值闭环）、fixed-point-candle-arithmetic（16/16，F1-q 系统化定点门禁）
+- 08-13 新 change（1 个）：**fix-tdx-historical-amount-unit**（已完成+已部署 87f37d22：k 表 tdx amount 万元→元 migration 019 + 写入层 Decimal8 ×10000；backtest 5.5 quantity HIL 的 TDX profile 前置）
 - 08-12 归档（9 个）：remediate / fix-tdx（E-0 全绿）/ otel-gaps（6.3）/ decouple（F4 过 13%→0.6%）/ retire-diagnostic / datasource-logs / declarative-realtime / windows-openssh / **define-mist-production-roadmap**（G2-G4 处置）
 
 ---
@@ -19,8 +20,8 @@
 
 | Change | 进度 | 剩余项 | 阻塞/下一步 |
 |---|---|---|---|
-| `integrate-production-realtime-subscription-lifecycle` | 41/43 | 6.7 源级回滚演练（mode off/镜像回退，不动 migration/assignments/journal/Redis/MySQL 事实）；6.8 全量核对 + strict validation 后归档（6.6 注记 "both sources 未完整达成"，QMT 已随 6.5 补验） | 需 Windows appliance 手动演练窗口 |
-| `extract-backtest-runtime` | 33/36 | 5.3/5.4 已完成（08-13：三仓基线 + 隔离 mysql:8.4 跑 016 pre/postflight/EXPLAIN/readback，抓修 2 readback bug e11edbe）；5.5 OTel 指标（子任务全做，父任务差勾选）；剩 **5.5b Windows appliance restart/isolation + TDX/QMT 1m/日线 quantity HIL**（未证明 profile 前 quantity plan ineligible）+ **5.6 部署 cutover**（先验收 backtest 再切 RPC-only mist-backend，受 mist-production 审批保护） | 5.5b 需真机+行情窗口；5.6 审批 |
+| `integrate-production-realtime-subscription-lifecycle` | 41/43 | 6.7 源级回滚演练（mode off/镜像回退，不动 migration/assignments/journal/Redis/MySQL 事实）；6.8 全量核对 + strict validation 后归档（6.6 注记 "both sources 未完整达成"，QMT 已随 6.5 补验） | **已推迟**（08-13 用户拍板：修复批部署 + 稳定观察后再演练；与 backtest 5.5 同窗口） |
+| `extract-backtest-runtime` | 33/36 | 5.3/5.4 已完成（08-13：三仓基线 + 隔离 mysql:8.4 跑 016 pre/postflight/EXPLAIN/readback，抓修 2 readback bug e11edbe）；剩 **5.5 Windows appliance restart/isolation + TDX/QMT 1m/日线 quantity HIL** + **5.6 部署 cutover**（受 mist-production 审批保护） | **5.5 已推迟**（08-13 用户拍板，三阻塞：① restart-isolation HIL 前置要求"重启时源无订阅"与生产不符 ② TDX amount 万元已由 fix-tdx-historical-amount-unit 修复（019）③ TDX 1m/QMT 历史数据不足——收盘同步未上线；与 6.7 同窗口）；5.6 审批 |
 | `add-realtime-subscription-operator-ux` | 19/20 | 4.3 真机联测（**已 Deferred**：需 matched backend contract/image + terminal HIL；前端独立验证已完成） | 随下次真机窗口 |
 
 ### B. 被动
@@ -28,6 +29,7 @@
 | Change | 进度 | 剩余项 |
 |---|---|---|
 | `capture-realtime-provider-anomalies` | 0/14 | **被动契约**：等真实 incident 才执行，不阻塞正常路径；禁止 fault injection；TDX/QMT negative branch 的承接方 |
+| `fix-tdx-historical-amount-unit` | 14/14 | 08-13 完成+已部署（87f37d22）：k 表 tdx amount 万元→元（migration 019 + 写入层 Decimal8 ×10000，600519 73.7 亿验证）；**backtest 5.5 TDX amount profile 前置**；待归档（与统一归档窗口） |
 
 ---
 
