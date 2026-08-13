@@ -1,6 +1,7 @@
 import type {
   ChanBiTwoPhaseResult,
   ChanChannelTwoPhaseResult,
+  ChanDuanTwoPhaseResult,
   ChanFenxing,
   ChanK,
   ChanMergedK,
@@ -8,6 +9,7 @@ import type {
 import { assertChanKSeries } from './internal/assert-chan-k-series';
 import { BiCalculator } from './internal/bi';
 import { ChannelCalculator } from './internal/channel';
+import { DuanCalculator } from './internal/duan';
 import { KMergeCalculator } from './internal/k-merge';
 
 export class ChanCore {
@@ -37,5 +39,12 @@ export class ChanCore {
     const mergedK = new KMergeCalculator().merge(orderedK);
     const bis = new BiCalculator().getBi(mergedK);
     return new ChannelCalculator().createChannels(bis.phaseB);
+  }
+
+  static createDuan(orderedK: readonly ChanK[]): ChanDuanTwoPhaseResult {
+    assertChanKSeries(orderedK);
+    const mergedK = new KMergeCalculator().merge(orderedK);
+    const bis = new BiCalculator().getBi(mergedK);
+    return new DuanCalculator().createDuan(bis.phaseB);
   }
 }

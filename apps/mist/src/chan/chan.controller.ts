@@ -6,6 +6,7 @@ import { ChanService } from './chan.service';
 import { CreateBiDto } from './dto/create-bi.dto';
 import { ChannelTwoPhaseVo } from './vo/channel.vo';
 import { BiTwoPhaseVo } from './vo/bi.vo';
+import { DuanTwoPhaseVo } from './vo/duan.vo';
 import { MergedKVo } from './vo/merged-k.vo';
 import { FenxingVo } from './vo/fenxing.vo';
 import { IndicatorQueryDto } from '../indicator/dto/query/indicator-query.dto';
@@ -187,5 +188,44 @@ export class ChanController {
     }));
     const createBiDto: CreateBiDto = { k: kData };
     return this.chanService.createChannels(createBiDto);
+  }
+
+  @Post('duan')
+  @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 requests per minute for Duan creation
+  @ApiOperation({
+    summary: 'Create Duan (segments)',
+    description:
+      'Identifies and creates Duan (line segments) from Bi using the characteristic-sequence method (Chan Theory). Returns a two-phase result: phaseA (characteristic-sequence fenxing candidates) and phaseB (confirmed segments).',
+  })
+  @ApiEnvelopeResponse({
+    status: 200,
+    description:
+      'Returns an API envelope whose data contains the two-phase Duan result { phaseA, phaseB }',
+    type: DuanTwoPhaseVo,
+  })
+  async postDuan(@Body() queryDto: IndicatorQueryDto) {
+    const { startDate, endDate } = this.parseQueryDateRange(queryDto);
+
+    const kData = (
+      await this.indicatorService.findKData({
+        code: queryDto.code,
+        period: queryDto.period,
+        startDate,
+        endDate,
+        source: queryDto.source,
+      })
+    ).map((k) => ({
+      id: k.id,
+      symbol: k.security.code,
+      time: k.timestamp,
+      open: k.open,
+      high: k.high,
+      low: k.low,
+      close: k.close,
+      volume: k.volume,
+      amount: k.amount,
+    }));
+    const createBiDto: CreateBiDto = { k: kData };
+    return this.chanService.createDuan(createBiDto);
   }
 }

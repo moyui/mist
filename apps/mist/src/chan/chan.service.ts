@@ -6,6 +6,7 @@ import {
   toBiVo,
   toChanK,
   toChannelVo,
+  toDuanVo,
   toFenxingVo,
   toMergedKVo,
   type ChanKSource,
@@ -45,6 +46,15 @@ export class ChanService {
     return {
       phaseA: result.phaseA.map(toChannelVo),
       phaseB: result.phaseB.map(toChannelVo),
+    };
+  }
+
+  // 画段（线段，特征序列法）
+  createDuan(createBiDto: CreateBiDto) {
+    const result = ChanCore.createDuan(createBiDto.k.map(toChanK));
+    return {
+      phaseA: result.phaseA.map(toDuanVo),
+      phaseB: result.phaseB.map(toDuanVo),
     };
   }
 

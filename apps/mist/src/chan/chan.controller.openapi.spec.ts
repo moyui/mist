@@ -4,13 +4,19 @@ import { getSchemaPath } from '@nestjs/swagger';
 import { ChanController } from './chan.controller';
 import { ChannelTwoPhaseVo, ChannelVo } from './vo/channel.vo';
 import { BiTwoPhaseVo, BiVo } from './vo/bi.vo';
+import { DuanTwoPhaseVo, DuanVo } from './vo/duan.vo';
 import { FenxingVo } from './vo/fenxing.vo';
 import { MergedKVo } from './vo/merged-k.vo';
 import { KVo } from '../indicator/vo/k.vo';
 
 describe('ChanController OpenAPI contract', () => {
   function responseSchema(
-    method: 'postMergeK' | 'postIndexBi' | 'postFenxing' | 'postChannel',
+    method:
+      | 'postMergeK'
+      | 'postIndexBi'
+      | 'postFenxing'
+      | 'postChannel'
+      | 'postDuan',
   ) {
     const responses = Reflect.getMetadata(
       DECORATORS.API_RESPONSE,
@@ -37,6 +43,13 @@ describe('ChanController OpenAPI contract', () => {
         data: { $ref: getSchemaPath(ChannelTwoPhaseVo) },
       },
     });
+    expect(responseSchema('postDuan').allOf[1]).toEqual({
+      properties: {
+        success: { type: 'boolean', enum: [true] },
+        statusCode: { type: 'integer', enum: [200] },
+        data: { $ref: getSchemaPath(DuanTwoPhaseVo) },
+      },
+    });
   });
 
   it('documents merged K and Fenxing arrays with their response VOs', () => {
@@ -51,7 +64,7 @@ describe('ChanController OpenAPI contract', () => {
   });
 
   it('documents canonical high/low fields without retired aliases', () => {
-    for (const model of [KVo, MergedKVo, FenxingVo, BiVo]) {
+    for (const model of [KVo, MergedKVo, FenxingVo, BiVo, DuanVo]) {
       expect(
         Reflect.getMetadata(
           DECORATORS.API_MODEL_PROPERTIES,

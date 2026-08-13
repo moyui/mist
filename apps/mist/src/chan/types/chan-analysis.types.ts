@@ -1,5 +1,6 @@
 import type { KVo } from '../../indicator/vo/k.vo';
 import type { BiStatus, BiType } from '../enums/bi.enum';
+import type { DuanStatus, DuanType } from '../enums/duan.enum';
 import type { FenxingType } from '../enums/fenxing.enum';
 import type { TrendDirection } from '../enums/trend-direction.enum';
 
@@ -43,4 +44,24 @@ export interface ChanBi {
 export interface ChanBiTwoPhaseResult {
   phaseA: ChanBi[];
   phaseB: ChanBi[];
+}
+
+export interface ChanDuan {
+  startTime: Date;
+  endTime: Date;
+  high: number;
+  low: number;
+  trend: TrendDirection;
+  type: DuanType;
+  status: DuanStatus;
+  independentCount: number;
+  originIds: number[];
+  originBis: ChanBi[];
+  startBi: ChanBi | null;
+  endBi: ChanBi | null;
+}
+
+export interface ChanDuanTwoPhaseResult {
+  phaseA: ChanDuan[];
+  phaseB: ChanDuan[];
 }

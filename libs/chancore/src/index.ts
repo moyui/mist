@@ -4,6 +4,8 @@ export {
   ChannelLevel,
   ChannelStatus,
   ChannelType,
+  DuanStatus,
+  DuanType,
   FenxingType,
   TrendDirection,
 } from './contracts';
@@ -12,6 +14,8 @@ export type {
   ChanBiTwoPhaseResult,
   ChanChannel,
   ChanChannelTwoPhaseResult,
+  ChanDuan,
+  ChanDuanTwoPhaseResult,
   ChanFenxing,
   ChanK,
   ChanMergedK,

@@ -4,12 +4,15 @@ import {
   ChannelLevel,
   ChannelStatus,
   ChannelType,
+  DuanStatus,
+  DuanType,
   FenxingType,
   TrendDirection,
 } from '@app/chancore';
 import type {
   ChanBi,
   ChanChannel,
+  ChanDuan,
   ChanFenxing,
   ChanMergedK,
 } from '@app/chancore';
@@ -17,6 +20,7 @@ import {
   toBiVo,
   toChanK,
   toChannelVo,
+  toDuanVo,
   toFenxingVo,
   toMergedKVo,
 } from './chan-core.mapper';
@@ -129,6 +133,51 @@ describe('ChanCore HTTP mapper', () => {
     expect(biVo).not.toHaveProperty('lowest');
     expect(bi.originIds).toEqual([1, 2]);
     expect(toFenxingVo(null)).toBeNull();
+  });
+
+  it('maps Duan with nested Bi evidence without changing core output', () => {
+    const start = makeFenxing(1, FenxingType.Bottom, 10, 5);
+    const end = makeFenxing(2, FenxingType.Top, 15, 8);
+    const firstBi: ChanBi = {
+      startTime: new Date('2026-07-01T01:31:00.000Z'),
+      endTime: new Date('2026-07-01T01:35:00.000Z'),
+      high: 15,
+      low: 5,
+      trend: TrendDirection.Up,
+      type: BiType.Complete,
+      status: BiStatus.Valid,
+      independentCount: 5,
+      originIds: [1, 2],
+      originData: [],
+      startFenxing: start,
+      endFenxing: end,
+    };
+    const duan: ChanDuan = {
+      startTime: firstBi.startTime,
+      endTime: firstBi.endTime,
+      high: 20,
+      low: 4,
+      trend: TrendDirection.Up,
+      type: DuanType.Complete,
+      status: DuanStatus.Valid,
+      independentCount: 7,
+      originIds: [1, 2, 3],
+      originBis: [firstBi],
+      startBi: firstBi,
+      endBi: firstBi,
+    };
+
+    const duanVo = toDuanVo(duan);
+    duanVo.originIds.push(9);
+    duanVo.originBis[0].originIds.push(9);
+
+    expect(duanVo).toMatchObject({ high: 20, low: 4 });
+    expect(duanVo.originBis[0]).toMatchObject({ high: 15, low: 5 });
+    expect(duanVo.startBi).toMatchObject({ high: 15, low: 5 });
+    expect(duanVo).not.toHaveProperty('highest');
+    expect(duanVo).not.toHaveProperty('lowest');
+    expect(duan.originIds).toEqual([1, 2, 3]);
+    expect(duan.originBis[0].originIds).toEqual([1, 2]);
   });
 });
 

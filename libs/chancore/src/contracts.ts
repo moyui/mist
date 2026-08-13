@@ -37,6 +37,17 @@ export enum ChannelStatus {
   Invalid = 2,
 }
 
+export enum DuanType {
+  UnComplete = 'uncomplete',
+  Complete = 'complete',
+}
+
+export enum DuanStatus {
+  Unknown = 0,
+  Valid = 1,
+  Invalid = 2,
+}
+
 export interface ChanK {
   readonly id: number;
   readonly symbol: string;
@@ -110,4 +121,28 @@ export interface ChanChannel {
 export interface ChanChannelTwoPhaseResult {
   readonly phaseA: readonly ChanChannel[];
   readonly phaseB: readonly ChanChannel[];
+}
+
+/**
+ * 段（Duan / 线段）—— 笔的上一层，与 ChanBi 同构。
+ * 端点从分型（Fenxing）升为笔（Bi），构成单元从原始 K 升为笔。
+ */
+export interface ChanDuan {
+  readonly startTime: Date;
+  readonly endTime: Date;
+  readonly high: number;
+  readonly low: number;
+  readonly trend: TrendDirection;
+  readonly type: DuanType;
+  readonly status: DuanStatus;
+  readonly independentCount: number;
+  readonly originIds: readonly number[];
+  readonly originBis: readonly ChanBi[];
+  readonly startBi: ChanBi | null;
+  readonly endBi: ChanBi | null;
+}
+
+export interface ChanDuanTwoPhaseResult {
+  readonly phaseA: readonly ChanDuan[];
+  readonly phaseB: readonly ChanDuan[];
 }
