@@ -39,22 +39,42 @@
 - [x] 3.4 实现 at-least-once 幂等（jobId=alertEventId:channel）、有界重试/backoff、dead-letter、人工重放端点
   （`POST /v1/notification/replay/:alertEventId`，reset delivery 行后重入 fresh job）。
 - [x] 3.5 实现 duplicate/partial-failure/reconciliation/idempotent 单测（43/43 过）；crash/restart 进程级
-  验证留集成/HIL（需真 BullMQ）。
+  验证已通过 HIL（restart-isolation：kill notification → job 存活 → 重启只消费一次，无 dup/loss）。
 
 ## 4. 部署与监控
 
-- [ ] 4.1 实现 `apps/notification` Compose service（复用 image + command）、queue env、per-channel
+- [x] 4.1 实现 `apps/notification` Compose service（复用 image + command）、queue env、per-channel
   secrets、healthcheck、startup/rollback。
+  ——部署上线（mist 3d990e6）：mist-notification healthy；secrets 走 GitHub secret → deploy Set-DockerEnvValue；
+  CHANNELS + MESSAGE_TYPE 走 deploy 输入；healthcheck `GET /health`→`{instance:'notification'}`；
+  startup 在 deploy-docker-appliance.ps1 两处 `up -d` 序列；rollback 实证 3 次（失败自动回滚到 previous tag，
+  服务不中断）。NapCat 持久网络（compose mist_net external）。
 - [x] 4.2 增加 notification per-channel-result/dead-letter/attempt 低基数 monitoring（OTel observable
-  gauge：mist_notification_{delivered,failed,dead_letter,attempt}_total{channel}；queue depth/latency 需
-  async BullMQ 轮询，留后续）。
-- [ ] 4.3 证明 notification failure 不改变 strategy persistence、candle 或 transport health。
+  gauge：mist_notification_{delivered,failed,dead_letter,attempt}_total{channel}
+  + mist_notification_queue_depth{state=waiting/active/delayed}（15s BullMQ sampler））。
+- [x] 4.3 证明 notification failure 不改变 strategy persistence、candle 或 transport health。
+  ——restart-isolation HIL：kill mist-notification → mist-signal/backend/candle/transport 全不受影响；
+  notification 恢复后 job 从 wait 消费 → delivered（无 dup/no loss）。3 次失败 deploy 回滚也证明
+  notification 挂掉不影响其他服务。
 
 ## 5. 验证与真实渠道 HIL
 
-- [ ] 5.1 运行受影响仓库完整基线、真实 MySQL/queue、strict OpenSpec validate 和 `git diff --check`；
+- [x] 5.1 运行受影响仓库完整基线、真实 MySQL/queue、strict OpenSpec validate 和 `git diff --check`；
   检索 active change 与 living spec，确认 schedule-scan-owner 语义不再生效。
-- [ ] 5.2 使用受控测试接收端验证 dry-run/shadow、fan-out、duplicate 与 per-channel result writeback。
-- [ ] 5.3 在凭据脱敏条件下完成首批真实渠道（QQ/微信）success/failure/restart HIL。
-- [ ] 5.4 向项目负责人逐项审阅 HIL、retry/partial-failure、rollback evidence，以及 stable spec 同步
+  ——lint:check CLEAN / typecheck 0 err / test:ci 1299 passed / ci:contracts CLEAN /
+  openspec validate --all --strict 65 passed / build:docker 6 apps / git diff --check clean。
+  schedule-scan-owner 确认不在 living spec（8554702 已清除）。
+- [x] 5.2 使用受控测试接收端验证 dry-run/shadow、fan-out、duplicate 与 per-channel result writeback。
+  ——手动入 deliver.fanout（one-off node via container）→ worker fan-out → qq+wechat 各一行 delivery
+  记录（strategy_alert_deliveries）→ 聚合 delivered。Duplicate 验证：jobId dedup + unique(event×channel)
+  + terminal-skip（单测 + restart HIL 无 dup）。
+- [x] 5.3 在凭据脱敏条件下完成首批真实渠道（QQ/微信）success/failure/restart HIL。
+  ——WeCom webhook：curl errcode:0 + 真实告警收到（多条）。QQ NapCat：send_msg retcode:0 + 真实告警收到。
+  Restart HIL：kill+restart → job 存活 → delivered once。Failure+recovery HIL：qq dead-lettered（fetch
+  failed，napcat 网络断）→ replay → re-login → sent → delivered。格式验证：新格式（UTC+8 + 策略名 + 周期 +
+  买入/卖出）owner 确认收到。
+- [x] 5.4 向项目负责人逐项审阅 HIL、retry/partial-failure、rollback evidence，以及 stable spec 同步
   结果后才归档。
+  ——owner 全程参与审阅（spec 确认、部署决策、HIL 反馈、格式反馈）。Retry/partial：qq dead-letter→
+  replay→sent（event 15）。Rollback：3 次失败 deploy 自动回滚到 previous tag，服务不中断。Stable spec：
+  guide §6.7 已更新（delivery 子表 + retry/dead-letter 已落地）。**全部 task 完成，可归档。**
