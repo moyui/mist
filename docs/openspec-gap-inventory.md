@@ -1,4 +1,4 @@
-# OpenSpec 缺口清单（2026-08-13 复核）
+# OpenSpec 缺口清单（2026-08-14 复核）
 
 > 本文件是 Mist 平台 OpenSpec 缺口全景的**唯一权威清单**。基于多轮逐字复核
 > （proposal/tasks）+ spec 契约 vs 代码比对。**更新任何 change 状态时同步修订本文件。**
@@ -6,15 +6,20 @@
 ## 状态速览
 
 - `specs/`：52 个已采纳 spec
-- `changes/`：**5 个 active change**（`archive/` 下 90+ 已归档）
+- `changes/`：**10 个 active change**（`archive/` 下 90+ 已归档；其中 5 个属其他线程
+  活跃：add-chan-duan-segment / add-chan-duan-channel / add-chan-divergence /
+  extract-shared-indicators-library / migrate-stack-to-linux-node-with-ssh-tunnel，
+  本清单不重复维护其明细）
 - **价值闭环已打通**（2026-08-13）：`deliver-strategy-notifications` 归档 —— 实时K→信号→PENDING→QQ/微信投递链全通
+- 08-14 归档（1 个）：**remediate-alert-delivery-integrity**（40/40，10.4 无触发=正常
+  验证通过 + 规则 A1-A6 在位；change 目录曾 untracked 已随归档提交，push 3867f50c）
 - 08-13 归档（3 个）：restore-mock-env-candle-assertions（22/22）、**deliver-strategy-notifications**（21/21，价值闭环）、fixed-point-candle-arithmetic（16/16，F1-q 系统化定点门禁）
-- 08-13 新 change（1 个）：**fix-tdx-historical-amount-unit**（已完成+已部署 87f37d22：k 表 tdx amount 万元→元 migration 019 + 写入层 Decimal8 ×10000；backtest 5.5 quantity HIL 的 TDX profile 前置）
-- 08-12 归档（9 个）：remediate / fix-tdx（E-0 全绿）/ otel-gaps（6.3）/ decouple（F4 过 13%→0.6%）/ retire-diagnostic / datasource-logs / declarative-realtime / windows-openssh / **define-mist-production-roadmap**（G2-G4 处置）
+- 08-13 新 change（1 个）：**fix-tdx-historical-amount-unit**（已完成+已部署 87f37d22：k 表 tdx amount 万元→元 migration 019 + 写入层 Decimal8 ×10000；backtest 5.5 quantity HIL 的 TDX profile 前置；待归档窗口）
+- 08-12 归档（9 个）：remediate-otel-audit-findings / fix-tdx（E-0 全绿）/ otel-gaps（6.3）/ decouple（F4 过 13%→0.6%）/ retire-diagnostic / datasource-logs / declarative-realtime / windows-openssh / **define-mist-production-roadmap**（G2-G4 处置）
 
 ---
 
-## 1. Active changes 精确状态（4 个，2026-08-13）
+## 1. Active changes 精确状态（本清单跟踪 5 个，2026-08-14）
 
 ### A. 收尾债（高完成度）
 
