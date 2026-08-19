@@ -4,8 +4,9 @@
 
 - 缠论链：笔/段/段级中枢就绪。背驰是买卖点判定的核心（力度衰竭）。
 - 用户定调（08-14）：**笔级/段级背驰算法一致 → 抽离为共享纯函数复用**；**趋势背驰 + 盘整背驰都做**；
-  **力度管线（MACD histogram + 单元面积聚合）新建 `libs/indicators` 纯库（方案 A），
-  `IndicatorService.runMACD` 保留为薄包装**。
+  **力度管线（MACD histogram + 单元面积聚合）由独立 change `extract-shared-indicators-library`
+  交付 `libs/indicators` 纯库（方案 A 延续，含 `IndicatorService.runMACD` 薄包装）；
+  本 change 只消费**。
 - 力度来源确定：现有指标引擎 `IndicatorService.runMACD`（technicalindicators 12/26/9 EMA，
   indicator.service.ts:76-105）产出 MACD 柱（histogram）；chan 模块已注入 IndicatorModule
   （chan.module.ts:9，chan.controller.ts:29-33），`duan-channel` 端点已验证
@@ -25,21 +26,20 @@
 - **趋势背驰**：**趋势**（≥2 个同向中枢）中，最后一个中枢的离开段力度 < 其进入段力度（或与前一同向
   中枢的离开段相比递减）→ 趋势背驰（趋势结束，一/二类买卖点基础）。
 
-## 3. `libs/indicators` 纯库（新，方案 A）
+## 3. 共享力度管线（`libs/indicators`，由 extract-shared-indicators-library 交付）
 
-无 I/O、无 Nest/TypeORM 依赖，可被任意 app/库（indicator 模块、chan 模块、未来 backtest/realtime）
-复用。纯净边界守卫照抄 `libs/chancore/src/chancore-boundary.guard.spec.ts` 模式。
+`@app/indicators` 纯库（无 I/O、无 Nest/TypeORM 依赖）由独立 change
+`extract-shared-indicators-library` 建设与拥有（六个序列函数 + 单元力度聚合 + `IndicatorService`
+六方法薄包装 + 边界守卫）。本 change 使用其中两个入口（方案 A 延续）：
 
 ```ts
-/** MACD histogram 计算（12/26/9 EMA，与现 IndicatorService.runMACD 语义一致） */
-export interface MacdHistogramResult {
-  readonly begIndex: number;   // 前 begIndex 个 K 无有效 MACD（warmup）
-  readonly histogram: number[]; // 有效柱值，histogram[i] 对应 K 索引 i + begIndex
-}
-
-export function computeMacdHistogram(
-  closes: readonly number[],
-): MacdHistogramResult;
+/** MACD(12/26/9 EMA) 全序列：本 change 使用 histogram 与 begIndex */
+export function computeMacdSeries(closes: readonly number[]): {
+  readonly begIndex: number;
+  readonly macd: number[];
+  readonly signal: number[];
+  readonly histogram: number[];
+};
 
 /** 单元力度聚合：每单元力度 = [startTime, endTime] 区间内 histogram 面积和 */
 export function computeUnitForces(
@@ -50,15 +50,12 @@ export function computeUnitForces(
 ): number[];
 ```
 
-- `computeMacdHistogram`：委托 `technicalindicators` `MACD.calculate`（fast=12, slow=26, signal=9,
-  SimpleMAOscillator=false, SimpleMASignal=false），过滤无效值后与输入 K 对齐（begIndex 语义与
-  indicator.service.ts:56-58 一致）。
+- `computeMacdSeries` 语义（由该 change 锁定）：委托 `technicalindicators` `MACD.calculate`（fast=12,
+  slow=26, signal=9, EMA），过滤完整值后与输入对齐（begIndex 语义与 indicator.service.ts:56-58
+  一致）。
 - `computeUnitForces`：对每单元二分定位 `kTimes` 中区间 `[startTime, endTime]` 的 K 索引范围，
   求和 `histogram` 的有效部分（`i >= begIndex`）；找不到区间或无有效部分 → 力度 0。
-- `IndicatorService.runMACD` 改为薄包装：`computeMacdHistogram(prices)` 后按现返回结构
-  （macd/signal/histogram/begIndex）组装；**HTTP 契约 `POST /v1/indicators/macd` 响应不变**。
-- 单测：MACD 与现实现输出一致（回归）、warmup 语义、面积求和（含 begIndex 截断、边界单元）、
-  确定性、不变异。
+- 本 change 编排链使用 `computeMacdSeries(closes).histogram` 作为 `computeUnitForces` 输入。
 
 ## 4. 背驰输入契约（chancore，调用方传入力度）
 
@@ -133,7 +130,7 @@ IndicatorQueryDto（code/source/period/startDate/endDate）
   → ChanCore.createBi(k) → phaseB
   → ChanCore.createDuan(phaseB) → ChanDuan[]
   → ChanCore.createDuanChannels(duans) → phaseB 段级中枢
-  → computeMacdHistogram(closes) + computeUnitForces(..., duans) → forces
+  → computeMacdSeries(closes).histogram + computeUnitForces(..., duans) → forces
   → ChanCore.detectDivergences({ units: duans, zhongshus, forces }) → ChanDivergence[]
   → DivergenceVo[]
 ```
@@ -149,25 +146,23 @@ IndicatorQueryDto（code/source/period/startDate/endDate）
 | ID | 决策 | 定案 | 说明 |
 |----|------|------|------|
 | D1 | 背驰形态 | 趋势 + 盘整都做 | 用户定调 |
-| D2 | 力度数据源 | **MACD 柱面积**：`libs/indicators` 共享纯库（histogram + 单元面积聚合），`IndicatorService.runMACD` 薄包装 | 用户拍板方案 A；chancore 仍不计算指标 |
+| D2 | 力度数据源 | **MACD 柱面积**：`libs/indicators`（extract-shared-indicators-library 交付）computeMacd + computeUnitForces；runMACD 薄包装在该 change | 用户拍板方案 A；chancore 仍不计算指标 |
 | D3 | 趋势背驰力度对比基准 | 链最后一个中枢的离开段 vs **链首中枢的进入段**（首尾力度对比） | 备选：vs 前一中枢离开段（相邻对比）——缠论有流派差异，fixture 钉 |
 | D4 | 复用方式 | **共享纯函数** `detectDivergences`（笔/段经最小结构接口） | 用户定调 |
 | D5 | HTTP 端点 | **提供** `POST /v1/chan/divergence`（段级，模式同 duan-channel） | 力度来源已确定，零新增依赖 |
 | D6 | `algorithmVersion` | 保持 1（纯增量） | — |
-| D7 | `libs/indicators` 边界 | 纯库（无 I/O、无 Nest/TypeORM）；`IndicatorService.runMACD` 薄包装、HTTP 契约不变 | 用户拍板方案 A |
+| D7 | `libs/indicators` 边界 | 纯库（无 I/O、无 Nest/TypeORM），由 extract-shared-indicators-library 拥有与守卫；本 change 只消费 | 用户拍板方案 A |
 | D8 | 三块接入范围 | 本 change = ①自己查询端点 + 共享力度管线；②回测、③实时接入**留各自 owning change** | `chan-analysis-core` 要求运行时不得依赖公共 Indicator HTTP API |
 
 ## 9. 边界与非目标
 
-- **不做**：买卖点判定（后续 change）、持久化、migration、改现有算法、②回测接入、③实时接入、
-  `IndicatorService` 其它方法（runRSI/runKDJ/runADX/runDualMA/runATR）迁移。
+- **不做**：买卖点判定（后续 change）、持久化、migration、改现有算法、②回测接入、③实时接入
+  （②③ 与 `IndicatorService` 其它方法迁移归 `extract-shared-indicators-library`）。
 - 背驰为**请求时实时派生**（无状态纯函数）；不新增 Compose service。
 - `runMACD` 行为回归由现有 indicator.service.spec 覆盖（薄包装后应保持全绿）。
 
 ## 10. 验证策略
 
-- `libs/indicators` pure 单测：MACD 输出与现实现一致（回归）、begIndex/warmup、面积聚合
-  （含 begIndex 截断、边界单元）、空输入、确定性、不变异、纯净边界守卫。
 - 背驰判定 pure 单测：进入/离开段定位（含边界：无进入/无离开）、盘整背驰（严格 < 口径）、
   趋势背驰（首尾对比、同向中枢链）、空输入、确定性、不变异。
 - 经典 case fixture：构造 进入段力度 > 离开段 的盘整背驰 / 趋势背驰样例固化指纹。
