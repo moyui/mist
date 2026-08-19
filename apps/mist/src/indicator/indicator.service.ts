@@ -4,7 +4,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { K, Security, Period, DataSource } from '@app/shared-data';
 import { DataSourceService } from '@app/utils';
-import { ADX, ATR, MACD, RSI, SMA, Stochastic } from 'technicalindicators';
+import {
+  computeMacdSeries,
+  computeKdjSeries,
+  computeRsiSeries,
+  computeAdxSeries,
+  computeAtrSeries,
+  computeDualMaSeries,
+} from '@app/indicators';
 
 // Internal interfaces for indicator calculations
 interface RunKDJDto {
@@ -37,12 +44,6 @@ interface FindKDataQuery {
   source?: DataSource;
 }
 
-type CompleteMacdValue = {
-  MACD: number;
-  signal: number;
-  histogram: number;
-};
-
 @Injectable()
 export class IndicatorService {
   constructor(
@@ -53,26 +54,6 @@ export class IndicatorService {
     private dataSourceService: DataSourceService,
   ) {}
 
-  private begIndex(inputLength: number, outputLength: number): number {
-    return outputLength > 0 ? inputLength - outputLength : inputLength;
-  }
-
-  private isFiniteNumber(value: unknown): value is number {
-    return typeof value === 'number' && Number.isFinite(value);
-  }
-
-  private isCompleteMacdValue(value: {
-    MACD?: number;
-    signal?: number;
-    histogram?: number;
-  }): value is CompleteMacdValue {
-    return (
-      this.isFiniteNumber(value.MACD) &&
-      this.isFiniteNumber(value.signal) &&
-      this.isFiniteNumber(value.histogram)
-    );
-  }
-
   async runMACD(prices: number[]): Promise<{
     begIndex: number;
     nbElement: number;
@@ -80,23 +61,12 @@ export class IndicatorService {
     signal: number[];
     histogram: number[];
   }> {
-    const numericPrices = prices.map(Number);
-    const values = MACD.calculate({
-      values: numericPrices,
-      fastPeriod: 12,
-      slowPeriod: 26,
-      signalPeriod: 9,
-      SimpleMAOscillator: false,
-      SimpleMASignal: false,
-    }).filter((value): value is CompleteMacdValue =>
-      this.isCompleteMacdValue(value),
+    const { begIndex, macd, signal, histogram } = computeMacdSeries(
+      prices.map(Number),
     );
-    const macd = values.map((value) => value.MACD);
-    const signal = values.map((value) => value.signal);
-    const histogram = values.map((value) => value.histogram);
 
     return {
-      begIndex: this.begIndex(numericPrices.length, macd.length),
+      begIndex,
       nbElement: macd.length,
       macd,
       signal,
@@ -112,13 +82,10 @@ export class IndicatorService {
     nbElement: number;
     rsi: number[];
   }> {
-    const rsi = RSI.calculate({
-      values: prices,
-      period,
-    });
+    const { begIndex, rsi } = computeRsiSeries(prices, period);
 
     return {
-      begIndex: this.begIndex(prices.length, rsi.length),
+      begIndex,
       nbElement: rsi.length,
       rsi,
     };
@@ -131,63 +98,54 @@ export class IndicatorService {
     D: number[];
     J: number[];
   }> {
-    const raw = Stochastic.calculate({
-      high: data.high,
-      low: data.low,
-      close: data.close,
-      period: data.period || 9,
-      signalPeriod: data.kSmoothing || 3,
-    });
-    const slowK = raw
-      .filter((value) => this.isFiniteNumber(value.d))
-      .map((value) => value.d);
-    const D = SMA.calculate({
-      values: slowK,
-      period: data.dSmoothing || 3,
-    });
-    const K = slowK.slice(slowK.length - D.length);
-    const J = K.map((kValue, index) => 3 * kValue - 2 * D[index]);
+    const { begIndex, K, D, J } = computeKdjSeries(
+      data.high,
+      data.low,
+      data.close,
+      {
+        period: data.period,
+        kSmoothing: data.kSmoothing,
+        dSmoothing: data.dSmoothing,
+      },
+    );
 
     return {
+      begIndex,
+      nbElement: K.length,
       K,
       D,
       J,
-      begIndex: this.begIndex(data.close.length, K.length),
-      nbElement: K.length,
     };
   }
 
   async runADX(data: RunOhlcIndicatorDto): Promise<number[]> {
-    return ADX.calculate({
-      high: data.high,
-      low: data.low,
-      close: data.close,
-      period: data.period || 14,
-    }).map((value) => value.adx);
+    const { adx } = computeAdxSeries(
+      data.high,
+      data.low,
+      data.close,
+      data.period,
+    );
+    return adx;
   }
 
   async runDualMA(
     data: RunDualMADto,
   ): Promise<{ shortMA: number[]; longMA: number[] }> {
-    return {
-      shortMA: SMA.calculate({
-        values: data.close,
-        period: data.shortPeriod || 13,
-      }),
-      longMA: SMA.calculate({
-        values: data.close,
-        period: data.longPeriod || 60,
-      }),
-    };
+    const { shortMA, longMA } = computeDualMaSeries(data.close, {
+      shortPeriod: data.shortPeriod,
+      longPeriod: data.longPeriod,
+    });
+    return { shortMA, longMA };
   }
 
   async runATR(data: RunOhlcIndicatorDto): Promise<number[]> {
-    return ATR.calculate({
-      high: data.high,
-      low: data.low,
-      close: data.close,
-      period: data.period || 14,
-    });
+    const { atr } = computeAtrSeries(
+      data.high,
+      data.low,
+      data.close,
+      data.period,
+    );
+    return atr;
   }
 
   /**

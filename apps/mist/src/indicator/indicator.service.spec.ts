@@ -93,26 +93,23 @@ describe('IndicatorService', () => {
     expect(result.rsi[0]).toBeCloseTo(67.95, 2);
   });
 
-  it('keeps KDJ fields aligned for Chan Theory consumers', async () => {
+  it('keeps KDJ fields aligned using the catalog default (9,3,3) after the fix', async () => {
     const result = await service.runKDJ({
       high,
       low,
       close,
-      period: 14,
-      kSmoothing: 3,
-      dSmoothing: 3,
     });
 
-    expect(result.begIndex).toBe(17);
+    expect(result.begIndex).toBe(12);
     expect(result.nbElement).toBe(result.K.length);
     expect(Array.isArray(result.K)).toBe(true);
     expect(Array.isArray(result.D)).toBe(true);
     expect(Array.isArray(result.J)).toBe(true);
-    expect(result.K).toHaveLength(63);
+    expect(result.K).toHaveLength(68);
     expect(result.D).toHaveLength(result.K.length);
     expect(result.J).toHaveLength(result.K.length);
-    expect(result.K[0]).toBeCloseTo(57.023495, 6);
-    expect(result.D[0]).toBeCloseTo(48.972518, 6);
+    expect(result.K[0]).toBeCloseTo(31.687287, 6);
+    expect(result.D[0]).toBeCloseTo(45.808939, 6);
     expect(result.J[0]).toBeCloseTo(3 * result.K[0] - 2 * result.D[0], 10);
   });
 

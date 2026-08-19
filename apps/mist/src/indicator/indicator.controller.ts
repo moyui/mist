@@ -117,9 +117,8 @@ export class IndicatorController {
         high: [],
         low: [],
         close: [],
-        period: 14,
-        kSmoothing: 3,
-        dSmoothing: 3,
+        // KDJ (9,3,3) now uses the shared core default; the historical period:14 override is
+        // removed (deliberate API behaviour fix, see extract-shared-indicators-library §4.1)
       },
     );
     const kdjResult = await this.indicatorService.runKDJ(KDJParams);

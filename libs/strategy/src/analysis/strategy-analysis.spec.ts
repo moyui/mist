@@ -7,6 +7,7 @@ import {
   STRATEGY_MACD_CALCULATION_BAR_COUNT,
   calculateStrategyMacd,
 } from './strategy-macd';
+import { computeMacdObservation, computeKdjObservation } from '@app/indicators';
 
 describe('Strategy-owned fixed-window analysis', () => {
   const bars = buildBars(131);
@@ -49,6 +50,28 @@ describe('Strategy-owned fixed-window analysis', () => {
     );
     expect(calculateStrategyKdj(replayBars.slice(-13))).toEqual(
       calculateStrategyKdj(realtimeBars.slice(-13)),
+    );
+  });
+
+  it('delegates to the shared indicator core with the exact catalog window', () => {
+    const macdBars = bars.slice(-130);
+    const kdjBars = bars.slice(-13);
+
+    expect(calculateStrategyMacd(macdBars)).toEqual(
+      computeMacdObservation(
+        macdBars.map((bar) => bar.close),
+        {
+          windowSize: STRATEGY_MACD_CALCULATION_BAR_COUNT,
+        },
+      ),
+    );
+    expect(calculateStrategyKdj(kdjBars)).toEqual(
+      computeKdjObservation(
+        kdjBars.map((bar) => bar.high),
+        kdjBars.map((bar) => bar.low),
+        kdjBars.map((bar) => bar.close),
+        { windowSize: STRATEGY_KDJ_CALCULATION_BAR_COUNT },
+      ),
     );
   });
 

@@ -1,19 +1,17 @@
-import { MACD } from 'technicalindicators';
 import type { StrategyBar } from '../market-data/strategy-bar';
-import {
-  requireExactStrategyBars,
-  requireFiniteAnalysisValue,
-} from './strategy-analysis.guard';
+import { computeMacdObservation } from '@app/indicators';
+import type { MacdObservation } from '@app/indicators';
+import { requireExactStrategyBars } from './strategy-analysis.guard';
 
 export const STRATEGY_MACD_CALCULATION_BAR_COUNT = 130;
 
-export interface StrategyMacdObservation {
-  readonly line: number;
-  readonly signal: number;
-  readonly histogram: number;
-}
+export type StrategyMacdObservation = MacdObservation;
 
-/** Calculate the latest MACD(12,26,9) observation from one exact seed window. */
+/**
+ * Calculate the latest MACD(12,26,9) observation from one exact seed window.
+ * The math is delegated to the shared indicator core (@app/indicators); the exact-window
+ * validation stays here so the window-count/`requiredBarCount` contract never drifts.
+ */
 export function calculateStrategyMacd(
   bars: readonly StrategyBar[],
 ): StrategyMacdObservation {
@@ -23,22 +21,8 @@ export function calculateStrategyMacd(
     'MACD(12,26,9)',
   );
 
-  const observations = MACD.calculate({
-    values: bars.map((bar) => bar.close),
-    fastPeriod: 12,
-    slowPeriod: 26,
-    signalPeriod: 9,
-    SimpleMAOscillator: false,
-    SimpleMASignal: false,
-  });
-  const latest = observations.at(-1);
-
-  return {
-    line: requireFiniteAnalysisValue(latest?.MACD, 'MACD(12,26,9) line'),
-    signal: requireFiniteAnalysisValue(latest?.signal, 'MACD(12,26,9) signal'),
-    histogram: requireFiniteAnalysisValue(
-      latest?.histogram,
-      'MACD(12,26,9) histogram',
-    ),
-  };
+  return computeMacdObservation(
+    bars.map((bar) => bar.close),
+    { windowSize: STRATEGY_MACD_CALCULATION_BAR_COUNT },
+  );
 }
