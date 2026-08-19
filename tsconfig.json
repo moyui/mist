@@ -80,6 +80,9 @@
       ],
       "@app/realtime": [
         "libs/realtime/src/index.ts"
+      ],
+      "@app/indicators": [
+        "libs/indicators/src/index.ts"
       ]
     }
   },

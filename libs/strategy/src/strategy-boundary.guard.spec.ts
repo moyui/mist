@@ -102,7 +102,11 @@ describe('Strategy domain boundary', () => {
             forbiddenPackagePrefixes.some(
               (prefix) => source === prefix || source.startsWith(`${prefix}/`),
             ) ||
-            (source.startsWith('@app/') && source !== '@app/decimal') ||
+            (source.startsWith('@app/') &&
+              source !== '@app/decimal' &&
+              // The shared indicator core is a pure library (no I/O) and the evaluator delegates
+              // KDJ/MACD math to it (see extract-shared-indicators-library).
+              source !== '@app/indicators') ||
             source.startsWith('apps/') ||
             source.includes('/apps/') ||
             relativeImportEscapesStrategy(file, source),

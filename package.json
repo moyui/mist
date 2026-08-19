@@ -179,7 +179,8 @@
       "^@app/strategy$": "<rootDir>/libs/strategy/src/index.ts",
       "^@app/chancore$": "<rootDir>/libs/chancore/src/index.ts",
       "^@app/decimal$": "<rootDir>/libs/decimal/src/index.ts",
-      "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts"
+      "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts",
+      "^@app/indicators$": "<rootDir>/libs/indicators/src/index.ts"
     }
   },
   "pkg": {

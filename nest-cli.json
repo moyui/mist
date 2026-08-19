@@ -191,6 +191,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/otel/tsconfig.lib.json"
       }
+    },
+    "indicators": {
+      "type": "library",
+      "root": "libs/indicators",
+      "entryFile": "index",
+      "sourceRoot": "libs/indicators/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/indicators/tsconfig.lib.json"
+      }
     }
   }
 }
