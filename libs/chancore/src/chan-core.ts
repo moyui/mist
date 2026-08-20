@@ -2,6 +2,8 @@ import type {
   ChanBi,
   ChanBiTwoPhaseResult,
   ChanChannelTwoPhaseResult,
+  ChanDivergence,
+  ChanDivergenceInput,
   ChanDuan,
   ChanDuanChannelTwoPhaseResult,
   ChanFenxing,
@@ -11,6 +13,7 @@ import type {
 import { assertChanKSeries } from './internal/assert-chan-k-series';
 import { BiCalculator } from './internal/bi';
 import { ChannelCalculator } from './internal/channel';
+import { DivergenceDetector } from './internal/divergence';
 import { DuanCalculator } from './internal/duan';
 import { DuanChannelCalculator } from './internal/duan-channel';
 import { KMergeCalculator } from './internal/k-merge';
@@ -62,5 +65,15 @@ export class ChanCore {
     duans: readonly ChanDuan[],
   ): ChanDuanChannelTwoPhaseResult {
     return new DuanChannelCalculator().createDuanChannels(duans);
+  }
+
+  /**
+   * 背驰：入参 = 最小结构接口（units 笔/段序列、zhongshus 中枢序列、forces 力度双分量，
+   * 组合方式见 spec；中枢扩张由 chan-central-extension Phase C 先行解决）。共享纯函数，笔/段复用。
+   */
+  static detectDivergences(
+    input: ChanDivergenceInput,
+  ): readonly ChanDivergence[] {
+    return new DivergenceDetector().detectDivergences(input);
   }
 }

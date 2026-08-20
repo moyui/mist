@@ -9,6 +9,7 @@ describe('ChanCore public facade', () => {
         'BiStatus',
         'BiType',
         'ChanCore',
+        'ChanDivergenceType',
         'ChanInputError',
         'ChanInvariantError',
         'ChannelLevel',
@@ -31,6 +32,9 @@ describe('ChanCore public facade', () => {
     expect(ChanCore.createChannels([])).toEqual({ phaseA: [], phaseB: [] });
     expect(ChanCore.createDuan([])).toEqual([]);
     expect(ChanCore.createDuanChannels([])).toEqual({ phaseA: [], phaseB: [] });
+    expect(
+      ChanCore.detectDivergences({ units: [], zhongshus: [], forces: [] }),
+    ).toEqual([]);
   });
 
   it.each([

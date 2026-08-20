@@ -168,3 +168,56 @@ export interface ChanDuanChannelTwoPhaseResult {
   readonly phaseA: readonly ChanDuanChannel[];
   readonly phaseB: readonly ChanDuanChannel[];
 }
+
+// ---------------------------------------------------------------------------
+// 背驰（Divergence，缠论24/25课）— 共享纯函数，笔级/段级复用。
+// 力度（forces）由调用方经 @app/indicators 计算传入；chancore 不计算指标。
+// ---------------------------------------------------------------------------
+
+export enum ChanDivergenceType {
+  Trend = 'trend',                 // 趋势背驰（24课标准背驰）
+  Consolidation = 'consolidation', // 盘整背驰
+}
+
+/** 背驰单元（笔或段皆可，最小结构接口）。 */
+export interface ChanDivergenceUnit {
+  readonly startTime: Date;
+  readonly endTime: Date;
+  readonly trend: TrendDirection;
+}
+
+/**
+ * 背驰中枢（笔级 ChanChannel 或段级 ChanDuanChannel 皆可）——最小结构接口。
+ * 中枢扩张已由 chan-central-extension（Phase C）解决：phaseB 相邻中枢波动区间严格不重叠；
+ * 扩张合并产物（expanded=true）为同级别中枢，背驰不读 expanded、当普通中枢看待。
+ */
+export interface ChanDivergenceZhongshu {
+  readonly firstUnitTime: Date; // 中枢首单元起点（≡ units[0].startTime）
+  readonly lastUnitTime: Date;  // 中枢末单元终点（≡ units.at(-1).endTime）
+  readonly zg: number;          // 中枢上沿
+  readonly zd: number;          // 中枢下沿
+  readonly gg: number;          // 中枢最高（位置递进用）
+  readonly dd: number;          // 中枢最低
+}
+
+/** 每单元力度（双分量，均为"越大越强"正向标量）：area=方向柱面积、peak=黄白线(DIF)极值绝对值。 */
+export interface ChanUnitForce {
+  readonly area: number;
+  readonly peak: number;
+}
+
+/** 背驰判定入参：units 与 forces 按索引一一对齐。 */
+export interface ChanDivergenceInput {
+  readonly units: readonly ChanDivergenceUnit[];
+  readonly zhongshus: readonly ChanDivergenceZhongshu[];
+  readonly forces: readonly ChanUnitForce[];
+}
+
+export interface ChanDivergence {
+  readonly type: ChanDivergenceType;
+  readonly zhongshuIndex: number; // 相关中枢在 zhongshus 中的位置
+  readonly enterIndex: number;    // 进入段在 units 中的位置
+  readonly leaveIndex: number;    // 离开段在 units 中的位置
+  readonly enterForce: ChanUnitForce;
+  readonly leaveForce: ChanUnitForce;
+}
