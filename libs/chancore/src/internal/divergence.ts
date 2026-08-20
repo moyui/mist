@@ -127,7 +127,7 @@ export class DivergenceDetector {
     return -1;
   }
 
-  /** 盘整背驰：进入段 units[s-1] vs 离开段 units[e+1]，双口径严格 <。 */
+  /** 盘整背驰：进入段 units[s-1] vs 离开段 units[e+1]，双分量严格 <，且两者同向（24课 A/C 同向）。 */
   private detectConsolidation(
     span: ChannelSpan,
     units: readonly ChanDivergenceUnit[],
@@ -137,6 +137,13 @@ export class DivergenceDetector {
     const leave = span.lastIndex + 1;
     if (enter < 0 || leave >= units.length) {
       return null; // 无进入/离开段
+    }
+    // 进入段与离开段必须同向（24课 A/B/C：A 与 C 同向；方向不同是不同级别/扩张结构，不构成背驰）
+    if (
+      units[enter].trend === TrendDirection.None ||
+      units[enter].trend !== units[leave].trend
+    ) {
+      return null;
     }
     if (this.isWeaker(forces[leave], forces[enter])) {
       return {
@@ -229,7 +236,7 @@ export class DivergenceDetector {
     return false;
   }
 
-  /** 趋势背驰：链末中枢（B）比较其进入段（A）vs 离开段（C），双口径严格 <。 */
+  /** 趋势背驰：链末中枢（B）比较其进入段（A）vs 离开段（C），双口径严格 <，两者同向且等于链方向。 */
   private detectTrend(
     chain: Chain,
     units: readonly ChanDivergenceUnit[],
@@ -240,6 +247,13 @@ export class DivergenceDetector {
     const leave = lastSpan.lastIndex + 1;
     if (enter < 0 || leave >= units.length) {
       return null; // 无进入/离开段
+    }
+    // 进入段与离开段必须同向且等于链方向（24课 A/C 同向；否则不构成该趋势的背驰）
+    if (
+      units[enter].trend !== chain.direction ||
+      units[leave].trend !== chain.direction
+    ) {
+      return null;
     }
     if (this.isWeaker(forces[leave], forces[enter])) {
       return {

@@ -102,6 +102,33 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
     expect(calc.detectDivergences(input)).toEqual([]);
   });
 
+  it('does NOT report when entering and leaving units have opposite directions (24课 A/C 同向)', () => {
+    const uAll = makeAlternatingUnits(5); // u0..u4，u0 up
+    const zhongshus = [
+      makeZhongshu(uAll[1].startTime, uAll[3].endTime, 10, 0),
+    ];
+    // 覆盖 forces：leave(u4) 双分量 < enter(u0)
+    const fAll = [
+      makeForce(9, 90), // u0
+      makeForce(5, 50),
+      makeForce(5, 50),
+      makeForce(5, 50),
+      makeForce(3, 30), // u4 < u0
+    ];
+    // 同向基线：应触发 1
+    const base = calc.detectDivergences({ units: uAll, zhongshus, forces: fAll });
+    expect(base).toHaveLength(1);
+    // 反向：把离开段 u4 方向改成 down（与进入段 u0 up 反向）
+    const reversed = [...uAll];
+    reversed[4] = {
+      startTime: reversed[4].startTime,
+      endTime: reversed[4].endTime,
+      trend: TrendDirection.Down,
+    };
+    const res = calc.detectDivergences({ units: reversed, zhongshus, forces: fAll });
+    expect(res.some((d) => d.type === ChanDivergenceType.Consolidation)).toBe(false);
+  });
+
   it('constructs an up trend chain and reports trend divergence on the chain last channel', () => {
     const input = makeTrendInput();
     const result = calc.detectDivergences(input);
