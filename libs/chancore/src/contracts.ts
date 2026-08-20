@@ -112,6 +112,7 @@ export interface ChanChannel {
   readonly type: ChannelType;
   readonly status: ChannelStatus;
   readonly trend: TrendDirection;
+  readonly expanded: boolean; // 中枢扩张合并产物=true；普通同级中枢=false
   readonly startId: number;
   readonly endId: number;
   readonly displayStartId: number;
@@ -156,6 +157,7 @@ export interface ChanDuanChannel {
   readonly level: ChannelLevel; // = ChannelLevel.Duan（接线）
   readonly type: ChannelType;
   readonly status: ChannelStatus;
+  readonly expanded: boolean; // 中枢扩张合并产物=true；普通同级中枢=false
   readonly startId: number; // 原始 K id（首段起点）
   readonly endId: number; // 原始 K id（末段终点）
   readonly displayStartId: number; // 首段中间位置原始 K id

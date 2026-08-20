@@ -39,6 +39,7 @@ describe('DuanChannelCalculator (段级中枢，对称重叠无方向)', () => {
     expect(channel.level).toBe(ChannelLevel.Duan); // 接线 ChannelLevel.Duan
     expect(channel.type).toBe(ChannelType.Complete);
     expect(channel.status).toBe(ChannelStatus.Valid);
+    expect(channel.expanded).toBe(false); // 普通同级中枢，非扩张合并产物
     expect(channel.zg).toBe(8); // min(10,8,9)
     expect(channel.zd).toBe(3); // max(0,2,3)
     expect(channel.gg).toBe(10); // max(10,8,9)
@@ -87,6 +88,7 @@ describe('DuanChannelCalculator (段级中枢，对称重叠无方向)', () => {
     expect(merged.duans.length).toBeGreaterThanOrEqual(5);
     expect(merged.zg).toBe(7); // min(10,8,9,7,8)
     expect(merged.zd).toBe(4); // max(0,2,3,4,4)
+    expect(merged.expanded).toBe(false); // 单一中枢无相邻对，非扩张
   });
 
   it('is deterministic across repeated calls and does not mutate input', () => {

@@ -117,6 +117,7 @@ describe('ChanCore HTTP mapper', () => {
       type: ChannelType.Complete,
       status: ChannelStatus.Valid,
       trend: TrendDirection.Up,
+      expanded: false,
       startId: 1,
       endId: 2,
       displayStartId: 1,
@@ -131,6 +132,7 @@ describe('ChanCore HTTP mapper', () => {
     expect(biVo).toMatchObject({ high: 15, low: 5 });
     expect(biVo.startFenxing).toMatchObject({ high: 10, low: 5 });
     expect(channelVo.bis[0]).toMatchObject({ high: 15, low: 5 });
+    expect(channelVo.expanded).toBe(false);
     expect(biVo).not.toHaveProperty('highest');
     expect(biVo).not.toHaveProperty('lowest');
     expect(bi.originIds).toEqual([1, 2]);
@@ -222,6 +224,7 @@ describe('ChanCore HTTP mapper', () => {
       level: ChannelLevel.Duan,
       type: ChannelType.Complete,
       status: ChannelStatus.Valid,
+      expanded: false,
       startId: 1,
       endId: 3,
       displayStartId: 2,
@@ -233,6 +236,7 @@ describe('ChanCore HTTP mapper', () => {
 
     expect(vo).toMatchObject({ zg: 18, zd: 6, gg: 20, dd: 4 });
     expect(vo.level).toBe(ChannelLevel.Duan);
+    expect(vo.expanded).toBe(false);
     expect(vo.duans[0]).toMatchObject({ high: 20, low: 4 });
     expect(vo).not.toHaveProperty('trend'); // 中枢无方向
     expect(vo).not.toHaveProperty('highest');

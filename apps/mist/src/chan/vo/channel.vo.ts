@@ -31,6 +31,8 @@ export class ChannelVo {
   @ApiProperty({ enum: TrendDirection })
   trend!: TrendDirection; // 趋势
   @ApiProperty()
+  expanded!: boolean; // 中枢扩张合并产物标志（true=更高级别中枢）
+  @ApiProperty()
   displayStartId!: number; // 第一笔的中间位置K线ID
   @ApiProperty()
   displayEndId!: number; // 最后一笔的中间位置K线ID

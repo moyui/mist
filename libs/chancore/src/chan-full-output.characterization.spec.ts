@@ -3,6 +3,8 @@ import { BiStatus, BiType, ChanCore } from './index';
 import type {
   ChanBi,
   ChanChannel,
+  ChanDuan,
+  ChanDuanChannel,
   ChanFenxing,
   ChanK,
   ChanMergedK,
@@ -11,9 +13,10 @@ import {
   ChanCharacterizationK,
   createChanFullOutputFixture,
 } from './chan-full-output.characterization.fixture';
+import { DuanStatus, DuanType, TrendDirection } from './contracts';
 
 const EXPECTED_FULL_OUTPUT_SHA256 =
-  '7a24563a1d419c87cc151cfcd83ce42732fe59b6fc535de2d818699994964312';
+  '99c18bcf1905363fee0a9bf7673b63a5e251a3776f21172c6028cf1adf436c54';
 
 function toContractK(source: ChanK): ChanCharacterizationK {
   return {
@@ -84,6 +87,7 @@ function toContractChannel(channel: ChanChannel) {
     type: channel.type,
     status: channel.status,
     trend: channel.trend,
+    expanded: channel.expanded,
     startId: channel.startId,
     endId: channel.endId,
     displayStartId: channel.displayStartId,
@@ -105,7 +109,8 @@ function runCoreFullPipeline() {
     bis,
     channels,
     fingerprintPayload: {
-      algorithmVersion: 1,
+      // 2：add-chan-central-extension 起 createChannels/createDuanChannels 增加中枢扩张归并
+      algorithmVersion: 2,
       input,
       output: {
         mergedK: merged.map(toContractMergedK),
@@ -172,4 +177,100 @@ describe('ChanCore full-output differential characterization', () => {
       ).not.toBe(endPositions[0] - startPositions[0]);
     }
   });
+
+  it('locks Duan-level central-extension resolution (adjacent wave overlap merges to one expanded Unit)', () => {
+    // 段级扩张 fixture：两中枢（区间[7,9]与[2,4]不重叠、波动[4,11]与[1,8]重叠）→ Phase C 归并为一个 expanded
+    const duans = createDuanExpansionFixture();
+    const { phaseA, phaseB } = ChanCore.createDuanChannels(duans);
+
+    expect(phaseA.length).toBeGreaterThan(0);
+    expect(phaseB).toHaveLength(1);
+    expect(phaseB[0].expanded).toBe(true);
+    expect(phaseB[0].zg).toBe(8); // 波动重叠区上沿 = min(gg1,gg2)
+    expect(phaseB[0].zd).toBe(1); // 波动重叠区下沿 = max(dd1,dd2)
+
+    const payload = {
+      algorithmVersion: 2,
+      duans: duans.map(toContractDuan),
+      output: {
+        phaseA: phaseA.map(toContractDuanChannel),
+        phaseB: phaseB.map(toContractDuanChannel),
+      },
+    };
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    expect(fingerprint).toBe(EXPECTED_DUAN_EXPANSION_SHA256);
+  });
 });
+
+/** Duan-level central-extension fingerprint（add-chan-central-extension 新增）。 */
+const EXPECTED_DUAN_EXPANSION_SHA256 =
+  '0083a44b1edf367638185645fef43a6f1ba800d0c1fe716c230748361258fe24';
+
+function toContractDuan(duan: ChanDuan) {
+  return {
+    startTime: new Date(duan.startTime.getTime()),
+    endTime: new Date(duan.endTime.getTime()),
+    high: duan.high,
+    low: duan.low,
+    trend: duan.trend,
+    type: duan.type,
+    status: duan.status,
+    originIds: [...duan.originIds],
+  };
+}
+
+function toContractDuanChannel(channel: ChanDuanChannel) {
+  return {
+    duans: channel.duans.map(toContractDuan),
+    zg: channel.zg,
+    zd: channel.zd,
+    gg: channel.gg,
+    dd: channel.dd,
+    level: channel.level,
+    type: channel.type,
+    status: channel.status,
+    expanded: channel.expanded,
+    startId: channel.startId,
+    endId: channel.endId,
+    displayStartId: channel.displayStartId,
+    displayEndId: channel.displayEndId,
+  };
+}
+
+/** 段级扩张 fixture（同 central-expansion.spec 的集成样例）。 */
+function createDuanExpansionFixture(): ChanDuan[] {
+  return [
+    makeDuan(0, 'up', 11, 4),
+    makeDuan(1, 'down', 9, 6),
+    makeDuan(2, 'up', 10, 7),
+    makeDuan(3, 'down', 8, 1),
+    makeDuan(4, 'up', 6, 1),
+    makeDuan(5, 'down', 4, 2),
+  ];
+}
+
+function makeDuan(
+  id: number,
+  trend: 'up' | 'down',
+  high: number,
+  low: number,
+): ChanDuan {
+  // Date.UTC 构造 → TZ 无关（CI 以 TZ=UTC 跑 test:ci，避免 SHA 漂移）
+  const time = new Date(Date.UTC(2026, 6, 1, 9, id * 10, 0, 0));
+  return {
+    startTime: time,
+    endTime: new Date(time.getTime() + 60_000),
+    high,
+    low,
+    trend: trend === 'up' ? TrendDirection.Up : TrendDirection.Down,
+    type: DuanType.Complete,
+    status: DuanStatus.Valid,
+    independentCount: 1,
+    originIds: [id * 100 + 1, id * 100 + 2],
+    originBis: [],
+    startBi: null,
+    endBi: null,
+  };
+}

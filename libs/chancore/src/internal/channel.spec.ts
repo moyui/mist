@@ -75,6 +75,7 @@ function makeChannel(
     startId: bis[0].originIds[0],
     endId: bis[bis.length - 1].originIds.at(-1)!,
     trend,
+    expanded: false,
     displayStartId: bis[0].originIds[0],
     displayEndId: bis[bis.length - 1].originIds.at(-1)!,
   };

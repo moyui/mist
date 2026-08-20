@@ -16,7 +16,9 @@ import { DuanChannelCalculator } from './internal/duan-channel';
 import { KMergeCalculator } from './internal/k-merge';
 
 export class ChanCore {
-  static readonly algorithmVersion = 1 as const;
+  // 2：add-chan-central-extension 起，createChannels/createDuanChannels 增加中枢扩张归并
+  // （Phase B 相邻波动区间严格分离），结果语义变化（见 chan-full-output characterization 变化说明）。
+  static readonly algorithmVersion = 2 as const;
 
   private constructor() {}
 

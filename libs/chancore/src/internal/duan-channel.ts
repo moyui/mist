@@ -4,6 +4,10 @@ import type {
   ChanDuanChannel,
   ChanDuanChannelTwoPhaseResult,
 } from '../contracts';
+import {
+  mergeDuanCentralExpansion,
+  resolveCentralExpansions,
+} from './central-expansion';
 import { minMaxBy } from './min-max-by';
 import { mergeSpans } from './span-merge';
 
@@ -25,7 +29,9 @@ export class DuanChannelCalculator {
     duans: readonly ChanDuan[],
   ): ChanDuanChannelTwoPhaseResult {
     const phaseA = this.enumerateChannels(duans);
-    const phaseB = this.mergeChannels(phaseA, duans);
+    const merged = this.mergeChannels(phaseA, duans);
+    // Phase C：中枢扩张归并（相邻波动区间重叠/相切 → 合并为一个更高级别中枢，到不动点）
+    const phaseB = resolveCentralExpansions(merged, mergeDuanCentralExpansion);
     return { phaseA, phaseB };
   }
 
@@ -101,6 +107,7 @@ export class DuanChannelCalculator {
       level: ChannelLevel.Duan,
       type: ChannelType.Complete,
       status: ChannelStatus.Unknown, // Phase A 枚举后由 enumerateChannels 印 status
+      expanded: false,
       startId: firstDuan.originIds[0],
       endId: lastDuan.originIds[lastDuan.originIds.length - 1],
       displayStartId,
@@ -272,6 +279,7 @@ export class DuanChannelCalculator {
       type: ChannelType.Complete,
       // 延伸产物已由 validateChannelGeometry 保证合法，印 Valid
       status: ChannelStatus.Valid,
+      expanded: false,
       startId: firstDuan.originIds[0],
       endId: lastDuan.originIds[lastDuan.originIds.length - 1],
       displayStartId,
@@ -364,6 +372,7 @@ export class DuanChannelCalculator {
       level: head.level,
       type: ChannelType.Complete,
       status: ChannelStatus.Unknown, // 由 stampStatus 重新判定
+      expanded: false,
       startId: head.startId,
       endId: tail.endId,
       displayStartId: head.displayStartId,

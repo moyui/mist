@@ -75,6 +75,7 @@ export interface ChanDuanChannel {
   level: ChannelLevel;
   type: ChannelType;
   status: ChannelStatus;
+  expanded: boolean; // 中枢扩张合并产物标志（true=更高级别中枢）
   startId: number;
   endId: number;
   displayStartId: number;

@@ -9,6 +9,10 @@ import type {
   ChanChannel,
   ChanChannelTwoPhaseResult,
 } from '../contracts';
+import {
+  mergeBiCentralExpansion,
+  resolveCentralExpansions,
+} from './central-expansion';
 import { minMaxBy } from './min-max-by';
 import { mergeSpans } from './span-merge';
 
@@ -35,7 +39,10 @@ export class ChannelCalculator {
     const phaseA = this.enumerateChannels(data);
 
     // Phase B：先延伸（首尾各+2笔），再重合合并
-    const phaseB = this.mergeChannels(phaseA, data);
+    const merged = this.mergeChannels(phaseA, data);
+
+    // Phase C：中枢扩张归并（相邻波动区间重叠/相切 → 合并为一个更高级别中枢，到不动点）
+    const phaseB = resolveCentralExpansions(merged, mergeBiCentralExpansion);
 
     return { phaseA, phaseB };
   }
@@ -235,6 +242,7 @@ export class ChannelCalculator {
       startId: originalBis[startIndex].originIds[0],
       endId: lastBi.originIds[lastBi.originIds.length - 1],
       trend: bis[0].trend,
+      expanded: false,
       displayStartId,
       displayEndId,
     };
@@ -406,6 +414,7 @@ export class ChannelCalculator {
           originalBis[startIndex + 4].originIds.length - 1
         ],
       trend: fiveBis[0].trend,
+      expanded: false,
       displayStartId,
       displayEndId,
     };
@@ -524,6 +533,7 @@ export class ChannelCalculator {
       startId: head.startId,
       endId: tail.endId,
       trend: head.trend,
+      expanded: false,
       displayStartId: head.displayStartId,
       displayEndId: tail.displayEndId,
     };

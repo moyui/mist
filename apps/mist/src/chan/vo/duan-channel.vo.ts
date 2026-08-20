@@ -28,6 +28,8 @@ export class DuanChannelVo implements ChanDuanChannel {
   @ApiProperty({ enum: ChannelStatus })
   status!: ChannelStatus;
   @ApiProperty()
+  expanded!: boolean; // 中枢扩张合并产物标志（true=更高级别中枢）
+  @ApiProperty()
   startId!: number;
   @ApiProperty()
   endId!: number;
