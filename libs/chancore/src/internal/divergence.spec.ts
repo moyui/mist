@@ -11,7 +11,9 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
   const calc = new DivergenceDetector();
 
   it('returns [] for empty input (no units / no zhongshus / no forces)', () => {
-    expect(calc.detectDivergences({ units: [], zhongshus: [], forces: [] })).toEqual([]);
+    expect(
+      calc.detectDivergences({ units: [], zhongshus: [], forces: [] }),
+    ).toEqual([]);
     expect(
       calc.detectDivergences({
         units: [makeUnit('up', 0)],
@@ -36,9 +38,7 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
       makeZhongshu(units[0].startTime, units[2].endTime, 10, 0, 10, 0),
     ];
     const forces = [makeForce(1, 10), makeForce(5, 50), makeForce(5, 50)];
-    expect(
-      calc.detectDivergences({ units, zhongshus, forces }),
-    ).toEqual([]);
+    expect(calc.detectDivergences({ units, zhongshus, forces })).toEqual([]);
   });
 
   it('does not report consolidation when a zhongshu has no leaving unit', () => {
@@ -48,9 +48,7 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
       makeZhongshu(units[4].startTime, units[6].endTime, 10, 0, 10, 0),
     ];
     const forces = units.map((_, i) => makeForce(10 - i, 100 - i * 10));
-    expect(
-      calc.detectDivergences({ units, zhongshus, forces }),
-    ).toEqual([]);
+    expect(calc.detectDivergences({ units, zhongshus, forces })).toEqual([]);
   });
 
   it('reports consolidation divergence when leaving force is weaker on BOTH components', () => {
@@ -104,9 +102,7 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
 
   it('does NOT report when entering and leaving units have opposite directions (24课 A/C 同向)', () => {
     const uAll = makeAlternatingUnits(5); // u0..u4，u0 up
-    const zhongshus = [
-      makeZhongshu(uAll[1].startTime, uAll[3].endTime, 10, 0),
-    ];
+    const zhongshus = [makeZhongshu(uAll[1].startTime, uAll[3].endTime, 10, 0)];
     // 覆盖 forces：leave(u4) 双分量 < enter(u0)
     const fAll = [
       makeForce(9, 90), // u0
@@ -116,7 +112,11 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
       makeForce(3, 30), // u4 < u0
     ];
     // 同向基线：应触发 1
-    const base = calc.detectDivergences({ units: uAll, zhongshus, forces: fAll });
+    const base = calc.detectDivergences({
+      units: uAll,
+      zhongshus,
+      forces: fAll,
+    });
     expect(base).toHaveLength(1);
     // 反向：把离开段 u4 方向改成 down（与进入段 u0 up 反向）
     const reversed = [...uAll];
@@ -125,15 +125,23 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
       endTime: reversed[4].endTime,
       trend: TrendDirection.Down,
     };
-    const res = calc.detectDivergences({ units: reversed, zhongshus, forces: fAll });
-    expect(res.some((d) => d.type === ChanDivergenceType.Consolidation)).toBe(false);
+    const res = calc.detectDivergences({
+      units: reversed,
+      zhongshus,
+      forces: fAll,
+    });
+    expect(res.some((d) => d.type === ChanDivergenceType.Consolidation)).toBe(
+      false,
+    );
   });
 
   it('constructs an up trend chain and reports trend divergence on the chain last channel', () => {
     const input = makeTrendInput();
     const result = calc.detectDivergences(input);
 
-    const trendResults = result.filter((d) => d.type === ChanDivergenceType.Trend);
+    const trendResults = result.filter(
+      (d) => d.type === ChanDivergenceType.Trend,
+    );
     expect(trendResults).toHaveLength(1);
     expect(trendResults[0].zhongshuIndex).toBe(1); // 链末中枢（B）
     expect(trendResults[0].enterIndex).toBe(4); // A 段 = units[4] (u4 up)
@@ -187,7 +195,9 @@ describe('DivergenceDetector (背驰，24课 A/B/C 三段结构，双口径)', (
 
   it('is deterministic for repeated calls', () => {
     const input = makeTrendInput();
-    expect(calc.detectDivergences(input)).toEqual(calc.detectDivergences(input));
+    expect(calc.detectDivergences(input)).toEqual(
+      calc.detectDivergences(input),
+    );
   });
 });
 
@@ -239,16 +249,10 @@ function makeConsolidationInput(
 ): ChanDivergenceInput {
   const units = makeAlternatingUnits(unitCount);
   const zhongshus = [
-    makeZhongshu(
-      opts.firstTime ?? units[1].startTime,
-      units[3].endTime,
-      10,
-      0,
-    ),
+    makeZhongshu(opts.firstTime ?? units[1].startTime, units[3].endTime, 10, 0),
   ];
   const forces =
-    opts.forces ??
-    units.map((_, i) => makeForce(10 - i, 100 - i * 10));
+    opts.forces ?? units.map((_, i) => makeForce(10 - i, 100 - i * 10));
   return { units, zhongshus, forces };
 }
 
@@ -258,12 +262,14 @@ function makeConsolidationInput(
  * 中枢2 = [u5,u6,u7]（离开段 u8 up → 方向 up）；中枢2 位置递进（gg/dd 更高）。
  * 趋势背驰：中枢2(B) 进入段 u4(A) vs 离开段 u8(C)，C 双分量 < A。
  */
-function makeTrendInput(opts: {
-  c2gg?: number;
-  c2dd?: number;
-  c2zg?: number;
-  c2zd?: number;
-} = {}): ChanDivergenceInput {
+function makeTrendInput(
+  opts: {
+    c2gg?: number;
+    c2dd?: number;
+    c2zg?: number;
+    c2zd?: number;
+  } = {},
+): ChanDivergenceInput {
   const units = makeAlternatingUnits(9); // u0 up ... u8 up
   const c2gg = opts.c2gg ?? 30;
   const c2dd = opts.c2dd ?? 10;

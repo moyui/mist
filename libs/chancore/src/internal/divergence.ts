@@ -9,7 +9,7 @@ import type {
 interface ChannelSpan {
   readonly zhongshuIndex: number;
   readonly firstIndex: number; // 中枢首单元下标（units 中），= s
-  readonly lastIndex: number;  // 中枢末单元下标（units 中），= e
+  readonly lastIndex: number; // 中枢末单元下标（units 中），= e
   readonly zg: number;
   readonly zd: number;
   readonly gg: number;
@@ -52,11 +52,7 @@ export class DivergenceDetector {
 
     // 盘整背驰（每中枢独立，无趋势前提）
     for (const span of spans) {
-      const divergence = this.detectConsolidation(
-        span,
-        units,
-        forces,
-      );
+      const divergence = this.detectConsolidation(span, units, forces);
       if (divergence) {
         results.push(divergence);
       }
@@ -195,7 +191,10 @@ export class DivergenceDetector {
 
       // 断链：收束当前链（若够长），以 span 起新链
       if (current.length >= 2) {
-        chains.push({ spans: current, direction: currentDirection as TrendDirection });
+        chains.push({
+          spans: current,
+          direction: currentDirection as TrendDirection,
+        });
       }
       current = [span];
       currentDirection = direction;

@@ -1,4 +1,8 @@
-import { computeUnitForces, computeUnitDirectionalAreas, computeUnitLinePeaks } from './index';
+import {
+  computeUnitForces,
+  computeUnitDirectionalAreas,
+  computeUnitLinePeaks,
+} from './index';
 
 describe('computeUnitForces', () => {
   const kTimes = Array.from(
@@ -83,18 +87,28 @@ describe('computeUnitDirectionalAreas', () => {
       { startTime: kTimes[10], endTime: kTimes[14] }, // histogram[0..4]
     ];
 
-    const areas = computeUnitDirectionalAreas(histogram, begIndex, kTimes, units, ['up']);
+    const areas = computeUnitDirectionalAreas(
+      histogram,
+      begIndex,
+      kTimes,
+      units,
+      ['up'],
+    );
     expect(areas).toEqual([12]);
   });
 
   it('down unit sums only green (negative) bars as positive magnitude', () => {
     const histogram = [3, -2, 5, -1, 4]; // green: 2+1 = 3
     const begIndex = 10;
-    const units = [
-      { startTime: kTimes[10], endTime: kTimes[14] },
-    ];
+    const units = [{ startTime: kTimes[10], endTime: kTimes[14] }];
 
-    const areas = computeUnitDirectionalAreas(histogram, begIndex, kTimes, units, ['down']);
+    const areas = computeUnitDirectionalAreas(
+      histogram,
+      begIndex,
+      kTimes,
+      units,
+      ['down'],
+    );
     expect(areas).toEqual([3]);
   });
 
@@ -130,7 +144,12 @@ describe('computeUnitDirectionalAreas', () => {
         [1],
         0,
         kTimes,
-        [{ startTime: new Date(kTimes[39].getTime() + 60_000), endTime: new Date(kTimes[39].getTime() + 120_000) }],
+        [
+          {
+            startTime: new Date(kTimes[39].getTime() + 60_000),
+            endTime: new Date(kTimes[39].getTime() + 120_000),
+          },
+        ],
         ['up'],
       ),
     ).toEqual([0]);
@@ -162,7 +181,10 @@ describe('computeUnitLinePeaks', () => {
     expect(warm).toEqual([{ max: 0, min: 0 }]);
 
     const out = computeUnitLinePeaks(dif, begIndex, kTimes, [
-      { startTime: new Date(kTimes[39].getTime() + 60_000), endTime: new Date(kTimes[39].getTime() + 120_000) },
+      {
+        startTime: new Date(kTimes[39].getTime() + 60_000),
+        endTime: new Date(kTimes[39].getTime() + 120_000),
+      },
     ]);
     expect(out).toEqual([{ max: 0, min: 0 }]);
   });

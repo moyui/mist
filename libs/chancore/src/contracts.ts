@@ -175,7 +175,7 @@ export interface ChanDuanChannelTwoPhaseResult {
 // ---------------------------------------------------------------------------
 
 export enum ChanDivergenceType {
-  Trend = 'trend',                 // 趋势背驰（24课标准背驰）
+  Trend = 'trend', // 趋势背驰（24课标准背驰）
   Consolidation = 'consolidation', // 盘整背驰
 }
 
@@ -193,11 +193,11 @@ export interface ChanDivergenceUnit {
  */
 export interface ChanDivergenceZhongshu {
   readonly firstUnitTime: Date; // 中枢首单元起点（≡ units[0].startTime）
-  readonly lastUnitTime: Date;  // 中枢末单元终点（≡ units.at(-1).endTime）
-  readonly zg: number;          // 中枢上沿
-  readonly zd: number;          // 中枢下沿
-  readonly gg: number;          // 中枢最高（位置递进用）
-  readonly dd: number;          // 中枢最低
+  readonly lastUnitTime: Date; // 中枢末单元终点（≡ units.at(-1).endTime）
+  readonly zg: number; // 中枢上沿
+  readonly zd: number; // 中枢下沿
+  readonly gg: number; // 中枢最高（位置递进用）
+  readonly dd: number; // 中枢最低
 }
 
 /** 每单元力度（双分量，均为"越大越强"正向标量）：area=方向柱面积、peak=黄白线(DIF)极值绝对值。 */
@@ -216,8 +216,8 @@ export interface ChanDivergenceInput {
 export interface ChanDivergence {
   readonly type: ChanDivergenceType;
   readonly zhongshuIndex: number; // 相关中枢在 zhongshus 中的位置
-  readonly enterIndex: number;    // 进入段在 units 中的位置
-  readonly leaveIndex: number;    // 离开段在 units 中的位置
+  readonly enterIndex: number; // 进入段在 units 中的位置
+  readonly leaveIndex: number; // 离开段在 units 中的位置
   readonly enterForce: ChanUnitForce;
   readonly leaveForce: ChanUnitForce;
 }
