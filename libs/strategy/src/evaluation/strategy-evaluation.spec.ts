@@ -1,5 +1,5 @@
 import type { StrategyBar } from '../market-data/strategy-bar';
-import { QuantityForwardFillProjector } from '../projection/quantity-forward-fill.projector';
+import { StrategySeriesImputer } from '../projection/strategy-series-imputer';
 import { compileStoredStrategyRule } from '../rules/strategy-rule.compiler';
 import {
   buildStrategyEvaluationContext,
@@ -258,6 +258,78 @@ describe('shared strategy evaluation', () => {
       serializeStrategyContextSnapshot(plan, before.context),
     );
   });
+
+  it('reads k.close from the effective imputed value of a missing bar', () => {
+    const bars = buildBars(2);
+    bars[1] = { ...bars[1], open: Number.NaN };
+    const plan = compileStoredStrategyRule(
+      { field: 'k.close', operator: 'eq', value: bars[0].close },
+      'entry',
+    );
+
+    const outcome = evaluateStrategyPlan(plan, project(bars));
+
+    expect(bars[1].close).not.toEqual(bars[0].close);
+    expect(outcome).toMatchObject({ status: 'evaluated', matched: true });
+  });
+
+  it('reports field_unavailable when the anchor bar OHLC has no anchor', () => {
+    const bars = buildBars(1);
+    bars[0] = { ...bars[0], open: Number.NaN };
+    const plan = compileStoredStrategyRule(
+      { field: 'k.close', operator: 'gt', value: 1 },
+      'entry',
+    );
+
+    expect(evaluateStrategyPlan(plan, project(bars))).toEqual({
+      status: 'unavailable',
+      reason: 'field_unavailable',
+    });
+  });
+
+  it('imputes an incomplete OHLC four-tuple from the nearest complete anchor', () => {
+    const bars = buildBars(3);
+    bars[1] = { ...bars[1], open: Number.NaN };
+    const plan = compileStoredStrategyRule(
+      { field: 'k.open', operator: 'eq', value: bars[2].open },
+      'entry',
+    );
+
+    expect(evaluateStrategyPlan(plan, project(bars))).toMatchObject({
+      status: 'evaluated',
+      matched: true,
+    });
+  });
+
+  it('computes indicators from effective OHLC instead of raw non-finite values', () => {
+    const bars = buildBars(131);
+    bars[130] = { ...bars[130], close: Number.NaN };
+    const plan = compileStoredStrategyRule(
+      { field: 'indicator.macd.line', operator: 'gt', value: -1_000_000 },
+      'entry',
+    );
+
+    const outcome = evaluateStrategyPlan(plan, project(bars));
+
+    expect(outcome).toMatchObject({ status: 'evaluated' });
+    if (outcome.status !== 'evaluated') throw new Error('expected context');
+    expect(outcome.context.fields['indicator.macd.line']?.current).toEqual(
+      expect.any(Number),
+    );
+  });
+
+  it('reports field_unavailable when the analysis window has no effective OHLC', () => {
+    const bars = buildBars(13).map((bar) => ({ ...bar, open: Number.NaN }));
+    const plan = compileStoredStrategyRule(
+      { field: 'indicator.kdj.k', operator: 'gt', value: 0 },
+      'entry',
+    );
+
+    expect(evaluateStrategyPlan(plan, project(bars))).toEqual({
+      status: 'unavailable',
+      reason: 'field_unavailable',
+    });
+  });
 });
 
 describe('shared strategy context snapshot', () => {
@@ -407,8 +479,8 @@ describe('shared strategy context snapshot', () => {
 });
 
 function project(bars: readonly StrategyBar[]) {
-  const projector = new QuantityForwardFillProjector();
-  return bars.map((bar) => projector.project(bar));
+  const imputer = new StrategySeriesImputer();
+  return bars.map((bar) => imputer.append(bar));
 }
 
 function buildBars(

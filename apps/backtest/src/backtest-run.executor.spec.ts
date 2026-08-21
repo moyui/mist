@@ -1,4 +1,5 @@
 import { BacktestRunStatus, DataSource, Period } from '@app/shared-data';
+import type { StrategyBar } from '@app/strategy';
 import { BacktestHealthStateService } from './backtest-health-state.service';
 import { BacktestRunExecutor } from './backtest-run.executor';
 
@@ -43,7 +44,10 @@ function executor(overrides: Record<string, unknown> = {}) {
     securityRepository: {
       find: jest.fn().mockResolvedValue([]),
     },
-    marketData: { readReplayPage: jest.fn() },
+    marketData: {
+      readReplayPage: jest.fn(),
+      loadReplayWindow: jest.fn(),
+    },
     dataSource,
     config: {
       get: jest.fn((key: string) =>
@@ -117,4 +121,167 @@ describe('BacktestRunExecutor', () => {
       backtestRunId: 41,
     });
   });
+
+  it('hydrates the initial window segment bidirectionally before streaming bars', async () => {
+    const startDate = new Date('2026-08-04T01:42:00.000Z');
+    const fixture = executor();
+    fixture.current.period = Period.ONE_MIN;
+    fixture.current.startDate = startDate;
+    fixture.current.targetUniverse = ['600000.SH'];
+    fixture.dependencies.securityRepository.find.mockResolvedValue([
+      { id: 9, code: '600000.SH' },
+    ]);
+    fixture.dependencies.versionRepository.findOne.mockResolvedValue({
+      id: 7,
+      rule: { field: 'indicator.kdj.k', operator: 'gt', value: -1 },
+      signalKind: 'entry',
+    });
+    // 12 bars before startDate; the leading one has a broken OHLC four-tuple and
+    // must be back-filled from its later same-day anchor during hydration.
+    const hydrated = Array.from({ length: 12 }, (_, index) =>
+      strategyBar(
+        `2026-08-04T01:${String(30 + index).padStart(2, '0')}:00.000Z`,
+      ),
+    );
+    hydrated[0] = { ...hydrated[0], open: Number.NaN };
+    const streaming = strategyBar('2026-08-04T01:42:00.000Z');
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: hydrated,
+    });
+    fixture.dependencies.marketData.readReplayPage.mockResolvedValue({
+      bars: [streaming],
+      nextAfterTimestamp: null,
+    });
+    fixture.dependencies.resultRepository.create.mockImplementation(
+      (input: unknown) => input,
+    );
+
+    await fixture.instance.execute(fixture.current.id);
+
+    // Two-phase contract: initial segment loaded with an exclusive endAt at startDate,
+    // then the streaming page starts at startDate (replayStartFor, no quantity fields).
+    expect(
+      fixture.dependencies.marketData.loadReplayWindow,
+    ).toHaveBeenCalledWith({
+      securityId: 9,
+      source: 'tdx',
+      period: Period.ONE_MIN,
+      endAt: startDate,
+      requiredBars: 13,
+    });
+    expect(fixture.dependencies.marketData.readReplayPage).toHaveBeenCalledWith(
+      expect.objectContaining({ startAt: startDate }),
+    );
+    // The back-filled leading bar keeps the KDJ window evaluable (no
+    // field_unavailable), so the matched signal is recorded.
+    expect(fixture.dependencies.resultRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ signalTime: streaming.timestamp }),
+    );
+    expect(fixture.dependencies.runRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 41, status: BacktestRunStatus.RUNNING }),
+      expect.objectContaining({
+        status: BacktestRunStatus.COMPLETED,
+        signalCount: 1,
+      }),
+    );
+  });
+
+  it('keeps evaluations insufficient until the hydrated window plus appends fill the plan', async () => {
+    const startDate = new Date('2026-08-04T01:42:00.000Z');
+    const fixture = executor();
+    fixture.current.period = Period.ONE_MIN;
+    fixture.current.startDate = startDate;
+    fixture.current.targetUniverse = ['600000.SH'];
+    fixture.dependencies.securityRepository.find.mockResolvedValue([
+      { id: 9, code: '600000.SH' },
+    ]);
+    fixture.dependencies.versionRepository.findOne.mockResolvedValue({
+      id: 7,
+      rule: { field: 'indicator.kdj.k', operator: 'gt', value: -1 },
+      signalKind: 'entry',
+    });
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: [],
+    });
+    fixture.dependencies.marketData.readReplayPage.mockResolvedValue({
+      bars: [strategyBar('2026-08-04T01:42:00.000Z')],
+      nextAfterTimestamp: null,
+    });
+    fixture.dependencies.resultRepository.create.mockImplementation(
+      (input: unknown) => input,
+    );
+
+    await fixture.instance.execute(fixture.current.id);
+
+    expect(fixture.dependencies.resultRepository.create).not.toHaveBeenCalled();
+    expect(fixture.dependencies.runRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 41, status: BacktestRunStatus.RUNNING }),
+      expect.objectContaining({
+        status: BacktestRunStatus.COMPLETED,
+        signalCount: 0,
+      }),
+    );
+  });
+
+  it('counts hydrated bars against the replay budget', async () => {
+    const startDate = new Date('2026-08-04T01:42:00.000Z');
+    const fixture = executor();
+    fixture.current.period = Period.ONE_MIN;
+    fixture.current.startDate = startDate;
+    fixture.current.targetUniverse = ['600000.SH'];
+    fixture.dependencies.securityRepository.find.mockResolvedValue([
+      { id: 9, code: '600000.SH' },
+    ]);
+    fixture.dependencies.versionRepository.findOne.mockResolvedValue({
+      id: 7,
+      rule: { field: 'k.close', operator: 'gt', value: 1 },
+      signalKind: 'entry',
+    });
+    (fixture.dependencies.config.get as jest.Mock).mockImplementation(
+      (key: string) =>
+        key === 'BACKTEST_RUN_TIMEOUT_MS'
+          ? 60_000
+          : key === 'BACKTEST_MAX_BARS_PER_RUN'
+            ? 1
+            : undefined,
+    );
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: [
+        strategyBar('2026-08-04T01:30:00.000Z'),
+        strategyBar('2026-08-04T01:31:00.000Z'),
+      ],
+    });
+    fixture.dependencies.marketData.readReplayPage.mockResolvedValue({
+      bars: [strategyBar('2026-08-04T01:42:00.000Z')],
+      nextAfterTimestamp: null,
+    });
+
+    await fixture.instance.execute(fixture.current.id);
+
+    expect(fixture.manager.update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 41, status: expect.anything() }),
+      expect.objectContaining({
+        status: BacktestRunStatus.FAILED,
+        errorMessage: 'BACKTEST_BAR_LIMIT_EXCEEDED',
+      }),
+    );
+  });
 });
+
+function strategyBar(timestamp: string): StrategyBar {
+  const close = 10.5;
+  return {
+    securityId: 9,
+    source: 'tdx',
+    period: 1,
+    timestamp: new Date(timestamp),
+    open: close - 0.2,
+    high: close + 0.5,
+    low: close - 0.5,
+    close,
+    volume: '100',
+    amount: '200',
+    type: 'complete',
+  };
+}

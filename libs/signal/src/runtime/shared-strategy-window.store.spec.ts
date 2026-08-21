@@ -94,6 +94,56 @@ describe('SharedStrategyWindowStore', () => {
 
     expect(store.groupCount).toBe(0);
   });
+
+  it('hydrates the initial segment bidirectionally and exposes the ohlc view', async () => {
+    const marketData = {
+      loadRealtimeWindow: jest.fn().mockResolvedValue({
+        bars: [
+          { ...bar(1, '2026-08-04T01:30:00.000Z'), open: Number.NaN },
+          bar(2, '2026-08-04T01:31:00.000Z'),
+        ],
+      }),
+      resolveRealtimeObservation: jest.fn(),
+    };
+    const store = new SharedStrategyWindowStore();
+
+    await store.prepare(marketData, bar(3, '2026-08-04T01:32:00.000Z'), 3);
+
+    const [leading] = store.read(9, 'tdx', 1);
+    expect(leading.ohlc).toEqual({
+      raw: null,
+      effective: { open: 2, high: 2, low: 2, close: 2 },
+      resolution: 'backfilled',
+    });
+  });
+
+  it('appends forward-fill only and never rewrites frozen values', async () => {
+    const marketData = {
+      loadRealtimeWindow: jest.fn().mockResolvedValue({
+        bars: [
+          bar(1, '2026-08-04T01:30:00.000Z'),
+          { ...bar(2, '2026-08-04T01:31:00.000Z'), open: Number.NaN },
+        ],
+      }),
+      resolveRealtimeObservation: jest.fn(),
+    };
+    const store = new SharedStrategyWindowStore();
+    await store.prepare(marketData, bar(3, '2026-08-04T01:32:00.000Z'), 3);
+    const frozen = byTimestamp(
+      store.read(9, 'tdx', 1),
+      '2026-08-04T01:31:00.000Z',
+    );
+
+    await store.prepare(marketData, bar(4, '2026-08-04T01:33:00.000Z'), 3);
+
+    expect(
+      byTimestamp(store.read(9, 'tdx', 1), '2026-08-04T01:31:00.000Z'),
+    ).toEqual(frozen);
+    expect(
+      byTimestamp(store.read(9, 'tdx', 1), '2026-08-04T01:31:00.000Z')?.ohlc
+        .resolution,
+    ).toBe('forwardFilled');
+  });
 });
 
 function bar(
@@ -114,4 +164,13 @@ function bar(
     amount: null,
     type: 'complete',
   };
+}
+
+function byTimestamp(
+  bars: readonly import('@app/strategy').ProjectedStrategyBar[],
+  isoTimestamp: string,
+) {
+  return bars.find(
+    (projected) => projected.rawBar.timestamp.toISOString() === isoTimestamp,
+  );
 }

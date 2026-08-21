@@ -8,7 +8,8 @@ import {
   calculateStrategyMacd,
   type StrategyMacdObservation,
 } from '../analysis/strategy-macd';
-import type { ProjectedStrategyBar } from '../projection/quantity-forward-fill.projector';
+import type { ProjectedStrategyBar } from '../projection/strategy-series-imputer';
+import type { StrategyBar } from '../market-data/strategy-bar';
 import type { StrategyFieldPath } from '../rules/strategy-field.catalog';
 import type {
   CompiledStrategyCondition,
@@ -123,10 +124,10 @@ interface MaterializedField {
 
 /** Per-group, per-anchor cache. Never retain this object across another bar. */
 export class StrategyAnalysisObservationCache {
-  private kdjCurrent?: StrategyKdjObservation;
-  private kdjPrevious?: StrategyKdjObservation;
-  private macdCurrent?: StrategyMacdObservation;
-  private macdPrevious?: StrategyMacdObservation;
+  private kdjCurrent?: StrategyKdjObservation | null;
+  private kdjPrevious?: StrategyKdjObservation | null;
+  private macdCurrent?: StrategyMacdObservation | null;
+  private macdPrevious?: StrategyMacdObservation | null;
 
   constructor(
     private readonly calculateKdj = calculateStrategyKdj,
@@ -136,15 +137,15 @@ export class StrategyAnalysisObservationCache {
   kdj(
     bars: readonly ProjectedStrategyBar[],
     previous: boolean,
-  ): StrategyKdjObservation {
+  ): StrategyKdjObservation | null {
     if (previous) {
-      this.kdjPrevious ??= this.calculateKdj(
-        rawBars(bars.slice(-(STRATEGY_KDJ_CALCULATION_BAR_COUNT + 1), -1)),
+      this.kdjPrevious ??= this.calculateEffectiveKdj(
+        bars.slice(-(STRATEGY_KDJ_CALCULATION_BAR_COUNT + 1), -1),
       );
       return this.kdjPrevious;
     }
-    this.kdjCurrent ??= this.calculateKdj(
-      rawBars(bars.slice(-STRATEGY_KDJ_CALCULATION_BAR_COUNT)),
+    this.kdjCurrent ??= this.calculateEffectiveKdj(
+      bars.slice(-STRATEGY_KDJ_CALCULATION_BAR_COUNT),
     );
     return this.kdjCurrent;
   }
@@ -152,17 +153,33 @@ export class StrategyAnalysisObservationCache {
   macd(
     bars: readonly ProjectedStrategyBar[],
     previous: boolean,
-  ): StrategyMacdObservation {
+  ): StrategyMacdObservation | null {
     if (previous) {
-      this.macdPrevious ??= this.calculateMacd(
-        rawBars(bars.slice(-(STRATEGY_MACD_CALCULATION_BAR_COUNT + 1), -1)),
+      this.macdPrevious ??= this.calculateEffectiveMacd(
+        bars.slice(-(STRATEGY_MACD_CALCULATION_BAR_COUNT + 1), -1),
       );
       return this.macdPrevious;
     }
-    this.macdCurrent ??= this.calculateMacd(
-      rawBars(bars.slice(-STRATEGY_MACD_CALCULATION_BAR_COUNT)),
+    this.macdCurrent ??= this.calculateEffectiveMacd(
+      bars.slice(-STRATEGY_MACD_CALCULATION_BAR_COUNT),
     );
     return this.macdCurrent;
+  }
+
+  private calculateEffectiveKdj(
+    bars: readonly ProjectedStrategyBar[],
+  ): StrategyKdjObservation | null {
+    const effective = effectiveBars(bars);
+    if (effective === null) return null;
+    return this.calculateKdj(effective);
+  }
+
+  private calculateEffectiveMacd(
+    bars: readonly ProjectedStrategyBar[],
+  ): StrategyMacdObservation | null {
+    const effective = effectiveBars(bars);
+    if (effective === null) return null;
+    return this.calculateMacd(effective);
   }
 }
 
@@ -185,9 +202,15 @@ function materializeField(
         | 'high'
         | 'low'
         | 'close';
+      const currentEffective = current.ohlc.effective?.[property] ?? null;
+      if (currentEffective === null) return null;
+      const previousEffective = demand.needsPrevious
+        ? (previous?.ohlc.effective?.[property] ?? null)
+        : undefined;
+      if (demand.needsPrevious && previousEffective === null) return null;
       return observation(
-        current.rawBar[property],
-        previous?.rawBar[property],
+        currentEffective,
+        previousEffective ?? undefined,
         demand.needsPrevious,
       );
     }
@@ -220,11 +243,17 @@ function materializeField(
     case 'indicator.kdj.d':
     case 'indicator.kdj.j': {
       const property = demand.field.slice(-1) as 'k' | 'd' | 'j';
-      const currentValue = analysis.kdj(bars, false)[property];
+      const currentValue = analysis.kdj(bars, false);
+      if (currentValue === null) return null;
       const previousValue = demand.needsPrevious
-        ? analysis.kdj(bars, true)[property]
+        ? analysis.kdj(bars, true)
         : undefined;
-      return observation(currentValue, previousValue, demand.needsPrevious);
+      if (demand.needsPrevious && previousValue === null) return null;
+      return observation(
+        currentValue[property],
+        previousValue?.[property],
+        demand.needsPrevious,
+      );
     }
     case 'indicator.macd.line':
     case 'indicator.macd.signal':
@@ -233,11 +262,17 @@ function materializeField(
         | 'line'
         | 'signal'
         | 'histogram';
-      const currentValue = analysis.macd(bars, false)[property];
+      const currentValue = analysis.macd(bars, false);
+      if (currentValue === null) return null;
       const previousValue = demand.needsPrevious
-        ? analysis.macd(bars, true)[property]
+        ? analysis.macd(bars, true)
         : undefined;
-      return observation(currentValue, previousValue, demand.needsPrevious);
+      if (demand.needsPrevious && previousValue === null) return null;
+      return observation(
+        currentValue[property],
+        previousValue?.[property],
+        demand.needsPrevious,
+      );
     }
   }
 }
@@ -306,8 +341,28 @@ function setQuantityEvidence(
   if (field === 'k.amount') target.amount = evidence;
 }
 
-function rawBars(bars: readonly ProjectedStrategyBar[]) {
-  return bars.map((bar) => bar.rawBar);
+/**
+ * Map projected bars to raw-shaped bars carrying the effective OHLC values.
+ * Returns null when any bar in the window has no effective OHLC (unavailable):
+ * the analysis cannot be computed and the consuming field reports
+ * `field_unavailable` instead of tripping the analysis guard on non-finite values.
+ */
+function effectiveBars(
+  bars: readonly ProjectedStrategyBar[],
+): StrategyBar[] | null {
+  const effective: StrategyBar[] = [];
+  for (const projected of bars) {
+    const ohlc = projected.ohlc.effective;
+    if (ohlc === null) return null;
+    effective.push({
+      ...projected.rawBar,
+      open: ohlc.open,
+      high: ohlc.high,
+      low: ohlc.low,
+      close: ohlc.close,
+    });
+  }
+  return effective;
 }
 
 function assertOrderedMarketGroup(bars: readonly ProjectedStrategyBar[]): void {

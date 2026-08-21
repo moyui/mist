@@ -101,7 +101,7 @@ describe('Decimal8 pure boundary', () => {
       'libs/shared-data/src/transformers/canonical-decimal.transformer.ts',
       'apps/mist/src/realtime/candle/open-candle-aggregator.ts',
       'libs/strategy/src/rules/strategy-rule.compiler.ts',
-      'libs/strategy/src/projection/quantity-forward-fill.projector.ts',
+      'libs/strategy/src/projection/strategy-series-imputer.ts',
       'libs/strategy/src/evaluation/strategy-rule.evaluator.ts',
     ];
     for (const consumer of consumers) {

@@ -14,7 +14,7 @@ import type {
   StrategyEvaluationOutcome,
   StrategyFieldObservation,
 } from './strategy-evaluation.types';
-import type { ProjectedStrategyBar } from '../projection/quantity-forward-fill.projector';
+import type { ProjectedStrategyBar } from '../projection/strategy-series-imputer';
 
 export function evaluateStrategyPlan(
   plan: CompiledStrategyExecutionPlan,

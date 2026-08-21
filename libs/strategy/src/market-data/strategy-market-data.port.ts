@@ -55,10 +55,27 @@ export type StrategyMarketObservation =
       readonly timestamp: Date;
     };
 
+export interface StrategyReplayWindowCriteria {
+  readonly securityId: number;
+  readonly source: StrategyRealtimeSource;
+  readonly period: number;
+  /** Exclusive upper bound: only bars strictly before this timestamp are returned. */
+  readonly endAt: Date;
+  readonly requiredBars: number;
+}
+
+export interface StrategyReplayWindow {
+  readonly bars: readonly StrategyBar[];
+}
+
 export interface StrategyReplayMarketDataPort {
   readReplayPage(
     criteria: StrategyReplayPageCriteria,
   ): Promise<StrategyReplayPage>;
+
+  loadReplayWindow(
+    criteria: StrategyReplayWindowCriteria,
+  ): Promise<StrategyReplayWindow>;
 }
 
 export interface StrategyRealtimeMarketDataPort {

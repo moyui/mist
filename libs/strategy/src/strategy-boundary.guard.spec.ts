@@ -9,6 +9,7 @@ import type {
   StrategyRealtimeWindow,
   StrategyReplayPage,
   StrategyReplayMarketDataPort,
+  StrategyReplayWindow,
   StrategyTrigger,
 } from './index';
 
@@ -35,6 +36,9 @@ describe('Strategy domain boundary', () => {
         bars: [],
         nextAfterTimestamp: null,
       }),
+      loadReplayWindow: async (): Promise<StrategyReplayWindow> => ({
+        bars: [],
+      }),
       loadRealtimeWindow: async (): Promise<StrategyRealtimeWindow> => ({
         bars: [],
       }),
@@ -57,6 +61,9 @@ describe('Strategy domain boundary', () => {
       readReplayPage: async () => ({
         bars: [],
         nextAfterTimestamp: null,
+      }),
+      loadReplayWindow: async () => ({
+        bars: [],
       }),
     };
     const realtime: StrategyRealtimeMarketDataPort = {
