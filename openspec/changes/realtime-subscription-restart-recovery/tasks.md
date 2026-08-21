@@ -72,14 +72,14 @@
 
 ## 5. QMT 桥脚本（mist-datasource 仓 qmt/builtin_bridge）
 
-- [x] 5.1 `[datasource]` 启动上下文日志（pid / 父进程 / 启动时刻 / transport）
+  - [ ] 5.1 `[datasource]` 启动上下文日志（pid / 父进程 / 启动时刻 / transport）
       ——与 TDX 桥对齐（可选，若真机观察不需要可略）（D6）。
-- [x] 5.2 `[datasource tests]` 启动日志断言（沿用 test_qmt_builtin_subscription_bridge.py
+  - [ ] 5.2 `[datasource tests]` 启动日志断言（沿用 test_qmt_builtin_subscription_bridge.py
       模式）。
 
 ## 6. 告警（mist-deploy 仓）
 
-- [x] 6.1 `[deploy]` 验证 OO metrics label 查询能力（label 谓词是否尊重时间
+  - [ ] 6.1 `[deploy]` 验证 OO metrics label 查询能力（label 谓词是否尊重时间
       窗口——O3 教训：value 谓词绕过窗口）→ 定 A1 修复形态（D7）。
 - [x] 6.2 `[deploy]` A1 盲区修复：按 source 拆分（A1_tdx/A1_qmt）或 label
       过滤（oo-alerts/rules.json + sync-oo-alerts.ps1）（D7）。
@@ -94,17 +94,17 @@
 
 ## 7. 验证（HIL，真机）
 
-- [x] 7.1 `[HIL/用户配合]` TDX 终端重启 HIL：用户重启 TDX 终端（或重载策略）
+  - [ ] 7.1 `[HIL/用户配合]` TDX 终端重启 HIL：用户重启 TDX 终端（或重载策略）
       → 断言 callback 恢复 + ingest 恢复 + 无 datasource 操作（状态机 PUSHING
       → VERIFIED）；回答 subscribe_hq 幂等性 → 决定 REARM_ENABLED（D2/D4/D8）。
-- [x] 7.2 `[HIL]` QMT 终端重启验证：终端重启 → 状态机全量重发恢复实证
+  - [ ] 7.2 `[HIL]` QMT 终端重启验证：终端重启 → 状态机全量重发恢复实证
       （callbackObserved 恢复）；确认 VERIFIED 态零 SDK 调用（D3）。
-- [x] 7.3 `[HIL]` 双源 stall 告警验证：窗口内模拟断流 → PUSHING → escalated
+  - [ ] 7.3 `[HIL]` 双源 stall 告警验证：窗口内模拟断流 → PUSHING → escalated
       → O3 A7 触发 → 投递；窗口外（午休/收盘/夜间）不重连不告警（stall_active=0）
       （D5/D7）。
-- [x] 7.4 `[HIL]` 阈值校准：STALL_GRACE / MAX_RECOVERY_CYCLES / 活动窗口
+  - [ ] 7.4 `[HIL]` 阈值校准：STALL_GRACE / MAX_RECOVERY_CYCLES / 活动窗口
       实盘校准（同 B1 grace 校准模式）（D5）。
-- [x] 7.5 `[HIL]` 重启原因调查：桥启动上下文日志 + generation 转换日志 →
+  - [ ] 7.5 `[HIL]` 重启原因调查：桥启动上下文日志 + generation 转换日志 →
       08-14 无人工自动重启触发源定位（终端自动重启？策略重载？）（D6）。
 
 ## 8. 提交（三步工作流）
@@ -114,4 +114,4 @@
 - [x] 8.2 实施计划确认后落地（worktree 分支 + 单测 + 验证 + 合并）。
 - [x] 8.3 `openspec validate realtime-subscription-restart-recovery --strict`
       + `openspec validate --all --strict`。
-- [x] 8.4 归档（delta 合并进 live specs 手动同步）。
+  - [ ] 8.4 归档（delta 合并进 live specs 手动同步）。
