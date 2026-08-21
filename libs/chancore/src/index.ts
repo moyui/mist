@@ -1,6 +1,7 @@
 export {
   BiStatus,
   BiType,
+  ChanBspType,
   ChannelLevel,
   ChannelStatus,
   ChannelType,
@@ -13,6 +14,9 @@ export {
 export type {
   ChanBi,
   ChanBiTwoPhaseResult,
+  ChanBspInput,
+  ChanBspUnit,
+  ChanBuySellPoint,
   ChanChannel,
   ChanChannelTwoPhaseResult,
   ChanDivergence,
