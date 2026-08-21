@@ -73,7 +73,12 @@
 
 - [x] 5.1 增加单实例 Backtest image/build、Compose service、内部 HTTP/RPC 配置、PowerShell defaults、
   deploy/start order 和 health contract；`mist-backend` 不以 Compose healthy 硬依赖 Backtest。
-- [ ] 5.2 增加 Backtest 与 Mist 补偿链路的 **OTel 指标与判断点日志（OpenObserve 口径）**
+- [x] 5.2 增加 Backtest 与 Mist 补偿链路的 **OTel 指标与判断点日志（OpenObserve 口径）**
+  （2026-08-21 归档前复核：实现均在 master；backtest-metrics/health-state/executor/
+  startup-compensation 4 个相关单测 11/11 通过；5.2.7 补偿 outcome 日志核对成立零改动；
+  注册点 = backtest `main.ts` + mist `realtime-ingress.module.ts`（tasks 措辞 main.ts，
+  module 入口等效）；SDK 由镜像 CMD `-r auto-instrumentations-node/register` preload 初始化，早于
+  `main.ts` 执行，与 candle-metrics 同模式）
   ——monitoring/exporter 已随 OTel 迁移退役（2026-08-10 决策），不再产出 prometheus 指标；
   spec delta 见 `specs/backtest-otel-metrics/spec.md`，设计见 design.md §12：
   - [x] 5.2.1 新建 `apps/backtest/src/observability/backtest-metrics.ts`：
