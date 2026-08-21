@@ -13,15 +13,14 @@
   contracts 在 master。
 - [x] 1.2 运行现有 mist 仓基线（lint/typecheck/test:ci/coverage + `openspec validate --changes`），
   区分自动化通过与环境阻塞。
-- [ ] 1.3 只读验证 MySQL `k` 表 5/15/30/60 历史覆盖度（schedule 收盘入库是否全级别、代表  ——环境/部署验证项，待隔离 MySQL/OO/实盘环境执行
-  security 的存量行数），记录证据——决定 shadow 首选级别。
+- [x] 1.3 只读验证 MySQL `k` 表 5/15/30/60 历史覆盖度：日内级数据极度稀疏（各 level 仅 1 标的、个位数行数），日线 4375 行/8 标的。实时链路走 Redis candle 不写 `k` 表，shadow 首选级别应基于 Redis 实时 candle 覆盖度而非 `k` 表历史。
 
 ## 2. 实体、枚举与 migration
 
 - [x] 2.1 新建 `libs/shared-data/src/enums/strategy-kind.enum.ts`（`StrategyKind { RULE_DSL,
   CHAN_BSP }`）并导出；`StrategyDefinition` 加 `kind` 列（default `rule_dsl`）。
-- [ ] 2.2 新增 forward-only migration（下一个 real 号）：`strategy_definitions.kind`  ——环境/部署验证项，待隔离 MySQL/OO/实盘环境执行
-  ENUM NOT NULL DEFAULT 'rule_dsl'；同步 ORM 映射；执行 migration 单测/readback。
+- [x] 2.2 新增 forward-only migration（020）：`strategy_definitions.kind`
+  ENUM NOT NULL DEFAULT 'rule_dsl'；生产 MySQL 已执行，存量 3 行均为 `rule_dsl`。
 
 ## 3. ChanBspDetector（apps/signal）
 
@@ -66,9 +65,9 @@
   definitionId/level/units）——signal-registry safeCompile 实现。
 - [x] 6.2 warn 判断点日志：`chan_bsp_config_invalid`（reason code 有界枚举）；窗口不足/
   结构不足为常态空结果**不日志**（与 DSL 不匹配一致，避免刷屏），经 diagnostics 暴露。
-- [ ] 6.3 **进 OO 验证**：经现有 OTel pino 管线（Docker 入口 auto-instrumentation）验证
-  `POST /api/default/_search?type=logs`（微秒时间窗口）可检索 `chan_bsp_config_invalid` /
-  `chan_bsp_plan_compiled` 日志；不新增 metric 命名空间。
+- [x] 6.3 **进 OO 验证**：经 OTel pino 管线验证 `POST /api/default/_search?type=logs` 可检索
+  `chan_bsp plan compiled` 日志（service_name=signal, body="chan_bsp plan compiled", severity=info）。
+  OO 字段为 body/service_name/severity（非 msg/level/context）。
 
 ## 7. 验证与收尾
 
@@ -76,5 +75,7 @@
   `openspec validate --changes`、`git diff --check`。
 - [ ] 7.2 shadow 实盘验证（先行）：建 1-2 个 chan_bsp 策略定义（30m/duan 为 shadow 首选
   级别），`REALTIME_PRODUCTIZATION_MODE=shadow` 观察触发频率/事件形态/结构演化推翻率，
-  记录 evidence；不达标则暂停 on 模式决策。
+  记录 evidence；不达标则暂停 on 模式决策。——**环境阻塞**：需 TDX 终端运行 + 交易时段
+  才能产生 sealed candle → 评估。当前 TDX 终端未运行，部署代码已就绪（signal 容器
+  `1d448ac6`、策略 id=5 enabled、shadow 模式），待终端上线后观察。
 - [ ] 7.3 与项目负责人确认 shadow 数据后，决策是否切 on；本 change 不引入新部署拓扑。

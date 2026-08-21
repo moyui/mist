@@ -4,7 +4,7 @@
 > 只能靠 deploy 仓 workflow 触发脚本——当天新写 4 个诊断 workflow 才完成排查）。
 > **本线程职责：先与用户讨论方案方向（A/B/C/D 见下）→ 按三步工作流创建 spec → 实施。**
 > 先读：`mist/docs/project-quality-governance-guide.md`（§10 验证清单、变更门禁）、
-> `mist-monitoring/docs/metrics-overview.md`、本会话记忆索引（~/.zcode/cli/memories/.../MEMORY.md）。
+> `mist-monitoring/docs/metrics-overview.md`、本会话记忆索引（项目 memory 目录）。
 
 ---
 
