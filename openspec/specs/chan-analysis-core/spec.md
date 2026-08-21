@@ -130,10 +130,10 @@ The implementation SHALL live under `libs/chancore`, use Nest project key `chanc
 - **AND** a Git build SHA MUST remain separate from the semantic algorithm version
 
 ### Requirement: ChanCore Shall Publish A Minimal Algorithm Facade
-The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`, `findFenxings`,
-`createBi`, `createChannels`, `createDuan`, `createDuanChannels` and `detectDivergences`, plus only the
-algorithm-owned types, enums and approved `ChanInputError/ChanInvariantError` required by its call and throw
-contracts.
+The `@app/chancore` public barrel SHALL expose one stateless `ChanCore` facade with `mergeK`,
+`findFenxings`, `createBi`, `createChannels`, `createDuan`, `createDuanChannels`,
+`detectDivergences` and `detectBuySellPoints`, plus only the algorithm-owned types, enums and
+approved `ChanInputError/ChanInvariantError` required by its call and throw contracts.
 
 #### Scenario: A caller invokes an existing Chan operation
 - **WHEN** a caller requests merged K, Fenxing, Bi or Channel output from ordered raw `ChanK` input
@@ -159,6 +159,16 @@ contracts.
 - **AND** the caller MAY compute force values with the shared indicator computation core
   (`@app/indicators`) without depending on the public Indicator HTTP API
 
+#### Scenario: A caller invokes buy/sell point detection
+- **WHEN** a caller requests buy/sell point (买卖点) output
+- **THEN** it MUST invoke `ChanCore.detectBuySellPoints` with a `ChanBspInput` carrying the unit
+  sequence (with high/low), the Channel sequence and caller-computed per-unit force values
+- **AND** ChanCore MUST NOT compute momentum indicators (the caller supplies force values)
+- **AND** the caller MAY compute force values with the shared indicator computation core
+  (`@app/indicators`) without depending on the public Indicator HTTP API
+- **AND** the output MUST cover first-, second- and third-type buy/sell points as specified by the
+  `chan-buy-sell-point` capability
+
 #### Scenario: A caller invokes Channel analysis with non-overlapping output
 - **WHEN** a caller invokes `ChanCore.createChannels` for Bi-level Channel (中枢) output
 - **THEN** the Phase B output MUST contain no adjacent same-level Channels whose wave ranges (`dd..gg`)
@@ -173,8 +183,8 @@ contracts.
 - **AND** the `expanded` marker on an expansion-merged Channel MUST remain visible through the facade output
 
 #### Scenario: An internal algorithm component is implemented
-- **WHEN** Trend, K merge, Bi, Channel, Duan, Duan-level Channel, divergence or a supporting helper is added
-  under `libs/chancore`
+- **WHEN** Trend, K merge, Bi, Channel, Duan, Duan-level Channel, divergence, buy/sell point or a
+  supporting helper is added under `libs/chancore`
 - **THEN** that component MUST remain private to the library unless an approved facade signature requires it
 - **AND** the public barrel MUST NOT export internal services, helpers or a Nest module
 

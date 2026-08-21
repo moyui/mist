@@ -40,6 +40,19 @@ approved `ChanInputError/ChanInvariantError` required by its call and throw cont
 - **AND** the output MUST cover first-, second- and third-type buy/sell points as specified by the
   `chan-buy-sell-point` capability
 
+#### Scenario: A caller invokes Channel analysis with non-overlapping output
+- **WHEN** a caller invokes `ChanCore.createChannels` for Bi-level Channel (中枢) output
+- **THEN** the Phase B output MUST contain no adjacent same-level Channels whose wave ranges (`dd..gg`)
+  overlap or touch (central expansion resolved by the `chan-central-extension` capability)
+- **AND** the `expanded` marker on an expansion-merged Channel MUST remain visible through the facade output
+
+#### Scenario: A caller invokes Duan-level Channel analysis with non-overlapping output
+- **WHEN** a caller invokes `ChanCore.createDuanChannels` for Duan-level Channel (段级中枢) output
+- **THEN** it MUST consume the `ChanDuan[]` returned by `createDuan` and return `{ phaseA, phaseB }`
+- **AND** the Phase B output MUST contain no adjacent same-level Channels whose wave ranges overlap or
+  touch (central expansion resolved by the `chan-central-extension` capability)
+- **AND** the `expanded` marker on an expansion-merged Channel MUST remain visible through the facade output
+
 #### Scenario: An internal algorithm component is implemented
 - **WHEN** Trend, K merge, Bi, Channel, Duan, Duan-level Channel, divergence, buy/sell point or a
   supporting helper is added under `libs/chancore`
