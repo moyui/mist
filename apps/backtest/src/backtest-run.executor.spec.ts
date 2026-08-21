@@ -186,6 +186,38 @@ describe('BacktestRunExecutor', () => {
     );
   });
 
+  it('fails a quantity-consuming plan with BACKTEST_QUANTITY_PROFILE_UNAVAILABLE before replay', async () => {
+    // 锁定 quantity profile 门禁的 execute 级行为：量价 plan 在 replay() 被拒绝，
+    // 不读取任何窗口/页面（extract-backtest-runtime 5.5 quantity HIL 完成前保持）。
+    const fixture = executor();
+    fixture.current.targetUniverse = ['600000.SH'];
+    fixture.dependencies.securityRepository.find.mockResolvedValue([
+      { id: 9, code: '600000.SH' },
+    ]);
+    fixture.dependencies.versionRepository.findOne.mockResolvedValue({
+      id: 7,
+      rule: { field: 'k.volume', operator: 'gt', value: '0' },
+      signalKind: 'entry',
+    });
+
+    await fixture.instance.execute(fixture.current.id);
+
+    expect(
+      fixture.dependencies.marketData.loadReplayWindow,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.dependencies.marketData.readReplayPage,
+    ).not.toHaveBeenCalled();
+    expect(fixture.manager.update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 41, status: expect.anything() }),
+      expect.objectContaining({
+        status: BacktestRunStatus.FAILED,
+        errorMessage: 'BACKTEST_QUANTITY_PROFILE_UNAVAILABLE',
+      }),
+    );
+  });
+
   it('bounds the hydration window at the replay start so a quantity plan never overlaps the streaming page', async () => {
     // F1 回归：消费量价的分钟级 plan，replayStartFor 回到当日开盘（08-04T01:30Z = 上海
     // 09:30）；盘中 startDate（01:42Z）时 initial 窗口必须以 replayStart 为界，否则与
