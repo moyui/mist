@@ -1,4 +1,8 @@
 import { DataSource, Period } from '@app/shared-data';
+import type {
+  StrategyRealtimeSource,
+  StrategyReplayWindowCriteria,
+} from '@app/strategy';
 import { BacktestMarketDataAdapter } from './backtest-market-data.adapter';
 
 function makeBuilder(rows: unknown[]) {
@@ -106,5 +110,99 @@ describe('BacktestMarketDataAdapter', () => {
       method: 'andWhere',
       args: ['k.timestamp > :afterTimestamp', { afterTimestamp }],
     });
+  });
+
+  it('loads the last bars strictly before endAt and returns them ascending', async () => {
+    const find = jest
+      .fn()
+      .mockResolvedValue([
+        row('2026-08-04T01:31:00.000Z'),
+        row('2026-08-04T01:30:00.000Z'),
+      ]);
+    const adapter = new BacktestMarketDataAdapter({ find } as any);
+
+    const window = await adapter.loadReplayWindow({
+      securityId: 7,
+      source: 'tdx',
+      period: Period.ONE_MIN,
+      endAt: new Date('2026-08-04T01:32:00.000Z'),
+      requiredBars: 5,
+    });
+
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order: { timestamp: 'DESC' },
+        take: 5,
+      }),
+    );
+    expect(window.bars.map((bar) => bar.timestamp.toISOString())).toEqual([
+      '2026-08-04T01:30:00.000Z',
+      '2026-08-04T01:31:00.000Z',
+    ]);
+  });
+
+  it('returns an empty window when no bar precedes endAt', async () => {
+    const adapter = new BacktestMarketDataAdapter({
+      find: jest.fn().mockResolvedValue([]),
+    } as any);
+
+    const window = await adapter.loadReplayWindow({
+      securityId: 7,
+      source: 'qmt',
+      period: Period.ONE_MIN,
+      endAt: new Date('2026-08-04T01:32:00.000Z'),
+      requiredBars: 5,
+    });
+
+    expect(window.bars).toEqual([]);
+  });
+
+  it.each<[string, StrategyReplayWindowCriteria]>([
+    [
+      'securityId',
+      {
+        securityId: 0,
+        source: 'tdx',
+        period: 1,
+        endAt: new Date(),
+        requiredBars: 2,
+      },
+    ],
+    [
+      'source',
+      {
+        securityId: 1,
+        source: 'ef' as StrategyRealtimeSource,
+        period: 1,
+        endAt: new Date(),
+        requiredBars: 2,
+      },
+    ],
+    [
+      'endAt',
+      {
+        securityId: 1,
+        source: 'tdx',
+        period: 1,
+        endAt: new Date('nope'),
+        requiredBars: 2,
+      },
+    ],
+    [
+      'requiredBars',
+      {
+        securityId: 1,
+        source: 'tdx',
+        period: 1,
+        endAt: new Date(),
+        requiredBars: 0,
+      },
+    ],
+  ])('rejects an invalid %s window criteria', async (_label, criteria) => {
+    const adapter = new BacktestMarketDataAdapter({
+      find: jest.fn(),
+    } as any);
+
+    await expect(adapter.loadReplayWindow(criteria)).rejects.toThrow(TypeError);
   });
 });

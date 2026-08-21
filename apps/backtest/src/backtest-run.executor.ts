@@ -13,11 +13,11 @@ import {
 import {
   compileStoredStrategyRule,
   evaluateStrategyPlan,
-  QuantityForwardFillProjector,
   serializeStrategyContextSnapshot,
+  StrategySeriesImputer,
   type CompiledStrategyExecutionPlan,
-  type ProjectedStrategyBar,
   type StrategyMarketSource,
+  type StrategyRealtimeSource,
 } from '@app/strategy';
 import { DataSource as TypeOrmDataSource, In, Repository } from 'typeorm';
 import { BacktestMarketDataAdapter } from './backtest-market-data.adapter';
@@ -253,12 +253,27 @@ export class BacktestRunExecutor {
     budget: ReplayBudget,
     onSignal: () => void,
   ): Promise<{ hasBars: boolean }> {
-    const projector = new QuantityForwardFillProjector();
-    const windows: ProjectedStrategyBar[] = [];
+    const imputer = new StrategySeriesImputer();
     let afterTimestamp: Date | undefined;
     let hasPublicBars = false;
     const replayStart = replayStartFor(run, plan);
     const replayEnd = new Date(run.endDate.getTime());
+
+    // ① 准备阶段：首个评估点前的初始窗口段，整段双向补齐定死（锚点全部 < startDate，
+    //    无 look-ahead）。窗口不满时维持 insufficient_history（builder 现有逻辑）。
+    const initial = await this.marketData.loadReplayWindow({
+      securityId,
+      source: run.source as StrategyRealtimeSource,
+      period: run.period,
+      endAt: run.startDate,
+      requiredBars: plan.requiredBarCount,
+    });
+    for (let index = 0; index < initial.bars.length; index += 1) {
+      budget.consume();
+    }
+    imputer.hydrate(initial.bars);
+
+    // ② 计算阶段：逐根 append（只 forward-fill 新 bar）+ 滑动窗口 + 评估。
     while (true) {
       const page = await this.marketData.readReplayPage({
         securityId,
@@ -271,11 +286,12 @@ export class BacktestRunExecutor {
       for (const bar of page.bars) {
         budget.consume();
         if (bar.timestamp >= run.startDate) hasPublicBars = true;
-        const projected = projector.project(bar);
-        windows.push(projected);
-        if (windows.length > plan.requiredBarCount) windows.shift();
+        imputer.append(bar);
+        while (imputer.read().length > plan.requiredBarCount) {
+          imputer.trim();
+        }
         if (bar.timestamp >= run.startDate) {
-          const evaluation = evaluateStrategyPlan(plan, windows);
+          const evaluation = evaluateStrategyPlan(plan, imputer.read());
           if (evaluation.status === 'evaluated' && evaluation.matched) {
             results.push(
               this.resultRepository.create({

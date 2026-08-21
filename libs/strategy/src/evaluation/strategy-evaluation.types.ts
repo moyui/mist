@@ -1,5 +1,8 @@
 import type { StrategyBarType } from '../market-data/strategy-bar';
-import type { ProjectedStrategyBar } from '../projection/quantity-forward-fill.projector';
+import type {
+  ProjectedStrategyBar,
+  StrategyImputationResolution,
+} from '../projection/strategy-series-imputer';
 import type { StrategyFieldPath } from '../rules/strategy-field.catalog';
 
 export type StrategyUnavailableReason =
@@ -24,7 +27,7 @@ export interface StrategyFieldObservation {
 export interface StrategyQuantityEvidenceItem {
   readonly raw: string | null;
   readonly effective: string;
-  readonly resolution: 'observed' | 'forwardFilled';
+  readonly resolution: StrategyImputationResolution;
 }
 
 export interface StrategyQuantityEvidenceObservation {

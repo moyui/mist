@@ -1,5 +1,5 @@
 import {
-  QuantityForwardFillProjector,
+  StrategySeriesImputer,
   type ProjectedStrategyBar,
   type StrategyBar,
   type StrategyRealtimeMarketDataPort,
@@ -8,8 +8,7 @@ import {
 
 interface WindowGroup {
   capacity: number;
-  readonly projector: QuantityForwardFillProjector;
-  projectedBars: ProjectedStrategyBar[];
+  readonly imputer: StrategySeriesImputer;
 }
 
 export type WindowAppendOutcome = 'appended' | 'duplicate';
@@ -43,7 +42,8 @@ export class SharedStrategyWindowStore {
       this.groups.set(key, group);
     }
 
-    const existing = group.projectedBars.find(
+    const projectedBars = group.imputer.read();
+    const existing = projectedBars.find(
       (projected) =>
         projected.rawBar.timestamp.getTime() === bar.timestamp.getTime(),
     );
@@ -51,16 +51,13 @@ export class SharedStrategyWindowStore {
       if (sameBar(existing.rawBar, bar)) return 'duplicate';
       throw new Error('conflicting canonical StrategyBar identity');
     }
-    const last = group.projectedBars.at(-1)?.rawBar;
+    const last = projectedBars.at(-1)?.rawBar;
     if (last && last.timestamp.getTime() > bar.timestamp.getTime()) {
       throw new RangeError('shared strategy window rejects out-of-order bars');
     }
-    group.projectedBars.push(group.projector.project(bar));
-    if (group.projectedBars.length > group.capacity) {
-      group.projectedBars.splice(
-        0,
-        group.projectedBars.length - group.capacity,
-      );
+    group.imputer.append(bar);
+    while (group.imputer.read().length > group.capacity) {
+      group.imputer.trim();
     }
     return 'appended';
   }
@@ -70,10 +67,10 @@ export class SharedStrategyWindowStore {
     source: StrategyRealtimeSource,
     period: number,
   ): readonly ProjectedStrategyBar[] {
-    return Object.freeze([
-      ...(this.groups.get(groupKey(securityId, source, period))
-        ?.projectedBars ?? []),
-    ]);
+    return (
+      this.groups.get(groupKey(securityId, source, period))?.imputer.read() ??
+      Object.freeze([])
+    );
   }
 
   reset(): void {
@@ -103,7 +100,7 @@ export class SharedStrategyWindowStore {
     let rawBarCount = 0;
     let derivedBarCount = 0;
     for (const group of this.groups.values()) {
-      for (const bar of group.projectedBars) {
+      for (const bar of group.imputer.read()) {
         if (bar.rawBar.period === 1) rawBarCount += 1;
         else derivedBarCount += 1;
       }
@@ -123,20 +120,24 @@ function buildGroup(
   const ordered = [...bars].sort(
     (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
   );
-  const projector = new QuantityForwardFillProjector();
-  const projectedBars: ProjectedStrategyBar[] = [];
-  for (const bar of ordered) {
-    const existing = projectedBars.at(-1)?.rawBar;
-    if (existing?.timestamp.getTime() === bar.timestamp.getTime()) {
-      if (sameBar(existing, bar)) continue;
+  for (let index = 1; index < ordered.length; index += 1) {
+    const previous = ordered[index - 1];
+    const current = ordered[index];
+    if (previous.timestamp.getTime() === current.timestamp.getTime()) {
+      if (sameBar(previous, current)) {
+        ordered.splice(index, 1);
+        index -= 1;
+        continue;
+      }
       throw new Error('hydration contains conflicting StrategyBar identities');
     }
-    projectedBars.push(projector.project(bar));
   }
-  if (projectedBars.length > capacity) {
-    projectedBars.splice(0, projectedBars.length - capacity);
+  const imputer = new StrategySeriesImputer();
+  imputer.hydrate(ordered);
+  while (imputer.read().length > capacity) {
+    imputer.trim();
   }
-  return { capacity, projector, projectedBars };
+  return { capacity, imputer };
 }
 
 function sameBar(left: StrategyBar, right: StrategyBar): boolean {

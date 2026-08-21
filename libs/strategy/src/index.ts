@@ -25,6 +25,8 @@ export type {
   StrategyReplayMarketDataPort,
   StrategyReplayPage,
   StrategyReplayPageCriteria,
+  StrategyReplayWindow,
+  StrategyReplayWindowCriteria,
   StrategyTrigger,
 } from './market-data/strategy-market-data.port';
 export {
@@ -54,12 +56,17 @@ export type {
   StrategyRuleOperator,
   StrategySignalKind,
 } from './rules/strategy-rule.types';
-export { QuantityForwardFillProjector } from './projection/quantity-forward-fill.projector';
+export {
+  imputeSeries,
+  StrategySeriesImputer,
+} from './projection/strategy-series-imputer';
 export type {
   ProjectedStrategyBar,
+  ProjectedStrategyOhlc,
   ProjectedStrategyQuantity,
-  StrategyQuantityResolution,
-} from './projection/quantity-forward-fill.projector';
+  StrategyImputationResolution,
+  StrategyOhlcTuple,
+} from './projection/strategy-series-imputer';
 export { buildStrategyEvaluationContext } from './evaluation/strategy-context.builder';
 export type { StrategyContextBuildResult } from './evaluation/strategy-context.builder';
 export { serializeStrategyContextSnapshot } from './evaluation/strategy-context-snapshot.serializer';
