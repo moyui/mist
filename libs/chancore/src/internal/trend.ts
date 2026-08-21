@@ -1,5 +1,5 @@
 import { TrendDirection } from '../contracts';
-import type { ChanBi, ChanK } from '../contracts';
+import type { ChanK } from '../contracts';
 
 type PriceRange = Pick<ChanK, 'high' | 'low'>;
 
@@ -27,22 +27,5 @@ export class TrendCalculator {
       if (prevTrend === TrendDirection.Down) return TrendDirection.Down;
       return TrendDirection.None;
     }
-  }
-
-  /**
-   * Checks if two consecutive Bi (stroke) segments form a consistent trend
-   * @param prev Previous Bi segment
-   * @param now Current Bi segment
-   * @returns true if both Bi segments form a consistent trend pattern
-   */
-  hasConsistentBiTrend(prev: ChanBi, now: ChanBi) {
-    if (prev.trend !== now.trend) return false; // Different trends, cannot form pattern
-    if (now.trend === TrendDirection.Up) {
-      return prev.high <= now.high && prev.low <= now.low;
-    }
-    if (now.trend === TrendDirection.Down) {
-      return prev.high >= now.high && prev.low >= now.low;
-    }
-    return false;
   }
 }

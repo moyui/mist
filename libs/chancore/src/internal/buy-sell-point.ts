@@ -42,6 +42,9 @@ export class BuySellPointDetector {
       return [];
     }
     const points: ChanBuySellPoint[] = [];
+    // ⚠️ 顺序契约：detectFirst 必须先于 detectSecond —— 二类的前置一类点集合
+    // （firstBuyUnits/firstSellUnits）从已产出的一类点构建；重排顺序会静默破坏
+    // "二买/二卖要求前置一类点"的判定（spec 门禁 D5）。
     this.detectFirst(input, points);
     this.detectSecond(input, points);
     this.detectThird(input, points);
@@ -74,7 +77,10 @@ export class BuySellPointDetector {
     }
   }
 
-  /** 二类：相邻三元组 + 前置一类点（a 段必须是一类点确认段），不查背驰/力度。 */
+  /**
+   * 二类：相邻三元组 + 前置一类点（a 段必须是一类点确认段），不查背驰/力度。
+   * 前置一类点集合依赖 detectFirst 已先行执行（见 detectBuySellPoints 顺序契约注释）。
+   */
   private detectSecond(input: ChanBspInput, out: ChanBuySellPoint[]): void {
     const { units } = input;
     const firstBuyUnits = new Set<number>();
