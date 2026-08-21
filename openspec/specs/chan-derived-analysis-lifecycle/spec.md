@@ -6,14 +6,14 @@ calculation contracts independent from MySQL entities or legacy result tables.
 ## Requirements
 ### Requirement: Chan analysis results are request-time derived data
 
-The Chan service SHALL compute merged K, fenxing, Bi, and channel results from
+The Chan service SHALL compute merged K, fenxing, Bi, channel and Duan results from
 the supplied K input without reading or writing Chan-result MySQL entities.
 
 #### Scenario: Chan analysis is requested
 
 - **WHEN** a caller supplies valid K input to a Chan calculation endpoint
 - **THEN** the service MUST derive the result during the request
-- **AND** it MUST NOT require persisted fenxing, Bi, period, or state rows
+- **AND** it MUST NOT require persisted fenxing, Bi, Duan, period, or state rows
 
 #### Scenario: The same deterministic input is evaluated again
 

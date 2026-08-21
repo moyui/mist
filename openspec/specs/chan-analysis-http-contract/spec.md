@@ -13,10 +13,11 @@ canonical K entity and ChanCore contracts. They SHALL NOT expose `highest` or `l
 - **AND** it MUST NOT contain `highest` or `lowest`
 
 #### Scenario: Derived Chan data is returned
-- **WHEN** merge-K, Fenxing, Bi or Channel data is returned by `/v1/chan/*`
-- **THEN** every price interval owned by K, merged K, Fenxing or Bi MUST use `high` and `low`
-- **AND** the same rule MUST apply recursively to `mergedData`, `originData`, `startFenxing`, `endFenxing` and
-  Channel `bis`
+- **WHEN** merge-K, Fenxing, Bi, Channel, Duan or Duan-level Channel data is returned by `/v1/chan/*`
+- **THEN** every price interval owned by K, merged K, Fenxing, Bi, Duan, Channel or Duan-level Channel MUST use
+  `high` and `low`
+- **AND** the same rule MUST apply recursively to `mergedData`, `originData`, `startFenxing`, `endFenxing`,
+  Channel `bis`, Duan `originBis` and Duan-level Channel `duans`
 - **AND** Chan-specific `zg/zd/gg/dd` fields MUST remain unchanged
 
 #### Scenario: OpenAPI describes K and Chan responses

@@ -7,7 +7,7 @@
 - `specs/`：52 个已采纳 spec
 - `changes/`：**12 个 active change**（`archive/` 下 90+ 已归档）
 - **价值闭环已打通**（2026-08-13）：`deliver-strategy-notifications` 归档 —— 实时K→信号→PENDING→QQ/微信投递链全通
-- **缠论能力进入扩展期**：段/背驰/段级中枢/中枢扩张四个 spec 已规划（依赖链：段→背驰→段级中枢→中枢扩张→买卖点）
+- **缠论能力进入扩展期**：段/背驰/段级中枢/中枢扩张四个 change 已归档（08-21）；买卖点已创建为 active change（依赖链：段→背驰→段级中枢→中枢扩张→买卖点）
 - **平台基建成熟**：部署栈迁移到 Linux 的 proposal 已规划；指标库拆分共享已规划；实时订阅重启恢复已规划
 
 ---
@@ -30,18 +30,18 @@
 
 ---
 
-## 3. 缠论新规划（4 个，0%，依赖链）
+## 3. 缠论扩展（4 个已归档 + 1 个 active）
 
 缠论严格依赖链：**笔 → 段 → 段级中枢 → 背驰 → 买卖点**
 
-| Change | 进度 | 位置 | 一句话 |
+| Change | 状态 | 位置 | 一句话 |
 |---|---|---|---|
-| `add-chan-duan-segment` | 0/31 | 链条第一环 | **段（Duan/线段）算法**：特征序列法，单遍递推 + 缺口处理；段是背驰/买卖点的前置 |
-| `add-chan-divergence` | 0/25 | 段之后 | **背驰判定**：MACD 红绿柱面积/高度度量力度衰竭（离开段力度 < 进入段力度）；笔级和段级复用同一算法 |
-| `add-chan-duan-channel` | 0/27 | 段级中枢 | **段级中枢**：以段为构成单元的中枢，几何定义同笔级（zg/zd/gg/dd + 5 单元滑窗 + mergeSpans） |
-| `add-chan-central-extension` | 0/23 | 高级扩展 | **中枢扩张**：残留波动区间重叠的同级中枢合并（更高级别中枢雏形） |
+| `add-chan-duan-segment` | 已归档（08-21） | 链条第一环 | **段（Duan/线段）算法**：特征序列法，单遍递推 + 缺口处理；段是背驰/买卖点的前置 |
+| `add-chan-divergence` | 已归档（08-21） | 段之后 | **背驰判定**：MACD 红绿柱面积/高度度量力度衰竭（离开段力度 < 进入段力度）；笔级和段级复用同一算法 |
+| `add-chan-duan-channel` | 已归档（08-21） | 段级中枢 | **段级中枢**：以段为构成单元的中枢，几何定义同笔级（zg/zd/gg/dd + 5 单元滑窗 + mergeSpans） |
+| `add-chan-central-extension` | 已归档（08-21） | 高级扩展 | **中枢扩张**：残留波动区间重叠的同级中枢合并（更高级别中枢雏形） |
 
-> 注：买卖点 spec 尚未创建，依赖背驰+中枢扩张完成后才规划。
+> 注：买卖点 `add-chan-buy-sell-point` 已创建为 **active change**（08-21，23 任务），是依赖链的最后一环。
 
 ---
 
@@ -49,7 +49,7 @@
 
 | Change | 进度 | 内容 |
 |---|---|---|
-| `extract-shared-indicators-library` | 0/29 | **指标库拆分**：两套重复的 MACD/KDJ 实现（indicator.service vs strategy/analysis）共享核心纯计算；策略端经 `StrategyAnalysisObservationCache` 复用 |
+| `extract-shared-indicators-library` | 已归档（08-21） | **指标库拆分**：两套重复的 MACD/KDJ 实现（indicator.service vs strategy/analysis）共享核心纯计算；策略端经 `StrategyAnalysisObservationCache` 复用 |
 | `migrate-stack-to-linux-node-with-ssh-tunnel` | 0/35 | **部署栈迁移到 Linux**：Windows 16GB 内存满载（host + MuMu 模拟器 ~9.5GB），把交易服务栈剥离到 Linux 节点，Windows 退化为纯行情终端机 |
 | `realtime-subscription-restart-recovery` | 0/38 | **实时订阅重启恢复**：终端/桥重启后订阅状态失配静默断流（同族问题两处生产实证） |
 
@@ -83,7 +83,7 @@
 
 - **数据采集**：TDX/QMT/EastMoney 历史 K + DB 落库（3 provider）
 - **实时链路（闭环已通）**：schema-v2 → snapshot → candle 聚合（定点化）→ BullMQ → apps/signal → **PENDING → QQ/微信投递**
-- **缠论**：合并K / 分型 / 笔 / 笔级中枢 / **段（待实现）** / 背驰（待）/ 段级中枢（待）/ 中枢扩张（待）
+- **缠论**：合并K / 分型 / 笔 / 笔级中枢 / **段** / **背驰** / **段级中枢** / **中枢扩张**（均已实现，08-21 归档）；买卖点 active 推进中
 - **策略**：定义注册（creation-only）+ KDJ/MACD 指标字段 + signal-level 回测（apps/backtest）
 - **前端**：K 线 / 策略工作台 / 实时订阅运营页；dashboard mock（G3 deferred）
 - **部署**：12 容器 Compose + OTel/OpenObserve；迁移 Linux 提案已规划
