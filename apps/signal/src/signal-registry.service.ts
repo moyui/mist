@@ -1,9 +1,10 @@
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
   Security,
   StrategyDefinition,
+  StrategyKind,
   StrategyRuleSchemaVersion,
   StrategyStatus,
 } from '@app/shared-data';
@@ -13,13 +14,16 @@ import {
   type StrategyRealtimeSource,
 } from '@app/strategy';
 import { In, Repository } from 'typeorm';
-import type {
-  RealtimeStrategyExecutionPlan,
-  SignalRegistryRefreshV1,
+import {
+  ChanBspConfigError,
+  compileChanBspConfig,
+  type RealtimeStrategyExecutionPlan,
+  type SignalRegistryRefreshV1,
 } from '@app/signal';
 import { SignalHealthStateService } from './signal-health-state.service';
 import type {
   SignalRegistryDefinition,
+  SignalRegistryExecutionPlan,
   SignalRegistrySnapshot,
 } from './signal-registry.types';
 import { SignalRuntimeMutex } from './signal-runtime-mutex.service';
@@ -28,6 +32,7 @@ const REGISTRY_REFRESH_FAILED = 'REGISTRY_REFRESH_FAILED';
 
 @Injectable()
 export class SignalRegistryService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(SignalRegistryService.name);
   private current: SignalRegistrySnapshot = Object.freeze({
     generation: 0,
     definitions: toImmutableMap<number, SignalRegistryDefinition>([]),
@@ -56,6 +61,45 @@ export class SignalRegistryService implements OnApplicationBootstrap {
     return this.initialization;
   }
 
+  /**
+   * Compile with chan_bsp judgment-point logging: rejected chan_bsp configs
+   * warn with a bounded reason (operator-facing), successful compiles log an
+   * info lifecycle line with definition/level/units. Other compile failures
+   * keep the existing registry failure semantics.
+   */
+  private safeCompile(
+    definition: StrategyDefinition,
+    securityIdsByCode: ReadonlyMap<string, number>,
+  ): SignalRegistryDefinition {
+    try {
+      const compiled = compileRegistryDefinition(definition, securityIdsByCode);
+      if (compiled.executionPlan.kind === 'chan_bsp') {
+        this.logger.log(
+          {
+            code: 'chan_bsp_plan_compiled',
+            definitionId: compiled.definitionId,
+            level: definition.periods[0],
+            units: compiled.executionPlan.plan.units,
+          },
+          'chan_bsp plan compiled',
+        );
+      }
+      return compiled;
+    } catch (error) {
+      if (error instanceof ChanBspConfigError) {
+        this.logger.warn(
+          {
+            code: 'chan_bsp_config_invalid',
+            definitionId: definition.id,
+            reason: error.reason,
+          },
+          'chan_bsp strategy config rejected',
+        );
+      }
+      throw error;
+    }
+  }
+
   private async loadInitialRegistry(): Promise<void> {
     const definitions = await this.definitions.find({
       where: { status: StrategyStatus.ENABLED },
@@ -66,7 +110,7 @@ export class SignalRegistryService implements OnApplicationBootstrap {
       definitions.flatMap((definition) => definition.targetUniverse),
     );
     const compiled = definitions.map((definition) =>
-      compileRegistryDefinition(definition, securityIds),
+      this.safeCompile(definition, securityIds),
     );
     this.publish(new Map(compiled.map((item) => [item.definitionId, item])));
   }
@@ -107,9 +151,9 @@ export class SignalRegistryService implements OnApplicationBootstrap {
               versionId: definition.versionId,
               source,
               period,
-              plan: definition.executionPlan,
+              ...definition.executionPlan,
               ruleSnapshot: definition.ruleSnapshot,
-            }),
+            } as RealtimeStrategyExecutionPlan),
           ),
       )
       .sort(
@@ -133,7 +177,7 @@ export class SignalRegistryService implements OnApplicationBootstrap {
           });
           const compiled =
             definition?.status === StrategyStatus.ENABLED
-              ? compileRegistryDefinition(
+              ? this.safeCompile(
                   definition,
                   await this.resolveSecurityIds(definition.targetUniverse),
                 )
@@ -256,10 +300,33 @@ function compileRegistryDefinition(
       `Strategy version ${version.id} has unsupported rule schema`,
     );
   }
-  const compilation = compileStoredStrategyRuleWithNormalized(
-    version.rule,
-    version.signalKind,
-  );
+  const compiled: {
+    executionPlan: SignalRegistryExecutionPlan;
+    ruleSnapshot: Readonly<Record<string, unknown>>;
+  } =
+    definition.kind === StrategyKind.CHAN_BSP
+      ? {
+          executionPlan: {
+            kind: 'chan_bsp',
+            plan: compileChanBspConfig(version.rule, definition.periods),
+          },
+          ruleSnapshot: version.rule as Readonly<Record<string, unknown>>,
+        }
+      : (() => {
+          const compilation = compileStoredStrategyRuleWithNormalized(
+            version.rule,
+            version.signalKind,
+          );
+          return {
+            executionPlan: {
+              kind: 'rule_dsl',
+              plan: compilation.plan,
+            },
+            ruleSnapshot: compilation.normalizedRule as Readonly<
+              Record<string, unknown>
+            >,
+          };
+        })();
   return Object.freeze({
     definitionId: definition.id,
     versionId: version.id,
@@ -272,10 +339,8 @@ function compileRegistryDefinition(
     ),
     periods: Object.freeze([...definition.periods]),
     sources: Object.freeze([...definition.sources]),
-    executionPlan: compilation.plan,
-    ruleSnapshot: compilation.normalizedRule as Readonly<
-      Record<string, unknown>
-    >,
+    executionPlan: compiled.executionPlan,
+    ruleSnapshot: compiled.ruleSnapshot,
   });
 }
 

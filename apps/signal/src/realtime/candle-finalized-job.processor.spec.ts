@@ -23,6 +23,7 @@ describe('CandleFinalizedJobProcessor', () => {
           source: 'tdx',
           period: 1,
           ruleSnapshot: { field: 'k.close', operator: 'gt', value: 27 },
+          kind: 'rule_dsl',
           plan: compileStoredStrategyRule(
             { field: 'k.close', operator: 'gt', value: 27 },
             'entry',
@@ -79,6 +80,7 @@ describe('CandleFinalizedJobProcessor', () => {
             operator: 'eq',
             value: 'incomplete',
           },
+          kind: 'rule_dsl',
           plan: compileStoredStrategyRule(
             { field: 'k.type', operator: 'eq', value: 'incomplete' },
             'entry',
@@ -402,6 +404,7 @@ describe('CandleFinalizedJobProcessor', () => {
           source: 'tdx',
           period: 1,
           ruleSnapshot: { field: 'k.volume', operator: 'gt', value: '0' },
+          kind: 'rule_dsl',
           plan: compileStoredStrategyRule(
             { field: 'k.volume', operator: 'gt', value: '0' },
             'entry',
@@ -457,10 +460,13 @@ describe('CandleFinalizedJobProcessor', () => {
             securityIds: new Set([9]),
             periods: [1, 5],
             sources: ['tdx' as never],
-            executionPlan: compileStoredStrategyRule(
-              { field: 'k.close', operator: 'gt', value: 1 },
-              'entry',
-            ),
+            executionPlan: {
+              kind: 'rule_dsl',
+              plan: compileStoredStrategyRule(
+                { field: 'k.close', operator: 'gt', value: 1 },
+                'entry',
+              ),
+            },
             ruleSnapshot: { field: 'k.close', operator: 'gt', value: 1 },
           },
         ],
@@ -494,6 +500,7 @@ describe('CandleFinalizedJobProcessor', () => {
           signalKind: 'entry',
         },
       ],
+      [], // no chan_bsp definitions in this registry — no cursor identities
     );
   });
 
@@ -509,6 +516,7 @@ describe('CandleFinalizedJobProcessor', () => {
           source: 'tdx',
           period: 1,
           ruleSnapshot: { field: 'k.close', operator: 'gt', value: 27 },
+          kind: 'rule_dsl',
           plan: compileStoredStrategyRule(
             { field: 'k.close', operator: 'gt', value: 27 },
             'entry',
@@ -602,6 +610,7 @@ function modeProcessor(
         source: 'tdx',
         period: 1,
         ruleSnapshot: { field: 'k.close', operator: 'gt', value: 27 },
+        kind: 'rule_dsl',
         plan: compileStoredStrategyRule(
           { field: 'k.close', operator: 'gt', value: 27 },
           'entry',

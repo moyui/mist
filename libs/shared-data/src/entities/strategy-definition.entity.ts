@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { DataSource } from '../enums/data-source.enum';
 import { Period } from '../enums/period.enum';
+import { StrategyKind } from '../enums/strategy-kind.enum';
 import { StrategyStatus } from '../enums/strategy-status.enum';
 import { StrategyVersion } from './strategy-version.entity';
 
@@ -30,6 +31,13 @@ export class StrategyDefinition {
     default: StrategyStatus.DRAFT,
   })
   status: StrategyStatus = StrategyStatus.DRAFT;
+
+  @Column({
+    type: 'enum',
+    enum: StrategyKind,
+    default: StrategyKind.RULE_DSL,
+  })
+  kind: StrategyKind = StrategyKind.RULE_DSL;
 
   @Column({ name: 'target_universe', type: 'json' })
   targetUniverse: string[] = [];

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -6,11 +7,15 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   StrategyDefinition,
+  Period,
+  StrategyKind,
   StrategyRuleSchemaVersion,
+  StrategySignalKind,
   StrategyStatus,
   StrategyVersion,
 } from '@app/shared-data';
 import type { CompiledStrategyExecutionPlan } from '@app/strategy';
+import { compileChanBspConfig, ChanBspConfigError } from '@app/signal';
 import { Repository } from 'typeorm';
 import { CreateStrategyDefinitionDto } from '../dto/create-strategy-definition.dto';
 import { StrategyExecutionPlanService } from '../rules/strategy-execution-plan.service';
@@ -28,9 +33,12 @@ export class StrategyDefinitionService {
   ) {}
 
   async create(dto: CreateStrategyDefinitionDto): Promise<StrategyDefinition> {
-    const compilation = this.executionPlanService.compileForCreate(
+    const kind = dto.kind ?? StrategyKind.RULE_DSL;
+    const validation = this.validateRuleForCreate(
+      kind,
       dto.rule,
       dto.signalKind,
+      dto.periods,
     );
     return await this.definitionRepository.manager.transaction(
       async (manager) => {
@@ -41,6 +49,7 @@ export class StrategyDefinitionService {
             name: dto.name,
             description: dto.description ?? null,
             status: StrategyStatus.DRAFT,
+            kind,
             targetUniverse: dto.targetUniverse,
             periods: dto.periods,
             sources: dto.sources,
@@ -53,9 +62,9 @@ export class StrategyDefinitionService {
             strategyDefinitionId: definition.id,
             versionNumber: 1,
             ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
-            rule: compilation.normalizedRule as Record<string, unknown>,
+            rule: validation.normalizedRule,
             signalKind: dto.signalKind,
-            validationSummary: toValidationSummary(compilation.plan),
+            validationSummary: validation.validationSummary,
           }),
         );
 
@@ -103,7 +112,7 @@ export class StrategyDefinitionService {
           definition,
           versionRepository,
         );
-        this.executionPlanService.compileForRealtimeRegistration(version);
+        this.validateStoredVersion(definition, version, true);
         definition.status = StrategyStatus.ENABLED;
         return await definitionRepository.save(definition);
       },
@@ -126,14 +135,14 @@ export class StrategyDefinitionService {
   }
 
   async listVersions(strategyDefinitionId: number): Promise<StrategyVersion[]> {
-    await this.findById(strategyDefinitionId);
+    const definition = await this.findById(strategyDefinitionId);
     const versions = await this.versionRepository.find({
       where: { strategyDefinitionId },
       order: { versionNumber: 'DESC' },
     });
-    versions.forEach((version) =>
-      this.executionPlanService.compileStoredVersion(version),
-    );
+    for (const version of versions) {
+      this.validateStoredVersion(definition, version, false);
+    }
     return versions;
   }
 
@@ -174,12 +183,68 @@ export class StrategyDefinitionService {
   private async requireCompiledCurrentVersion(
     definition: StrategyDefinition,
     repository: Repository<StrategyVersion>,
-  ): Promise<CompiledStrategyExecutionPlan> {
+  ): Promise<void> {
     const version = await this.requireOwnedCurrentVersion(
       definition,
       repository,
     );
-    return this.executionPlanService.compileStoredVersion(version);
+    this.validateStoredVersion(definition, version, false);
+  }
+
+  /**
+   * Kind-dispatched rule validation for persisted versions. `rule_dsl` keeps
+   * the existing DSL compilation (realtime registration additionally applies
+   * the quantity HIL gate); `chan_bsp` validates through the shared config
+   * compiler.
+   */
+  private validateStoredVersion(
+    definition: StrategyDefinition,
+    version: StrategyVersion,
+    forRealtime: boolean,
+  ): void {
+    if (definition.kind === StrategyKind.CHAN_BSP) {
+      compileChanBspConfigSafe(version.rule, definition.periods);
+      return;
+    }
+    if (forRealtime) {
+      this.executionPlanService.compileForRealtimeRegistration(version);
+      return;
+    }
+    this.executionPlanService.compileStoredVersion(version);
+  }
+
+  /** Kind-dispatched rule validation for create: returns the persisted rule
+   *  (normalized for DSL) and the validation summary. */
+  private validateRuleForCreate(
+    kind: StrategyKind,
+    rule: Record<string, unknown>,
+    signalKind: StrategySignalKind,
+    periods: readonly Period[],
+  ): {
+    normalizedRule: Record<string, unknown>;
+    validationSummary: Record<string, unknown>;
+  } {
+    if (kind === StrategyKind.CHAN_BSP) {
+      const plan = compileChanBspConfigSafe(rule, periods);
+      return {
+        normalizedRule: rule,
+        validationSummary: {
+          ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
+          units: plan.units,
+          points: plan.points,
+          direction: plan.direction,
+          requiredBarCount: plan.requiredBarCount,
+        },
+      };
+    }
+    const compilation = this.executionPlanService.compileForCreate(
+      rule,
+      signalKind,
+    );
+    return {
+      normalizedRule: compilation.normalizedRule as Record<string, unknown>,
+      validationSummary: toValidationSummary(compilation.plan),
+    };
   }
 }
 
@@ -193,4 +258,18 @@ function toValidationSummary(
     fields: plan.fields,
     requiredBarCount: plan.requiredBarCount,
   };
+}
+
+function compileChanBspConfigSafe(
+  rule: Record<string, unknown>,
+  periods: readonly Period[],
+): ReturnType<typeof compileChanBspConfig> {
+  try {
+    return compileChanBspConfig(rule, periods);
+  } catch (error) {
+    if (error instanceof ChanBspConfigError) {
+      throw new BadRequestException(error.message);
+    }
+    throw error;
+  }
 }

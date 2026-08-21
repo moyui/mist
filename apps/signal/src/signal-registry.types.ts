@@ -1,5 +1,10 @@
 import type { DataSource, Period, StrategySignalKind } from '@app/shared-data';
 import type { CompiledStrategyExecutionPlan } from '@app/strategy';
+import type { ChanBspPlan } from '@app/signal';
+
+export type SignalRegistryExecutionPlan =
+  | { readonly kind: 'rule_dsl'; readonly plan: CompiledStrategyExecutionPlan }
+  | { readonly kind: 'chan_bsp'; readonly plan: ChanBspPlan };
 
 export interface SignalRegistryDefinition {
   readonly definitionId: number;
@@ -9,7 +14,7 @@ export interface SignalRegistryDefinition {
   readonly securityIds: ReadonlySet<number>;
   readonly periods: readonly Period[];
   readonly sources: readonly DataSource[];
-  readonly executionPlan: CompiledStrategyExecutionPlan;
+  readonly executionPlan: SignalRegistryExecutionPlan;
   readonly ruleSnapshot: Readonly<Record<string, unknown>>;
 }
 

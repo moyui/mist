@@ -5,6 +5,7 @@ import {
   type CompiledStrategyExecutionPlan,
   type StrategyBar,
   type StrategyEvaluationOutcome,
+  type ProjectedStrategyBar,
   type StrategyRealtimeMarketDataPort,
   type StrategyRealtimeSource,
 } from '@app/strategy';
@@ -14,15 +15,30 @@ import {
 } from './realtime-episode.store';
 import { SharedStrategyWindowStore } from './shared-strategy-window.store';
 import type { RealtimeWindowGroupIdentity } from './shared-strategy-window.store';
+import { ChanBspDetector } from './chan-bsp/chan-bsp.detector';
+import {
+  ChanBspEpisodeCursor,
+  chanBspIdentityKey,
+  type ChanBspEpisodeIdentity,
+} from './chan-bsp/chan-bsp.episode';
+import type { ChanBspEvent, ChanBspPlan } from './chan-bsp/chan-bsp.types';
 
-export interface RealtimeStrategyExecutionPlan {
+export type RealtimeStrategyExecutionPlan = {
   readonly definitionId: number;
   readonly versionId: number;
   readonly source: StrategyRealtimeSource;
   readonly period: number;
-  readonly plan: CompiledStrategyExecutionPlan;
   readonly ruleSnapshot: Readonly<Record<string, unknown>>;
-}
+} & (
+  | {
+      readonly kind: 'rule_dsl';
+      readonly plan: CompiledStrategyExecutionPlan;
+    }
+  | {
+      readonly kind: 'chan_bsp';
+      readonly plan: ChanBspPlan;
+    }
+);
 
 export interface ShadowStrategyCandidate {
   readonly definitionId: number;
@@ -53,6 +69,8 @@ export class RealtimeStrategyEvaluationService {
     private readonly marketData: StrategyRealtimeMarketDataPort,
     private readonly windows = new SharedStrategyWindowStore(),
     private readonly episodes = new RealtimeEpisodeStore(),
+    private readonly chanBspDetector = new ChanBspDetector(),
+    private readonly chanBspCursors = new ChanBspEpisodeCursor(),
   ) {}
 
   async evaluate(
@@ -89,6 +107,10 @@ export class RealtimeStrategyEvaluationService {
     const candidates: ShadowStrategyCandidate[] = [];
     const analysis = new StrategyAnalysisObservationCache();
     for (const execution of eligible) {
+      if (execution.kind === 'chan_bsp') {
+        this.evaluateChanBsp(execution, bar, projected, candidates);
+        continue;
+      }
       const outcome = evaluateStrategyPlan(execution.plan, projected, analysis);
       this.lastOutcome =
         outcome.status === 'unavailable'
@@ -129,6 +151,61 @@ export class RealtimeStrategyEvaluationService {
     return Object.freeze(candidates);
   }
 
+  private evaluateChanBsp(
+    execution: Extract<RealtimeStrategyExecutionPlan, { kind: 'chan_bsp' }>,
+    bar: StrategyBar,
+    projected: readonly ProjectedStrategyBar[],
+    out: ShadowStrategyCandidate[],
+  ): void {
+    const events = this.chanBspDetector.evaluate(projected, execution.plan);
+    const identity: ChanBspEpisodeIdentity = {
+      definitionId: execution.definitionId,
+      securityId: bar.securityId,
+      source: execution.source,
+      level: bar.period,
+      units: execution.plan.units,
+    };
+    const fresh = this.chanBspCursors.advance(identity, events);
+    for (const event of fresh) {
+      this.lastOutcome = 'evaluated_matched';
+      const anchor = projected.at(-1);
+      if (!anchor) continue;
+      const candidate = Object.freeze({
+        definitionId: execution.definitionId,
+        versionId: execution.versionId,
+        securityId: bar.securityId,
+        source: execution.source,
+        period: bar.period,
+        signalKind: chanBspSignalKind(event),
+        signalTime: event.time,
+        triggerTime: event.time.toISOString(),
+        triggerPrice: event.price,
+        barType: bar.type,
+        evaluation: Object.freeze({
+          status: 'evaluated',
+          matched: true,
+          context: Object.freeze({
+            anchor,
+            barType: bar.type,
+            fields: Object.freeze({}),
+          }),
+        }),
+        contextSnapshot: Object.freeze({
+          chanBsp: Object.freeze({
+            type: event.type,
+            units: event.units,
+            level: bar.period,
+            zhongshuIndex: event.zhongshuIndex,
+            zg: event.zg,
+            zd: event.zd,
+          }),
+        }),
+        ruleSnapshot: execution.ruleSnapshot,
+      });
+      out.push(candidate);
+    }
+  }
+
   activate(candidate: ShadowStrategyCandidate): void {
     this.episodes.activate(candidate);
   }
@@ -136,6 +213,7 @@ export class RealtimeStrategyEvaluationService {
   reset(): void {
     this.windows.reset();
     this.episodes.reset();
+    this.chanBspCursors.reset();
     this.lastOutcome = null;
   }
 
@@ -143,6 +221,7 @@ export class RealtimeStrategyEvaluationService {
     return Object.freeze({
       ...this.windows.diagnostics(),
       activeEpisodeCount: this.episodes.activeCount,
+      activeChanBspCursorCount: this.chanBspCursors.activeCount,
       lastOutcome: this.lastOutcome,
     });
   }
@@ -150,9 +229,13 @@ export class RealtimeStrategyEvaluationService {
   retainRegistryScopes(
     groups: readonly RealtimeWindowGroupIdentity[],
     episodes: readonly RealtimeEpisodeIdentity[],
+    chanBspIdentities: readonly ChanBspEpisodeIdentity[],
   ): void {
     this.windows.retainGroups(groups);
     this.episodes.retainIdentities(episodes);
+    this.chanBspCursors.retainIdentities(
+      new Set(chanBspIdentities.map(chanBspIdentityKey)),
+    );
   }
 }
 
@@ -163,4 +246,8 @@ function requireRealtimeSource(
     throw new TypeError('shadow evaluation source must be tdx or qmt');
   }
   return source;
+}
+
+function chanBspSignalKind(event: ChanBspEvent): 'entry' | 'exit' {
+  return event.type.endsWith('_buy') ? 'entry' : 'exit';
 }
