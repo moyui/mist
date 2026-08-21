@@ -221,3 +221,50 @@ export interface ChanDivergence {
   readonly enterForce: ChanUnitForce;
   readonly leaveForce: ChanUnitForce;
 }
+
+// ---------------------------------------------------------------------------
+// 买卖点（Buy/Sell Point，缠论第20/21课）— 共享纯函数，笔级/段级复用。
+// 一类=趋势背驰点（消费 Trend 背驰）、二类=一买/一卖后回抽确认（结构，不查背驰）、
+// 三类=离开中枢后回抽不回中枢区间（几何）。力度（forces）由调用方经 @app/indicators
+// 计算传入；chancore 不计算指标。
+// ---------------------------------------------------------------------------
+
+export enum ChanBspType {
+  FirstBuy = 'first_buy', // 第一类买点（一买）
+  FirstSell = 'first_sell', // 第一类卖点（一卖）
+  SecondBuy = 'second_buy', // 第二类买点（二买）
+  SecondSell = 'second_sell', // 第二类卖点（二卖）
+  ThirdBuy = 'third_buy', // 第三类买点（三买）
+  ThirdSell = 'third_sell', // 第三类卖点（三卖）
+}
+
+/** 买卖点单元（笔或段皆可，最小结构接口）——背驰 unit 超集：价格比较需要 high/low。 */
+export interface ChanBspUnit {
+  readonly startTime: Date;
+  readonly endTime: Date;
+  readonly high: number; // 段内最高价
+  readonly low: number; // 段内最低价
+  readonly trend: TrendDirection;
+}
+
+/** 买卖点判定入参：units 与 forces 按索引一一对齐；zhongshus 复用背驰最小接口。 */
+export interface ChanBspInput {
+  readonly units: readonly ChanBspUnit[];
+  readonly zhongshus: readonly ChanDivergenceZhongshu[];
+  readonly forces: readonly ChanUnitForce[]; // 空数组 → 一类不输出；二三类照常
+}
+
+/**
+ * 买卖点输出。
+ * - zhongshuIndex：一类/三类 = 相关中枢在 zhongshus 中的下标；二类恒 null（结构性判定不绑定中枢）。
+ * - unitIndex：确认段下标（一类=离开段 leaveIndex；二三类=回抽段），点位于该段末端。
+ * - price：点价格（买=确认段 low、卖=确认段 high）。
+ * - firstTypeIndex：同向最近前置一类点在结果数组中的下标；无 → null。
+ */
+export interface ChanBuySellPoint {
+  readonly type: ChanBspType;
+  readonly zhongshuIndex: number | null;
+  readonly unitIndex: number;
+  readonly price: number;
+  readonly firstTypeIndex: number | null;
+}
