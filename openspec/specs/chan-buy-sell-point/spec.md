@@ -1,7 +1,9 @@
 # chan-buy-sell-point Specification
 
 ## Purpose
-TBD - created by archiving change add-chan-buy-sell-point. Update Purpose after archive.
+Define buy/sell point (买卖点) detection as a shared pure ChanCore function: first-, second- and
+third-type buy/sell points derived from unit (Bi or Duan) and Channel sequences with caller-computed
+force values, without ChanCore computing momentum indicators itself.
 ## Requirements
 ### Requirement: ChanCore Shall Detect Buy And Sell Points As A Shared Pure Function
 
