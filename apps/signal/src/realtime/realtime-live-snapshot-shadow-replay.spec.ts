@@ -92,6 +92,7 @@ describe.each(REALTIME_LIVE_SNAPSHOT_FIXTURES)(
               operator: 'gt',
               value: fixture.expectedPrices.last - 0.01,
             },
+            kind: 'rule_dsl',
             plan: compileStoredStrategyRule(
               {
                 field: 'k.close',

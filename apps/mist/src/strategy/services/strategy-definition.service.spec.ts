@@ -7,6 +7,7 @@ import {
   DataSource,
   Period,
   StrategyDefinition,
+  StrategyKind,
   StrategyRuleSchemaVersion,
   StrategySignalKind,
   StrategyStatus,
@@ -115,6 +116,85 @@ describe('StrategyDefinitionService', () => {
     },
     signalKind: StrategySignalKind.ENTRY,
   };
+
+  it('creates a chan_bsp definition with the chan_bsp rule semantics', async () => {
+    const { service, definitions, versions } = createHarness();
+
+    const strategy = await service.create({
+      ...createDto,
+      kind: StrategyKind.CHAN_BSP,
+      periods: [Period.THIRTY_MIN],
+      rule: {
+        units: 'duan',
+        points: { first: true, second: true, third: false },
+        direction: 'buy',
+      },
+    });
+
+    expect(definitions[0].kind).toBe(StrategyKind.CHAN_BSP);
+    expect(versions[0].rule).toEqual({
+      units: 'duan',
+      points: { first: true, second: true, third: false },
+      direction: 'buy',
+    });
+    expect(versions[0].validationSummary).toEqual({
+      ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
+      units: 'duan',
+      points: { first: true, second: true, third: false },
+      direction: 'buy',
+      requiredBarCount: 200,
+    });
+    expect(strategy.kind).toBe(StrategyKind.CHAN_BSP);
+  });
+
+  it('rejects an invalid chan_bsp rule with an HTTP 400 error', async () => {
+    const { service } = createHarness();
+
+    await expect(
+      service.create({
+        ...createDto,
+        kind: StrategyKind.CHAN_BSP,
+        periods: [Period.THIRTY_MIN],
+        rule: { units: 'wave' },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects a chan_bsp definition with a non-realtime period', async () => {
+    const { service } = createHarness();
+
+    await expect(
+      service.create({
+        ...createDto,
+        kind: StrategyKind.CHAN_BSP,
+        periods: [Period.DAY],
+        rule: {
+          units: 'duan',
+          points: { first: true, second: false, third: false },
+          direction: 'buy',
+        },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('enables a chan_bsp definition through the chan_bsp validation path', async () => {
+    const { service } = createHarness();
+    await service.create({
+      ...createDto,
+      kind: StrategyKind.CHAN_BSP,
+      periods: [Period.THIRTY_MIN],
+      rule: {
+        units: 'duan',
+        points: { first: true, second: true, third: false },
+        direction: 'buy',
+      },
+    });
+
+    const enabled = await service.enable(1);
+
+    expect(enabled.status).toBe(StrategyStatus.ENABLED);
+    expect(enabled.kind).toBe(StrategyKind.CHAN_BSP);
+  });
 
   it('atomically creates a draft definition and its only immutable version', async () => {
     const { service, versions } = createHarness();

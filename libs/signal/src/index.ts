@@ -54,3 +54,27 @@ export type {
   RealtimeStrategyExecutionPlan,
   ShadowStrategyCandidate,
 } from './runtime/realtime-strategy-evaluation.service';
+export type {
+  ChanBspDirection,
+  ChanBspPlan,
+  ChanBspPointSelection,
+  ChanBspUnitLevel,
+} from './runtime/chan-bsp-plan';
+export {
+  CHAN_BSP_WINDOW_BUDGET,
+  REALTIME_CHAN_BSP_LEVELS,
+} from './runtime/chan-bsp/chan-bsp.types';
+export type {
+  ChanBspEvent,
+  ChanBspEventType,
+} from './runtime/chan-bsp/chan-bsp.types';
+export { ChanBspDetector } from './runtime/chan-bsp/chan-bsp.detector';
+export {
+  ChanBspEpisodeCursor,
+  chanBspIdentityKey,
+} from './runtime/chan-bsp/chan-bsp.episode';
+export type { ChanBspEpisodeIdentity } from './runtime/chan-bsp/chan-bsp.episode';
+export {
+  compileChanBspConfig,
+  ChanBspConfigError,
+} from './runtime/chan-bsp/chan-bsp.config';

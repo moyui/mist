@@ -7,13 +7,26 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { DataSource, Period, StrategySignalKind } from '@app/shared-data';
+import {
+  DataSource,
+  Period,
+  StrategyKind,
+  StrategySignalKind,
+} from '@app/shared-data';
 
 export class CreateStrategyDefinitionDto {
   @ApiProperty({ description: 'Strategy display name' })
   @IsNotEmpty()
   @IsString()
   name!: string;
+
+  @ApiProperty({
+    description: 'Strategy kind (rule semantics)',
+    enum: StrategyKind,
+  })
+  @IsEnum(StrategyKind)
+  @IsOptional()
+  kind?: StrategyKind;
 
   @ApiProperty({ description: 'Strategy description', required: false })
   @IsOptional()

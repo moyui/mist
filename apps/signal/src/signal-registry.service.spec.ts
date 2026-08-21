@@ -3,6 +3,7 @@ import {
   Period,
   Security,
   StrategyDefinition,
+  StrategyKind,
   StrategyRuleSchemaVersion,
   StrategySignalKind,
   StrategyStatus,
@@ -78,6 +79,58 @@ describe('SignalRegistryService', () => {
     expect([...captured.definitions.keys()]).toEqual([1]);
     expect([...registry.capture().definitions.keys()]).toEqual([1, 2]);
     expect(repository.findOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('compiles a chan_bsp definition into a chan_bsp execution plan', async () => {
+    process.env.REALTIME_STRATEGY_MODE = 'off';
+    const repository = {
+      find: jest.fn().mockResolvedValue([chanBspDefinition(1, 11)]),
+      findOne: jest.fn(),
+    } as unknown as Repository<StrategyDefinition>;
+    const registry = new SignalRegistryService(
+      repository,
+      securityRepository(),
+      new SignalHealthStateService(),
+      new SignalRuntimeMutex(),
+    );
+
+    await registry.onApplicationBootstrap();
+
+    const plans = registry.executionPlansFor(9, 'tdx');
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toMatchObject({
+      kind: 'chan_bsp',
+      definitionId: 1,
+      period: 30,
+      source: 'tdx',
+      plan: {
+        units: 'duan',
+        points: { first: true, second: true, third: false },
+        direction: 'buy',
+        requiredBarCount: 200,
+      },
+    });
+  });
+
+  it('rejects a chan_bsp definition with an invalid configuration', async () => {
+    process.env.REALTIME_STRATEGY_MODE = 'off';
+    const invalid = chanBspDefinition(2, 22);
+    invalid.currentVersion!.rule = { units: 'wave' };
+    const repository = {
+      find: jest.fn().mockResolvedValue([invalid]),
+      findOne: jest.fn(),
+    } as unknown as Repository<StrategyDefinition>;
+    const registry = new SignalRegistryService(
+      repository,
+      securityRepository(),
+      new SignalHealthStateService(),
+      new SignalRuntimeMutex(),
+    );
+
+    await expect(registry.onApplicationBootstrap()).rejects.toThrow(
+      'chan_bsp strategy config is invalid',
+    );
+    expect(registry.capture().generation).toBe(0);
   });
 
   it('retains the prior pointer and generation when refresh compilation fails', async () => {
@@ -158,5 +211,29 @@ function definition(id: number, versionId: number): StrategyDefinition {
     sources: [DataSource.TDX],
     currentVersionId: versionId,
     currentVersion: version,
+  });
+}
+
+function chanBspDefinition(id: number, versionId: number): StrategyDefinition {
+  const version = Object.assign(new StrategyVersion(), {
+    id: versionId,
+    strategyDefinitionId: id,
+    ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
+    rule: {
+      units: 'duan',
+      points: { first: true, second: true, third: false },
+      direction: 'buy',
+    },
+    signalKind: StrategySignalKind.ENTRY,
+  });
+  return Object.assign(new StrategyDefinition(), {
+    id,
+    status: StrategyStatus.ENABLED,
+    targetUniverse: ['000001.SZ'],
+    periods: [Period.THIRTY_MIN],
+    sources: [DataSource.TDX],
+    currentVersionId: versionId,
+    currentVersion: version,
+    kind: StrategyKind.CHAN_BSP,
   });
 }
