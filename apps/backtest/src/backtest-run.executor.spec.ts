@@ -1,5 +1,5 @@
 import { BacktestRunStatus, DataSource, Period } from '@app/shared-data';
-import type { StrategyBar } from '@app/strategy';
+import { compileStoredStrategyRule, type StrategyBar } from '@app/strategy';
 import { BacktestHealthStateService } from './backtest-health-state.service';
 import { BacktestRunExecutor } from './backtest-run.executor';
 
@@ -183,6 +183,63 @@ describe('BacktestRunExecutor', () => {
         status: BacktestRunStatus.COMPLETED,
         signalCount: 1,
       }),
+    );
+  });
+
+  it('bounds the hydration window at the replay start so a quantity plan never overlaps the streaming page', async () => {
+    // F1 回归：消费量价的分钟级 plan，replayStartFor 回到当日开盘（08-04T01:30Z = 上海
+    // 09:30）；盘中 startDate（01:42Z）时 initial 窗口必须以 replayStart 为界，否则与
+    // page 重叠（append 抛 strictly increasing RangeError）。
+    // 注：量价 plan 在 replay() 被 BACKTEST_QUANTITY_PROFILE_UNAVAILABLE 门禁挡住
+    // （quantity profile 未证明前 ineligible），此处直接驱动 replaySecurity 验证窗口衔接。
+    const startDate = new Date('2026-08-04T01:42:00.000Z');
+    const dayOpen = new Date('2026-08-04T01:30:00.000Z');
+    const fixture = executor();
+    const run = {
+      ...fixture.current,
+      period: Period.ONE_MIN,
+      startDate,
+      targetUniverse: ['600000.SH'],
+    };
+    const rule = { field: 'k.volume', operator: 'gt', value: '0' };
+    const plan = compileStoredStrategyRule(rule, 'entry');
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: [],
+    });
+    fixture.dependencies.marketData.readReplayPage.mockResolvedValue({
+      bars: [strategyBar('2026-08-04T01:42:00.000Z')],
+      nextAfterTimestamp: null,
+    });
+    const budget = {
+      consume: jest.fn(),
+      checkpoint: jest.fn(),
+      checkDeadline: jest.fn(),
+    };
+
+    await (fixture.instance as any).replaySecurity(
+      run,
+      plan,
+      rule,
+      '600000.SH',
+      9,
+      [],
+      new Set<string>(),
+      budget,
+      () => {},
+    );
+
+    expect(
+      fixture.dependencies.marketData.loadReplayWindow,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        securityId: 9,
+        source: 'tdx',
+        period: Period.ONE_MIN,
+        endAt: dayOpen, // 以 replayStart（当日开盘）为界，而非 startDate
+      }),
+    );
+    expect(fixture.dependencies.marketData.readReplayPage).toHaveBeenCalledWith(
+      expect.objectContaining({ startAt: dayOpen }),
     );
   });
 

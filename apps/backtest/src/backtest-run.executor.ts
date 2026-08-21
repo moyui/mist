@@ -259,13 +259,16 @@ export class BacktestRunExecutor {
     const replayStart = replayStartFor(run, plan);
     const replayEnd = new Date(run.endDate.getTime());
 
-    // ① 准备阶段：首个评估点前的初始窗口段，整段双向补齐定死（锚点全部 < startDate，
-    //    无 look-ahead）。窗口不满时维持 insufficient_history（builder 现有逻辑）。
+    // ① 准备阶段：首个评估点前的初始窗口段，整段双向补齐定死。以 replayStart 为界
+    //    （而非 startDate）——对消费量价的分钟级 plan，replayStart = 当日开盘，initial
+    //    只取开盘前的历史，与 ② 的 replay page（从 replayStart 起）天然不重叠；锚点
+    //    全部 < replayStart，无 look-ahead。窗口不满时维持 insufficient_history
+    //    （builder 现有逻辑）。
     const initial = await this.marketData.loadReplayWindow({
       securityId,
       source: run.source as StrategyRealtimeSource,
       period: run.period,
-      endAt: run.startDate,
+      endAt: replayStart,
       requiredBars: plan.requiredBarCount,
     });
     for (let index = 0; index < initial.bars.length; index += 1) {
