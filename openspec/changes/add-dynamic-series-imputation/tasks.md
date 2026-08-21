@@ -64,8 +64,8 @@
 
 - [ ] 7.1 完整基线：lint/typecheck/test:ci（`--forceExit`）/ci:contracts/
   `openspec validate --all --strict`/`git diff --check`。
-- [ ] 7.2 shadow 观察：量价补齐行为变化（unavailable→backfilled）对存量 DSL 策略
-  触发频率的影响，记录 evidence。
+- [x] 7.2 ~~shadow 观察~~（2026-08-21 用户拍板不做）：补齐语义是对错问题，由设计与
+  单测保证正确性，不做触发频率统计观察。
 - [ ] 7.3 与项目负责人确认后：`add-chan-bsp-realtime-evaluation` 基于本 change 的
   补齐视图接入 detector；回测 hydration 深度校准（如需）由 `extract-backtest-runtime`
   另行承接。
