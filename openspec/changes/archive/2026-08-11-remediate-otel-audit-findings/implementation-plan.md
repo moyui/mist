@@ -10,7 +10,7 @@
 - 部署脚本 `deploy-docker-appliance.ps1` 在 `Initialize-DockerApplianceRoot` 段写 .env
   （MIST_IMAGE_TAG 等，L541-602 模式）
 - workflow 有 secret 先例：`GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}`（L147）
-- 当前生产 OO：root@mist.local / Mist@2026!Observe；生产 .env **无** OO_ROOT_USER_PASSWORD /
+- 当前生产 OO：root@mist.local / <REDACTED>；生产 .env **无** OO_ROOT_USER_PASSWORD /
   OO_OTLP_AUTH_BASE64（全靠 compose 默认值）——收敛后首次部署必须显式提供密码
 - validate 步骤跑 `test-deploy-docker-appliance.ps1`（dry-run）——需核对 dry-run 是否写
   .env/需要凭据（落地时验证）

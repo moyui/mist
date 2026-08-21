@@ -78,3 +78,4 @@ aktools_*.log
 .claude/
 .codex/
 .qoder/
+handoff-prompts-*.md

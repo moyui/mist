@@ -19,7 +19,7 @@
 - `TimezoneService.isTradingDay(date: Date): Promise<boolean>`（libs/timezone，SZSE + weekend fallback + cache）
 - `candle-bucket.util.ts` A 股时段常量：09:30-11:31 / 13:00-15:01（half-open）
 - OO alert API 路径 + webhook payload 格式：落地时确认（`/api/default/alerts` 之前 404）
-- 生产部署：**docker_root=F:\MistDocker**（非 E）；OO 密码 `Mist@Observe#2026Rotate`
+- 生产部署：**docker_root=F:\MistDocker**（非 E）；OO 密码 <REDACTED>（见 AGENTS.md 已轮换凭据）
 - mist 基线：typecheck/lint/test:ci（--forceExit）/coverage 82.72+；deploy gate test-*.ps1
 
 ## 1. 分支与工作流
