@@ -1,4 +1,5 @@
 import { BacktestRunStatus, DataSource, Period } from '@app/shared-data';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
   BacktestRpcTransportError,
   type BacktestRpcClient,
@@ -29,14 +30,20 @@ function fixture() {
     findOne: jest.fn(),
   };
   const rpc = { submit: jest.fn() };
+  const definitionRepository = {
+    findOne: jest
+      .fn()
+      .mockResolvedValue({ id: 3, kind: 'rule_dsl', periods: [1440] }),
+  };
   const service = new BacktestRunCommandService(
     { findOne: jest.fn().mockResolvedValue(version) } as any,
     runRepository as any,
     rpc as unknown as BacktestRpcClient,
     { getRequestId: jest.fn().mockReturnValue('http-test-1') } as any,
     { compileStoredVersion: jest.fn().mockReturnValue({ fields: [] }) } as any,
+    definitionRepository as any,
   );
-  return { service, runRepository, rpc, run };
+  return { service, runRepository, rpc, run, definitionRepository, version };
 }
 
 describe('BacktestRunCommandService handoff boundaries', () => {
@@ -115,5 +122,84 @@ describe('BacktestRunCommandService handoff boundaries', () => {
       { id: 41, status: BacktestRunStatus.PENDING },
       expect.objectContaining({ errorMessage: 'BACKTEST_RPC_INTERNAL_ERROR' }),
     );
+  });
+});
+
+describe('BacktestRunCommandService chan_bsp dispatch', () => {
+  function chanBspFixture() {
+    const f = fixture();
+    const chanVersion = {
+      id: 7,
+      strategyDefinitionId: 3,
+      rule: { units: 'bi', direction: 'both', points: { first: true } },
+      ruleSchemaVersion: 'v1',
+      signalKind: 'entry',
+    };
+    (f.service as any).versionRepository.findOne.mockResolvedValue(chanVersion);
+    f.definitionRepository.findOne.mockResolvedValue({
+      id: 3,
+      kind: 'chan_bsp',
+      periods: [30],
+    });
+    return f;
+  }
+
+  it('creates a chan_bsp run with the kind snapshot and skips the DSL gate', async () => {
+    const f = chanBspFixture();
+    f.rpc.submit.mockResolvedValue({ ok: true });
+
+    const result = await f.service.createRun({
+      ...dto(),
+      period: 30,
+    });
+
+    expect(f.runRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'chan_bsp' }),
+    );
+    expect(f.rpc.submit).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(
+      expect.objectContaining({ runId: 41, initialStatus: 'PENDING' }),
+    );
+  });
+
+  it('rejects a chan_bsp run with an unsupported period before persisting', async () => {
+    const f = chanBspFixture();
+
+    await expect(f.service.createRun({ ...dto(), period: Period.DAY })).rejects
+      .toThrow(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            code: 'CHAN_BSP_PERIOD_UNSUPPORTED',
+          }),
+        }),
+      );
+
+    expect(f.runRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('maps an invalid chan_bsp rule to a 400 before persisting', async () => {
+    const f = chanBspFixture();
+    (f.service as any).versionRepository.findOne.mockResolvedValue({
+      id: 7,
+      strategyDefinitionId: 3,
+      rule: { units: 'invalid', direction: 'both', points: { first: true } },
+    });
+
+    await expect(f.service.createRun({ ...dto(), period: 30 })).rejects.toThrow(
+      BadRequestException,
+    );
+
+    expect(f.runRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the strategy definition is missing', async () => {
+    const f = chanBspFixture();
+    f.definitionRepository.findOne.mockResolvedValue(null);
+
+    await expect(f.service.createRun({ ...dto(), period: 30 })).rejects.toThrow(
+      NotFoundException,
+    );
+
+    expect(f.runRepository.save).not.toHaveBeenCalled();
   });
 });

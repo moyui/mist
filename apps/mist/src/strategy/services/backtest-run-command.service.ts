@@ -9,8 +9,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   BacktestRun,
   BacktestRunStatus,
+  StrategyDefinition,
+  StrategyKind,
   StrategyVersion,
 } from '@app/shared-data';
+import { ChanBspConfigError, compileChanBspConfig } from '@app/signal';
 import {
   HttpBusinessRejection,
   HttpRequestContextService,
@@ -61,6 +64,8 @@ export class BacktestRunCommandService {
     private readonly rpc: BacktestRpcClient,
     private readonly requestContext: HttpRequestContextService,
     private readonly planService: StrategyExecutionPlanService,
+    @InjectRepository(StrategyDefinition)
+    private readonly definitionRepository: Repository<StrategyDefinition>,
   ) {}
 
   async createRun(
@@ -86,15 +91,55 @@ export class BacktestRunCommandService {
         `Strategy version ${dto.strategyVersionId} not found`,
       );
     }
-    const plan = this.planService.compileStoredVersion(version);
-    if (
-      plan.fields.some((field) => field === 'k.volume' || field === 'k.amount')
-    ) {
-      throw new ConflictException({
-        code: 'BACKTEST_QUANTITY_PROFILE_UNAVAILABLE',
-        message:
-          'Historical quantity profile is not approved for backtest replay',
-      });
+    const definition = await this.definitionRepository.findOne({
+      where: { id: version.strategyDefinitionId },
+    });
+    if (!definition) {
+      throw new NotFoundException(
+        `Strategy definition ${version.strategyDefinitionId} not found`,
+      );
+    }
+
+    let kind: StrategyKind;
+    if (definition.kind === StrategyKind.CHAN_BSP) {
+      // 分派编译先行：chan_bsp 配置不是 DSL 树，compileStoredVersion 会误编译。
+      try {
+        compileChanBspConfig(
+          version.rule as Record<string, unknown>,
+          definition.periods,
+        );
+      } catch (error) {
+        if (error instanceof ChanBspConfigError) {
+          throw new BadRequestException(error.message);
+        }
+        throw error;
+      }
+      if (
+        dto.period !== 1 &&
+        dto.period !== 5 &&
+        dto.period !== 15 &&
+        dto.period !== 30 &&
+        dto.period !== 60
+      ) {
+        throw new BadRequestException({
+          code: 'CHAN_BSP_PERIOD_UNSUPPORTED',
+          message: 'chan_bsp replay period must be one of 1/5/15/30/60',
+        });
+      }
+      kind = StrategyKind.CHAN_BSP;
+      // quantity 门禁跳过：chan_bsp 不消费量价（D3）。
+    } else {
+      const plan = this.planService.compileStoredVersion(version);
+      if (
+        plan.fields.some((field) => field === 'k.volume' || field === 'k.amount')
+      ) {
+        throw new ConflictException({
+          code: 'BACKTEST_QUANTITY_PROFILE_UNAVAILABLE',
+          message:
+            'Historical quantity profile is not approved for backtest replay',
+        });
+      }
+      kind = StrategyKind.RULE_DSL;
     }
 
     const run = await this.runRepository.save(
@@ -108,6 +153,7 @@ export class BacktestRunCommandService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         status: BacktestRunStatus.PENDING,
+        kind,
         signalCount: 0,
         matchedSecurityCount: 0,
       }),
