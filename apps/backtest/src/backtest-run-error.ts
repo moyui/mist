@@ -11,7 +11,8 @@ export type BacktestFailureCode =
   | 'BACKTEST_EXECUTION_FAILED'
   | 'BACKTEST_INTERRUPTED'
   | 'BACKTEST_STARTUP_QUEUE_FULL'
-  | 'BACKTEST_STARTUP_UNAVAILABLE';
+  | 'BACKTEST_STARTUP_UNAVAILABLE'
+  | 'BACKTEST_CHAN_BSP_PERIOD_UNSUPPORTED';
 
 export class BacktestRunFailure extends Error {
   constructor(

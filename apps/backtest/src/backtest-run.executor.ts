@@ -7,6 +7,8 @@ import {
   BacktestSignalResult,
   DataSource,
   Security,
+  StrategyDefinition,
+  StrategyKind,
   StrategyVersion,
   type BacktestTargetIssue,
 } from '@app/shared-data';
@@ -19,6 +21,14 @@ import {
   type StrategyMarketSource,
   type StrategyRealtimeSource,
 } from '@app/strategy';
+import {
+  ChanBspDetector,
+  ChanBspEpisodeCursor,
+  serializeChanBspContextSnapshot,
+  compileChanBspConfig,
+  type ChanBspEpisodeIdentity,
+  type ChanBspPlan,
+} from '@app/signal';
 import { DataSource as TypeOrmDataSource, In, Repository } from 'typeorm';
 import { BacktestMarketDataAdapter } from './backtest-market-data.adapter';
 import { BacktestRunFailure } from './backtest-run-error';
@@ -26,6 +36,17 @@ import { BacktestHealthStateService } from './backtest-health-state.service';
 
 const BACKTEST_CALCULATION_BATCH_SIZE = 100;
 const BACKTEST_RESULT_BATCH_SIZE = 100;
+
+/**
+ * Per-run compiled plan union: the evaluator selected by `backtest_runs.kind`.
+ * `rule_dsl` keeps the existing compiled-rule path; `chan_bsp` carries the
+ * shared Chan buy/sell point plan. Both expose `requiredBarCount`.
+ */
+type ReplayPlan =
+  | { kind: 'rule_dsl'; plan: CompiledStrategyExecutionPlan }
+  | { kind: 'chan_bsp'; plan: ChanBspPlan };
+
+const CHAN_BSP_REPLAY_LEVELS: readonly number[] = [1, 5, 15, 30, 60];
 
 class ReplayBudget {
   consumed = 0;
@@ -76,10 +97,14 @@ export class BacktestRunExecutor {
     private readonly versionRepository: Repository<StrategyVersion>,
     @InjectRepository(Security)
     private readonly securityRepository: Repository<Security>,
+    @InjectRepository(StrategyDefinition)
+    private readonly definitionRepository: Repository<StrategyDefinition>,
     private readonly marketData: BacktestMarketDataAdapter,
     private readonly dataSource: TypeOrmDataSource,
     private readonly config: ConfigService,
     private readonly health: BacktestHealthStateService,
+    private readonly chanBspDetector = new ChanBspDetector(),
+    private readonly chanBspCursors = new Map<number, ChanBspEpisodeCursor>(),
   ) {}
 
   async execute(runId: number): Promise<void> {
@@ -139,14 +164,45 @@ export class BacktestRunExecutor {
       where: { id: run.strategyVersionId },
     });
     if (!version) throw new BacktestRunFailure('BACKTEST_EXECUTION_FAILED');
-    const plan = compileStoredStrategyRule(
-      version.rule,
-      version.signalKind as 'entry' | 'exit',
-    );
+    const definition = await this.definitionRepository.findOne({
+      where: { id: run.strategyDefinitionId },
+    });
+    if (!definition) throw new BacktestRunFailure('BACKTEST_EXECUTION_FAILED');
+
+    const plan: ReplayPlan =
+      run.kind === StrategyKind.CHAN_BSP
+        ? {
+            kind: 'chan_bsp',
+            plan: compileChanBspConfig(
+              version.rule as Record<string, unknown>,
+              definition.periods,
+            ),
+          }
+        : {
+            kind: 'rule_dsl',
+            plan: compileStoredStrategyRule(
+              version.rule,
+              version.signalKind as 'entry' | 'exit',
+            ),
+          };
     if (
-      plan.fields.some((field) => field === 'k.volume' || field === 'k.amount')
+      plan.kind === 'rule_dsl' &&
+      plan.plan.fields.some(
+        (field) => field === 'k.volume' || field === 'k.amount',
+      )
     ) {
       throw new BacktestRunFailure('BACKTEST_QUANTITY_PROFILE_UNAVAILABLE');
+    }
+    if (
+      run.kind === StrategyKind.CHAN_BSP &&
+      !CHAN_BSP_REPLAY_LEVELS.includes(run.period)
+    ) {
+      throw new BacktestRunFailure('BACKTEST_CHAN_BSP_PERIOD_UNSUPPORTED');
+    }
+    if (plan.kind === 'chan_bsp') {
+      this.logger.log(
+        `backtest chan_bsp plan compiled runId=${run.id} level=${run.period} units=${plan.plan.units}`,
+      );
     }
 
     const timeoutMs =
@@ -244,7 +300,7 @@ export class BacktestRunExecutor {
 
   private async replaySecurity(
     run: BacktestRun,
-    plan: CompiledStrategyExecutionPlan,
+    plan: ReplayPlan,
     ruleSnapshot: Record<string, unknown>,
     securityCode: string,
     securityId: number,
@@ -258,6 +314,9 @@ export class BacktestRunExecutor {
     let hasPublicBars = false;
     const replayStart = replayStartFor(run, plan);
     const replayEnd = new Date(run.endDate.getTime());
+    const cursor =
+      this.chanBspCursors.get(securityId) ?? new ChanBspEpisodeCursor();
+    this.chanBspCursors.set(securityId, cursor);
 
     // ① 准备阶段：首个评估点前的初始窗口段，整段双向补齐定死。以 replayStart 为界
     //    （而非 startDate）——对消费量价的分钟级 plan，replayStart = 当日开盘，initial
@@ -269,7 +328,7 @@ export class BacktestRunExecutor {
       source: run.source as StrategyRealtimeSource,
       period: run.period,
       endAt: replayStart,
-      requiredBars: plan.requiredBarCount,
+      requiredBars: plan.plan.requiredBarCount,
     });
     for (let index = 0; index < initial.bars.length; index += 1) {
       budget.consume();
@@ -290,28 +349,64 @@ export class BacktestRunExecutor {
         budget.consume();
         if (bar.timestamp >= run.startDate) hasPublicBars = true;
         imputer.append(bar);
-        while (imputer.read().length > plan.requiredBarCount) {
+        while (imputer.read().length > plan.plan.requiredBarCount) {
           imputer.trim();
         }
         if (bar.timestamp >= run.startDate) {
-          const evaluation = evaluateStrategyPlan(plan, imputer.read());
-          if (evaluation.status === 'evaluated' && evaluation.matched) {
-            results.push(
-              this.resultRepository.create({
-                backtestRunId: run.id,
-                securityCode,
-                signalTime: bar.timestamp,
-                contextSnapshot: serializeStrategyContextSnapshot(
-                  plan,
-                  evaluation.context,
-                ) as Record<string, unknown>,
-                ruleSnapshot,
-              }),
+          if (plan.kind === 'chan_bsp') {
+            // 矫正层第一原则：detector 只吃 imputer.read() 的矫正视图。
+            const events = this.chanBspDetector.evaluate(
+              imputer.read(),
+              plan.plan,
             );
-            matchedCodes.add(securityCode);
-            onSignal();
-            if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
-              await this.flushResults(results);
+            const identity: ChanBspEpisodeIdentity = {
+              definitionId: run.strategyDefinitionId,
+              securityId,
+              source: run.source as StrategyRealtimeSource,
+              level: run.period,
+              units: plan.plan.units,
+            };
+            const fresh = cursor.advance(identity, events);
+            for (const event of fresh) {
+              results.push(
+                this.resultRepository.create({
+                  backtestRunId: run.id,
+                  securityCode,
+                  signalTime: event.time,
+                  contextSnapshot: serializeChanBspContextSnapshot(
+                    event,
+                    run.period,
+                  ) as Record<string, unknown>,
+                  ruleSnapshot,
+                }),
+              );
+            }
+            if (fresh.length > 0) {
+              matchedCodes.add(securityCode);
+              onSignal();
+              if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
+                await this.flushResults(results);
+            }
+          } else {
+            const evaluation = evaluateStrategyPlan(plan.plan, imputer.read());
+            if (evaluation.status === 'evaluated' && evaluation.matched) {
+              results.push(
+                this.resultRepository.create({
+                  backtestRunId: run.id,
+                  securityCode,
+                  signalTime: bar.timestamp,
+                  contextSnapshot: serializeStrategyContextSnapshot(
+                    plan.plan,
+                    evaluation.context,
+                  ) as Record<string, unknown>,
+                  ruleSnapshot,
+                }),
+              );
+              matchedCodes.add(securityCode);
+              onSignal();
+              if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
+                await this.flushResults(results);
+            }
           }
         }
         await budget.checkpoint();
@@ -408,13 +503,13 @@ function uniqueIssues(
   });
 }
 
-function replayStartFor(
-  run: BacktestRun,
-  plan: CompiledStrategyExecutionPlan,
-): Date {
+function replayStartFor(run: BacktestRun, plan: ReplayPlan): Date {
   if (
     run.period >= 1_440 ||
-    !plan.fields.some((field) => field === 'k.volume' || field === 'k.amount')
+    (plan.kind === 'rule_dsl' &&
+      !plan.plan.fields.some(
+        (field) => field === 'k.volume' || field === 'k.amount',
+      ))
   ) {
     return new Date(run.startDate.getTime());
   }

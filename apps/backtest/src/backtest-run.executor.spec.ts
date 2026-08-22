@@ -1,7 +1,25 @@
 import { BacktestRunStatus, DataSource, Period } from '@app/shared-data';
 import { compileStoredStrategyRule, type StrategyBar } from '@app/strategy';
+import { createChanFullOutputFixture } from '../../../libs/chancore/src/chan-full-output.characterization.fixture';
+import type { ChanBspEvent } from '../../../libs/signal/src/runtime/chan-bsp/chan-bsp.types';
 import { BacktestHealthStateService } from './backtest-health-state.service';
 import { BacktestRunExecutor } from './backtest-run.executor';
+
+// chan_bsp 用例聚焦回放链路（分派/完整信号流/防重复/门禁）——编译细节由
+// chan-bsp.config 单测覆盖，这里 mock 一个窗口预算为 10 的 plan，避免
+// 真实 window budget（30m=200 根）超出 characterization fixture（45 根）。
+jest.mock('@app/signal', () => {
+  const actual = jest.requireActual('@app/signal');
+  return {
+    ...actual,
+    compileChanBspConfig: jest.fn(() => ({
+      units: 'duan' as const,
+      points: { first: true, second: true, third: true },
+      direction: 'both' as const,
+      requiredBarCount: 10,
+    })),
+  };
+});
 
 function run() {
   return {
@@ -14,6 +32,7 @@ function run() {
     startDate: new Date('2026-01-01T00:00:00.000Z'),
     endDate: new Date('2026-01-31T00:00:00.000Z'),
     status: BacktestRunStatus.PENDING,
+    kind: 'rule_dsl',
   };
 }
 
@@ -33,7 +52,10 @@ function executor(overrides: Record<string, unknown> = {}) {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOne: jest.fn().mockResolvedValue(current),
     },
-    resultRepository: { insert: jest.fn(), create: jest.fn() },
+    resultRepository: {
+      insert: jest.fn(),
+      create: jest.fn((input: object) => ({ id: 1, ...input })),
+    },
     versionRepository: {
       findOne: jest.fn().mockResolvedValue({
         id: 7,
@@ -43,6 +65,9 @@ function executor(overrides: Record<string, unknown> = {}) {
     },
     securityRepository: {
       find: jest.fn().mockResolvedValue([]),
+    },
+    definitionRepository: {
+      findOne: jest.fn().mockResolvedValue({ id: 3, periods: [1440] }),
     },
     marketData: {
       readReplayPage: jest.fn(),
@@ -66,10 +91,12 @@ function executor(overrides: Record<string, unknown> = {}) {
       dependencies.resultRepository as any,
       dependencies.versionRepository as any,
       dependencies.securityRepository as any,
+      dependencies.definitionRepository as any,
       dependencies.marketData as any,
       dependencies.dataSource as any,
       dependencies.config as any,
       dependencies.health,
+      (overrides as any).chanBspDetector,
     ),
     current,
     manager,
@@ -153,7 +180,7 @@ describe('BacktestRunExecutor', () => {
       nextAfterTimestamp: null,
     });
     fixture.dependencies.resultRepository.create.mockImplementation(
-      (input: unknown) => input,
+      (input: object) => ({ id: 1, ...input }),
     );
 
     await fixture.instance.execute(fixture.current.id);
@@ -250,7 +277,7 @@ describe('BacktestRunExecutor', () => {
 
     await (fixture.instance as any).replaySecurity(
       run,
-      plan,
+      { kind: 'rule_dsl', plan },
       rule,
       '600000.SH',
       9,
@@ -297,7 +324,7 @@ describe('BacktestRunExecutor', () => {
       nextAfterTimestamp: null,
     });
     fixture.dependencies.resultRepository.create.mockImplementation(
-      (input: unknown) => input,
+      (input: object) => ({ id: 1, ...input }),
     );
 
     await fixture.instance.execute(fixture.current.id);
@@ -374,3 +401,218 @@ function strategyBar(timestamp: string): StrategyBar {
     type: 'complete',
   };
 }
+
+
+function completedUpdateCall(fixture: {
+  dependencies: { runRepository: { update: { mock: { calls: unknown[][] } } } };
+}): Record<string, unknown> {
+  const calls = fixture.dependencies.runRepository.update.mock.calls;
+  const completed = calls.find(
+    (call) => ((call[1] as Record<string, unknown>).status as string) === BacktestRunStatus.COMPLETED,
+  );
+  return (completed?.[1] as Record<string, unknown>) ?? {};
+}
+
+describe('BacktestRunExecutor chan_bsp replay', () => {
+  const FIRST_BUY: ChanBspEvent = {
+    type: 'first_buy',
+    units: 'duan',
+    time: new Date('2024-02-05T16:00:00.000Z'),
+    price: 1571.61,
+    zhongshuIndex: 1,
+    zg: 1630.0,
+    zd: 1560.0,
+    unitIndex: 14,
+  };
+  const SECOND_BUY: ChanBspEvent = {
+    type: 'second_buy',
+    units: 'duan',
+    time: new Date('2024-02-12T16:00:00.000Z'),
+    price: 1564.61,
+    zhongshuIndex: null,
+    zg: null,
+    zd: null,
+    unitIndex: 21,
+  };
+
+  function chanBspFixture(events: readonly ChanBspEvent[] = [FIRST_BUY]) {
+    const detector = { evaluate: jest.fn().mockReturnValue(events) };
+    const fixture = executor({ chanBspDetector: detector } as any);
+    const chanRun = {
+      ...fixture.current,
+      targetUniverse: ['600000.SH'],
+      period: 30,
+      startDate: new Date('2022-01-01T00:00:00.000Z'),
+      endDate: new Date('2025-01-31T00:00:00.000Z'),
+      kind: 'chan_bsp',
+    };
+    fixture.dependencies.runRepository.findOne.mockResolvedValue(chanRun);
+    fixture.dependencies.versionRepository.findOne.mockResolvedValue({
+      id: 7,
+      rule: {
+        units: 'duan',
+        direction: 'both',
+        points: { first: true, second: true, third: true },
+      },
+      signalKind: 'entry',
+    });
+    fixture.dependencies.definitionRepository.findOne.mockResolvedValue({
+      id: 3,
+      periods: [30],
+    });
+    fixture.dependencies.securityRepository.find.mockResolvedValue([
+      { id: 9, code: '600000.SH', type: 'STOCK', status: 1 } as any,
+    ]);
+    return fixture;
+  }
+
+  function chanBspBars(): StrategyBar[] {
+    return createChanFullOutputFixture().map((k, index) => ({
+      securityId: 9,
+      source: 'tdx',
+      period: 30,
+      timestamp: new Date(k.time),
+      open: k.open,
+      high: k.high,
+      low: k.low,
+      close: k.close,
+      volume: index % 7 === 0 ? '0' : '1000', // 含 0 异常量价，矫正层应消化
+      amount: String(Number(k.amount)), // fixture 尾零小数非 canonical，规范化为整数/去尾零
+      type: 'complete',
+    }));
+  }
+
+  it('persists each fresh point exactly once over the corrected window (complete signal flow)', async () => {
+    const fixture = chanBspFixture([FIRST_BUY, SECOND_BUY]);
+    const bars = chanBspBars();
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: [],
+    });
+    // 两页：stub detector 每根评估都返回同样的已确认点 —— cursor 记账必须
+    // 只 emit 第一次（unitIndex 单调），两页后结果行仍为 2 且各 signalTime 真实。
+    fixture.dependencies.marketData.readReplayPage
+      .mockResolvedValueOnce({
+        bars: bars.slice(0, 24),
+        nextAfterTimestamp: new Date(bars[23].timestamp.getTime() + 1),
+      })
+      .mockResolvedValueOnce({
+        bars: bars.slice(24),
+        nextAfterTimestamp: undefined,
+      });
+
+    await fixture.instance.execute(fixture.current.id);
+
+    const fixtureCalls =
+      fixture.dependencies.resultRepository.create.mock.calls as [
+        Record<string, unknown>,
+      ][];
+    expect(fixtureCalls.length).toBe(2); // 防重复：两页同点只 emit 一次
+    expect(fixtureCalls[0][0].signalTime).toEqual(FIRST_BUY.time);
+    expect(fixtureCalls[1][0].signalTime).toEqual(SECOND_BUY.time);
+    expect((fixtureCalls[0][0].contextSnapshot as any).chanBsp).toEqual({
+      type: 'first_buy',
+      units: 'duan',
+      level: 30,
+      zhongshuIndex: 1,
+      zg: 1630.0,
+      zd: 1560.0,
+    });
+    const completedUpdate = completedUpdateCall(fixture);
+    expect(completedUpdate.signalCount).toBe(1); // 触发语义：同次评估多点计 1 次
+    expect(completedUpdate.matchedSecurityCount).toBe(1);
+    // 矫正层输入契约：stub detector 收到的是 imputer 的 ProjectedStrategyBar 视图。
+    const fedWindow = (fixture.dependencies as any).__chanBspDetector
+      ? undefined
+      : (fixture.instance as any).chanBspDetector.evaluate.mock.calls[0][0];
+    expect(Array.isArray(fedWindow)).toBe(true);
+    expect(fedWindow[0]).toEqual(
+      expect.objectContaining({ rawBar: expect.anything(), ohlc: expect.anything() }),
+    );
+  });
+
+  it('replays chan_bsp with zero and null quantities (DSL quantity gate skipped)', async () => {
+    const fixture = chanBspFixture([]);
+    const bars = chanBspBars().map((bar, index) =>
+      index % 5 === 0 ? { ...bar, volume: null, amount: null } : bar,
+    );
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: [],
+    });
+    fixture.dependencies.marketData.readReplayPage.mockResolvedValueOnce({
+      bars,
+      nextAfterTimestamp: undefined,
+    });
+
+    await fixture.instance.execute(fixture.current.id);
+
+    const completedUpdate = completedUpdateCall(fixture);
+    expect(completedUpdate.status).toBe(BacktestRunStatus.COMPLETED);
+  });
+
+  it('is honest with a real detector when the structure confirms no point', async () => {
+    // 真实 ChanBspDetector（不经 mock 编译路径）：45 根日线不足段级结构 → 空结果，
+    // run 仍 COMPLETED、0 信号（结构不足是常态空结果，非错误）。
+    const fixture = executor({ chanBspDetector: undefined } as any);
+    const chanRun = {
+      ...fixture.current,
+      targetUniverse: ['600000.SH'],
+      period: 30,
+      startDate: new Date('2022-01-01T00:00:00.000Z'),
+      endDate: new Date('2025-01-31T00:00:00.000Z'),
+      kind: 'chan_bsp',
+    };
+    fixture.dependencies.runRepository.findOne.mockResolvedValue(chanRun);
+    fixture.dependencies.versionRepository.findOne.mockResolvedValue({
+      id: 7,
+      rule: {
+        units: 'duan',
+        direction: 'both',
+        points: { first: true, second: true, third: true },
+      },
+      signalKind: 'entry',
+    });
+    fixture.dependencies.definitionRepository.findOne.mockResolvedValue({
+      id: 3,
+      periods: [30],
+    });
+    fixture.dependencies.securityRepository.find.mockResolvedValue([
+      { id: 9, code: '600000.SH', type: 'STOCK', status: 1 } as any,
+    ]);
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: [],
+    });
+    fixture.dependencies.marketData.readReplayPage.mockResolvedValueOnce({
+      bars: chanBspBars(),
+      nextAfterTimestamp: undefined,
+    });
+
+    await fixture.instance.execute(fixture.current.id);
+
+    expect(
+      fixture.dependencies.resultRepository.create,
+    ).not.toHaveBeenCalled();
+    const completedUpdate = completedUpdateCall(fixture);
+    expect(completedUpdate.signalCount).toBe(0);
+    expect(completedUpdate.matchedSecurityCount).toBe(0);
+  });
+
+  it('fails fast when a chan_bsp run carries an unsupported period', async () => {
+    const fixture = chanBspFixture([]);
+    fixture.dependencies.runRepository.findOne.mockResolvedValue({
+      ...fixture.current,
+      kind: 'chan_bsp',
+      period: 1440,
+    });
+
+    await fixture.instance.execute(fixture.current.id);
+
+    expect(fixture.manager.update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 41, status: expect.anything() }),
+      expect.objectContaining({
+        status: BacktestRunStatus.FAILED,
+        errorMessage: 'BACKTEST_CHAN_BSP_PERIOD_UNSUPPORTED',
+      }),
+    );
+  });
+});
