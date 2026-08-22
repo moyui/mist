@@ -57,8 +57,9 @@ const SHANGHAI_TRADING_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
  *   nearest later anchor (`backfilled`); a trailing missing value is forward-filled from
  *   the nearest earlier anchor (`forwardFilled`); with no anchor anywhere it stays
  *   `unavailable` — nothing is invented;
- * - an OHLC anchor requires all four values finite; a quantity anchor requires a valid
- *   canonical decimal string (invalid raw fails closed, never silently zero-filled);
+ * - an OHLC anchor requires all four values finite and non-zero; a quantity anchor
+ *   requires a valid non-zero canonical decimal string (invalid raw fails closed,
+ *   never silently zero-filled; a valid zero is an anomaly and is corrected like null);
  * - imputation never crosses trading days (both OHLC and quantity).
  */
 export function imputeSeries(
@@ -360,17 +361,23 @@ function nearestAnchor(
 function isOhlcAnchor(bar: StrategyBar): boolean {
   return (
     Number.isFinite(bar.open) &&
+    bar.open !== 0 &&
     Number.isFinite(bar.high) &&
+    bar.high !== 0 &&
     Number.isFinite(bar.low) &&
-    Number.isFinite(bar.close)
+    bar.low !== 0 &&
+    Number.isFinite(bar.close) &&
+    bar.close !== 0
   );
 }
 
 function isQuantityAnchor(raw: string | null): boolean {
   if (raw === null) return false;
-  // Fail closed: an invalid canonical string is a data error, not a missing value.
-  Decimal8.parseCanonical(raw);
-  return true;
+  // Fail closed: an invalid canonical string is a data error, not a missing value;
+  // a valid zero is an anomaly (suspension/placeholder bars) and NOT an anchor —
+  // zero and null share the correction path (user-decided contract, 2026-08-21).
+  const parsed = Decimal8.parseCanonical(raw);
+  return parsed.compare(Decimal8.ZERO) !== 0;
 }
 
 function freezeTuple(

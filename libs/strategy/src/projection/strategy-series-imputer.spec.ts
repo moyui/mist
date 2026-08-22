@@ -163,6 +163,114 @@ describe('imputeSeries', () => {
 
     expect(() => imputeSeries(bars)).toThrow(RangeError);
   });
+
+  it('treats a zero volume/amount as an anomaly and back-fills it (leading)', () => {
+    const bars = buildBars(3);
+    bars[0] = { ...bars[0], volume: '0', amount: '0' };
+
+    const [first] = imputeSeries(bars);
+
+    expect(first.volume).toEqual({
+      raw: '0',
+      effective: bars[1].volume,
+      resolution: 'backfilled',
+    });
+    expect(first.amount).toEqual({
+      raw: '0',
+      effective: bars[1].amount,
+      resolution: 'backfilled',
+    });
+  });
+
+  it('treats a zero quantity in the middle as an anomaly, anchored by the later non-zero value', () => {
+    const bars = buildBars(3);
+    bars[1] = { ...bars[1], volume: '0' };
+
+    const [, middle] = imputeSeries(bars);
+
+    expect(middle.volume.resolution).toBe('backfilled');
+    expect(middle.volume.effective).toBe(bars[2].volume);
+    expect(bars[1].volume).not.toEqual(bars[2].volume);
+  });
+
+  it('forward-fills a trailing zero quantity from the earlier non-zero anchor', () => {
+    const bars = buildBars(3);
+    bars[2] = { ...bars[2], volume: '0', amount: '0' };
+
+    const projected = imputeSeries(bars);
+
+    expect(projected[2].volume).toEqual({
+      raw: '0',
+      effective: bars[1].volume,
+      resolution: 'forwardFilled',
+    });
+    expect(projected[2].amount.resolution).toBe('forwardFilled');
+  });
+
+  it('keeps quantity unavailable when the whole window is zero', () => {
+    const bars = buildBars(3).map((bar) => ({
+      ...bar,
+      volume: '0', amount: '0',
+    }));
+
+    for (const projected of imputeSeries(bars)) {
+      expect(projected.volume).toEqual({
+        raw: '0',
+        effective: null,
+        resolution: 'unavailable',
+      });
+      expect(projected.amount).toEqual({
+        raw: '0',
+        effective: null,
+        resolution: 'unavailable',
+      });
+    }
+  });
+
+  it('judges zero quantity independently of OHLC anchors', () => {
+    // OHLC valid but quantity zero: OHLC stays observed, quantity is corrected.
+    const bars = buildBars(3);
+    bars[1] = { ...bars[1], volume: '0' };
+
+    const [, middle] = imputeSeries(bars);
+
+    expect(middle.ohlc.resolution).toBe('observed');
+    expect(middle.volume.resolution).toBe('backfilled');
+    expect(middle.volume.effective).toBe(bars[2].volume);
+  });
+
+  it('treats a bar with an OHLC value of zero as invalid and imputes the tuple', () => {
+    const bars = buildBars(3);
+    bars[0] = { ...bars[0], open: 0 };
+
+    const [first] = imputeSeries(bars);
+
+    expect(first.ohlc.resolution).toBe('backfilled');
+    expect(first.ohlc.effective).toEqual({
+      open: bars[1].open,
+      high: bars[1].high,
+      low: bars[1].low,
+      close: bars[1].close,
+    });
+  });
+
+  it('keeps OHLC unavailable when the whole window has zero OHLC', () => {
+    const bars = buildBars(3).map((bar) => ({
+      ...bar,
+      open: 0,
+      high: 0,
+      low: 0,
+      close: 0,
+    }));
+
+    for (const projected of imputeSeries(bars)) {
+      expect(projected.ohlc).toEqual({
+        raw: null,
+        effective: null,
+        resolution: 'unavailable',
+      });
+    }
+  });
 });
 
 describe('StrategySeriesImputer', () => {
@@ -228,6 +336,28 @@ describe('StrategySeriesImputer', () => {
 
     expect(appended.ohlc.resolution).toBe('unavailable');
     expect(appended.volume.resolution).toBe('unavailable');
+  });
+
+  it('does not carry a zero-quantity day into the next trading day (append)', () => {
+    const imputer = new StrategySeriesImputer();
+    const day1 = Array.from({ length: 2 }, (_, index) =>
+      buildBar(new Date(Date.UTC(2026, 7, 3, 1, index)), index),
+    );
+    day1[1] = { ...day1[1], volume: '0', amount: '0' };
+    // hydrate：昨日末 bar 量价 0 → 其 effective 为 forwardFilled(day1[0])，
+    // 但量价锚点不跨日（append 跨日重置 lastVolume/lastAmount），今日首 bar
+    // 缺失时不得继承 0 也不得继承昨日任何量价 → unavailable（诚实）。
+    imputer.hydrate(day1);
+
+    const appended = imputer.append({
+      ...buildBar(new Date(Date.UTC(2026, 7, 4, 1, 0))),
+      volume: null,
+      amount: null,
+    });
+
+    expect(appended.volume.effective).toBeNull();
+    expect(appended.volume.resolution).toBe('unavailable');
+    expect(appended.amount.resolution).toBe('unavailable');
   });
 
   it('clears all state on reset', () => {
