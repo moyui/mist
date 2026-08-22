@@ -70,6 +70,9 @@ export type {
 } from './runtime/chan-bsp/chan-bsp.types';
 export { ChanBspDetector } from './runtime/chan-bsp/chan-bsp.detector';
 export {
+  serializeChanBspContextSnapshot,
+} from './runtime/chan-bsp/chan-bsp.snapshot.serializer';
+export {
   ChanBspEpisodeCursor,
   chanBspIdentityKey,
 } from './runtime/chan-bsp/chan-bsp.episode';

@@ -22,6 +22,7 @@ import {
   type ChanBspEpisodeIdentity,
 } from './chan-bsp/chan-bsp.episode';
 import type { ChanBspEvent, ChanBspPlan } from './chan-bsp/chan-bsp.types';
+import { serializeChanBspContextSnapshot } from './chan-bsp/chan-bsp.snapshot.serializer';
 
 export type RealtimeStrategyExecutionPlan = {
   readonly definitionId: number;
@@ -190,16 +191,7 @@ export class RealtimeStrategyEvaluationService {
             fields: Object.freeze({}),
           }),
         }),
-        contextSnapshot: Object.freeze({
-          chanBsp: Object.freeze({
-            type: event.type,
-            units: event.units,
-            level: bar.period,
-            zhongshuIndex: event.zhongshuIndex,
-            zg: event.zg,
-            zd: event.zd,
-          }),
-        }),
+        contextSnapshot: serializeChanBspContextSnapshot(event, bar.period),
         ruleSnapshot: execution.ruleSnapshot,
       });
       out.push(candidate);
