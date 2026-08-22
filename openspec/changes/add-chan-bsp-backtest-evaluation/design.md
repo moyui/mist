@@ -142,9 +142,10 @@ const plan: RealtimeStrategyExecutionPlan['plan'] =
   与回测 result 构造两侧共用**，不再各自手工拼装（当前实时侧为内联
   `Object.freeze` 构造，本 change 顺手收敛到共享函数，两侧字段形状由单点保证）。
 - 每事件一行：同 bar 确认一买+二买 = 2 行（各自 signal_time 为事件确认时刻）。
-- `signalCount` = 结果行数增量（现有 `results.length` 逻辑自然成立）；
+- `signalCount` = 信号**触发次数**（现有 `onSignal` 计数：每次评估产生 ≥1 匹配
+  计 1 次——chan_bsp 同次评估多点计 1）；结果行数 ≥ 触发次数（每事件一行）；
   `matchedSecurityCount` = matchedCodes（per security 去重，现有 Set 逻辑不动）；
-  **完整信号流下 signalCount 含 startDate 前补报的点**（与实时"激活补报"一致，
+  **完整信号流下 signalCount 含 startDate 前补报的触发**（与实时"激活补报"一致，
   统计如实反映）。
 - `BacktestRun` 保持 period/source/definition/version 唯一权威
   （`strategy-signal-backtesting` 现有 requirement；结果行不重复这些列）。

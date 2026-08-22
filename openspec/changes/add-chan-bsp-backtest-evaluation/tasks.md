@@ -78,9 +78,9 @@
   保留真实确认时刻（可 < startDate）；advance 记账只防重复（unitIndex 单调），
   startDate 前已确认点不得静默吞掉（回测暴露完整信号流，含提前/错误信号）。
 - [ ] 4.3 统计/持久化复用：同数组 `results` 批量 insert（flushResults）、
-  `signalCount`（结果行数）、`matchedSecurityCount`（per security 去重 Set）——
-  chan_bsp 多点同 bar = 多行，统计语义如实反映（signalCount 含 startDate 前
-  补报点，与实时激活补报一致）。
+  `signalCount`（触发次数：每次评估 ≥1 匹配计 1）、`matchedSecurityCount`
+  （per security 去重 Set）——chan_bsp 多点同评估 = 多行计 1 次触发，统计如实
+  反映（signalCount 含 startDate 前补报触发，与实时激活补报一致）。
 - [ ] 4.4 **共享 snapshot 函数（libs/signal，两侧共用）**：新建
   `libs/signal/src/runtime/chan-bsp/chan-bsp.snapshot.serializer.ts`——
   `serializeChanBspContextSnapshot(event, level)` 返回
