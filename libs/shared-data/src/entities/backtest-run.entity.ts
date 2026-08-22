@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { DataSource } from '../enums/data-source.enum';
 import { Period } from '../enums/period.enum';
+import { StrategyKind } from '../enums/strategy-kind.enum';
 import { BacktestRunStatus } from '../enums/backtest-run-status.enum';
 import { BacktestSignalResult } from './backtest-signal-result.entity';
 import { StrategyDefinition } from './strategy-definition.entity';
@@ -59,6 +60,9 @@ export class BacktestRun {
     default: BacktestRunStatus.PENDING,
   })
   status: BacktestRunStatus = BacktestRunStatus.PENDING;
+
+  @Column({ type: 'enum', enum: StrategyKind, default: StrategyKind.RULE_DSL })
+  kind: StrategyKind = StrategyKind.RULE_DSL;
 
   @Column({ name: 'signal_count', type: 'int', default: 0 })
   signalCount: number = 0;
