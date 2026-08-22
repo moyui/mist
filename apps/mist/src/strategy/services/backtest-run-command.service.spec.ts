@@ -165,14 +165,15 @@ describe('BacktestRunCommandService chan_bsp dispatch', () => {
   it('rejects a chan_bsp run with an unsupported period before persisting', async () => {
     const f = chanBspFixture();
 
-    await expect(f.service.createRun({ ...dto(), period: Period.DAY })).rejects
-      .toThrow(
-        expect.objectContaining({
-          response: expect.objectContaining({
-            code: 'CHAN_BSP_PERIOD_UNSUPPORTED',
-          }),
+    await expect(
+      f.service.createRun({ ...dto(), period: Period.DAY }),
+    ).rejects.toThrow(
+      expect.objectContaining({
+        response: expect.objectContaining({
+          code: 'CHAN_BSP_PERIOD_UNSUPPORTED',
         }),
-      );
+      }),
+    );
 
     expect(f.runRepository.save).not.toHaveBeenCalled();
   });

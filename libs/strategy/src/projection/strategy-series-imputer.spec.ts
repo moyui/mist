@@ -210,7 +210,8 @@ describe('imputeSeries', () => {
   it('keeps quantity unavailable when the whole window is zero', () => {
     const bars = buildBars(3).map((bar) => ({
       ...bar,
-      volume: '0', amount: '0',
+      volume: '0',
+      amount: '0',
     }));
 
     for (const projected of imputeSeries(bars)) {

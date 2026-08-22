@@ -402,13 +402,14 @@ function strategyBar(timestamp: string): StrategyBar {
   };
 }
 
-
 function completedUpdateCall(fixture: {
   dependencies: { runRepository: { update: { mock: { calls: unknown[][] } } } };
 }): Record<string, unknown> {
   const calls = fixture.dependencies.runRepository.update.mock.calls;
   const completed = calls.find(
-    (call) => ((call[1] as Record<string, unknown>).status as string) === BacktestRunStatus.COMPLETED,
+    (call) =>
+      ((call[1] as Record<string, unknown>).status as string) ===
+      BacktestRunStatus.COMPLETED,
   );
   return (completed?.[1] as Record<string, unknown>) ?? {};
 }
@@ -502,10 +503,8 @@ describe('BacktestRunExecutor chan_bsp replay', () => {
 
     await fixture.instance.execute(fixture.current.id);
 
-    const fixtureCalls =
-      fixture.dependencies.resultRepository.create.mock.calls as [
-        Record<string, unknown>,
-      ][];
+    const fixtureCalls = fixture.dependencies.resultRepository.create.mock
+      .calls as [Record<string, unknown>][];
     expect(fixtureCalls.length).toBe(2); // 防重复：两页同点只 emit 一次
     expect(fixtureCalls[0][0].signalTime).toEqual(FIRST_BUY.time);
     expect(fixtureCalls[1][0].signalTime).toEqual(SECOND_BUY.time);
@@ -526,7 +525,10 @@ describe('BacktestRunExecutor chan_bsp replay', () => {
       : (fixture.instance as any).chanBspDetector.evaluate.mock.calls[0][0];
     expect(Array.isArray(fedWindow)).toBe(true);
     expect(fedWindow[0]).toEqual(
-      expect.objectContaining({ rawBar: expect.anything(), ohlc: expect.anything() }),
+      expect.objectContaining({
+        rawBar: expect.anything(),
+        ohlc: expect.anything(),
+      }),
     );
   });
 
@@ -588,9 +590,7 @@ describe('BacktestRunExecutor chan_bsp replay', () => {
 
     await fixture.instance.execute(fixture.current.id);
 
-    expect(
-      fixture.dependencies.resultRepository.create,
-    ).not.toHaveBeenCalled();
+    expect(fixture.dependencies.resultRepository.create).not.toHaveBeenCalled();
     const completedUpdate = completedUpdateCall(fixture);
     expect(completedUpdate.signalCount).toBe(0);
     expect(completedUpdate.matchedSecurityCount).toBe(0);

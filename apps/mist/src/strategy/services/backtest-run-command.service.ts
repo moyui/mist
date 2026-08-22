@@ -131,7 +131,9 @@ export class BacktestRunCommandService {
     } else {
       const plan = this.planService.compileStoredVersion(version);
       if (
-        plan.fields.some((field) => field === 'k.volume' || field === 'k.amount')
+        plan.fields.some(
+          (field) => field === 'k.volume' || field === 'k.amount',
+        )
       ) {
         throw new ConflictException({
           code: 'BACKTEST_QUANTITY_PROFILE_UNAVAILABLE',
