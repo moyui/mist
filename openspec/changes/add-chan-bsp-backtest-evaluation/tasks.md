@@ -33,8 +33,12 @@
   （`ENUM('rule_dsl','chan_bsp') NOT NULL DEFAULT 'rule_dsl'`），生产 MySQL 执行 + readback；
   存量 run 全部 rule_dsl 天然安全。
   ——commit `f243bfd2`（实体 + `deploy/database/migrations/021_backtest_runs_kind.sql`）；
-  本地隔离 mysql:8.4 readback 见 5.3；**生产 MySQL 执行待部署窗口**（forward-only
-  加列，default rule_dsl，无回滚风险）。
+  本地隔离 mysql:8.4 readback 见 5.3；**生产 MySQL 已执行 2026-08-22**：
+  mist-box `mist-mysql` 容器（8.4.10，先 `docker start` 恢复——生产栈此前整体
+  停机 17h）→ 备份 `backtest_runs_bak_20260822`（5 行）→ `ALTER TABLE
+  backtest_runs ADD COLUMN kind ENUM('rule_dsl','chan_bsp') NOT NULL DEFAULT
+  'rule_dsl' AFTER status` → ledger 插入 `021_backtest_runs_kind.sql` →
+  postflight：列结构 ✓、存量 5 行全部 `rule_dsl` ✓、备份行数一致 ✓。
 - [x] 2.2 create run 服务（apps/mist `backtest-run-command.service.ts`）：
   **新增 `StrategyDefinition` repository 加载**（经 `version.strategyDefinitionId`，
   拿 `kind` + `periods`），按 `definition.kind` 分派编译——`rule_dsl` 现有
