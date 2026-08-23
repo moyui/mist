@@ -1,0 +1,32 @@
+{
+  "symbol": "300059",
+  "source": "tdx",
+  "period": 1440,
+  "barCount": 639,
+  "timeRange": {
+    "start": "2024-01-01",
+    "end": "2026-08-20"
+  },
+  "kMerge": {
+    "mergedCount": 464,
+    "compressionRate": 0.7261345852895149,
+    "maxMergedCount": 5
+  },
+  "bi": {
+    "phaseACount": 36,
+    "phaseBCount": 36,
+    "invalidRate": 0.027777777777777776
+  },
+  "duan": {
+    "count": 6,
+    "completeCount": 5
+  },
+  "biChannel": {
+    "count": 1,
+    "expandedCount": 1
+  },
+  "duanChannel": {
+    "count": 1,
+    "expandedCount": 0
+  }
+}

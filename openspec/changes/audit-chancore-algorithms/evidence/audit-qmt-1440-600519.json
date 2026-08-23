@@ -1,0 +1,32 @@
+{
+  "symbol": "600519",
+  "source": "qmt",
+  "period": 1440,
+  "barCount": 641,
+  "timeRange": {
+    "start": "2024-01-01",
+    "end": "2026-08-20"
+  },
+  "kMerge": {
+    "mergedCount": 495,
+    "compressionRate": 0.7722308892355694,
+    "maxMergedCount": 5
+  },
+  "bi": {
+    "phaseACount": 39,
+    "phaseBCount": 35,
+    "invalidRate": 0.05128205128205128
+  },
+  "duan": {
+    "count": 7,
+    "completeCount": 6
+  },
+  "biChannel": {
+    "count": 1,
+    "expandedCount": 1
+  },
+  "duanChannel": {
+    "count": 1,
+    "expandedCount": 1
+  }
+}
