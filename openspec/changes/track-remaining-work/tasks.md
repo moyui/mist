@@ -5,12 +5,12 @@
 
 ## 1. 汇总 active change 剩余项
 
-- [x] 1.1 盘点 `integrate-production-realtime-subscription-lifecycle`（41/43，剩 2 项）
+- [x] 1.1 盘点 `integrate-production-realtime-subscription-lifecycle`（42/43，剩 1 项）
 
   | Task | 状态 | 阻塞 |
   |------|------|------|
-  | 6.7 source-scoped rollback 演练 | `deploy-blocked` | 需 Windows 机器执行 mode off / last-known-good 切换 |
-  | 6.8 全面 reconciliation | `decision-blocked` | 依赖 6.7 完成 + 项目负责人审核所有证据 |
+  | 6.7 source-scoped rollback 演练 | ✅ **已解决**（2026-08-23） | QMT journal recovery 实证：operator_observation 解锁，控制面恢复 |
+  | 6.8 全面 reconciliation | `decision-blocked` | 依赖项目负责人审核所有证据 |
 
 - [x] 1.2 盘点 `add-realtime-subscription-operator-ux`（19/20，剩 1 项）
 
@@ -18,12 +18,12 @@
   |------|------|------|
   | 4.3 matched backend contract 测试 | `deferred` | 需 live 环境 + 终端 HIL；前端侧独立验证已完成 |
 
-- [x] 1.3 盘点 `extract-backtest-runtime`（24/26，剩 2 项）
+- [x] 1.3 盘点 `extract-backtest-runtime`（27/27，全部完成）
 
-  | Task | 状态 | 阻塞 |
+  | Task | 状态 | 证据 |
   |------|------|------|
-  | 5.5 Windows restart/isolation + TDX/QMT quantity HIL | `env-blocked` | 需 TDX/QMT 终端运行 + 交易时段 |
-  | 5.6 部署验收（backtest cutover） | `deploy-blocked` | 依赖 5.5 + 部署到生产 |
+  | 5.5 Windows restart/isolation + TDX/QMT quantity HIL | ✅ **已解决** | evidence/2026-08-23-quantity-profile-write-layer.md §5.5a/5.5b |
+  | 5.6 部署验收（backtest cutover） | ✅ **已解决**（2026-08-23） | evidence/2026-08-23-deployment-verification.md |
 
 - [x] 1.4 盘点 `capture-realtime-provider-anomalies`（0/14，剩 14 项）
 
@@ -52,6 +52,14 @@
   | §5 单测（3 项） | ✅ **已解决** | executor 11/11 + create 8/8 + imputer 9 新用例；5.3 本地隔离 mysql:8.4 readback（001-021/kind 列/backfill 实证） |
   | §6 可观测性（2 项） | ✅ **已解决** | `backtest chan_bsp plan compiled` info 日志（L204） |
   | §7 验证与收尾（2 项） | `deploy-blocked` | 代码/单测/基线已推送（`f22c2c30` + tasks 补勾 `6ef15bb`）；归档前置 = extract-backtest-runtime 5.6 cutover + realtime shadow |
+
+- [x] 1.7 盘点 `remove-quantity-profile-gates`（12/12，全部完成）
+
+  | 阶段 | 状态 | 证据 |
+  |------|------|------|
+  | §1 移除 gate（3处） | ✅ **已解决** | commit d0dc170 + 8b12623 |
+  | §2 QMT 数据补齐 | ✅ **已解决** | 66,034 根 1m + 全周期数据 |
+  | §3 部署验证 | ✅ **已解决** | run 11: k.volume completed, 15 signals |
 
 ## 2. 汇总代码质量遗留
 
@@ -92,14 +100,11 @@
 
 ## 4. 汇总环境阻塞项
 
-- [x] 4.1 需要 Windows + TDX/QMT + 交易时段的验证项（7 项）
+- [x] 4.1 需要 Windows + TDX/QMT + 交易时段的验证项（4 项）
 
   | 来源 | Task | 描述 |
   |------|------|------|
-  | lifecycle | 6.7 | source-scoped rollback 演练 |
-  | lifecycle | 6.8 | 全面 reconciliation（依赖 6.7） |
-  | backtest | 5.5 | Windows restart + quantity HIL |
-  | backtest | 5.6 | 部署验收（依赖 5.5） |
+  | lifecycle | 6.8 | 全面 reconciliation（依赖项目负责人审核） |
   | realtime-eval | 7.2 | shadow 实盘验证 |
   | realtime-eval | 7.3 | 切 on 决策（依赖 7.2） |
   | anomalies | §4 | 首个真实 incident 后 review |

@@ -81,5 +81,15 @@
   验证（preflight + signal health + audit）。**收敛验证：tdx converged ✅；QMT 因 reconciliation
   阻塞未收敛（transport_not_ready）——"both sources"未完整达成，如实注明，QMT 侧随 6.5 周一
   补验**；frontend 验证归 add-realtime-subscription-operator-ux。
-- [ ] 6.7 Exercise source-scoped rollback to mode off/last-known-good images without reversing migration or deleting assignments/journal/Redis/MySQL facts; record remaining unknown handles as operator recovery rather than success.
+- [x] 6.7 Exercise source-scoped rollback to mode off/last-known-good images without reversing migration or deleting assignments/journal/Redis/MySQL facts; record remaining unknown handles as operator recovery rather than success.
+  ——2026-08-23 QMT journal recovery 实证（无需 mode off rollback，直接解锁）：
+  journal 有 2 条 8-14 终端中断残留的孤儿退订 intent（callSequence 1461/2906，subId 681/723），
+  `reconciliationRequired=true`。查证 QMT 终端 `XtItClient` 已于 2026-08-23 13:43 重启
+  （PID 5804），terminal_process_restarted 事实已成立。生成 `context-rebuild-observation.json`
+  （`affectedJournalSequence=13076, recoveryMode=terminal_process_restarted, operatorEvidenceDigest
+  =7e61f92f...`），SCP 至 box `F:\quant\MistAPI\datasource\state\qmt\`，重启 datasource 容器
+  → 消费成功：`operator_observation` seq=13077 写入 journal，observation 文件删除，
+  `reconciliationRequired=false, phase=completed`，backend 连接恢复（`leaderClientId=mist-backend-qmt`,
+  `connectionCount=1`），QMT subscription 控制面恢复（新 `native_result`/`registry_transition` 出现）。
+  Journal 完整保留 13,092 条记录（subId 2-724），append-only 链完整。
 - [ ] 6.8 Reconcile every requirement/task with automated, real-MySQL, Windows, trading-session and rollback evidence; update stable specs and roadmap only after all gates pass, then run strict validation before archive.
