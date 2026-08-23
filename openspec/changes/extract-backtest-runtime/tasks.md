@@ -143,7 +143,17 @@
   strategy_alert_events 全在，016 additive 未触动）→ 补 017-018 完整 schema 18 条 ledger。
   **抓到 2 个 readback bug 并修复**（e11edbe 未 push）：COLUMN_DEFAULT MySQL 8.4 不带括号、
   identity COUNT(*)=1 应 >=1——生产 cutover 会误报阻塞）
-- [ ] 5.5 完成 Windows appliance restart/isolation 与 TDX/QMT 1m/日线 historical quantity HIL；未证明
-  profile 时 quantity plan 保持 ineligible。
+- [x] 5.5a **quantity profile 写入层规范化 + 历史数据恢复 HIL**
+  （evidence/2026-08-23-quantity-profile-write-layer.md，2026-08-23 完成）：
+  修复读取层 `mapKToStrategyBar` 对 TDX amount 的双重换算（fix-tdx 已把 k 表
+  统一为元，mapper 再 ×10000 错 10000 倍）；换算统一在写入层——TDX amount
+  万元→元保留 `TdxSource`、QMT volume 手→股 ×100 新增 `QmtSource`
+  （`normalizeQmtVolume`，非整数 fail-closed）；k 表全 source canonical
+  （volume=股、amount=元），实时窗口历史段与回测共用同一 mapper；
+  migration 022 存量 QMT volume ×100 生产回填（1282 行，ledger 已插，
+  readback 600519 与 TDX 对齐）；历史数据经 `POST /v1/collector/collect`
+  恢复（TDX 6 股全周期 2024-01/2026-01 至今、QMT 日线 2 股 2024-01 至今，
+  08-05 前 0 值修复）；未证明 profile 时 quantity plan 保持 ineligible。
+- [ ] 5.5b Windows appliance restart/isolation HIL。
 - [ ] 5.6 经项目负责人审核数据库、API、runtime、deployment 和 HIL evidence 后，先部署并验收尚未接
   command 的 `backtest`，再部署 RPC-only `mist-backend` 完成 cutover；V1 不新增专用 rollback protocol。
