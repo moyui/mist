@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { normalizeExternalDecimalText } from '@app/decimal';
+import { Decimal8, normalizeExternalDecimalText } from '@app/decimal';
 import { ConfigService } from '@nestjs/config';
 import { AxiosInstance } from 'axios';
 import { parseISO } from 'date-fns';
@@ -209,7 +209,9 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
     const high = this.readNumber(symbolData, ['high'], rowKey);
     const low = this.readNumber(symbolData, ['low'], rowKey);
     const close = this.readNumber(symbolData, ['close'], rowKey);
-    const volume = this.readDecimal(symbolData, ['volume'], rowKey, 'volume');
+    const volume = normalizeQmtVolume(
+      this.readDecimal(symbolData, ['volume'], rowKey, 'volume'),
+    );
 
     if (open == null || high == null || low == null || close == null) {
       const invalidFields = [
@@ -417,4 +419,22 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * QMT historical volume write-layer conversion: provider-native lots → shares.
+ * A non-integral lot count is a provider contract violation and fails closed
+ * (exact fixed-point ×100 via Decimal8, no binary-float arithmetic). The
+ * canonical `k` table therefore stores shares for both TDX and QMT, and the
+ * read-side mapper performs no source-specific scaling.
+ */
+function normalizeQmtVolume(value: string | null): string | null {
+  if (value === null) return null;
+  if (value.includes('.')) {
+    throw new HttpException(
+      'QMT_INVALID_FRACTIONAL_VOLUME: provider volume must be an integral lot count',
+      HttpStatus.BAD_GATEWAY,
+    );
+  }
+  return Decimal8.parseCanonical(value).scaleByUnit(100).formatCanonical();
 }
