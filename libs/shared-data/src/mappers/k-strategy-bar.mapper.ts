@@ -1,8 +1,4 @@
-import {
-  Decimal8,
-  normalizeExternalDecimalText,
-  type Decimal8UnitFactor,
-} from '@app/decimal';
+import { normalizeExternalDecimalText } from '@app/decimal';
 import {
   KPriceProjector,
   type StrategyBar,
@@ -11,6 +7,16 @@ import {
 import { DataSource } from '../enums/data-source.enum';
 import { K } from '../entities/k.entity';
 
+/**
+ * Historical K → canonical StrategyBar mapping.
+ *
+ * Unit contract: the MySQL `k` table already carries canonical units for both
+ * sources — volume in shares, amount in CNY yuan — because unit conversion
+ * happens once at the write layer (TDX amount 万元→元 in `TdxSource`,
+ * QMT volume 手→股 in `QmtSource`; see extract-backtest-runtime design §quantity
+ * profile). This mapper therefore only normalizes the DECIMAL(36,8) text and
+ * performs no source-specific scaling.
+ */
 export function mapKToStrategyBar(k: K): StrategyBar {
   const securityId = selectedSecurityId(k);
   return Object.freeze({
@@ -22,8 +28,8 @@ export function mapKToStrategyBar(k: K): StrategyBar {
     high: KPriceProjector(k.high as unknown as string | number),
     low: KPriceProjector(k.low as unknown as string | number),
     close: KPriceProjector(k.close as unknown as string | number),
-    volume: mapHistoricalVolume(k.source, k.volume),
-    amount: mapHistoricalAmount(k.source, k.amount),
+    volume: mapHistoricalQuantity(k.volume),
+    amount: mapHistoricalQuantity(k.amount),
     type: 'complete',
   });
 }
@@ -53,31 +59,6 @@ function mapSource(source: DataSource): StrategyMarketSource {
 function mapHistoricalQuantity(value: string | null): string | null {
   if (value === null) return null;
   return normalizeExternalDecimalText(value);
-}
-
-function mapHistoricalVolume(
-  source: DataSource,
-  value: string | null,
-): string | null {
-  const canonical = mapHistoricalQuantity(value);
-  if (canonical === null || source !== DataSource.QMT) return canonical;
-  if (canonical.includes('.')) {
-    throw new TypeError('QMT historical volume must be an integral lot count');
-  }
-  return Decimal8.parseCanonical(canonical).scaleByUnit(100).formatCanonical();
-}
-
-function mapHistoricalAmount(
-  source: DataSource,
-  value: string | null,
-): string | null {
-  const canonical = mapHistoricalQuantity(value);
-  if (canonical === null) return null;
-  const factor: Decimal8UnitFactor | null =
-    source === DataSource.TDX ? 10_000 : null;
-  return factor === null
-    ? canonical
-    : Decimal8.parseCanonical(canonical).scaleByUnit(factor).formatCanonical();
 }
 
 function requireTimestamp(value: Date): Date {

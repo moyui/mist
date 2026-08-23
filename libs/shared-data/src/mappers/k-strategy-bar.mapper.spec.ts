@@ -5,7 +5,7 @@ import { Security } from '../entities/security.entity';
 import { mapKToStrategyBar } from './k-strategy-bar.mapper';
 
 describe('mapKToStrategyBar', () => {
-  it('normalizes MySQL fixed-scale quantity and TDX amount from 万元 to 元', () => {
+  it('normalizes MySQL fixed-scale quantity for TDX without source scaling', () => {
     const k = makeK();
 
     expect(mapKToStrategyBar(k)).toEqual({
@@ -18,27 +18,28 @@ describe('mapKToStrategyBar', () => {
       low: 9,
       close: 10.5,
       volume: '100',
-      amount: '123450',
+      amount: '12.345',
       type: 'complete',
     });
   });
 
-  it('maps QMT lots to shares and preserves amount in yuan', () => {
+  it('normalizes QMT quantity without source scaling (k table is canonical)', () => {
     const k = makeK();
     k.source = DataSource.QMT;
     expect(mapKToStrategyBar(k)).toMatchObject({
-      volume: '10000',
+      volume: '100',
       amount: '12.345',
     });
   });
 
-  it('fails closed for fractional QMT lots', () => {
+  it('passes null quantity through unchanged', () => {
     const k = makeK();
-    k.source = DataSource.QMT;
-    k.volume = '100.5';
-    expect(() => mapKToStrategyBar(k)).toThrow(
-      'QMT historical volume must be an integral lot count',
-    );
+    k.volume = null;
+    k.amount = null;
+    expect(mapKToStrategyBar(k)).toMatchObject({
+      volume: null,
+      amount: null,
+    });
   });
 
   it('accepts selected scalar securityId when the relation is not loaded', () => {

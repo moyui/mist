@@ -120,7 +120,7 @@ describe('QmtSource', () => {
               high: { '20260703143000': 11.5 },
               low: { '20260703143000': 10.9 },
               close: { '20260703143000': 11.3 },
-              volume: { '20260703143000': '1200.12500000' },
+              volume: { '20260703143000': '1200.00000000' },
               amount: { '20260703143000': '13560.25000000' },
               stime: { '20260703143000': '20260703143000' },
               preClose: { '20260703143000': 10.8 },
@@ -172,7 +172,7 @@ describe('QmtSource', () => {
         high: 11.5,
         low: 10.9,
         close: 11.3,
-        volume: '1200.125',
+        volume: '120000',
         amount: '13560.25',
         period: Period.THREE_MIN,
         extensions: {
@@ -183,6 +183,40 @@ describe('QmtSource', () => {
         },
       },
     ]);
+  });
+
+  it('fails closed for fractional QMT lots (volume must be integral)', async () => {
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        provider: 'qmt',
+        data: {
+          marketData: {
+            '600519.SH': {
+              open: { '20260703143000': 11.1 },
+              high: { '20260703143000': 11.5 },
+              low: { '20260703143000': 10.9 },
+              close: { '20260703143000': 11.3 },
+              volume: { '20260703143000': '1200.125' },
+              amount: { '20260703143000': '13560.25' },
+              stime: { '20260703143000': '20260703143000' },
+            },
+          },
+        },
+        meta: null,
+        error: null,
+      },
+    });
+
+    await expect(
+      service.fetchK({
+        code: '600519',
+        formatCode: '600519.SH',
+        period: Period.THREE_MIN,
+        startDate: new Date('2026-07-03T09:30:00+08:00'),
+        endDate: new Date('2026-07-03T15:00:00+08:00'),
+      }),
+    ).rejects.toThrow('QMT_INVALID_FRACTIONAL_VOLUME');
   });
 
   it('keeps an otherwise valid QMT row when volume and amount are null', async () => {

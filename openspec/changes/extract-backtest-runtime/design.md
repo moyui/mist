@@ -747,15 +747,17 @@ gap detector、历史清理或重导逻辑。结果是：
 该决定仅确认 Backtest 消费语义，不扩大本 change 去修改 TDX/QMT 采集链路。
 
 canonical `StrategyBar` 的量额单位固定为 `volume=股`、`amount=人民币元`，不能把 MySQL `K` 的
-source-specific 存量含义直接泄漏给 evaluator。`readReplayPage()` 的 persistence mapper 必须先保留
-TypeORM `DECIMAL(36,8)` exact string，再按 `(source, SecurityType.STOCK, period family)` 的已验收
-quantity profile 使用
-candle foundation 的 Decimal8 做一次性规范化和精确整数单位缩放：
+source-specific 存量含义直接泄漏给 evaluator。**单位换算只发生在写入层**：`k` 表对每个 source 都存
+canonical 单位（volume=股、amount=元），`readReplayPage()` 的 persistence mapper 只保留 TypeORM
+`DECIMAL(36,8)` exact string 并用 candle foundation 的 Decimal8 做规范化，**不做任何 source-specific
+缩放**：
 
-- TDX A 股 expected profile：volume 必须是非负 integral share string，作为股原值保留；amount 作为万元
-  精确乘以 `10000` 后成为人民币元；
-- QMT A 股 expected profile：volume 必须是非负 integral lot string，精确乘以 `100` 后成为股；amount
-  保留 provider float 可观察值规范化后写入 MySQL 的 exact decimal string，按人民币元原值使用；
+- TDX A 股 expected profile：写入层 `normalizeTdxBarQuantity`（`TdxSource`）把 amount 作为万元
+  精确乘以 `10000` 后以人民币元入库（`fix-tdx-historical-amount-unit` 契约，migration 019 已修复存量）；
+  volume 以股原值入库；
+- QMT A 股 expected profile：写入层 `normalizeQmtVolume`（`QmtSource`）把 volume 作为非负 integral
+  lot string 精确乘以 `100` 后以股入库；amount 保留 provider float 可观察值规范化后写入 MySQL 的
+  exact decimal string，按人民币元原值使用（migration 022 已把存量 QMT volume 从手回填为股）；
 - 非零 fractional volume 不得四舍五入、截断或 `Number()` 转换，必须使引用 quantity 的该次执行
   fail closed；缩放后的值仍须满足 Decimal8/`DECIMAL(36,8)` 范围；
 - TDX/QMT 的 1m 与日线必须分别用官方/fixture 证据及真实链路 HIL 证明 raw provider 字段、MySQL exact
@@ -768,8 +770,9 @@ candle foundation 的 Decimal8 做一次性规范化和精确整数单位缩放�
 - V1 不新增 `volume_unit`/`amount_unit` 列，不修改或回填 MySQL `k`，也不把每条 bar 的固定单位重复
   写入 `StrategyBar`。单位由 canonical field contract 表达，source 继续保留 provenance。
 
-固定 scale MySQL 文本先在 persistence boundary 规范化，再执行 source profile 换算；任何输入或缩放
-结果越过 `DECIMAL(36,8)`、需要舍入或不符合非负量额语义时 fail closed。该 mapper 不经过 JavaScript
+固定 scale MySQL 文本在 persistence boundary 规范化；单位缩放已在写入层完成（k 表 = canonical），
+mapper 不再执行 source profile 换算。任何输入或缩放结果越过 `DECIMAL(36,8)`、需要舍入或不符合
+非负量额语义时 fail closed。该 mapper 不经过 JavaScript
 `number`，也不实现第二套 decimal primitive。
 
 raw `StrategyBar` 完成 mapping 后不得改写其 null。runner 在构建 evaluation context 前复用共享纯函数

@@ -287,7 +287,7 @@ function historicalK(timestamp: string): K {
     low: '7.00',
     close: '8.50',
     volume: '10.00000000',
-    amount: '1.00000000',
+    amount: '10000.00000000',
   });
 }
 
