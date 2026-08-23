@@ -29,7 +29,7 @@ interface Chain {
  * 2. 进入/离开段识别：进入段 = units[s-1]（A 段）、离开段 = units[e+1]（C 段）。
  * 3. 盘整背驰：每中枢 进入段 vs 离开段，双口径严格 <。
  * 4. 趋势链构造：连续两个同样的中枢（离开段 trend 同向 + 位置递进 gg/dd）。
- *    - 中枢扩张已由 chan-central-extension（Phase C）解决（phaseB 相邻波动区间严格不重叠），
+ *    - 中枢扩张已由 chan-central-extension（Phase C）解决（phaseB 不存在扩张对；区间重叠对允许保留，趋势链靠位置递进断链），
  *      本模块**不做非扩张判定**；expanded 中枢当普通中枢看待。
  * 5. 趋势背驰：每条链的链末中枢（B）比较其进入段（A）vs 离开段（C），双口径严格 <。
  *

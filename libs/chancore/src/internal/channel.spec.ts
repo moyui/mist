@@ -407,5 +407,21 @@ describe('ChannelCalculator', () => {
         tail,
       ]);
     });
+
+    it('extends a base channel by pairs of bis while preserving immutable central zone (zg/zd)', () => {
+      // 7 笔：前 5 笔确立基础中枢，后 2 笔延伸且触及 [zd, zg]
+      const valid = [100, 101, 102, 103, 104, 105, 106].map((base, index) =>
+        makeBi(index, base, 20),
+      );
+      const result = service.createChannels(valid);
+      expect(result.phaseB).toHaveLength(1);
+      const channel = result.phaseB[0];
+      expect(channel.bis.length).toBeGreaterThanOrEqual(7);
+      // 缠论第20课中心定理一：保持基础中枢確立的 zd/zg 不变
+      expect(channel.zg).toBe(result.phaseA[0].zg);
+      expect(channel.zd).toBe(result.phaseA[0].zd);
+      expect(channel.gg).toBeGreaterThanOrEqual(channel.zg);
+      expect(channel.dd).toBeLessThanOrEqual(channel.zd);
+    });
   });
 });

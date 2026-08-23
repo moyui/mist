@@ -16,7 +16,7 @@ import {
 import { DuanStatus, DuanType, TrendDirection } from './contracts';
 
 const EXPECTED_FULL_OUTPUT_SHA256 =
-  '99c18bcf1905363fee0a9bf7673b63a5e251a3776f21172c6028cf1adf436c54';
+  'a2b8cde26f8519e7e970cc96ee6451f8d5a061f9ff26367168ce60906ef08ad9';
 
 function toContractK(source: ChanK): ChanCharacterizationK {
   return {

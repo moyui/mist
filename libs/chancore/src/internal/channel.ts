@@ -125,10 +125,10 @@ export class ChannelCalculator {
       mergeTwo: (head, tail) => this.mergeTwoChannels(head, tail),
       stampStatus: (merged) => ({
         ...merged,
-        // 合并产物用缠论正确定义重新校验合法性
-        status: this.validateChannelGeometry(merged.bis)
-          ? ChannelStatus.Valid
-          : ChannelStatus.Invalid,
+        status:
+          merged.zg > merged.zd && merged.bis.length >= 3
+            ? ChannelStatus.Valid
+            : ChannelStatus.Invalid,
       }),
     });
 
@@ -136,17 +136,12 @@ export class ChannelCalculator {
   }
 
   /**
-   * 延伸中枢：尝试首尾各延伸 2 笔（成对），整体仍合法则延伸。
+   * 延伸中枢：首尾各延伸 2 笔（成对），缠论第 20 课中心定理一（区间不可变）：
+   * 基础结构确立 zd/zg 后固定，新增笔与固定的 [zd, zg] 有重叠即可延伸，
+   * 延伸仅更新波动极值 gg/dd 与时间边界，绝不重算 zd/zg。
    *
-   * 延伸方向：
-   * - 尾部延伸：中枢末笔之后再加 2 笔，整体 N+2 笔用正确定义重算，合法则保留
-   * - 头部延伸：中枢首笔之前再加 2 笔，同理
-   * 可连续延伸（+2、+4…），直到延伸后不合法为止。
-   *
-   * 即使被延伸的 2 笔和别的笔单独组不成中枢，只要整体 N 笔满足缠论定义即可延伸。
-   *
-   * @param channel 待延伸的中枢
-   * @param data 原始笔序列
+   * @param channel 待延伸的基础中枢
+   * @param data 完整笔序列
    * @returns 延伸后的中枢（可能比原中枢多笔）
    */
   private extendChannel(
@@ -177,33 +172,55 @@ export class ChannelCalculator {
 
       // 尾部延伸 +2 笔
       if (curEnd + 2 < data.length) {
-        const tailWindow = data.slice(curStart, curEnd + 3);
-        const geometry = this.validateChannelGeometry(tailWindow);
-        if (geometry) {
-          current = this.buildChannelFromBis(
-            tailWindow,
-            data,
-            curStart,
-            geometry,
-          );
-          curEnd += 2;
-          changed = true;
+        const nextBi1 = data[curEnd + 1];
+        const nextBi2 = data[curEnd + 2];
+        const overlaps1 =
+          Math.max(nextBi1.low, channel.zd) <=
+          Math.min(nextBi1.high, channel.zg);
+        const overlaps2 =
+          Math.max(nextBi2.low, channel.zd) <=
+          Math.min(nextBi2.high, channel.zg);
+        if (overlaps1 && overlaps2) {
+          const tailWindow = data.slice(curStart, curEnd + 3);
+          const allLowMinMax = minMaxBy(tailWindow, (b) => b.low);
+          const allHighMinMax = minMaxBy(tailWindow, (b) => b.high);
+          if (allLowMinMax && allHighMinMax) {
+            current = this.buildChannelFromBis(tailWindow, data, curStart, {
+              zg: channel.zg,
+              zd: channel.zd,
+              gg: allHighMinMax.max,
+              dd: allLowMinMax.min,
+            });
+            curEnd += 2;
+            changed = true;
+          }
         }
       }
 
       // 头部延伸 +2 笔
       if (curStart - 2 >= 0) {
-        const headWindow = data.slice(curStart - 2, curEnd + 1);
-        const geometry = this.validateChannelGeometry(headWindow);
-        if (geometry) {
-          current = this.buildChannelFromBis(
-            headWindow,
-            data,
-            curStart - 2,
-            geometry,
-          );
-          curStart -= 2;
-          changed = true;
+        const prevBi1 = data[curStart - 1];
+        const prevBi2 = data[curStart - 2];
+        const overlaps1 =
+          Math.max(prevBi1.low, channel.zd) <=
+          Math.min(prevBi1.high, channel.zg);
+        const overlaps2 =
+          Math.max(prevBi2.low, channel.zd) <=
+          Math.min(prevBi2.high, channel.zg);
+        if (overlaps1 && overlaps2) {
+          const headWindow = data.slice(curStart - 2, curEnd + 1);
+          const allLowMinMax = minMaxBy(headWindow, (b) => b.low);
+          const allHighMinMax = minMaxBy(headWindow, (b) => b.high);
+          if (allLowMinMax && allHighMinMax) {
+            current = this.buildChannelFromBis(headWindow, data, curStart - 2, {
+              zg: channel.zg,
+              zd: channel.zd,
+              gg: allHighMinMax.max,
+              dd: allLowMinMax.min,
+            });
+            curStart -= 2;
+            changed = true;
+          }
         }
       }
     }
@@ -514,17 +531,15 @@ export class ChannelCalculator {
       mergedBis.push(bi);
     }
 
-    // 用 N 笔正确定义重算几何（而非所有笔 min/max）
-    const geometry = this.validateChannelGeometry(mergedBis);
-    const zg = geometry ? geometry.zg : head.zg;
-    const zd = geometry ? geometry.zd : head.zd;
-    const gg = geometry ? geometry.gg : head.gg;
-    const dd = geometry ? geometry.dd : head.dd;
+    const allHighMinMax = minMaxBy(mergedBis, (b) => b.high);
+    const allLowMinMax = minMaxBy(mergedBis, (b) => b.low);
+    const gg = allHighMinMax ? allHighMinMax.max : Math.max(head.gg, tail.gg);
+    const dd = allLowMinMax ? allLowMinMax.min : Math.min(head.dd, tail.dd);
 
     return {
       bis: mergedBis,
-      zg,
-      zd,
+      zg: head.zg,
+      zd: head.zd,
       gg,
       dd,
       level: head.level,

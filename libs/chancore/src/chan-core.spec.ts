@@ -22,7 +22,7 @@ describe('ChanCore public facade', () => {
         'TrendDirection',
       ].sort(),
     );
-    expect(ChanCore.algorithmVersion).toBe(2);
+    expect(ChanCore.algorithmVersion).toBe(3);
     expect('analyze' in ChanCore).toBe(false);
   });
 

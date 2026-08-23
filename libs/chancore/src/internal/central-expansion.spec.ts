@@ -23,54 +23,71 @@ import {
 } from './central-expansion';
 
 describe('central-expansion (中枢扩张：笔级 + 段级)', () => {
-  describe('isCentralExpansion（D1：相切也算扩张，最小接口 dd/gg 通吃）', () => {
-    it('recognizes positive-width wave-range overlap', () => {
+  describe('isCentralExpansion（缠论第20课中心定理二：区间分离 + 波动重叠/相切）', () => {
+    it('recognizes true expansion (central zones separated and wave ranges overlap)', () => {
+      // prev 区间 [7,9] 波动 [4,11]；next 区间 [2,4] 波动 [1,8]
+      // 区间分离 4 < 7，波动重叠 [4,8]
       expect(
         isCentralExpansion(
-          makeBiChannel({ dd: 4, gg: 11 }),
-          makeBiChannel({ dd: 1, gg: 8 }),
+          makeBiChannel({ zg: 9, zd: 7, dd: 4, gg: 11 }),
+          makeBiChannel({ zg: 4, zd: 2, dd: 1, gg: 8 }),
         ),
       ).toBe(true);
     });
 
-    it('counts a pure touch (max(dd) === min(gg)) as expansion', () => {
+    it('counts a pure wave touch (max(dd) === min(gg)) as expansion when zones are separated', () => {
+      // prev 区间 [8,10] 波动 [4,8]；next 区间 [2,6] 波动 [8,12]
+      // 区间分离 6 < 8，波动相切 8 === 8
       expect(
         isCentralExpansion(
-          makeBiChannel({ dd: 4, gg: 8 }),
-          makeBiChannel({ dd: 8, gg: 12 }),
+          makeBiChannel({ zg: 10, zd: 8, dd: 4, gg: 8 }),
+          makeBiChannel({ zg: 6, zd: 2, dd: 8, gg: 12 }),
         ),
       ).toBe(true);
     });
 
-    it('rejects disjoint wave ranges', () => {
+    it('rejects same-zone revisit (central zones overlap) even if wave ranges overlap', () => {
+      // prev 区间 [6,9] 波动 [4,11]；next 区间 [7,10] 波动 [1,8]
+      // 区间重叠 [7,9]（同一价位带回踩，非扩张）
       expect(
         isCentralExpansion(
-          makeBiChannel({ dd: 0, gg: 5 }),
-          makeBiChannel({ dd: 6, gg: 9 }),
+          makeBiChannel({ zg: 9, zd: 6, dd: 4, gg: 11 }),
+          makeBiChannel({ zg: 10, zd: 7, dd: 1, gg: 8 }),
         ),
       ).toBe(false);
     });
 
-    it('recognizes a nested wave range', () => {
+    it('rejects central zone touch (max(zd) === min(zg)) per strict inequality', () => {
+      // prev 区间 [5,9] 波动 [4,11]；next 区间 [9,12] 波动 [1,8]
+      // 区间相切 9 === 9，严格相离才算扩张
       expect(
         isCentralExpansion(
-          makeBiChannel({ dd: 2, gg: 9 }),
-          makeBiChannel({ dd: 4, gg: 6 }),
+          makeBiChannel({ zg: 9, zd: 5, dd: 4, gg: 11 }),
+          makeBiChannel({ zg: 12, zd: 9, dd: 1, gg: 8 }),
         ),
-      ).toBe(true);
+      ).toBe(false);
+    });
+
+    it('rejects disjoint wave ranges even when central zones are separated', () => {
+      expect(
+        isCentralExpansion(
+          makeBiChannel({ zg: 9, zd: 7, dd: 6, gg: 9 }),
+          makeBiChannel({ zg: 4, zd: 2, dd: 0, gg: 5 }),
+        ),
+      ).toBe(false);
     });
 
     it('works identically for Duan-level Channels through the minimal interface', () => {
       expect(
         isCentralExpansion(
-          makeDuanChannel({ dd: 4, gg: 11 }),
-          makeDuanChannel({ dd: 1, gg: 8 }),
+          makeDuanChannel({ zg: 9, zd: 7, dd: 4, gg: 11 }),
+          makeDuanChannel({ zg: 4, zd: 2, dd: 1, gg: 8 }),
         ),
       ).toBe(true);
       expect(
         isCentralExpansion(
-          makeDuanChannel({ dd: 4, gg: 11 }),
-          makeDuanChannel({ dd: 12, gg: 20 }),
+          makeDuanChannel({ zg: 9, zd: 6, dd: 4, gg: 11 }),
+          makeDuanChannel({ zg: 10, zd: 7, dd: 1, gg: 8 }),
         ),
       ).toBe(false);
     });

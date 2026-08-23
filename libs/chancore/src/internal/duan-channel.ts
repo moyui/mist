@@ -181,10 +181,10 @@ export class DuanChannelCalculator {
       mergeTwo: (head, tail) => this.mergeTwoChannels(head, tail),
       stampStatus: (merged) => ({
         ...merged,
-        // 合并产物用对称重叠重新校验合法性
-        status: this.validateChannelGeometry(merged.duans)
-          ? ChannelStatus.Valid
-          : ChannelStatus.Invalid,
+        status:
+          merged.zg > merged.zd && merged.duans.length >= 3
+            ? ChannelStatus.Valid
+            : ChannelStatus.Invalid,
       }),
     });
 
@@ -192,7 +192,9 @@ export class DuanChannelCalculator {
   }
 
   /**
-   * 延伸中枢：首尾各延伸 2 段（成对），整体对称重叠合法则延伸（镜像 extendChannel）。
+   * 延伸中枢：首尾各延伸 2 段（成对），缠论第 20 课中心定理一（区间不可变）：
+   * 基础 3 段确立 zd/zg 后固定，新增段与固定的 [zd, zg] 有重叠即可延伸，
+   * 延伸仅更新波动极值 gg/dd 与时间边界，绝不重算 zd/zg。
    */
   private extendChannel(
     channel: ChanDuanChannel,
@@ -220,32 +222,59 @@ export class DuanChannelCalculator {
       changed = false;
 
       if (curEnd + 2 < duans.length) {
-        const tailWindow = duans.slice(curStart, curEnd + 3);
-        const geometry = this.validateChannelGeometry(tailWindow);
-        if (geometry) {
-          current = this.buildChannelFromDuans(
-            tailWindow,
-            duans,
-            curStart,
-            geometry,
-          );
-          curEnd += 2;
-          changed = true;
+        const nextDuan1 = duans[curEnd + 1];
+        const nextDuan2 = duans[curEnd + 2];
+        const overlaps1 =
+          Math.max(nextDuan1.low, channel.zd) <=
+          Math.min(nextDuan1.high, channel.zg);
+        const overlaps2 =
+          Math.max(nextDuan2.low, channel.zd) <=
+          Math.min(nextDuan2.high, channel.zg);
+        if (overlaps1 && overlaps2) {
+          const tailWindow = duans.slice(curStart, curEnd + 3);
+          const allLowMinMax = minMaxBy(tailWindow, (d) => d.low);
+          const allHighMinMax = minMaxBy(tailWindow, (d) => d.high);
+          if (allLowMinMax && allHighMinMax) {
+            current = this.buildChannelFromDuans(tailWindow, duans, curStart, {
+              zg: channel.zg,
+              zd: channel.zd,
+              gg: allHighMinMax.max,
+              dd: allLowMinMax.min,
+            });
+            curEnd += 2;
+            changed = true;
+          }
         }
       }
 
       if (curStart - 2 >= 0) {
-        const headWindow = duans.slice(curStart - 2, curEnd + 1);
-        const geometry = this.validateChannelGeometry(headWindow);
-        if (geometry) {
-          current = this.buildChannelFromDuans(
-            headWindow,
-            duans,
-            curStart - 2,
-            geometry,
-          );
-          curStart -= 2;
-          changed = true;
+        const prevDuan1 = duans[curStart - 1];
+        const prevDuan2 = duans[curStart - 2];
+        const overlaps1 =
+          Math.max(prevDuan1.low, channel.zd) <=
+          Math.min(prevDuan1.high, channel.zg);
+        const overlaps2 =
+          Math.max(prevDuan2.low, channel.zd) <=
+          Math.min(prevDuan2.high, channel.zg);
+        if (overlaps1 && overlaps2) {
+          const headWindow = duans.slice(curStart - 2, curEnd + 1);
+          const allLowMinMax = minMaxBy(headWindow, (d) => d.low);
+          const allHighMinMax = minMaxBy(headWindow, (d) => d.high);
+          if (allLowMinMax && allHighMinMax) {
+            current = this.buildChannelFromDuans(
+              headWindow,
+              duans,
+              curStart - 2,
+              {
+                zg: channel.zg,
+                zd: channel.zd,
+                gg: allHighMinMax.max,
+                dd: allLowMinMax.min,
+              },
+            );
+            curStart -= 2;
+            changed = true;
+          }
         }
       }
     }
@@ -341,7 +370,7 @@ export class DuanChannelCalculator {
     });
   }
 
-  /** 合并两个段级中枢（镜像 mergeTwoChannels）。 */
+  /** 合并两个段级中枢（镜像 mergeTwoChannels，保持首中枢确立的 zd/zg 不变）。 */
   private mergeTwoChannels(
     head: ChanDuanChannel,
     tail: ChanDuanChannel,
@@ -357,16 +386,15 @@ export class DuanChannelCalculator {
       mergedDuans.push(duan);
     }
 
-    const geometry = this.validateChannelGeometry(mergedDuans);
-    const zg = geometry ? geometry.zg : head.zg;
-    const zd = geometry ? geometry.zd : head.zd;
-    const gg = geometry ? geometry.gg : head.gg;
-    const dd = geometry ? geometry.dd : head.dd;
+    const allHighMinMax = minMaxBy(mergedDuans, (d) => d.high);
+    const allLowMinMax = minMaxBy(mergedDuans, (d) => d.low);
+    const gg = allHighMinMax ? allHighMinMax.max : Math.max(head.gg, tail.gg);
+    const dd = allLowMinMax ? allLowMinMax.min : Math.min(head.dd, tail.dd);
 
     return {
       duans: mergedDuans,
-      zg,
-      zd,
+      zg: head.zg,
+      zd: head.zd,
       gg,
       dd,
       level: head.level,

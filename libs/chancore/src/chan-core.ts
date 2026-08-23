@@ -22,9 +22,9 @@ import { DuanChannelCalculator } from './internal/duan-channel';
 import { KMergeCalculator } from './internal/k-merge';
 
 export class ChanCore {
-  // 2：add-chan-central-extension 起，createChannels/createDuanChannels 增加中枢扩张归并
-  // （Phase B 相邻波动区间严格分离），结果语义变化（见 chan-full-output characterization 变化说明）。
-  static readonly algorithmVersion = 2 as const;
+  // 3：fix-chan-central-expansion-condition 起，中枢延伸修正为区间固定语义（[zd, zg] 不变，
+  // 仅更新 gg/dd 与边界），扩张判定修正为严格中心定理二（中枢区间严格分离 + 波动区间重叠/相切）。
+  static readonly algorithmVersion = 3 as const;
 
   private constructor() {}
 

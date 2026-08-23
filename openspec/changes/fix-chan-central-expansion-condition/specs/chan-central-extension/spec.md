@@ -53,6 +53,11 @@ iterating to a fixed point. This provides the clean non-overlapping Channel inpu
 - **AND** a Bi-level merged Unit MUST retain the leading subunit's `trend`
 - **AND** its boundary IDs MUST come from `prev` (start) and `next` (end)
 
+#### Scenario: Channel extension preserves immutable central zone bounds
+- **WHEN** either `createChannels` or `createDuanChannels` extends a base Channel during Phase B
+- **THEN** the central zone bounds (`zd` and `zg`) established by the base unit MUST remain unchanged
+- **AND** only the wave range extrema (`dd`/`gg`) and boundary IDs/timestamps MAY be updated to reflect the extension
+
 #### Scenario: A non-expanded Channel is not altered
 - **WHEN** a Channel in Phase B is not part of any expansion
 - **THEN** it MUST remain unchanged in the resolved Phase B output, including `expanded: false`

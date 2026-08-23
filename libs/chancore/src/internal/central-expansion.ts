@@ -15,17 +15,27 @@ import type { ChanChannel, ChanDuanChannel } from '../contracts';
 export interface CentralRangeItem {
   readonly dd: number; // 波动区间最低
   readonly gg: number; // 波动区间最高
+  readonly zd: number; // 中枢区间下沿
+  readonly zg: number; // 中枢区间上沿
 }
 
 /**
- * 扩张判定（D1 定案：相切也算扩张，"触及即扩张" 29 课字面）：
- * 两相邻同级中枢波动区间重叠或相切。经最小接口 {@link CentralRangeItem}，笔级/段级通吃、无方向认知。
+ * 扩张判定（缠论第 20 课中心定理二）：
+ * 两个同级别中枢中枢区间严格分离（后ZG<前ZD 或 后ZD>前ZG，相切不算扩张），
+ * 且波动区间重叠或相切（后GG>=前DD 或 后DD<=前GG，触边即扩张）。
+ * 经最小接口 {@link CentralRangeItem}，笔级/段级通吃、无方向认知。
  */
 export function isCentralExpansion(
   prev: CentralRangeItem,
   next: CentralRangeItem,
 ): boolean {
-  return Math.max(prev.dd, next.dd) <= Math.min(prev.gg, next.gg);
+  // 1. 中枢区间严格分离
+  const centralSeparated =
+    Math.max(prev.zd, next.zd) > Math.min(prev.zg, next.zg);
+  // 2. 波动区间重叠或相切
+  const waveOverlap = Math.max(prev.dd, next.dd) <= Math.min(prev.gg, next.gg);
+
+  return centralSeparated && waveOverlap;
 }
 
 /**
