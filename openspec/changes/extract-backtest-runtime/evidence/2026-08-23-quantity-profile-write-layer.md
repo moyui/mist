@@ -64,6 +64,30 @@ AND volume <> 0`)。
 - readback:600519 08-21 QMT volume=3347200(股)与 TDX 3347231 一致(差 31 股,
   provider 复权/精度差异)✓。
 
+## 5.5b Windows appliance restart/isolation HIL(2026-08-23,生产 mist-box)
+
+前置:公共 API 链路验证——`POST /v1/strategy-backtests`(versionId=1 rule_dsl
+`k.close>0`,600519 日线 2026-01-01~08-21)→ 202 receipt + PENDING → RPC 提交 →
+backtest 进程执行 → COMPLETED(signalCount=271, matchedSecurityCount=1,
+targetIssues=[])→ `GET /v1/strategy-backtests/6` 查询正常。**RPC-only
+cutover 后公共 API 全链路可用**(runId=6)。
+
+**restart HIL**:
+1. 制造遗留 RUNNING:`UPDATE backtest_runs SET status='RUNNING' WHERE id=6`;
+2. `docker restart mist-backtest`(Windows Docker Desktop);
+3. 启动补偿生效:run 6 → `failed` + `error_message=BACKTEST_INTERRUPTED`;
+4. 补偿日志 `backtest startup reconciled admitted=0`(BacktestStartupService);
+5. 容器恢复 `healthy`。
+
+**isolation HIL**:
+1. `docker stop mist-backtest`;
+2. `mist-backend` 不受影响:公共端口 8001 继续响应(HTTP 404 = 服务存活且路由
+   解析正常,无该 GET 集合路径属预期);
+3. `docker start mist-backtest` 恢复,health=healthy,补偿日志再次输出。
+
+结论:backtest 与 mist-backend 完全隔离(compose 无硬健康依赖),重启自愈
+(legacy RUNNING → BACKTEST_INTERRUPTED),符合 design crash/restart 语义。
+
 ## 后续
 
 - quantity plan(引用 k.volume/k.amount 的 DSL 策略)profile 已具备证明数据;
