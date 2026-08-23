@@ -87,6 +87,8 @@ class ReplayBudget {
 @Injectable()
 export class BacktestRunExecutor {
   private readonly logger = new Logger(BacktestRunExecutor.name);
+  private readonly chanBspDetector = new ChanBspDetector();
+  private readonly chanBspCursors = new Map<number, ChanBspEpisodeCursor>();
 
   constructor(
     @InjectRepository(BacktestRun)
@@ -103,8 +105,6 @@ export class BacktestRunExecutor {
     private readonly dataSource: TypeOrmDataSource,
     private readonly config: ConfigService,
     private readonly health: BacktestHealthStateService,
-    private readonly chanBspDetector = new ChanBspDetector(),
-    private readonly chanBspCursors = new Map<number, ChanBspEpisodeCursor>(),
   ) {}
 
   async execute(runId: number): Promise<void> {
