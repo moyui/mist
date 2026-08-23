@@ -161,5 +161,8 @@
   isolation = `docker stop mist-backtest` 期间 mist-backend 公共端口继续响应
   (无硬健康依赖)→ 恢复 healthy;顺带验证公共 API 全链路
   (POST 202 → RPC → backtest 执行 → COMPLETED → GET)。
-- [ ] 5.6 经项目负责人审核数据库、API、runtime、deployment 和 HIL evidence 后，先部署并验收尚未接
+- [x] 5.6 经项目负责人审核数据库、API、runtime、deployment 和 HIL evidence 后，先部署并验收尚未接
   command 的 `backtest`，再部署 RPC-only `mist-backend` 完成 cutover；V1 不新增专用 rollback protocol。
+  (2026-08-23 完成,见 evidence/2026-08-23-deployment-verification.md: backtest 容器 healthy,
+  端到端回测 run completed, 全栈 healthy。两次 DI 修复: forFeature 漏注册 + webpack transpileOnly
+  默认值坑。RPC-only cutover 留后续 change。)
