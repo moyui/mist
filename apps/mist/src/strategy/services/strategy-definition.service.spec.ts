@@ -280,16 +280,16 @@ describe('StrategyDefinitionService', () => {
     expect(definitions[0].status).toBe(StrategyStatus.ENABLED);
   });
 
-  it('keeps quantity strategies out of realtime registration before source HIL', async () => {
+  it('allows quantity strategies in realtime registration after HIL approval', async () => {
     const { service } = createHarness();
     const strategy = await service.create({
       ...createDto,
       rule: { field: 'k.amount', operator: 'gte', value: '100' },
     });
 
-    await expect(service.enable(strategy.id)).rejects.toThrow(
-      /quantity profile HIL/,
-    );
+    await expect(service.enable(strategy.id)).resolves.toMatchObject({
+      status: StrategyStatus.ENABLED,
+    });
     await expect(service.disable(strategy.id)).resolves.toMatchObject({
       status: StrategyStatus.DISABLED,
     });

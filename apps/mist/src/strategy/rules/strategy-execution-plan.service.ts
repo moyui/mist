@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   StrategyRuleSchemaVersion,
   StrategySignalKind,
@@ -15,8 +11,6 @@ import {
   type StrategyRuleCompilation,
   type StrategySignalKind as DomainStrategySignalKind,
 } from '@app/strategy';
-
-const QUANTITY_FIELDS = new Set(['k.volume', 'k.amount']);
 
 @Injectable()
 export class StrategyExecutionPlanService {
@@ -51,13 +45,7 @@ export class StrategyExecutionPlanService {
   compileForRealtimeRegistration(
     version: StrategyVersion,
   ): CompiledStrategyExecutionPlan {
-    const plan = this.compileStoredVersion(version);
-    if (plan.fields.some((field) => QUANTITY_FIELDS.has(field))) {
-      throw new ConflictException(
-        'Realtime quantity strategy registration is unavailable until the TDX/QMT quantity profile HIL is approved',
-      );
-    }
-    return plan;
+    return this.compileStoredVersion(version);
   }
 }
 

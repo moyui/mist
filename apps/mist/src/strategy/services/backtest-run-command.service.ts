@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   HttpException,
   Injectable,
   NotFoundException,
@@ -25,7 +24,6 @@ import {
 } from '../runtime/backtest-rpc.client';
 import { CreateBacktestRunDto } from '../dto/create-backtest-run.dto';
 import { BacktestRunReceiptVo } from '../vo/backtest-run-receipt.vo';
-import { StrategyExecutionPlanService } from '../rules/strategy-execution-plan.service';
 
 export class BacktestCommandHttpException extends HttpException {
   constructor(
@@ -63,7 +61,6 @@ export class BacktestRunCommandService {
     private readonly runRepository: Repository<BacktestRun>,
     private readonly rpc: BacktestRpcClient,
     private readonly requestContext: HttpRequestContextService,
-    private readonly planService: StrategyExecutionPlanService,
     @InjectRepository(StrategyDefinition)
     private readonly definitionRepository: Repository<StrategyDefinition>,
   ) {}
@@ -127,20 +124,7 @@ export class BacktestRunCommandService {
         });
       }
       kind = StrategyKind.CHAN_BSP;
-      // quantity 门禁跳过：chan_bsp 不消费量价（D3）。
     } else {
-      const plan = this.planService.compileStoredVersion(version);
-      if (
-        plan.fields.some(
-          (field) => field === 'k.volume' || field === 'k.amount',
-        )
-      ) {
-        throw new ConflictException({
-          code: 'BACKTEST_QUANTITY_PROFILE_UNAVAILABLE',
-          message:
-            'Historical quantity profile is not approved for backtest replay',
-        });
-      }
       kind = StrategyKind.RULE_DSL;
     }
 

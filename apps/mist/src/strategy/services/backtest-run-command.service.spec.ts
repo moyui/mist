@@ -40,7 +40,6 @@ function fixture() {
     runRepository as any,
     rpc as unknown as BacktestRpcClient,
     { getRequestId: jest.fn().mockReturnValue('http-test-1') } as any,
-    { compileStoredVersion: jest.fn().mockReturnValue({ fields: [] }) } as any,
     definitionRepository as any,
   );
   return { service, runRepository, rpc, run, definitionRepository, version };
