@@ -77,6 +77,7 @@ import { BacktestStartupService } from './backtest-startup.service';
       K,
       Security,
       StrategyVersion,
+      StrategyDefinition,
       BacktestRun,
       BacktestSignalResult,
     ]),
