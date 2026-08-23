@@ -218,9 +218,8 @@ describe('BacktestRunExecutor', () => {
     );
   });
 
-  it('fails a quantity-consuming plan with BACKTEST_QUANTITY_PROFILE_UNAVAILABLE before replay', async () => {
-    // 锁定 quantity profile 门禁的 execute 级行为：量价 plan 在 replay() 被拒绝，
-    // 不读取任何窗口/页面（extract-backtest-runtime 5.5 quantity HIL 完成前保持）。
+  it('allows a quantity-consuming plan to proceed to replay after HIL approval', async () => {
+    // quantity profile HIL 已通过，量价 plan 现在可以正常 replay。
     const fixture = executor();
     fixture.current.targetUniverse = ['600000.SH'];
     fixture.dependencies.securityRepository.find.mockResolvedValue([
@@ -231,31 +230,25 @@ describe('BacktestRunExecutor', () => {
       rule: { field: 'k.volume', operator: 'gt', value: '0' },
       signalKind: 'entry',
     });
+    fixture.dependencies.marketData.loadReplayWindow.mockResolvedValue({
+      bars: [],
+    });
+    fixture.dependencies.marketData.readReplayPage.mockResolvedValue({
+      bars: [],
+      nextAfterTimestamp: null,
+    });
 
     await fixture.instance.execute(fixture.current.id);
 
-    expect(
-      fixture.dependencies.marketData.loadReplayWindow,
-    ).not.toHaveBeenCalled();
-    expect(
-      fixture.dependencies.marketData.readReplayPage,
-    ).not.toHaveBeenCalled();
-    expect(fixture.manager.update).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ id: 41, status: expect.anything() }),
-      expect.objectContaining({
-        status: BacktestRunStatus.FAILED,
-        errorMessage: 'BACKTEST_QUANTITY_PROFILE_UNAVAILABLE',
-      }),
-    );
+    // 验证 plan 进入了 replay 阶段（gate 已移除）
+    expect(fixture.dependencies.marketData.loadReplayWindow).toHaveBeenCalled();
   });
 
   it('bounds the hydration window at the replay start so a quantity plan never overlaps the streaming page', async () => {
     // F1 回归：消费量价的分钟级 plan，replayStartFor 回到当日开盘（08-04T01:30Z = 上海
     // 09:30）；盘中 startDate（01:42Z）时 initial 窗口必须以 replayStart 为界，否则与
     // page 重叠（append 抛 strictly increasing RangeError）。
-    // 注：量价 plan 在 replay() 被 BACKTEST_QUANTITY_PROFILE_UNAVAILABLE 门禁挡住
-    // （quantity profile 未证明前 ineligible），此处直接驱动 replaySecurity 验证窗口衔接。
+    // 注：量价 plan 现在可以正常 replay（quantity profile HIL 已通过）。
     const startDate = new Date('2026-08-04T01:42:00.000Z');
     const dayOpen = new Date('2026-08-04T01:30:00.000Z');
     const fixture = executor();
@@ -537,7 +530,7 @@ describe('BacktestRunExecutor chan_bsp replay', () => {
     );
   });
 
-  it('replays chan_bsp with zero and null quantities (DSL quantity gate skipped)', async () => {
+  it('replays chan_bsp with zero and null quantities', async () => {
     const fixture = chanBspFixture([]);
     const bars = chanBspBars().map((bar, index) =>
       index % 5 === 0 ? { ...bar, volume: null, amount: null } : bar,

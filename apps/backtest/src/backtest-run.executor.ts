@@ -186,14 +186,6 @@ export class BacktestRunExecutor {
             ),
           };
     if (
-      plan.kind === 'rule_dsl' &&
-      plan.plan.fields.some(
-        (field) => field === 'k.volume' || field === 'k.amount',
-      )
-    ) {
-      throw new BacktestRunFailure('BACKTEST_QUANTITY_PROFILE_UNAVAILABLE');
-    }
-    if (
       run.kind === StrategyKind.CHAN_BSP &&
       !CHAN_BSP_REPLAY_LEVELS.includes(run.period)
     ) {
