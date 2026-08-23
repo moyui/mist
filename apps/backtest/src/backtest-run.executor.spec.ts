@@ -86,18 +86,23 @@ function executor(overrides: Record<string, unknown> = {}) {
     health: new BacktestHealthStateService(),
   };
   return {
-    instance: new BacktestRunExecutor(
-      dependencies.runRepository as any,
-      dependencies.resultRepository as any,
-      dependencies.versionRepository as any,
-      dependencies.securityRepository as any,
-      dependencies.definitionRepository as any,
-      dependencies.marketData as any,
-      dependencies.dataSource as any,
-      dependencies.config as any,
-      dependencies.health,
-      (overrides as any).chanBspDetector,
-    ),
+    instance: (() => {
+      const inst = new BacktestRunExecutor(
+        dependencies.runRepository as any,
+        dependencies.resultRepository as any,
+        dependencies.versionRepository as any,
+        dependencies.securityRepository as any,
+        dependencies.definitionRepository as any,
+        dependencies.marketData as any,
+        dependencies.dataSource as any,
+        dependencies.config as any,
+        dependencies.health,
+      );
+      if ((overrides as any).chanBspDetector !== undefined) {
+        (inst as any).chanBspDetector = (overrides as any).chanBspDetector;
+      }
+      return inst;
+    })(),
     current,
     manager,
     dependencies,
