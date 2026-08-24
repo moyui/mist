@@ -76,4 +76,29 @@ describe('OoAlertReceiverController', () => {
       expect.objectContaining({ alertName: 'CUSTOM', severity: 'P2' }),
     );
   });
+
+  it('maps A8 alert to P1 and A9 alert to P2', async () => {
+    const { ctrl, queue } = createController();
+    await ctrl.receive('tok', {
+      alertName: 'A8_post_close_sync_failed',
+      ts: '2026-08-24T14:30:00Z',
+    });
+    expect(queue.enqueueAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alertName: 'A8_post_close_sync_failed',
+        severity: 'P1',
+      }),
+    );
+
+    await ctrl.receive('tok', {
+      alertName: 'A9_post_close_sync_unready_surge',
+      ts: '2026-08-24T22:30:00Z',
+    });
+    expect(queue.enqueueAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alertName: 'A9_post_close_sync_unready_surge',
+        severity: 'P2',
+      }),
+    );
+  });
 });

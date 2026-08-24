@@ -27,6 +27,9 @@ import { TdxSource } from '../sources/tdx/tdx-source.service';
 import { UtilsModule } from '@app/utils';
 import { SecurityModule } from '../security/security.module';
 import { TimezoneModule } from '@app/timezone';
+import { PostCloseSyncService } from './post-close-sync.service';
+import { DataFreshnessValidator } from './helpers/data-freshness.validator';
+import { PostCloseSyncMetrics } from './observability/post-close-sync-metrics';
 import {
   COLLECTION_STRATEGIES,
   CollectionStrategyRegistry,
@@ -62,6 +65,9 @@ export const COLLECTION_STRATEGIES_PROVIDER: Provider = {
   ],
   providers: [
     CollectorService,
+    PostCloseSyncService,
+    DataFreshnessValidator,
+    PostCloseSyncMetrics,
     EastMoneyCollectionStrategy,
     TdxCollectionStrategy,
     QmtCollectionStrategy,
@@ -74,6 +80,9 @@ export const COLLECTION_STRATEGIES_PROVIDER: Provider = {
   controllers: [CollectorController],
   exports: [
     CollectorService,
+    PostCloseSyncService,
+    DataFreshnessValidator,
+    PostCloseSyncMetrics,
     EastMoneyCollectionStrategy,
     TdxCollectionStrategy,
     QmtCollectionStrategy,

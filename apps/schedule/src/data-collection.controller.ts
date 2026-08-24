@@ -1,131 +1,141 @@
 import { Controller, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
-import { EastMoneyCollectionStrategy } from '../../mist/src/collector';
 import { TimezoneService } from '@app/timezone';
-import { addDays, getMonth } from 'date-fns';
+import { PostCloseSyncService } from '../../mist/src/collector';
+import { addDays, getMonth, subDays } from 'date-fns';
 
 /**
- * Data Collection Controller with Cron Jobs.
+ * Data Collection Controller with Dual-Window Post-Close Synchronization.
  *
- * Cron expressions fire 1 minute after K candle close to ensure the candle is complete.
- * K candle boundaries align to A-share market session start times (9:30, 13:00).
+ * 1. Nightly primary sync at 22:30 (Monday - Friday on A-share trading days)
+ *    - Ingests authoritative DAY, 1m, 5m, 15m, 30m, 60m K-lines
+ *    - Automatically appends WEEK on Friday and MONTH on last trading day of month
+ * 2. Next-morning fallback retry at 06:30 (Tuesday - Saturday)
+ *    - Automatically retries sync for previous trading day before 09:15 pre-market lifecycle starts
  *
- * Non-market-hour triggers are guarded by KBoundaryCalculator returning null.
- *
- * Trading day check uses TimezoneService.isTradingDay() which queries SZSE API
- * for accurate trading calendar (includes holidays, not just weekends).
+ * Trading day check uses TimezoneService.isTradingDay() which queries accurate exchange calendars.
  */
 @Controller('schedule')
 export class DataCollectionController {
   private readonly logger = new Logger(DataCollectionController.name);
 
   constructor(
-    private readonly strategy: EastMoneyCollectionStrategy,
+    private readonly postCloseSyncService: PostCloseSyncService,
     private readonly timezoneService: TimezoneService,
   ) {}
 
-  // 1min: fire at :01, :02, ..., :59 every weekday
-  @Cron('1-59 * * * 1-5')
-  async handleOneMinuteCollection(): Promise<void> {
-    if (
-      !(await this.timezoneService.isTradingDay(
-        this.timezoneService.getCurrentBeijingTime(),
-      ))
-    )
-      return;
-    await this.collect(Period.ONE_MIN, '1min');
-  }
-
-  // 5min: fire at :01, :06, :11, ... after each 5min candle close
-  @Cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * 1-5')
-  async handleFiveMinuteCollection(): Promise<void> {
-    if (
-      !(await this.timezoneService.isTradingDay(
-        this.timezoneService.getCurrentBeijingTime(),
-      ))
-    )
-      return;
-    await this.collect(Period.FIVE_MIN, '5min');
-  }
-
-  // 15min: fire at :01, :16, :31, :46 after each 15min candle close
-  @Cron('1,16,31,46 * * * 1-5')
-  async handleFifteenMinuteCollection(): Promise<void> {
-    if (
-      !(await this.timezoneService.isTradingDay(
-        this.timezoneService.getCurrentBeijingTime(),
-      ))
-    )
-      return;
-    await this.collect(Period.FIFTEEN_MIN, '15min');
-  }
-
-  // 30min: fire at :01, :31 after each 30min candle close
-  @Cron('1,31 * * * 1-5')
-  async handleThirtyMinuteCollection(): Promise<void> {
-    if (
-      !(await this.timezoneService.isTradingDay(
-        this.timezoneService.getCurrentBeijingTime(),
-      ))
-    )
-      return;
-    await this.collect(Period.THIRTY_MIN, '30min');
-  }
-
-  // 60min: fire at :31 after each 60min candle close (9:30→10:31, 10:30→11:31, 13:00→14:31, 14:00→15:31)
-  @Cron('31 * * * 1-5')
-  async handleSixtyMinuteCollection(): Promise<void> {
-    if (
-      !(await this.timezoneService.isTradingDay(
-        this.timezoneService.getCurrentBeijingTime(),
-      ))
-    )
-      return;
-    await this.collect(Period.SIXTY_MIN, '60min');
-  }
-
-  // daily: 18:00 weekdays, post-market
-  @Cron('0 18 * * 1-5')
-  async handleDailyCollection(): Promise<void> {
-    if (
-      !(await this.timezoneService.isTradingDay(
-        this.timezoneService.getCurrentBeijingTime(),
-      ))
-    )
-      return;
-    await this.collect(Period.DAY, 'Daily');
-  }
-
-  // weekly: Friday 18:00
-  @Cron('0 18 * * 5')
-  async handleWeeklyCollection(): Promise<void> {
-    if (
-      !(await this.timezoneService.isTradingDay(
-        this.timezoneService.getCurrentBeijingTime(),
-      ))
-    )
-      return;
-    await this.collect(Period.WEEK, 'Weekly');
-  }
-
-  // monthly: 18:00 on days 28-31 with last-trading-day-of-month check
-  @Cron('0 18 28-31 * *')
-  async handleMonthlyCollection(): Promise<void> {
+  /**
+   * 晚间主同步任务：周一至周五 22:30 触发
+   */
+  @Cron('30 22 * * 1-5')
+  async handleNightlyPostCloseSync(): Promise<void> {
     const now = this.timezoneService.getCurrentBeijingTime();
-    if (!(await this.timezoneService.isTradingDay(now))) return;
-    // Only run on the last trading day of the month
-    const tomorrow = addDays(now, 1);
-    if (getMonth(tomorrow) === getMonth(now)) return; // not last day yet
-    await this.collect(Period.MONTH, 'Monthly');
-  }
+    if (!(await this.timezoneService.isTradingDay(now))) {
+      this.logger.debug(
+        'Skipping nightly post-close sync: not an A-share trading day',
+      );
+      return;
+    }
 
-  private async collect(period: Period, label: string): Promise<void> {
+    const periods: Period[] = [
+      Period.DAY,
+      Period.ONE_MIN,
+      Period.FIVE_MIN,
+      Period.FIFTEEN_MIN,
+      Period.THIRTY_MIN,
+      Period.SIXTY_MIN,
+    ];
+
+    // 周五交易日自动追加周线
+    if (now.getDay() === 5) {
+      periods.push(Period.WEEK);
+    }
+
+    // 月末最后一个交易日自动追加月线
+    const tomorrow = addDays(now, 1);
+    if (getMonth(tomorrow) !== getMonth(now)) {
+      periods.push(Period.MONTH);
+    }
+
     try {
-      await this.strategy.collectForAllSecurities(period);
+      const report = await this.postCloseSyncService.syncPostClose({
+        targetDate: now,
+        periods,
+        window: 'nightly_2230',
+      });
+
+      this.logger.log(
+        `[Schedule] event=nightly_sync_completed targetDate=${report.targetDate} ` +
+          `succeeded=${report.succeededTasks}/${report.totalTasks} ` +
+          `saved=${report.totalKLinesSaved} durationMs=${report.durationMs}`,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`${label} collection failed: ${message}`);
+      this.logger.error(
+        `[Schedule] event=nightly_sync_failed error="${message}"`,
+      );
     }
+  }
+
+  /**
+   * 晨间兜底重试任务：周二至周六 06:30 触发（针对前一交易日）
+   */
+  @Cron('30 6 * * 2-6')
+  async handleMorningRetrySync(): Promise<void> {
+    const now = this.timezoneService.getCurrentBeijingTime();
+    const previousTradingDay = await this.resolvePreviousTradingDay(now);
+
+    if (!previousTradingDay) {
+      this.logger.debug(
+        'Skipping morning retry sync: no previous trading day identified',
+      );
+      return;
+    }
+
+    const periods: Period[] = [
+      Period.DAY,
+      Period.ONE_MIN,
+      Period.FIVE_MIN,
+      Period.FIFTEEN_MIN,
+      Period.THIRTY_MIN,
+      Period.SIXTY_MIN,
+    ];
+
+    if (previousTradingDay.getDay() === 5) {
+      periods.push(Period.WEEK);
+    }
+
+    try {
+      const report = await this.postCloseSyncService.syncPostClose({
+        targetDate: previousTradingDay,
+        periods,
+        window: 'morning_0630',
+      });
+
+      this.logger.log(
+        `[Schedule] event=morning_retry_completed targetDate=${report.targetDate} ` +
+          `succeeded=${report.succeededTasks}/${report.totalTasks} ` +
+          `saved=${report.totalKLinesSaved} durationMs=${report.durationMs}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `[Schedule] event=morning_retry_failed error="${message}"`,
+      );
+    }
+  }
+
+  private async resolvePreviousTradingDay(
+    currentDate: Date,
+  ): Promise<Date | null> {
+    // 往前查找最多 10 天找到最近的一个 A 股交易日
+    for (let i = 1; i <= 10; i++) {
+      const candidate = subDays(currentDate, i);
+      if (await this.timezoneService.isTradingDay(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 }
