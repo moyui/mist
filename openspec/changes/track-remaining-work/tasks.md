@@ -18,21 +18,11 @@
   | §4 发布与 review（3 项） | `env-blocked` | 依赖首个真实 incident |
 
 - [x] 1.5 盘点 `add-chan-bsp-realtime-evaluation`（已于 2026-08-24 归档）
-- [x] 1.6 盘点 `add-chan-bsp-backtest-evaluation`（22/22，全部完成；归档前置为部署项）
-
-  | 阶段 | 状态 | 证据 |
-  |------|------|------|
-  | §1 前置与基线（3 项） | ✅ **已解决** | commit `fa523648`（imputer 0 异常化）+ 全量基线 186 suites/1555 tests |
-  | §2 实体与 migration（4 项） | ✅ **已解决** | commit `f243bfd2`/`072b085e`；021 生产执行已完成（2026-08-22） |
-  | §3 回测编译分派（4 项） | ✅ **已解决** | commit `aff953ed` |
-  | §4 回测求值分派 + 回放（4 项） | ✅ **已解决** | commit `aff953ed`（完整信号流/矫正层第一原则）+ `681855e6`（共享 serializer） |
-  | §5 单测（3 项） | ✅ **已解决** | executor 11/11 + create 8/8 + imputer 9 新用例；5.3 本地隔离 mysql:8.4 readback |
-  | §6 可观测性（2 项） | ✅ **已解决** | `backtest chan_bsp plan compiled` info 日志（L204） |
-  | §7 验证与收尾（2 项） | `deploy-blocked` | 代码/单测/基线已推送（`f22c2c30`）；归档前置 = 生产部署验证 |
-
+- [x] 1.6 盘点 `add-chan-bsp-backtest-evaluation`（22/22，全部完成，已于 2026-08-24 归档）
 - [x] 1.7 盘点 `remove-quantity-profile-gates`（12/12，已于 2026-08-24 归档）
 - [x] 1.8 盘点 `audit-chancore-algorithms`（8/8，已于 2026-08-24 归档）
 - [x] 1.9 盘点 `fix-chan-central-expansion-condition`（7/7，已于 2026-08-24 归档）
+- [x] 1.10 盘点 `sync-post-close-market-data`（6.5/6.5，全部完成，已于 2026-08-24 归档）
 
 ## 2. 汇总代码质量遗留
 
