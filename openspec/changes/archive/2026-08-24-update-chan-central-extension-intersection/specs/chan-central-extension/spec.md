@@ -1,12 +1,6 @@
-# chan-central-extension Specification
+# chan-central-extension Specification Delta
 
-## Purpose
-Define central expansion (中枢扩张) resolution for Bi-level and Duan-level Channel Phase B output, so no
-adjacent same-level Channels overlap or touch in wave range and merged expansion Centrals carry an explicit
-`expanded` marker, while leaving the other Chan facades unchanged.
-## Requirements
-
-
+## MODIFIED Requirements
 ### Requirement: ChanCore Shall Resolve Channel Central Expansion At Both Levels
 
 `ChanCore.createChannels` (Bi-level) and `ChanCore.createDuanChannels` (Duan-level) SHALL recognize

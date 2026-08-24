@@ -1,6 +1,12 @@
 # chan-bsp-backtest-evaluation Specification
 
-## ADDED Requirements
+## Purpose
+Define how the backtest engine evaluates chan_bsp (缠论买卖点) strategy versions:
+dispatch by the run's kind snapshot, evaluation over the correction layer with
+complete signal flow, structural context persistence, period restrictions and
+quantity-profile gating exemption — mirroring realtime chan_bsp semantics.
+
+## Requirements
 
 ### Requirement: Backtest SHALL Dispatch Evaluation By Run Kind
 

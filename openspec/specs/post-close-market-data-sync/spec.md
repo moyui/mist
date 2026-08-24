@@ -7,7 +7,7 @@ are persisted to the database reliably, idempotently, with strict DataFreshnessS
 bounded concurrency, and comprehensive OpenObserve observability (structured logs, OTel metrics,
 and WeChat alert dispatch) during late evening (22:30) and morning retry (06:30) windows.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Post-Close Sync SHALL Ingest Authoritative All-Period K-Lines For Active Securities
 
