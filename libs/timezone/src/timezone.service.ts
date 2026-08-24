@@ -139,18 +139,27 @@ export class TimezoneService {
    */
   private async fetchTradingDayFromSZSE(date: Date): Promise<boolean> {
     try {
-      const response = (await this.axios.get(
+      const response = await this.axios.get<SzseTradingDayResponse>(
         'http://www.szse.cn/api/report/exchange/onepersistenthour/monthList',
         {
           params: {
             yearMonth: format(date, 'yyyy-MM'),
           },
         },
-      )) as SzseTradingDayResponse;
+      );
 
-      const tradingDay = response.data?.find(
-        (day: { zrxh: number; jybz: string; jyrq: string }) =>
-          day.jyrq === format(date, 'yyyy-MM-dd') && day.jybz === '1',
+      // axios wraps response body in response.data (AxiosResponse<SzseTradingDayResponse>)
+      // SZSE API body itself also has a "data" field → need response.data.data
+      const tradingDays = response.data?.data;
+      if (!Array.isArray(tradingDays)) {
+        this.logger.warn(
+          `SZSE API returned unexpected structure: ${JSON.stringify(response.data)}`,
+        );
+        return false;
+      }
+
+      const tradingDay = tradingDays.find(
+        (day) => day.jyrq === format(date, 'yyyy-MM-dd') && day.jybz === '1',
       );
 
       return !!tradingDay;

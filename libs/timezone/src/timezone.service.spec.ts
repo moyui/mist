@@ -7,19 +7,23 @@ describe('TimezoneService', () => {
   let service: TimezoneService;
   let mockAxios: { get: jest.Mock };
 
+  // SZSE API returns { data: Array<...> }, and axios wraps it in AxiosResponse
+  // so the mock needs to simulate: response.data = { data: [...] }
   const mockAxiosResponse = {
-    data: [
-      { zrxh: 1, jybz: '1', jyrq: '2024-01-08' }, // Monday - trading day
-      { zrxh: 2, jybz: '1', jyrq: '2024-01-09' }, // Tuesday - trading day
-      { zrxh: 3, jybz: '1', jyrq: '2024-01-10' }, // Wednesday - trading day
-      { zrxh: 4, jybz: '1', jyrq: '2024-01-11' }, // Thursday - trading day
-      { zrxh: 5, jybz: '1', jyrq: '2024-01-12' }, // Friday - trading day
-      { zrxh: 6, jybz: '0', jyrq: '2024-01-13' }, // Saturday - non-trading
-      { zrxh: 7, jybz: '0', jyrq: '2024-01-14' }, // Sunday - non-trading
-      // Chinese New Year 2024 (Feb 10-17)
-      { zrxh: 32, jybz: '0', jyrq: '2024-02-10' }, // CNY - non-trading
-      { zrxh: 33, jybz: '0', jyrq: '2024-02-11' }, // CNY - non-trading
-    ],
+    data: {
+      data: [
+        { zrxh: 1, jybz: '1', jyrq: '2024-01-08' }, // Monday - trading day
+        { zrxh: 2, jybz: '1', jyrq: '2024-01-09' }, // Tuesday - trading day
+        { zrxh: 3, jybz: '1', jyrq: '2024-01-10' }, // Wednesday - trading day
+        { zrxh: 4, jybz: '1', jyrq: '2024-01-11' }, // Thursday - trading day
+        { zrxh: 5, jybz: '1', jyrq: '2024-01-12' }, // Friday - trading day
+        { zrxh: 6, jybz: '0', jyrq: '2024-01-13' }, // Saturday - non-trading
+        { zrxh: 7, jybz: '0', jyrq: '2024-01-14' }, // Sunday - non-trading
+        // Chinese New Year 2024 (Feb 10-17)
+        { zrxh: 32, jybz: '0', jyrq: '2024-02-10' }, // CNY - non-trading
+        { zrxh: 33, jybz: '0', jyrq: '2024-02-11' }, // CNY - non-trading
+      ],
+    },
   };
 
   beforeEach(async () => {
