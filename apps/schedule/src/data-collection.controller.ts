@@ -1,16 +1,17 @@
 import { Controller, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
-import { PostCloseSyncService } from '../../mist/src/collector';
+import { EastMoneyCollectionStrategy } from '../../mist/src/collector';
 import { TimezoneService } from '@app/timezone';
-import { addDays, getDay, getMonth } from 'date-fns';
+import { addDays, getMonth } from 'date-fns';
 
 /**
  * Data Collection Controller with Cron Jobs.
  *
- * Nightly post-close synchronization fires at 22:30 on weekdays to ensure
- * all provider local downloads (e.g. QMT starting at 17:00) and market
- * clearing settlements are completely finished.
+ * Cron expressions fire 1 minute after K candle close to ensure the candle is complete.
+ * K candle boundaries align to A-share market session start times (9:30, 13:00).
+ *
+ * Non-market-hour triggers are guarded by KBoundaryCalculator returning null.
  *
  * Trading day check uses TimezoneService.isTradingDay() which queries SZSE API
  * for accurate trading calendar (includes holidays, not just weekends).
@@ -20,57 +21,111 @@ export class DataCollectionController {
   private readonly logger = new Logger(DataCollectionController.name);
 
   constructor(
-    private readonly postCloseSyncService: PostCloseSyncService,
+    private readonly strategy: EastMoneyCollectionStrategy,
     private readonly timezoneService: TimezoneService,
   ) {}
 
-  /**
-   * Nightly post-close sync: 22:30 every weekday (Monday - Friday).
-   *
-   * Ingests authoritative Day and 1-minute K-lines for all active securities.
-   * On Friday, automatically appends Week period sync.
-   * On the last trading day of the month, automatically appends Month period sync.
-   */
-  @Cron('30 22 * * 1-5')
-  async handleNightlyPostCloseSync(): Promise<void> {
-    const now = this.timezoneService.getCurrentBeijingTime();
-    if (!(await this.timezoneService.isTradingDay(now))) {
-      this.logger.debug(
-        'Skipping nightly post-close sync: not an A-share trading day',
-      );
+  // 1min: fire at :01, :02, ..., :59 every weekday
+  @Cron('1-59 * * * 1-5')
+  async handleOneMinuteCollection(): Promise<void> {
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
       return;
-    }
+    await this.collect(Period.ONE_MIN, '1min');
+  }
 
-    const periods = [Period.DAY, Period.ONE_MIN];
+  // 5min: fire at :01, :06, :11, ... after each 5min candle close
+  @Cron('1,6,11,16,21,26,31,36,41,46,51,56 * * * 1-5')
+  async handleFiveMinuteCollection(): Promise<void> {
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
+    await this.collect(Period.FIVE_MIN, '5min');
+  }
 
-    // Friday: append weekly period
-    if (getDay(now) === 5) {
-      periods.push(Period.WEEK);
-    }
+  // 15min: fire at :01, :16, :31, :46 after each 15min candle close
+  @Cron('1,16,31,46 * * * 1-5')
+  async handleFifteenMinuteCollection(): Promise<void> {
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
+    await this.collect(Period.FIFTEEN_MIN, '15min');
+  }
 
-    // Last trading day of the month: append monthly period
+  // 30min: fire at :01, :31 after each 30min candle close
+  @Cron('1,31 * * * 1-5')
+  async handleThirtyMinuteCollection(): Promise<void> {
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
+    await this.collect(Period.THIRTY_MIN, '30min');
+  }
+
+  // 60min: fire at :31 after each 60min candle close (9:30→10:31, 10:30→11:31, 13:00→14:31, 14:00→15:31)
+  @Cron('31 * * * 1-5')
+  async handleSixtyMinuteCollection(): Promise<void> {
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
+    await this.collect(Period.SIXTY_MIN, '60min');
+  }
+
+  // daily: 18:00 weekdays, post-market
+  @Cron('0 18 * * 1-5')
+  async handleDailyCollection(): Promise<void> {
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
+    await this.collect(Period.DAY, 'Daily');
+  }
+
+  // weekly: Friday 18:00
+  @Cron('0 18 * * 5')
+  async handleWeeklyCollection(): Promise<void> {
+    if (
+      !(await this.timezoneService.isTradingDay(
+        this.timezoneService.getCurrentBeijingTime(),
+      ))
+    )
+      return;
+    await this.collect(Period.WEEK, 'Weekly');
+  }
+
+  // monthly: 18:00 on days 28-31 with last-trading-day-of-month check
+  @Cron('0 18 28-31 * *')
+  async handleMonthlyCollection(): Promise<void> {
+    const now = this.timezoneService.getCurrentBeijingTime();
+    if (!(await this.timezoneService.isTradingDay(now))) return;
+    // Only run on the last trading day of the month
     const tomorrow = addDays(now, 1);
-    if (getMonth(tomorrow) !== getMonth(now)) {
-      periods.push(Period.MONTH);
-    }
+    if (getMonth(tomorrow) === getMonth(now)) return; // not last day yet
+    await this.collect(Period.MONTH, 'Monthly');
+  }
 
-    this.logger.log(
-      `Triggering nightly post-close sync at 22:30 for periods: [${periods.join(', ')}]`,
-    );
-
+  private async collect(period: Period, label: string): Promise<void> {
     try {
-      const report = await this.postCloseSyncService.syncPostClose({
-        targetDate: now,
-        periods,
-      });
-
-      this.logger.log(
-        `Nightly post-close sync finished: ${report.succeededTasks}/${report.totalTasks} tasks succeeded, ` +
-          `${report.totalKLinesSaved} K-lines saved in ${report.durationMs}ms`,
-      );
+      await this.strategy.collectForAllSecurities(period);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Nightly post-close sync failed: ${message}`);
+      this.logger.error(`${label} collection failed: ${message}`);
     }
   }
 }

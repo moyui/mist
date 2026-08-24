@@ -8,14 +8,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CollectDto } from './dto/collect.dto';
-import {
-  SyncPostCloseDto,
-  PostCloseSyncReport,
-} from './dto/sync-post-close.dto';
 import { CollectionStrategyRegistry } from './strategies/collection-strategy.registry';
 import { SecurityService } from '../security/security.service';
 import { TimezoneService } from '@app/timezone';
-import { PostCloseSyncService } from './post-close-sync.service';
 
 @ApiTags('collector v1')
 @Controller('v1/collector')
@@ -24,7 +19,6 @@ export class CollectorController {
     private readonly securityService: SecurityService,
     private readonly registry: CollectionStrategyRegistry,
     private readonly timezoneService: TimezoneService,
-    private readonly postCloseSyncService: PostCloseSyncService,
   ) {}
 
   @Post('collect')
@@ -73,23 +67,5 @@ export class CollectorController {
     );
 
     return { code: dto.code, period: dto.period, count };
-  }
-
-  @Post('sync-post-close')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '手动触发收盘权威行情数据同步' })
-  async syncPostClose(
-    @Body() dto: SyncPostCloseDto,
-  ): Promise<PostCloseSyncReport> {
-    const targetDate = dto.targetDate
-      ? this.timezoneService.parseDateString(dto.targetDate)
-      : undefined;
-
-    return this.postCloseSyncService.syncPostClose({
-      targetDate,
-      periods: dto.periods,
-      securityCodes: dto.securityCodes,
-      sourceOverride: dto.source,
-    });
   }
 }

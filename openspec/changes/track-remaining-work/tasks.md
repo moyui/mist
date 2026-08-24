@@ -33,15 +33,6 @@
 - [x] 1.7 盘点 `remove-quantity-profile-gates`（12/12，已于 2026-08-24 归档）
 - [x] 1.8 盘点 `audit-chancore-algorithms`（8/8，已于 2026-08-24 归档）
 - [x] 1.9 盘点 `fix-chan-central-expansion-condition`（7/7，已于 2026-08-24 归档）
-- [x] 1.10 盘点 `sync-post-close-market-data`（14/14，全部代码与单测就绪）
-
-  | 阶段 | 状态 | 证据 |
-  |------|------|------|
-  | §1 核心服务与 DTO | ✅ **已解决** | `PostCloseSyncService` + `sync-post-close.dto.ts` |
-  | §2 Controller 端点 | ✅ **已解决** | `POST /v1/collector/sync-post-close` 路由与 Swagger |
-  | §3 schedule 重构 | ✅ **已解决** | 晚间 22:30 定时触发 + 周五周线/月末月线追加 |
-  | §4 单测与集成测试 | ✅ **已解决** | 11 suites / 50 tests 全部 PASS |
-  | §5 验证与严格校验 | ✅ **已解决** | typecheck 0 错误 + OpenSpec 97 项 strict PASS |
 
 ## 2. 汇总代码质量遗留
 

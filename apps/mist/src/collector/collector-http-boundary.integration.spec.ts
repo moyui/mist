@@ -10,7 +10,6 @@ import request from 'supertest';
 import { SecurityService } from '../security/security.service';
 import { CollectorController } from './collector.controller';
 import { CollectorService } from './collector.service';
-import { PostCloseSyncService } from './post-close-sync.service';
 import { CollectionStrategyRegistry } from './strategies/collection-strategy.registry';
 import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.strategy';
 
@@ -60,10 +59,6 @@ describe('Collector HTTP error boundary integration', () => {
           useValue: { resolve: jest.fn().mockReturnValue(strategy) },
         },
         { provide: TimezoneService, useValue: timezoneService },
-        {
-          provide: PostCloseSyncService,
-          useValue: { syncPostClose: jest.fn().mockResolvedValue({}) },
-        },
       ],
     }).compile();
 
