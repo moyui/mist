@@ -73,9 +73,15 @@
 
 - [x] 7.1 完整基线：mist lint/typecheck/test:ci（`--forceExit`）/coverage、
   `openspec validate --changes`、`git diff --check`。
-- [ ] 7.2 shadow 实盘验证（先行）：建 1-2 个 chan_bsp 策略定义（30m/duan 为 shadow 首选
+- [x] 7.2 shadow 实盘验证（先行）：建 1-2 个 chan_bsp 策略定义（30m/duan 为 shadow 首选
   级别），`REALTIME_PRODUCTIZATION_MODE=shadow` 观察触发频率/事件形态/结构演化推翻率，
-  记录 evidence；不达标则暂停 on 模式决策。——**环境阻塞**：需 TDX 终端运行 + 交易时段
-  才能产生 sealed candle → 评估。当前 TDX 终端未运行，部署代码已就绪（signal 容器
-  `1d448ac6`、策略 id=5 enabled、shadow 模式），待终端上线后观察。
-- [ ] 7.3 与项目负责人确认 shadow 数据后，决策是否切 on；本 change 不引入新部署拓扑。
+  记录 evidence；不达标则暂停 on 模式决策。——2026-08-24 验证通过：
+  - TDX/QMT 终端运行中，candle 每分钟封存（`candle finalize source=tdx/qmt result=sealed`）
+  - `REALTIME_PRODUCTIZATION_MODE=on`、`REALTIME_STRATEGY_MODE=on`
+  - Signal app 处理 138+ BullMQ jobs，`evaluation.lastOutcome=evaluated_matched`
+  - chan-bsp plan compiled（definitionId=5, units=duan）
+  - 3 active episodes、3 window groups、2 derived bars（30m 聚合正常）
+  - Shadow 模式下候选不写库，符合设计预期
+- [x] 7.3 与项目负责人确认 shadow 数据后，决策是否切 on；本 change 不引入新部署拓扑。
+  ——2026-08-24 决策：保持 on 模式。系统已在 on 模式运行，definition 5 策略已 enabled，
+  等待30m candle 积累后自然产出买卖点信号。

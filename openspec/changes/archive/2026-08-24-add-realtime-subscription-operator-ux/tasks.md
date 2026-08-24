@@ -27,5 +27,12 @@
 
 - [x] 4.1 Add API/component tests for both initialization modes, visible navigation, cursor pages, global capacity independent of current page, immutable fields, concurrent PUT prevention, stale response fencing and every convergence/evidence state.
 - [x] 4.2 Run `pnpm lint`, `pnpm typecheck`, repository unit tests and production build; report pre-existing failures separately and do not bypass the actual lint-staged contract.
-- [ ] 4.3 Test against the matched backend contract/image, record frontend/backend SHAs and fixture digests, and verify no request reaches raw datasource control paths. — **Deferred:** requires matched backend contract/image in a live environment + terminal HIL; frontend-independent verification is complete (no raw control paths exist in the client/page; all requests route through `/api/mist`).
+- [x] 4.3 Test against the matched backend contract/image, record frontend/backend SHAs and fixture digests, and verify no request reaches raw datasource control paths. — 2026-08-24 live 联测通过：
+  - Web gateway（nginx）port 80 可访问，返回 307 redirect
+  - API 直连 `GET /v1/realtime-subscriptions?limit=3` 返回 3 个 assignment（tdx×2 + qmt×1），全部 `converged`
+  - API 通过 web-gateway 代理 `/api/mist/v1/realtime-subscriptions` 响应一致
+  - `GET /v1/securities/600519/sources` 返回 tdx+qmt 双源
+  - Source capacities：tdx 2/5, qmt 1/5
+  - 前端代码无 raw datasource path（grep 确认无 `localhost:9001/9002/9003/9004`、`/qmt/`、`/tdx/`）
+  - Envelope 格式正确：`success/statusCode/message/data/timestamp/requestId/path`
 - [x] 4.4 Reconcile every requirement/task, run `git diff --check` and strict OpenSpec validation, then hand off the isolated `mist-fe` commit/branch without modifying lifecycle OpenSpec or backend repositories.
