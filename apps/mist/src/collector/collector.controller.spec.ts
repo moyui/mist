@@ -20,13 +20,34 @@ describe('CollectorController collect endpoint (historical only)', () => {
     const timezoneService = {
       parseDateString: jest.fn().mockReturnValue(new Date('2026-01-01')),
     };
+    const postCloseSyncService = {
+      syncPostClose: jest.fn().mockResolvedValue({
+        targetDate: '2026-08-24',
+        totalSecurities: 1,
+        totalTasks: 2,
+        succeededTasks: 2,
+        failedTasks: 0,
+        totalKLinesSaved: 241,
+        durationMs: 150,
+        details: [],
+      }),
+    };
     const controller = new CollectorController(
       securityService as any,
       registry as any,
       timezoneService as any,
+      postCloseSyncService as any,
     );
 
-    return { controller, security, securityService, registry, strategy };
+    return {
+      controller,
+      security,
+      securityService,
+      registry,
+      strategy,
+      timezoneService,
+      postCloseSyncService,
+    };
   };
 
   it('collects via the resolved historical strategy', async () => {
@@ -66,5 +87,26 @@ describe('CollectorController collect endpoint (historical only)', () => {
         endDate: '2026-01-02',
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('delegates syncPostClose to PostCloseSyncService with parsed date and options', async () => {
+    const { controller, postCloseSyncService, timezoneService } =
+      createHarness();
+
+    const report = await controller.syncPostClose({
+      targetDate: '2026-08-24',
+      periods: [Period.DAY],
+      securityCodes: ['600030'],
+      source: DataSource.QMT,
+    });
+
+    expect(timezoneService.parseDateString).toHaveBeenCalledWith('2026-08-24');
+    expect(postCloseSyncService.syncPostClose).toHaveBeenCalledWith({
+      targetDate: expect.any(Date),
+      periods: [Period.DAY],
+      securityCodes: ['600030'],
+      sourceOverride: DataSource.QMT,
+    });
+    expect(report.succeededTasks).toBe(2);
   });
 });

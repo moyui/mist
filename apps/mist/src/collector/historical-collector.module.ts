@@ -18,6 +18,7 @@ import {
 } from '@app/shared-data';
 import { CollectorService } from './collector.service';
 import { CollectorController } from './collector.controller';
+import { PostCloseSyncService } from './post-close-sync.service';
 import { EastMoneyCollectionStrategy } from './strategies/east-money-collection.strategy';
 import { TdxCollectionStrategy } from './strategies/tdx-collection.strategy';
 import { QmtCollectionStrategy } from './strategies/qmt-collection.strategy';
@@ -62,6 +63,7 @@ export const COLLECTION_STRATEGIES_PROVIDER: Provider = {
   ],
   providers: [
     CollectorService,
+    PostCloseSyncService,
     EastMoneyCollectionStrategy,
     TdxCollectionStrategy,
     QmtCollectionStrategy,
@@ -74,6 +76,7 @@ export const COLLECTION_STRATEGIES_PROVIDER: Provider = {
   controllers: [CollectorController],
   exports: [
     CollectorService,
+    PostCloseSyncService,
     EastMoneyCollectionStrategy,
     TdxCollectionStrategy,
     QmtCollectionStrategy,
