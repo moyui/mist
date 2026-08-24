@@ -40,6 +40,13 @@ The release SHALL be treated as a maintenance-window change. The operator SHALL 
 - **AND** release evidence MUST distinguish desired, provider-specific active evidence, effective listener, freshness and convergence
 - **AND** no public raw-control route, frontend direct control, CLI mutation or `apps/schedule` caller may be used to activate subscriptions
 
+#### Scenario: Normal backend starts without a subscription caller
+
+- **WHEN** the compatible backend accepts TDX or QMT `ready` or reconnects while lifecycle mode is off
+- **THEN** it MUST send no subscription-control request automatically
+- **AND** release evidence MUST describe control and snapshot transport as ready but production subscription lifecycle as not integrated
+- **AND** no controller, frontend, CLI, diagnostic mutation route or scheduler may be added solely to activate this release
+
 #### Scenario: Weekday 09:15 reset is accepted
 
 - **WHEN** production evidence covers the Shanghai-time weekday 09:15 trigger

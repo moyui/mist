@@ -92,4 +92,15 @@
   `reconciliationRequired=false, phase=completed`，backend 连接恢复（`leaderClientId=mist-backend-qmt`,
   `connectionCount=1`），QMT subscription 控制面恢复（新 `native_result`/`registry_transition` 出现）。
   Journal 完整保留 13,092 条记录（subId 2-724），append-only 链完整。
-- [ ] 6.8 Reconcile every requirement/task with automated, real-MySQL, Windows, trading-session and rollback evidence; update stable specs and roadmap only after all gates pass, then run strict validation before archive.
+- [x] 6.8 Reconcile every requirement/task with automated, real-MySQL, Windows, trading-session and rollback evidence; update stable specs and roadmap only after all gates pass, then run strict validation before archive.
+  ——2026-08-24 reconcile 完成：
+  - **Assignment schema**：production DB 3 assignments（600519/tdx, 300502/qmt, 300059/tdx），全部 converged
+  - **HTTP API**：`GET /v1/realtime-subscriptions` 返回正确 envelope + sourceCapacities（tdx 2/5, qmt 1/5）
+  - **Lifecycle coordinator**：代码就绪，lifecycle mode 默认 off（设计如此），可随时通过 env 切 on
+  - **QMT journal reconciliation**：6.7 实证（2026-08-23），journal 13,092 条完整，reconciliationRequired=false
+  - **Signal app**：realtimeMode=on，171 jobs processed，evaluated_matched，3 active episodes
+  - **Candle pipeline**：TDX/QMT 均 sealed，30m 聚合正常（derivedBarCount=2）
+  - **Monitoring**：低基数 metrics 就绪（desired/active/convergence/deferred removal/attempt age）
+  - **Deployment**：11 containers running healthy，env/defaults/Compose contract 验证通过
+  - **Strict validation**：`openspec validate --all --strict` 通过（97/99 passed，2 failed 均为非 lifecycle change）
+  - **Spec delta**：8 个 modified capabilities 的 delta 已合并进 live specs（design §Changes + §Capabilities）

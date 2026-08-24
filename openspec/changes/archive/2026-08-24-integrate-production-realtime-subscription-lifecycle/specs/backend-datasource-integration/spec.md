@@ -25,6 +25,14 @@ The backend TDX and QMT realtime clients SHALL each expose the same four Nest-in
 - **AND** the new ready observation MUST trigger a fresh database read and full-set convergence
 - **AND** backend MUST NOT replay the old request or reuse its request payload as desired authority
 
+#### Scenario: Backend subscribes after connection
+
+- **WHEN** an authorized in-process caller explicitly calls `subscribe` while
+  the provider WebSocket is open and control-ready
+- **THEN** the client MUST send exactly one typed `subscribe` request
+- **AND** it MUST NOT create a locally inferred desired set or schedule a later
+  automatic resync
+
 #### Scenario: Backend reconnects after an ambiguous mutation
 
 - **WHEN** the provider WebSocket reconnects after a disconnect or lost response
