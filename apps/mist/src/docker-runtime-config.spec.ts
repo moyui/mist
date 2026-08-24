@@ -94,7 +94,7 @@ describe('backend Docker runtime config', () => {
     expect(compose).not.toContain('start:dev:mcp-server');
 
     expect(packageJson.scripts?.['build:docker']).toBe(
-      'nest build mist && nest build backtest && nest build chan && nest build signal && nest build realtime-subscription-hil && nest build notification',
+      'nest build mist && nest build schedule && nest build backtest && nest build chan && nest build signal && nest build realtime-subscription-hil && nest build notification',
     );
     expect(packageJson.scripts?.['build:docker']).not.toContain('mcp-server');
     expect(packageJson.scripts?.['hil:realtime-subscriptions']).toBe(
