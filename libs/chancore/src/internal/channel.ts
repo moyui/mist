@@ -136,9 +136,9 @@ export class ChannelCalculator {
   }
 
   /**
-   * 延伸中枢：首尾各延伸 2 笔（成对），缠论第 20 课中心定理一（区间不可变）：
-   * 基础结构确立 zd/zg 后固定，新增笔与固定的 [zd, zg] 有重叠即可延伸，
-   * 延伸仅更新波动极值 gg/dd 与时间边界，绝不重算 zd/zg。
+   * 延伸中枢：首尾各延伸 2 笔（成对），缠论多笔中枢全量重叠交集：
+   * 包含新增笔在内的全量构成笔必须维持公共重叠交集（zg > zd），
+   * 延伸时以全量交集更新中枢区间 zd/zg 与波动极值 gg/dd。
    *
    * @param channel 待延伸的基础中枢
    * @param data 完整笔序列
@@ -172,22 +172,16 @@ export class ChannelCalculator {
 
       // 尾部延伸 +2 笔
       if (curEnd + 2 < data.length) {
-        const nextBi1 = data[curEnd + 1];
-        const nextBi2 = data[curEnd + 2];
-        const overlaps1 =
-          Math.max(nextBi1.low, channel.zd) <=
-          Math.min(nextBi1.high, channel.zg);
-        const overlaps2 =
-          Math.max(nextBi2.low, channel.zd) <=
-          Math.min(nextBi2.high, channel.zg);
-        if (overlaps1 && overlaps2) {
-          const tailWindow = data.slice(curStart, curEnd + 3);
-          const allLowMinMax = minMaxBy(tailWindow, (b) => b.low);
-          const allHighMinMax = minMaxBy(tailWindow, (b) => b.high);
-          if (allLowMinMax && allHighMinMax) {
+        const tailWindow = data.slice(curStart, curEnd + 3);
+        const allLowMinMax = minMaxBy(tailWindow, (b) => b.low);
+        const allHighMinMax = minMaxBy(tailWindow, (b) => b.high);
+        if (allLowMinMax && allHighMinMax) {
+          const zg = allHighMinMax.min;
+          const zd = allLowMinMax.max;
+          if (zg > zd) {
             current = this.buildChannelFromBis(tailWindow, data, curStart, {
-              zg: channel.zg,
-              zd: channel.zd,
+              zg,
+              zd,
               gg: allHighMinMax.max,
               dd: allLowMinMax.min,
             });
@@ -199,22 +193,16 @@ export class ChannelCalculator {
 
       // 头部延伸 +2 笔
       if (curStart - 2 >= 0) {
-        const prevBi1 = data[curStart - 1];
-        const prevBi2 = data[curStart - 2];
-        const overlaps1 =
-          Math.max(prevBi1.low, channel.zd) <=
-          Math.min(prevBi1.high, channel.zg);
-        const overlaps2 =
-          Math.max(prevBi2.low, channel.zd) <=
-          Math.min(prevBi2.high, channel.zg);
-        if (overlaps1 && overlaps2) {
-          const headWindow = data.slice(curStart - 2, curEnd + 1);
-          const allLowMinMax = minMaxBy(headWindow, (b) => b.low);
-          const allHighMinMax = minMaxBy(headWindow, (b) => b.high);
-          if (allLowMinMax && allHighMinMax) {
+        const headWindow = data.slice(curStart - 2, curEnd + 1);
+        const allLowMinMax = minMaxBy(headWindow, (b) => b.low);
+        const allHighMinMax = minMaxBy(headWindow, (b) => b.high);
+        if (allLowMinMax && allHighMinMax) {
+          const zg = allHighMinMax.min;
+          const zd = allLowMinMax.max;
+          if (zg > zd) {
             current = this.buildChannelFromBis(headWindow, data, curStart - 2, {
-              zg: channel.zg,
-              zd: channel.zd,
+              zg,
+              zd,
               gg: allHighMinMax.max,
               dd: allLowMinMax.min,
             });
@@ -535,11 +523,13 @@ export class ChannelCalculator {
     const allLowMinMax = minMaxBy(mergedBis, (b) => b.low);
     const gg = allHighMinMax ? allHighMinMax.max : Math.max(head.gg, tail.gg);
     const dd = allLowMinMax ? allLowMinMax.min : Math.min(head.dd, tail.dd);
+    const zg = allHighMinMax ? allHighMinMax.min : Math.min(head.zg, tail.zg);
+    const zd = allLowMinMax ? allLowMinMax.max : Math.max(head.zd, tail.zd);
 
     return {
       bis: mergedBis,
-      zg: head.zg,
-      zd: head.zd,
+      zg,
+      zd,
       gg,
       dd,
       level: head.level,

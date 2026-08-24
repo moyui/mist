@@ -408,8 +408,8 @@ describe('ChannelCalculator', () => {
       ]);
     });
 
-    it('extends a base channel by pairs of bis while preserving immutable central zone (zg/zd)', () => {
-      // 7 笔：前 5 笔确立基础中枢，后 2 笔延伸且触及 [zd, zg]
+    it('extends a base channel by pairs of bis and updates to dynamic common intersection (zg/zd)', () => {
+      // 7 笔（向上进入）：前 5 笔确立基础中枢，后 2 笔延伸并共同收敛公共交集
       const valid = [100, 101, 102, 103, 104, 105, 106].map((base, index) =>
         makeBi(index, base, 20),
       );
@@ -417,11 +417,29 @@ describe('ChannelCalculator', () => {
       expect(result.phaseB).toHaveLength(1);
       const channel = result.phaseB[0];
       expect(channel.bis.length).toBeGreaterThanOrEqual(7);
-      // 缠论第20课中心定理一：保持基础中枢確立的 zd/zg 不变
-      expect(channel.zg).toBe(result.phaseA[0].zg);
-      expect(channel.zd).toBe(result.phaseA[0].zd);
-      expect(channel.gg).toBeGreaterThanOrEqual(channel.zg);
-      expect(channel.dd).toBeLessThanOrEqual(channel.zd);
+      // 动态公共重叠交集：zg = min(120..126) = 120, zd = max(100..106) = 106
+      expect(channel.zg).toBe(120);
+      expect(channel.zd).toBe(106);
+      expect(channel.gg).toBe(126);
+      expect(channel.dd).toBe(100);
+      expect(channel.zg).toBeGreaterThan(channel.zd);
+    });
+
+    it('terminates extension when dynamic common intersection becomes empty (zg <= zd)', () => {
+      // 5 笔基础中枢在 [100, 124] 震荡，第 6、7 笔跌至 70..95（最高 95 < 最低 104），交集为空无法延伸
+      const bis = [
+        makeBi(0, 100, 20), // 100..120 Up (low=100 < dd=101)
+        makeBi(1, 101, 20), // 101..121 Down
+        makeBi(2, 102, 20), // 102..122 Up
+        makeBi(3, 103, 20), // 103..123 Down
+        makeBi(4, 104, 20), // 104..124 Up (high=124 > gg=123)
+        makeBi(5, 75, 20), // 75..95 Down (脱离重叠区)
+        makeBi(6, 70, 20), // 70..90 Up
+      ];
+      const result = service.createChannels(bis);
+      expect(result.phaseB).toHaveLength(1);
+      // 延伸应终止，中枢保持为 5 笔基础中枢
+      expect(result.phaseB[0].bis).toHaveLength(5);
     });
   });
 });
