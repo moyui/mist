@@ -68,8 +68,9 @@ of the LAST Channel of a same-direction Channel chain.
 - **THEN** the later Channel MUST progress in the trend direction (up: `later.gg > earlier.gg` and
   `later.dd > earlier.dd`; down: symmetric) — when it does not, the chain MUST break between them
 - **AND** the chain MUST NOT require its own non-expansion check: central expansion is resolved upstream by
-  the `chan-central-extension` capability (adjacent wave ranges strictly separated), and an expansion-merged
-  Channel (`expanded=true`) is a same-level Channel treated like any ordinary Channel
+  the `chan-central-extension` capability (no expansion pair remains; a zone-overlapping adjacent pair may
+  retain overlapping wave ranges and then simply breaks the chain here via position progress), and an
+  expansion-merged Channel (`expanded=true`) is a same-level Channel treated like any ordinary Channel
 
 #### Scenario: Results are ordered and deterministic
 - **WHEN** `detectDivergences` returns its results

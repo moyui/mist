@@ -5,26 +5,9 @@
 
 ## 1. 汇总 active change 剩余项
 
-- [x] 1.1 盘点 `integrate-production-realtime-subscription-lifecycle`（42/43，剩 1 项）
-
-  | Task | 状态 | 阻塞 |
-  |------|------|------|
-  | 6.7 source-scoped rollback 演练 | ✅ **已解决**（2026-08-23） | QMT journal recovery 实证：operator_observation 解锁，控制面恢复 |
-  | 6.8 全面 reconciliation | `decision-blocked` | 依赖项目负责人审核所有证据 |
-
-- [x] 1.2 盘点 `add-realtime-subscription-operator-ux`（19/20，剩 1 项）
-
-  | Task | 状态 | 阻塞 |
-  |------|------|------|
-  | 4.3 matched backend contract 测试 | `deferred` | 需 live 环境 + 终端 HIL；前端侧独立验证已完成 |
-
-- [x] 1.3 盘点 `extract-backtest-runtime`（27/27，全部完成）
-
-  | Task | 状态 | 证据 |
-  |------|------|------|
-  | 5.5 Windows restart/isolation + TDX/QMT quantity HIL | ✅ **已解决** | evidence/2026-08-23-quantity-profile-write-layer.md §5.5a/5.5b |
-  | 5.6 部署验收（backtest cutover） | ✅ **已解决**（2026-08-23） | evidence/2026-08-23-deployment-verification.md |
-
+- [x] 1.1 盘点 `integrate-production-realtime-subscription-lifecycle`（43/43，已于 2026-08-24 归档）
+- [x] 1.2 盘点 `add-realtime-subscription-operator-ux`（20/20，已于 2026-08-24 归档）
+- [x] 1.3 盘点 `extract-backtest-runtime`（27/27，全部完成，已归档）
 - [x] 1.4 盘点 `capture-realtime-provider-anomalies`（0/14，剩 14 项）
 
   | 阶段 | 状态 | 阻塞 |
@@ -34,32 +17,22 @@
   | §3 运维 workflow（4 项） | `coding` | 无阻塞 |
   | §4 发布与 review（3 项） | `env-blocked` | 依赖首个真实 incident |
 
-- [x] 1.5 盘点 `add-chan-bsp-realtime-evaluation`（21/23，剩 2 项）
-
-  | Task | 状态 | 阻塞 |
-  |------|------|------|
-  | 7.2 shadow 实盘验证 | `env-blocked` | 需 TDX 终端运行 + 交易时段 |
-  | 7.3 切 on 决策 | `decision-blocked` | 依赖 7.2 shadow 数据 |
-
+- [x] 1.5 盘点 `add-chan-bsp-realtime-evaluation`（已于 2026-08-24 归档）
 - [x] 1.6 盘点 `add-chan-bsp-backtest-evaluation`（22/22，全部完成；归档前置为部署项）
 
   | 阶段 | 状态 | 证据 |
   |------|------|------|
   | §1 前置与基线（3 项） | ✅ **已解决** | commit `fa523648`（imputer 0 异常化）+ 全量基线 186 suites/1555 tests |
-  | §2 实体与 migration（4 项） | ✅ **已解决** | commit `f243bfd2`/`072b085e`；021 生产执行待部署窗口（forward-only） |
+  | §2 实体与 migration（4 项） | ✅ **已解决** | commit `f243bfd2`/`072b085e`；021 生产执行已完成（2026-08-22） |
   | §3 回测编译分派（4 项） | ✅ **已解决** | commit `aff953ed` |
   | §4 回测求值分派 + 回放（4 项） | ✅ **已解决** | commit `aff953ed`（完整信号流/矫正层第一原则）+ `681855e6`（共享 serializer） |
-  | §5 单测（3 项） | ✅ **已解决** | executor 11/11 + create 8/8 + imputer 9 新用例；5.3 本地隔离 mysql:8.4 readback（001-021/kind 列/backfill 实证） |
+  | §5 单测（3 项） | ✅ **已解决** | executor 11/11 + create 8/8 + imputer 9 新用例；5.3 本地隔离 mysql:8.4 readback |
   | §6 可观测性（2 项） | ✅ **已解决** | `backtest chan_bsp plan compiled` info 日志（L204） |
-  | §7 验证与收尾（2 项） | `deploy-blocked` | 代码/单测/基线已推送（`f22c2c30` + tasks 补勾 `6ef15bb`）；归档前置 = extract-backtest-runtime 5.6 cutover + realtime shadow |
+  | §7 验证与收尾（2 项） | `deploy-blocked` | 代码/单测/基线已推送（`f22c2c30`）；归档前置 = 生产部署验证 |
 
-- [x] 1.7 盘点 `remove-quantity-profile-gates`（12/12，全部完成）
-
-  | 阶段 | 状态 | 证据 |
-  |------|------|------|
-  | §1 移除 gate（3处） | ✅ **已解决** | commit d0dc170 + 8b12623 |
-  | §2 QMT 数据补齐 | ✅ **已解决** | 66,034 根 1m + 全周期数据 |
-  | §3 部署验证 | ✅ **已解决** | run 11: k.volume completed, 15 signals |
+- [x] 1.7 盘点 `remove-quantity-profile-gates`（12/12，已于 2026-08-24 归档）
+- [x] 1.8 盘点 `audit-chancore-algorithms`（8/8，已于 2026-08-24 归档）
+- [x] 1.9 盘点 `fix-chan-central-expansion-condition`（7/7，已于 2026-08-24 归档）
 
 ## 2. 汇总代码质量遗留
 

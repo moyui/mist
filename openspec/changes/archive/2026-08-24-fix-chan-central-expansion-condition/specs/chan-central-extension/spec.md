@@ -18,7 +18,7 @@ iterating to a fixed point. This provides the clean non-overlapping Channel inpu
 (背驰) consumption requires at both levels, and MUST NOT alter the output of
 `mergeK/findFenxings/createBi/createDuan`.
 
-#### Scenario: Adjacent same-level Channels satisfying the expansion condition are resolved
+#### Scenario: Adjacent same-level Channels with overlapping or touching wave ranges are resolved
 - **WHEN** either `createChannels` or `createDuanChannels` produces a Phase B sequence in which two
   adjacent same-level Channels satisfy the expansion condition (strictly separated central zones AND
   overlapping/touching wave ranges, i.e. `isCentralExpansion` holds)
@@ -28,7 +28,7 @@ iterating to a fixed point. This provides the clean non-overlapping Channel inpu
   remove the same-level wave-range overlap) and continue to a fixed point
 - **AND** `phaseA` MUST remain the raw enumerated candidates (unchanged) at both levels
 
-#### Scenario: Expansion is judged by central-zone separation and wave-range overlap
+#### Scenario: Expansion is judged by wave range overlap with touch counting
 - **WHEN** `isCentralExpansion(prev, next)` evaluates two adjacent same-level Channels
 - **THEN** it MUST use both the central-zone boundaries (`zd`/`zg`) and the wave-range extrema
   (`dd`/`gg`) through a minimal structural interface that is independent of Channel level (Bi or Duan)
@@ -62,7 +62,7 @@ iterating to a fixed point. This provides the clean non-overlapping Channel inpu
 - **WHEN** a Channel in Phase B is not part of any expansion
 - **THEN** it MUST remain unchanged in the resolved Phase B output, including `expanded: false`
 
-#### Scenario: Phase B resolution guarantees no expansion pair, determinism and strict separation only for non-overlapping-zone neighbors
+#### Scenario: Phase B resolution guarantees strict adjacent separation and determinism
 - **WHEN** `createChannels` or `createDuanChannels` returns its resolved Phase B sequence
 - **THEN** every adjacent pair MUST satisfy `isCentralExpansion(prev, next) === false` — i.e. either
   `max(prev.zd, next.zd) <= min(prev.zg, next.zg)` (central zones overlap: same-zone extension, kept
