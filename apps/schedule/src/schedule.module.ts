@@ -1,4 +1,12 @@
-import { Security, K, SecuritySourceConfig } from '@app/shared-data';
+import {
+  Security,
+  K,
+  KExtensionEf,
+  KExtensionTdx,
+  KExtensionQmt,
+  SecuritySourceConfig,
+  RealtimeSubscriptionAssignment,
+} from '@app/shared-data';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
@@ -46,7 +54,15 @@ import * as path from 'path';
           timezone: '+08:00',
           synchronize: false,
           logging: configService.get('NODE_ENV') !== 'production',
-          entities: [Security, K, SecuritySourceConfig],
+          entities: [
+            Security,
+            K,
+            KExtensionEf,
+            KExtensionTdx,
+            KExtensionQmt,
+            SecuritySourceConfig,
+            RealtimeSubscriptionAssignment,
+          ],
           poolSize: 10,
           connectorPackage: 'mysql2',
           extra: {
