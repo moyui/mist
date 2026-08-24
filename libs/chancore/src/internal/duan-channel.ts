@@ -192,9 +192,9 @@ export class DuanChannelCalculator {
   }
 
   /**
-   * 延伸中枢：首尾各延伸 2 段（成对），缠论第 20 课中心定理一（区间不可变）：
-   * 基础 3 段确立 zd/zg 后固定，新增段与固定的 [zd, zg] 有重叠即可延伸，
-   * 延伸仅更新波动极值 gg/dd 与时间边界，绝不重算 zd/zg。
+   * 延伸中枢：首尾各延伸 2 段（成对），缠论多段中枢全量重叠交集：
+   * 包含新增段在内的全量构成段必须维持公共重叠交集（zg > zd），
+   * 延伸时以全量交集更新中枢区间 zd/zg 与波动极值 gg/dd。
    */
   private extendChannel(
     channel: ChanDuanChannel,
@@ -222,22 +222,16 @@ export class DuanChannelCalculator {
       changed = false;
 
       if (curEnd + 2 < duans.length) {
-        const nextDuan1 = duans[curEnd + 1];
-        const nextDuan2 = duans[curEnd + 2];
-        const overlaps1 =
-          Math.max(nextDuan1.low, channel.zd) <=
-          Math.min(nextDuan1.high, channel.zg);
-        const overlaps2 =
-          Math.max(nextDuan2.low, channel.zd) <=
-          Math.min(nextDuan2.high, channel.zg);
-        if (overlaps1 && overlaps2) {
-          const tailWindow = duans.slice(curStart, curEnd + 3);
-          const allLowMinMax = minMaxBy(tailWindow, (d) => d.low);
-          const allHighMinMax = minMaxBy(tailWindow, (d) => d.high);
-          if (allLowMinMax && allHighMinMax) {
+        const tailWindow = duans.slice(curStart, curEnd + 3);
+        const allLowMinMax = minMaxBy(tailWindow, (d) => d.low);
+        const allHighMinMax = minMaxBy(tailWindow, (d) => d.high);
+        if (allLowMinMax && allHighMinMax) {
+          const zg = allHighMinMax.min;
+          const zd = allLowMinMax.max;
+          if (zg > zd) {
             current = this.buildChannelFromDuans(tailWindow, duans, curStart, {
-              zg: channel.zg,
-              zd: channel.zd,
+              zg,
+              zd,
               gg: allHighMinMax.max,
               dd: allLowMinMax.min,
             });
@@ -248,26 +242,20 @@ export class DuanChannelCalculator {
       }
 
       if (curStart - 2 >= 0) {
-        const prevDuan1 = duans[curStart - 1];
-        const prevDuan2 = duans[curStart - 2];
-        const overlaps1 =
-          Math.max(prevDuan1.low, channel.zd) <=
-          Math.min(prevDuan1.high, channel.zg);
-        const overlaps2 =
-          Math.max(prevDuan2.low, channel.zd) <=
-          Math.min(prevDuan2.high, channel.zg);
-        if (overlaps1 && overlaps2) {
-          const headWindow = duans.slice(curStart - 2, curEnd + 1);
-          const allLowMinMax = minMaxBy(headWindow, (d) => d.low);
-          const allHighMinMax = minMaxBy(headWindow, (d) => d.high);
-          if (allLowMinMax && allHighMinMax) {
+        const headWindow = duans.slice(curStart - 2, curEnd + 1);
+        const allLowMinMax = minMaxBy(headWindow, (d) => d.low);
+        const allHighMinMax = minMaxBy(headWindow, (d) => d.high);
+        if (allLowMinMax && allHighMinMax) {
+          const zg = allHighMinMax.min;
+          const zd = allLowMinMax.max;
+          if (zg > zd) {
             current = this.buildChannelFromDuans(
               headWindow,
               duans,
               curStart - 2,
               {
-                zg: channel.zg,
-                zd: channel.zd,
+                zg,
+                zd,
                 gg: allHighMinMax.max,
                 dd: allLowMinMax.min,
               },
@@ -390,11 +378,13 @@ export class DuanChannelCalculator {
     const allLowMinMax = minMaxBy(mergedDuans, (d) => d.low);
     const gg = allHighMinMax ? allHighMinMax.max : Math.max(head.gg, tail.gg);
     const dd = allLowMinMax ? allLowMinMax.min : Math.min(head.dd, tail.dd);
+    const zg = allHighMinMax ? allHighMinMax.min : Math.min(head.zg, tail.zg);
+    const zd = allLowMinMax ? allLowMinMax.max : Math.max(head.zd, tail.zd);
 
     return {
       duans: mergedDuans,
-      zg: head.zg,
-      zd: head.zd,
+      zg,
+      zd,
       gg,
       dd,
       level: head.level,

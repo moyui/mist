@@ -68,8 +68,8 @@ describe('DuanChannelCalculator (段级中枢，对称重叠无方向)', () => {
     expect(result.phaseB).toHaveLength(0);
   });
 
-  it('extends a base Channel by pairs of Duan while preserving immutable central zone (zg/zd)', () => {
-    // 5 段：3 段基础中枢 (d0..d2，zg=8, zd=3) 可尾部延伸 +2 段 (d3,d4，与 [3,8] 重叠)
+  it('extends a base Channel by pairs of Duan and updates to dynamic common intersection (zg/zd)', () => {
+    // 5 段：3 段基础中枢 (d0..d2) 尾部延伸 +2 段 (d3,d4)，共同收敛为 5 段公共交集 [4, 7]
     const duans: ChanDuan[] = [
       makeDuan('up', 10, 0, 0),
       makeDuan('down', 8, 2, 1),
@@ -86,12 +86,28 @@ describe('DuanChannelCalculator (段级中枢，对称重叠无方向)', () => {
       b.duans.length > a.duans.length ? b : a,
     );
     expect(merged.duans.length).toBeGreaterThanOrEqual(5);
-    // 缠论第20课中心定理一：基础3段确立的 zg=8, zd=3 保持不变，延伸只更新极值与时间
-    expect(merged.zg).toBe(8); // 前3段确立的 min(10,8,9)
-    expect(merged.zd).toBe(3); // 前3段确立的 max(0,2,3)
+    // 动态公共重叠交集：zg = min(10,8,9,7,8) = 7, zd = max(0,2,3,4,4) = 4
+    expect(merged.zg).toBe(7);
+    expect(merged.zd).toBe(4);
     expect(merged.gg).toBe(10); // max(10,8,9,7,8)
     expect(merged.dd).toBe(0); // min(0,2,3,4,4)
     expect(merged.expanded).toBe(false); // 单一中枢无相邻对，非扩张
+    expect(merged.zg).toBeGreaterThan(merged.zd);
+  });
+
+  it('terminates extension when dynamic common intersection becomes empty (zg <= zd)', () => {
+    // 3 段基础中枢在 [3, 8] 震荡，后续第 4、5 段跌至 0..2（最高 2 < 最低 3），交集为空无法延伸
+    const duans: ChanDuan[] = [
+      makeDuan('up', 10, 0, 0),
+      makeDuan('down', 8, 2, 1),
+      makeDuan('up', 9, 3, 2),
+      makeDuan('down', 2, 0, 3), // 脱离重叠区 (high=2 < zd=3)
+      makeDuan('up', 2, 0, 4),
+    ];
+
+    const result = new DuanChannelCalculator().createDuanChannels(duans);
+    expect(result.phaseB).toHaveLength(1);
+    expect(result.phaseB[0].duans).toHaveLength(3);
   });
 
   it('is deterministic across repeated calls and does not mutate input', () => {
