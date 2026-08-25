@@ -1,5 +1,4 @@
 import { Decimal8 } from '@app/decimal';
-import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import type { StrategyBar } from '../market-data/strategy-bar';
 
 export type StrategyImputationResolution =
@@ -42,7 +41,7 @@ export interface ProjectedStrategyBar {
 }
 
 const SHANGHAI_TRADING_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
-  timeZone: ASIA_SHANGHAI_TIMEZONE,
+  timeZone: 'Asia/Shanghai',
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
