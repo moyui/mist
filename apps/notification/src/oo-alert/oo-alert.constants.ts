@@ -30,6 +30,7 @@ export const SEVERITY_BY_PREFIX: Readonly<Record<string, OoAlertSeverity>> = {
   A7: 'P1',
   A8: 'P1',
   A9: 'P2',
+  A10: 'P1',
 };
 
 export interface OoAlertJobV1 {

@@ -1,0 +1,514 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between } from 'typeorm';
+import {
+  K,
+  Period,
+  RealtimeSubscriptionAssignment,
+  Security,
+  SecurityStatus,
+} from '@app/shared-data';
+import { TimezoneService } from '@app/timezone';
+import { subDays } from 'date-fns';
+
+export interface DimensionCheckResult {
+  readonly passed: boolean;
+  readonly summary: string;
+  readonly details?: string[];
+  readonly remediation?: string[];
+}
+
+export interface PreMarketInspectionReport {
+  readonly targetDate: string;
+  readonly overallStatus: 'PASSED' | 'FAILED';
+  readonly dimensions: {
+    readonly datasource: DimensionCheckResult;
+    readonly klines: DimensionCheckResult;
+    readonly subscription: DimensionCheckResult;
+    readonly realtime: DimensionCheckResult;
+    readonly infrastructure: DimensionCheckResult;
+  };
+  readonly markdown: string;
+  readonly sentToWechat: boolean;
+}
+
+const REQUIRED_INTRADAY_PERIODS: Period[] = [
+  Period.DAY,
+  Period.ONE_MIN,
+  Period.FIVE_MIN,
+  Period.FIFTEEN_MIN,
+  Period.THIRTY_MIN,
+  Period.SIXTY_MIN,
+];
+
+@Injectable()
+export class PreMarketInspectionService {
+  private readonly logger = new Logger(PreMarketInspectionService.name);
+
+  constructor(
+    @InjectRepository(K)
+    private readonly kRepo: Repository<K>,
+    @InjectRepository(Security)
+    private readonly securityRepo: Repository<Security>,
+    @InjectRepository(RealtimeSubscriptionAssignment)
+    private readonly assignmentRepo: Repository<RealtimeSubscriptionAssignment>,
+    private readonly timezoneService: TimezoneService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  /**
+   * Main entrypoint for 09:05 pre-market inspection.
+   */
+  async runInspection(now?: Date): Promise<PreMarketInspectionReport> {
+    const checkTime = now ?? this.timezoneService.getCurrentBeijingTime();
+    const dateStr = this.timezoneService.formatDate(checkTime);
+
+    this.logger.log(`[PreMarketInspection] Starting inspection for ${dateStr}`);
+
+    const [datasource, klines, subscription, realtime, infrastructure] =
+      await Promise.all([
+        this.checkDatasourceControlPlane(),
+        this.checkHistoricalKLines(checkTime),
+        this.checkSubscriptionLifecycle(),
+        this.checkRealtimePipeline(),
+        this.checkInfrastructure(),
+      ]);
+
+    const overallStatus: 'PASSED' | 'FAILED' =
+      datasource.passed &&
+      klines.passed &&
+      subscription.passed &&
+      realtime.passed &&
+      infrastructure.passed
+        ? 'PASSED'
+        : 'FAILED';
+
+    const report: PreMarketInspectionReport = {
+      targetDate: dateStr,
+      overallStatus,
+      dimensions: {
+        datasource,
+        klines,
+        subscription,
+        realtime,
+        infrastructure,
+      },
+      markdown: this.buildMarkdownReport(dateStr, overallStatus, {
+        datasource,
+        klines,
+        subscription,
+        realtime,
+        infrastructure,
+      }),
+      sentToWechat: false,
+    };
+
+    const sent = await this.deliverWechatReport(report.markdown);
+    return { ...report, sentToWechat: sent };
+  }
+
+  /**
+   * 维度 1: 数据源与 Journal 控制面对账检查
+   */
+  async checkDatasourceControlPlane(): Promise<DimensionCheckResult> {
+    const tdxBase =
+      this.configService.get<string>('TDX_BASE_URL') ??
+      'http://tdx-datasource:9001';
+    const qmtBase =
+      this.configService.get<string>('QMT_BASE_URL') ??
+      'http://qmt-datasource:9002';
+
+    const errors: string[] = [];
+    const remediation: string[] = [];
+
+    // Probe QMT health
+    try {
+      const qmtRes = await fetch(`${qmtBase}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!qmtRes.ok) {
+        errors.push(`QMT health probe returned HTTP ${qmtRes.status}`);
+      } else {
+        const body = (await qmtRes.json()) as Record<string, unknown>;
+        const sub = (body['subscriptions'] ?? {}) as Record<string, unknown>;
+        if (sub['reconciliationRequired'] === true) {
+          errors.push(
+            'QMT Journal reconciliation required (control plane locked)',
+          );
+          remediation.push(
+            '1. SSH to host: `ssh mist-box`',
+            '2. Create one-shot observation: `Set-Content F:\\quant\\MistAPI\\datasource\\state\\context-rebuild-observation.json \'{"native_subscribed_sub_ids":[]}\'`',
+            '3. Restart QMT datasource: `docker restart qmt-datasource`',
+          );
+        }
+        if (sub['journalHealthy'] === false) {
+          errors.push('QMT Journal is corrupted or unreadable');
+        }
+        const startupRecon = (sub['startupReconciliation'] ?? {}) as Record<
+          string,
+          unknown
+        >;
+        if (startupRecon['phase'] === 'degraded') {
+          errors.push(
+            `QMT startup reconciliation is degraded (unknownCount=${startupRecon['unknownCount']})`,
+          );
+        }
+      }
+    } catch (err) {
+      errors.push(
+        `QMT datasource unreachable: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    // Probe TDX health
+    try {
+      const tdxRes = await fetch(`${tdxBase}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!tdxRes.ok) {
+        errors.push(`TDX health probe returned HTTP ${tdxRes.status}`);
+      }
+    } catch (err) {
+      errors.push(
+        `TDX datasource unreachable: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    if (errors.length > 0) {
+      return {
+        passed: false,
+        summary: `数据源与 Journal 异常 (${errors.length} 项告警)`,
+        details: errors,
+        remediation: remediation.length > 0 ? remediation : undefined,
+      };
+    }
+
+    return {
+      passed: true,
+      summary: 'TDX & QMT 数据源就绪，Journal 对账健康',
+    };
+  }
+
+  /**
+   * 维度 2: 前一交易日收盘历史 K 线完整性检查
+   */
+  async checkHistoricalKLines(now: Date): Promise<DimensionCheckResult> {
+    const previousTradingDay = await this.resolvePreviousTradingDay(now);
+    if (!previousTradingDay) {
+      return {
+        passed: true,
+        summary: '未获取到前一交易日（首日或日历初始化），跳过 K 线校验',
+      };
+    }
+
+    const prevDateStr = this.timezoneService.formatDate(previousTradingDay);
+    const startOfDay = new Date(`${prevDateStr}T00:00:00+08:00`);
+    const endOfDay = new Date(`${prevDateStr}T23:59:59+08:00`);
+
+    // Query active assigned securities
+    const activeAssignments = await this.assignmentRepo.find({
+      relations: ['security', 'sourceConfig'],
+      where: {
+        security: { status: SecurityStatus.ACTIVE },
+      },
+    });
+
+    const securityIds = [
+      ...new Set(activeAssignments.map((a) => a.securityId)),
+    ];
+    if (securityIds.length === 0) {
+      return {
+        passed: true,
+        summary: '当前无 ACTIVE 订阅标的，K 线基线无需校验',
+      };
+    }
+
+    // Check presence of required periods for each security on previousTradingDay
+    const missingItems: string[] = [];
+    for (const secId of securityIds) {
+      for (const period of REQUIRED_INTRADAY_PERIODS) {
+        const count = await this.kRepo.count({
+          where: {
+            security: { id: secId },
+            period,
+            timestamp: Between(startOfDay, endOfDay),
+          },
+        });
+        if (count === 0) {
+          missingItems.push(
+            `标的 ID=${secId} 缺失 ${prevDateStr} 周期 ${period} 数据`,
+          );
+        }
+      }
+    }
+
+    if (missingItems.length > 0) {
+      return {
+        passed: false,
+        summary: `前一交易日 (${prevDateStr}) 存在 ${missingItems.length} 条 K 线缺失`,
+        details: missingItems.slice(0, 10), // Limit summary to first 10
+        remediation: [
+          `手动触发收盘同步补录：在后台执行 POST /schedule/sync-post-close，指定 targetDate=${prevDateStr}`,
+        ],
+      };
+    }
+
+    return {
+      passed: true,
+      summary: `前一交易日 (${prevDateStr}) 标的池各周期 K 线完整 (${securityIds.length} 标的)`,
+    };
+  }
+
+  /**
+   * 维度 3: 活跃订阅标的分配与统计
+   */
+  async checkSubscriptionLifecycle(): Promise<DimensionCheckResult> {
+    const assignments = await this.assignmentRepo.find({
+      relations: ['security', 'sourceConfig'],
+      where: {
+        security: { status: SecurityStatus.ACTIVE },
+      },
+    });
+
+    const bySource: Record<string, number> = {};
+    for (const a of assignments) {
+      const src = a.sourceConfig?.source ?? 'unknown';
+      bySource[src] = (bySource[src] ?? 0) + 1;
+    }
+
+    const summaryList = Object.entries(bySource)
+      .map(([s, c]) => `${s}: ${c} 标的`)
+      .join(', ');
+
+    return {
+      passed: true,
+      summary: summaryList
+        ? `活跃订阅池 (${summaryList})`
+        : '当前无 ACTIVE 订阅标的',
+    };
+  }
+
+  /**
+   * 维度 4: 实时数据流与 Bridge 链路通畅度检查
+   */
+  async checkRealtimePipeline(): Promise<DimensionCheckResult> {
+    const tdxBase =
+      this.configService.get<string>('TDX_BASE_URL') ??
+      'http://tdx-datasource:9001';
+    const qmtBase =
+      this.configService.get<string>('QMT_BASE_URL') ??
+      'http://qmt-datasource:9002';
+
+    const errors: string[] = [];
+
+    // Probe bridge and websocket readiness from datasources
+    try {
+      const tdxRes = await fetch(`${tdxBase}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (tdxRes.ok) {
+        const body = (await tdxRes.json()) as Record<string, unknown>;
+        const bridge = (body['bridge'] ?? {}) as Record<string, unknown>;
+        if (bridge['ready'] === false) {
+          errors.push('TDX Bridge TCP 未就绪 (bridge_ready=0)');
+        }
+      }
+    } catch (e) {
+      errors.push(`TDX 实时链路状态探测失败: ${e}`);
+    }
+
+    try {
+      const qmtRes = await fetch(`${qmtBase}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (qmtRes.ok) {
+        const body = (await qmtRes.json()) as Record<string, unknown>;
+        const bridge = (body['bridge'] ?? {}) as Record<string, unknown>;
+        if (bridge['ready'] === false) {
+          errors.push('QMT Bridge TCP 未就绪 (bridge_ready=0)');
+        }
+      }
+    } catch (e) {
+      errors.push(`QMT 实时链路状态探测失败: ${e}`);
+    }
+
+    if (errors.length > 0) {
+      return {
+        passed: false,
+        summary: '实时行情 Bridge / WS 链路异常',
+        details: errors,
+        remediation: [
+          '检查 Windows 宿主 TDX / QMT 终端登录状态及 9003/9004 TCP 端口连接',
+        ],
+      };
+    }
+
+    return {
+      passed: true,
+      summary: 'TDX / QMT Bridge TCP 与 WebSocket 就绪',
+    };
+  }
+
+  /**
+   * 维度 5: 基础设施存活性探测
+   */
+  async checkInfrastructure(): Promise<DimensionCheckResult> {
+    const errors: string[] = [];
+
+    // MySQL probe
+    try {
+      await this.securityRepo.query('SELECT 1');
+    } catch (err) {
+      errors.push(
+        `MySQL 连接探测失败: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    // Signal service probe
+    const signalHealthUrl =
+      this.configService.get<string>('SIGNAL_HEALTH_URL') ??
+      'http://signal:8010/health';
+    try {
+      const res = await fetch(signalHealthUrl, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) {
+        errors.push(`Signal 服务健康端点返回 HTTP ${res.status}`);
+      } else {
+        const body = (await res.json()) as Record<string, unknown>;
+        if (body['status'] !== 'ok') {
+          errors.push(`Signal 服务状态异常: status=${body['status']}`);
+        }
+      }
+    } catch (err) {
+      errors.push(
+        `Signal 服务无法访问: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    if (errors.length > 0) {
+      return {
+        passed: false,
+        summary: '底层基础设施或服务异常',
+        details: errors,
+        remediation: [
+          '使用 `docker ps` 排查异常容器 (mysql, signal) 并查看日志',
+        ],
+      };
+    }
+
+    return {
+      passed: true,
+      summary: 'MySQL 与 Signal 运行正常',
+    };
+  }
+
+  /**
+   * 生成深度结构化 Markdown 简报
+   */
+  buildMarkdownReport(
+    dateStr: string,
+    overallStatus: 'PASSED' | 'FAILED',
+    dimensions: PreMarketInspectionReport['dimensions'],
+  ): string {
+    const isPassed = overallStatus === 'PASSED';
+    const headerEmoji = isPassed ? '🟢' : '🔴';
+    const headerTitle = isPassed
+      ? '09:05 盘前系统体检通过 (All Green)'
+      : '09:05 盘前体检发现异常 (需立即介入)';
+
+    const lines: string[] = [
+      `### ${headerEmoji} ${headerTitle}`,
+      `- **交易日期**：${dateStr}`,
+      `- **数据源/Journal**：${dimensions.datasource.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.datasource.summary}）`,
+      `- **昨夜收盘K线**：${dimensions.klines.passed ? '🟢 完整' : '🔴 缺失'}（${dimensions.klines.summary}）`,
+      `- **活跃订阅分配**：${dimensions.subscription.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.subscription.summary}）`,
+      `- **实时通信链路**：${dimensions.realtime.passed ? '🟢 通畅' : '🔴 异常'}（${dimensions.realtime.summary}）`,
+      `- **基础服务状态**：${dimensions.infrastructure.passed ? '🟢 正常' : '🔴 故障'}（${dimensions.infrastructure.summary}）`,
+    ];
+
+    if (!isPassed) {
+      lines.push('', '---', '#### ⚠️ 故障详情与排查指引：');
+      for (const [dimKey, result] of Object.entries(dimensions)) {
+        if (!result.passed) {
+          lines.push(`**【${dimKey}】** ${result.summary}`);
+          if (result.details && result.details.length > 0) {
+            for (const d of result.details) {
+              lines.push(`  - ❌ ${d}`);
+            }
+          }
+          if (result.remediation && result.remediation.length > 0) {
+            lines.push('  - ⚡ **恢复指引**：');
+            for (const r of result.remediation) {
+              lines.push(`    ${r}`);
+            }
+          }
+        }
+      }
+    } else {
+      lines.push(
+        '',
+        '> 距离 09:15 订阅重置还有 10 分钟，距离 09:30 开盘还有 25 分钟，全系统就绪。',
+      );
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * 推送企业微信机器人 Webhook
+   */
+  async deliverWechatReport(markdown: string): Promise<boolean> {
+    const webhook =
+      this.configService.get<string>('OO_ALERT_WECHAT_WEBHOOK') ||
+      this.configService.get<string>('NOTIFICATION_WECHAT_WEBHOOK');
+
+    if (!webhook) {
+      this.logger.warn(
+        '[PreMarketInspection] No WeCom webhook configured (OO_ALERT_WECHAT_WEBHOOK / NOTIFICATION_WECHAT_WEBHOOK missing), skipping dispatch',
+      );
+      return false;
+    }
+
+    try {
+      const res = await fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          msgtype: 'markdown',
+          markdown: {
+            content: markdown,
+          },
+        }),
+      });
+      if (!res.ok) {
+        this.logger.error(
+          `[PreMarketInspection] WeCom webhook returned HTTP ${res.status}`,
+        );
+        return false;
+      }
+      this.logger.log(
+        '[PreMarketInspection] Successfully delivered report to WeChat',
+      );
+      return true;
+    } catch (err) {
+      this.logger.error(
+        `[PreMarketInspection] Failed to send report to WeChat: ${err}`,
+      );
+      return false;
+    }
+  }
+
+  private async resolvePreviousTradingDay(
+    currentDate: Date,
+  ): Promise<Date | null> {
+    for (let i = 1; i <= 10; i++) {
+      const candidate = subDays(currentDate, i);
+      if (await this.timezoneService.isTradingDay(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+}

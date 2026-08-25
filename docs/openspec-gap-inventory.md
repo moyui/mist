@@ -1,89 +1,71 @@
-# OpenSpec 缺口清单（2026-08-21 修订，基线 08-14）
+# OpenSpec 缺口清单（2026-08-25 修订，基线 08-25）
 
 > 本文件是 Mist 平台 OpenSpec 缺口全景的**唯一权威清单**。**更新任何 change 状态时同步修订本文件。**
 
 ## 状态速览
 
-- `specs/`：67 个已采纳 spec
-- `changes/`：**5 个 active change**（`archive/` 下 110+ 已归档）
-- **价值闭环已打通**（2026-08-13）：`deliver-strategy-notifications` 归档 —— 实时K→信号→PENDING→QQ/微信投递链全通
-- **缠论能力进入扩展期**：段/背驰/段级中枢/中枢扩张四个 change 已归档（08-21）；买卖点已创建为 active change（依赖链：段→背驰→段级中枢→中枢扩张→买卖点）
-- **平台基建成熟**：指标库拆分共享已归档（08-21）；实时订阅重启恢复已归档（08-21）；Linux 部署栈迁移 proposal 已放弃（change 删除，08-21）
+- `specs/`：**69 个已采纳 spec**（新增 `pre-market-health-inspection`、`trading-timeline-governance`）
+- `changes/`：**2 个 active change**（`capture-realtime-provider-anomalies` 待被动触发；`track-remaining-work` 全量追踪）
+- **全链路价值闭环与主动治理就绪**（2026-08-25）：
+  - 09:05 盘前主动体检与全绿/异常诊断简报打通（`add-reconciliation-blocked-alert` 归档）
+  - 实时K→信号→PENDING→QQ/微信投递链全通
+  - 缠论买卖点实时与回测求值均已落地归档（08-24）
+  - 收盘后权威同步与晨间兜底均已落地归档（08-24）
+- **平台基建成熟**：Backtest 独立运行时拆分已归档（08-24）；订阅生命周期与操作台已归档（08-24）；Linux 迁移已明确放弃
 
 ---
 
 ## 1. 可归档（0 个）
 
-`fix-tdx-historical-amount-unit` 已于 08-14 归档，当前无可归档 change。
+`add-reconciliation-blocked-alert` 已于 08-25 归档，当前无可归档 change。
 
 ---
 
-## 2. 收尾债（3 个）
+## 2. 被动 / 等待真实场景（1 个）
 
-| Change | 进度 | 剩余项 |
+| Change | 进度 | 状态与说明 |
 |---|---|---|
-| `integrate-production-realtime-subscription-lifecycle` | 41/43 | 6.7 源级回滚演练 + 6.8 全量核对归档（需 Windows appliance 手动演练窗口） |
-| `extract-backtest-runtime` | 33/36 | 5.2 OTel 指标 + 5.5 Windows restart/isolation + TDX/QMT quantity HIL（ineligible 前置）+ 5.6 部署验收 |
-| `add-realtime-subscription-operator-ux` | 19/20 | 4.3 真机联测（Deferred，前端独立验证已完成） |
+| `capture-realtime-provider-anomalies` | 13/14 | 被动契约：只读采集器/脱敏/Runbook/Workflow 均已就绪（13 项全绿），§4.3 等首个真实 incident 自然发生后复盘，不阻塞正常发布 |
 
 ---
 
-## 3. 缠论扩展（4 个已归档 + 1 个 active）
+## 3. 全局追踪（1 个）
 
-缠论严格依赖链：**笔 → 段 → 段级中枢 → 背驰 → 买卖点**
-
-| Change | 状态 | 位置 | 一句话 |
-|---|---|---|---|
-| `add-chan-duan-segment` | 已归档（08-21） | 链条第一环 | **段（Duan/线段）算法**：特征序列法，单遍递推 + 缺口处理；段是背驰/买卖点的前置 |
-| `add-chan-divergence` | 已归档（08-21） | 段之后 | **背驰判定**：MACD 红绿柱面积/高度度量力度衰竭（离开段力度 < 进入段力度）；笔级和段级复用同一算法 |
-| `add-chan-duan-channel` | 已归档（08-21） | 段级中枢 | **段级中枢**：以段为构成单元的中枢，几何定义同笔级（zg/zd/gg/dd + 5 单元滑窗 + mergeSpans） |
-| `add-chan-central-extension` | 已归档（08-21） | 高级扩展 | **中枢扩张**：残留波动区间重叠的同级中枢合并（更高级别中枢雏形） |
-
-> 注：买卖点 `add-chan-buy-sell-point` 已创建为 **active change**（08-21，23 任务），是依赖链的最后一环。
-
----
-
-## 4. 已归档的规划项（08-14 时点列出的 3 个规划均已定案）
-
-| Change | 状态 | 内容 |
+| Change | 状态 | 职责 |
 |---|---|---|
-| `extract-shared-indicators-library` | 已归档（08-21） | **指标库拆分**：两套重复的 MACD/KDJ 实现（indicator.service vs strategy/analysis）共享核心纯计算；策略端经 `StrategyAnalysisObservationCache` 复用 |
-| `migrate-stack-to-linux-node-with-ssh-tunnel` | **已放弃**（08-21 删除） | **部署栈迁移到 Linux**：proposal 已放弃，change 整个删除（含 linux-service-node-deployment spec）；Windows 内存方案改走其他途径 |
-| `realtime-subscription-restart-recovery` | 已归档（08-21，29/29） | **实时订阅重启恢复**：终端/桥重启后订阅状态失配静默断流（同族问题两处生产实证） |
+| `track-remaining-work` | active | 全量剩余工作与跨环境 HIL 状态追踪 |
 
 ---
 
-## 5. 被动（1 个）
+## 4. 近期归档（08-24 ~ 08-25）
 
-| Change | 进度 | 内容 |
+| 日期 | Change | 内容与进度 |
 |---|---|---|
-| `capture-realtime-provider-anomalies` | 0/14 | 被动契约：等真实 incident 才执行，不阻塞正常路径；禁止 fault injection |
+| **08-25** | `add-reconciliation-blocked-alert` | 16/16：09:05 盘前主动体检诊断简报、A10 QMT Journal 阻塞告警、@app/timezone 调度与窗口收敛 |
+| **08-24** | `sync-post-close-market-data` | 6.5/6.5：22:30/06:30 收盘后多周期权威同步与晨间兜底 |
+| **08-24** | `add-chan-bsp-backtest-evaluation` | 22/22：缠论一二三类买卖点回测运行时与事件发射 |
+| **08-24** | `add-chan-bsp-realtime-evaluation` | 缠论一二三类买卖点实时求值与信号集成 |
+| **08-24** | `extract-backtest-runtime` | 27/27：回测独立运行时拆分与 TCP RPC 客户端 |
+| **08-24** | `integrate-production-realtime-subscription-lifecycle` | 43/43：生产订阅生命周期管理与 09:15 权威对账 |
+| **08-24** | `add-realtime-subscription-operator-ux` | 20/20：前端实时订阅管理操作台 |
+| **08-24** | `remove-quantity-profile-gates` | 12/12：解除量比硬门禁与数量计算简化 |
+| **08-24** | `audit-chancore-algorithms` | 8/8：缠论核心算法审计与基准固化 |
+| **08-24** | `fix-chan-central-expansion-condition` | 7/7：中枢扩张条件与区间重叠修复 |
 
 ---
 
-## 6. 已完成未归档 = 0
+## 5. 跨环境与实盘运行验收（HIL 待办）
 
-当前无"全勾未 archive"的遗漏。
+以下属于在代码与单测已完成后，依赖 **Windows 宿主 + 真实行情终端 + 交易时段** 的在线验收与调优：
 
----
-
-## 7. 近期归档（08-13/08-14，含并行会话）
-
-| 日期 | Change |
-|---|---|
-| 08-14 | remediate-alert-delivery-integrity（40/40，告警规则验证） |
-| 08-13 | add-oo-health-alerts（OO 健康告警规则）、**deliver-strategy-notifications**（21/21，价值闭环）、fixed-point-candle-arithmetic（16/16，定点门禁）、restore-mock-env-candle-assertions（22/22，mock 断言 OO）、repair-chan-bi-overlap-rendering（补录） |
-| 08-12 | 九连归档（roadmap G2-G4、retire-diagnostic、decouple F4、fix-tdx E-0、otel-gaps 6.3、datasource-logs、declarative、openssh、remediate-otel） |
+1. **实时策略实盘观察与切 On 决策**：`REALTIME_PRODUCTIZATION_MODE=shadow` 实盘运行观察，评估切换为 `on`。
+2. **实时订阅断流恢复实盘演练**：真实 TDX/QMT 进程重启后断流检测与 A7 告警阈值实盘校准。
+3. **盘前巡检与收盘同步生产观察**：部署到 Windows Appliance（`mist-schedule` 容器）后观察 09:05 简报与 22:30/06:30 同步任务。
 
 ---
 
-## 8. 平台能力总览（08-14 基线）
+## 6. 明确废弃与已清理项
 
-- **数据采集**：TDX/QMT/EastMoney 历史 K + DB 落库（3 provider）
-- **实时链路（闭环已通）**：schema-v2 → snapshot → candle 聚合（定点化）→ BullMQ → apps/signal → **PENDING → QQ/微信投递**
-- **缠论**：合并K / 分型 / 笔 / 笔级中枢 / **段** / **背驰** / **段级中枢** / **中枢扩张**（均已实现，08-21 归档）；买卖点 active 推进中
-- **策略**：定义注册（creation-only）+ KDJ/MACD 指标字段 + signal-level 回测（apps/backtest）
-- **前端**：K 线 / 策略工作台 / 实时订阅运营页；dashboard mock（G3 deferred）
-- **部署**：12 容器 Compose + OTel/OpenObserve；Linux 迁移提案已放弃（08-21）
-- **运维**：SSH 直连 + 恢复操作清单 + OO 查询手册 + 声明式配置
-- **通知**：QQ（NapCat OneBot）+ 企业微信 webhook（apps/notification，at-least-once + dead-letter）
+- `feat/strategy-portfolio-backtesting`（多策略组合回测）：已标记**废弃**，清理过时远端分支。
+- `migrate-stack-to-linux-node-with-ssh-tunnel`（Linux 迁移）：提案已**放弃并删除**。
+- `feat/realtime-subscription-recovery`：已完全合并至 master，清理过时分支。

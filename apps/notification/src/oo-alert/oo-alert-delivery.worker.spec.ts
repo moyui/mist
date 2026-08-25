@@ -80,7 +80,7 @@ describe('OoAlertDeliveryWorker', () => {
 });
 
 describe('SEVERITY_BY_PREFIX', () => {
-  it('covers every rules.json prefix (A1..A9) — L4 contract lock', () => {
+  it('covers every rules.json prefix (A1..A10) — L4 contract lock', () => {
     // Must stay in lockstep with mist-deploy/oo-alerts/rules.json; the sync
     // script enforces the same mapping on the deploy side.
     expect(SEVERITY_BY_PREFIX).toEqual({
@@ -93,6 +93,7 @@ describe('SEVERITY_BY_PREFIX', () => {
       A7: 'P1',
       A8: 'P1',
       A9: 'P2',
+      A10: 'P1',
     });
   });
 });

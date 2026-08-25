@@ -1,17 +1,27 @@
 import { Controller, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
-import { ASIA_SHANGHAI_TIMEZONE, TimezoneService } from '@app/timezone';
+import {
+  ASIA_SHANGHAI_TIMEZONE,
+  CRON_POST_CLOSE_SYNC_MORNING_0630,
+  CRON_POST_CLOSE_SYNC_NIGHTLY_2230,
+  CRON_PRE_MARKET_INSPECTION_0905,
+  TimezoneService,
+} from '@app/timezone';
 import { PostCloseSyncService } from '../../mist/src/collector';
+import { PreMarketInspectionService } from './pre-market-inspection.service';
 import { addDays, getMonth, subDays } from 'date-fns';
 
 /**
- * Data Collection Controller with Dual-Window Post-Close Synchronization.
+ * Data Collection Controller with Dual-Window Post-Close Synchronization
+ * and 09:05 Pre-Market Automated Health Inspection.
  *
- * 1. Nightly primary sync at 22:30 (Monday - Friday on A-share trading days)
+ * 1. Pre-market health inspection at 09:05 (Monday - Friday on A-share trading days)
+ *    - 5-dimension comprehensive health & readiness probe before 09:15 reset barrier
+ * 2. Nightly primary sync at 22:30 (Monday - Friday on A-share trading days)
  *    - Ingests authoritative DAY, 1m, 5m, 15m, 30m, 60m K-lines
  *    - Automatically appends WEEK on Friday and MONTH on last trading day of month
- * 2. Next-morning fallback retry at 06:30 (Tuesday - Saturday)
+ * 3. Next-morning fallback retry at 06:30 (Tuesday - Saturday)
  *    - Automatically retries sync for previous trading day before 09:15 pre-market lifecycle starts
  *
  * Trading day check uses TimezoneService.isTradingDay() which queries accurate exchange calendars.
@@ -23,12 +33,43 @@ export class DataCollectionController {
   constructor(
     private readonly postCloseSyncService: PostCloseSyncService,
     private readonly timezoneService: TimezoneService,
+    private readonly preMarketInspectionService: PreMarketInspectionService,
   ) {}
+
+  /**
+   * 盘前主动巡检任务：周一至周五 09:05 触发（北京时间）
+   */
+  @Cron(CRON_PRE_MARKET_INSPECTION_0905, {
+    name: 'schedule-pre-market-inspection-0905',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
+  })
+  async handlePreMarketInspection(): Promise<void> {
+    const now = this.timezoneService.getCurrentBeijingTime();
+    if (!(await this.timezoneService.isTradingDay(now))) {
+      this.logger.debug(
+        'Skipping pre-market inspection: not an A-share trading day',
+      );
+      return;
+    }
+
+    try {
+      const report = await this.preMarketInspectionService.runInspection(now);
+      this.logger.log(
+        `[Schedule] event=pre_market_inspection_completed targetDate=${report.targetDate} ` +
+          `status=${report.overallStatus} sentToWechat=${report.sentToWechat}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `[Schedule] event=pre_market_inspection_failed error="${message}"`,
+      );
+    }
+  }
 
   /**
    * 晚间主同步任务：周一至周五 22:30 触发（北京时间）
    */
-  @Cron('30 22 * * 1-5', {
+  @Cron(CRON_POST_CLOSE_SYNC_NIGHTLY_2230, {
     name: 'schedule-post-close-nightly-2230',
     timeZone: ASIA_SHANGHAI_TIMEZONE,
   })
@@ -84,7 +125,7 @@ export class DataCollectionController {
   /**
    * 晨间兜底重试任务：周二至周六 06:30 触发（北京时间，针对前一交易日）
    */
-  @Cron('30 6 * * 2-6', {
+  @Cron(CRON_POST_CLOSE_SYNC_MORNING_0630, {
     name: 'schedule-post-close-morning-0630',
     timeZone: ASIA_SHANGHAI_TIMEZONE,
   })

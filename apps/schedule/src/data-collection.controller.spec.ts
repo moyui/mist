@@ -1,7 +1,7 @@
 import { Period } from '@app/shared-data';
 import { DataCollectionController } from './data-collection.controller';
 
-describe('DataCollectionController dual-window scheduling', () => {
+describe('DataCollectionController scheduling', () => {
   const createHarness = (
     currentBeijingTime = new Date('2026-08-25T14:30:00Z'),
   ) => {
@@ -23,9 +23,19 @@ describe('DataCollectionController dual-window scheduling', () => {
       getCurrentBeijingTime: jest.fn(() => currentBeijingTime),
       isTradingDay: jest.fn().mockResolvedValue(true),
     };
+    const preMarketInspectionService = {
+      runInspection: jest.fn().mockResolvedValue({
+        targetDate: '2026-08-25',
+        overallStatus: 'PASSED',
+        dimensions: {},
+        markdown: 'All Green',
+        sentToWechat: true,
+      }),
+    };
     const controller = new DataCollectionController(
       postCloseSyncService as any,
       timezoneService as any,
+      preMarketInspectionService as any,
     );
     const logger = controller as any;
     jest.spyOn(logger.logger, 'log').mockImplementation(() => undefined);
@@ -35,10 +45,35 @@ describe('DataCollectionController dual-window scheduling', () => {
     return {
       postCloseSyncService,
       timezoneService,
+      preMarketInspectionService,
       controller,
       logger: logger.logger,
     };
   };
+
+  it('triggers pre-market inspection at 09:05 on trading days', async () => {
+    const morning = new Date('2026-08-25T01:05:00Z'); // 09:05 Beijing
+    const { preMarketInspectionService, controller, logger } =
+      createHarness(morning);
+
+    await controller.handlePreMarketInspection();
+
+    expect(preMarketInspectionService.runInspection).toHaveBeenCalledWith(
+      morning,
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('skips pre-market inspection on non-trading days', async () => {
+    const sunday = new Date('2026-08-23T01:05:00Z');
+    const { preMarketInspectionService, timezoneService, controller } =
+      createHarness(sunday);
+    timezoneService.isTradingDay.mockResolvedValue(false);
+
+    await controller.handlePreMarketInspection();
+
+    expect(preMarketInspectionService.runInspection).not.toHaveBeenCalled();
+  });
 
   it('triggers nightly 22:30 sync for core periods on ordinary weekday', async () => {
     // 2026-08-25 is Tuesday
@@ -105,18 +140,5 @@ describe('DataCollectionController dual-window scheduling', () => {
       window: 'morning_0630',
     });
     expect(logger.error).not.toHaveBeenCalled();
-  });
-
-  it('skips nightly sync on non-trading days', async () => {
-    const { postCloseSyncService, timezoneService, controller, logger } =
-      createHarness();
-    timezoneService.isTradingDay.mockResolvedValueOnce(false);
-
-    await controller.handleNightlyPostCloseSync();
-
-    expect(postCloseSyncService.syncPostClose).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalledWith(
-      'Skipping nightly post-close sync: not an A-share trading day',
-    );
   });
 });

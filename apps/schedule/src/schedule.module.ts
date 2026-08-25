@@ -22,6 +22,7 @@ import { scheduleEnvSchema } from '@app/config';
 import { LoggerModule } from 'nestjs-pino';
 
 import { DataCollectionController } from './data-collection.controller';
+import { PreMarketInspectionService } from './pre-market-inspection.service';
 import { HistoricalCollectorModule } from '../../mist/src/collector/historical-collector.module';
 import { TimezoneModule } from '@app/timezone';
 import * as path from 'path';
@@ -89,8 +90,10 @@ import * as path from 'path';
     NestScheduleModule.forRoot(),
     HistoricalCollectorModule,
     TimezoneModule,
+    TypeOrmModule.forFeature([K, Security, RealtimeSubscriptionAssignment]),
   ],
   controllers: [DataCollectionController],
-  providers: [],
+  providers: [PreMarketInspectionService],
+  exports: [PreMarketInspectionService],
 })
 export class ScheduleModule {}

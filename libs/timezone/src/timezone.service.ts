@@ -18,7 +18,7 @@ import { UtilsService } from '@app/utils';
 import {
   ASIA_SHANGHAI_TIMEZONE,
   BEIJING_DATE_REGEX,
-} from './date-format.const';
+} from './date-format.constants';
 
 /**
  * SZSE API response type.

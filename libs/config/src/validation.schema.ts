@@ -243,6 +243,8 @@ export const chanEnvSchema = commonEnvSchema.append({
  */
 export const scheduleEnvSchema = commonEnvSchema.append({
   PORT: Joi.number().port().default(8003),
+  NOTIFICATION_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
+  OO_ALERT_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
 });
 
 /**

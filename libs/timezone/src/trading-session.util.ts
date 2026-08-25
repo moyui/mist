@@ -1,5 +1,5 @@
 import { toZonedTime } from 'date-fns-tz';
-import { ASIA_SHANGHAI_TIMEZONE } from './date-format.const';
+import { ASIA_SHANGHAI_TIMEZONE } from './date-format.constants';
 
 /**
  * A-share trading-session boundaries (Asia/Shanghai), half-open with a 1-minute
@@ -16,6 +16,12 @@ export const MORNING_END_MIN = 11 * 60 + 31; // 11:31 (half-open)
 export const AFTERNOON_START_MIN = 13 * 60; // 13:00
 export const AFTERNOON_END_MIN = 15 * 60 + 1; // 15:01 (half-open)
 
+/**
+ * Weekday Intraday Subscription Add Window boundaries (09:15 to 15:00).
+ */
+export const INTRADAY_ADD_WINDOW_START_MIN = 9 * 60 + 15; // 09:15
+export const INTRADAY_ADD_WINDOW_END_MIN = 15 * 60; // 15:00
+
 /** True when `date`'s wall-clock time (Asia/Shanghai) is within a session. */
 export function isInTradingHours(date: Date): boolean {
   const zoned = toZonedTime(date, TIME_ZONE);
@@ -23,5 +29,20 @@ export function isInTradingHours(date: Date): boolean {
   return (
     (minutesOfDay >= MORNING_START_MIN && minutesOfDay < MORNING_END_MIN) ||
     (minutesOfDay >= AFTERNOON_START_MIN && minutesOfDay < AFTERNOON_END_MIN)
+  );
+}
+
+/**
+ * True when `date`'s wall-clock time (Asia/Shanghai) is on a weekday within 09:15-15:00
+ * (the intraday subscription activation window).
+ */
+export function isIntradayAddWindow(now: Date): boolean {
+  const shanghai = toZonedTime(now, TIME_ZONE);
+  const day = shanghai.getDay();
+  if (day === 0 || day === 6) return false;
+  const minutes = shanghai.getHours() * 60 + shanghai.getMinutes();
+  return (
+    minutes >= INTRADAY_ADD_WINDOW_START_MIN &&
+    minutes < INTRADAY_ADD_WINDOW_END_MIN
   );
 }

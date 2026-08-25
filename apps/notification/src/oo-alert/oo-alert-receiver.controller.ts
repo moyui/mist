@@ -73,7 +73,7 @@ export class OoAlertReceiverController {
       return { accepted: false };
     }
 
-    const prefix = alertName.slice(0, 2).toUpperCase();
+    const prefix = alertName.split('_')[0].toUpperCase();
     await this.queue.enqueueAlert({
       alertName,
       severity: SEVERITY_BY_PREFIX[prefix] ?? 'P2',

@@ -100,5 +100,16 @@ describe('OoAlertReceiverController', () => {
         severity: 'P2',
       }),
     );
+
+    await ctrl.receive('tok', {
+      alertName: 'A10_qmt_reconciliation_required',
+      ts: '2026-08-25T09:15:00Z',
+    });
+    expect(queue.enqueueAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alertName: 'A10_qmt_reconciliation_required',
+        severity: 'P1',
+      }),
+    );
   });
 });
