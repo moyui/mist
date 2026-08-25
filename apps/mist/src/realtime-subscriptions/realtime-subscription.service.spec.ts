@@ -138,11 +138,71 @@ describe('RealtimeSubscriptionService', () => {
     ).toHaveBeenCalledWith(DataSource.QMT);
   });
 
-  it('rejects an existing non-STOCK source config without writing', async () => {
+  it('accepts an existing INDEX source config and saves assignment', async () => {
     const security = Object.assign(new Security(), {
       id: 4,
       code: '000300',
       type: SecurityType.INDEX,
+      status: SecurityStatus.ACTIVE,
+    });
+    const config = Object.assign(new SecuritySourceConfig(), {
+      id: 19,
+      securityId: 4,
+      security,
+      source: DataSource.TDX,
+      formatCode: '000300.SH',
+      enabled: true,
+    });
+    const lockBuilder = chain({ getMany: jest.fn().mockResolvedValue([]) });
+    const countBuilder = chain({ getCount: jest.fn().mockResolvedValue(0) });
+    const manager = {
+      findOne: jest.fn((entity) => {
+        if (entity === SecuritySourceConfig) return Promise.resolve(config);
+        return Promise.resolve(null);
+      }),
+      getRepository: jest.fn((entity) => ({
+        createQueryBuilder: () =>
+          entity === SecuritySourceConfig ? lockBuilder : countBuilder,
+      })),
+      create: jest.fn((entity, value) => Object.assign(new entity(), value)),
+      save: jest.fn(async (value) => {
+        if (value instanceof RealtimeSubscriptionAssignment) {
+          value.id = 8;
+          value.createdAt = new Date('2026-08-04T15:00:00.000Z');
+          value.updatedAt = new Date('2026-08-04T15:00:00.000Z');
+        }
+        return value;
+      }),
+    };
+    const service = new RealtimeSubscriptionService(
+      {
+        transaction: (callback: (value: typeof manager) => unknown) =>
+          callback(manager),
+      } as never,
+      {} as never,
+      undefined,
+    );
+
+    const result = await service.initialize({
+      mode: 'existing',
+      securitySourceConfigId: 19,
+    });
+
+    expect(result).toMatchObject({
+      assignmentId: 8,
+      securityId: 4,
+      securityType: SecurityType.INDEX,
+      source: DataSource.TDX,
+      providerSymbol: '000300.SH',
+    });
+    expect(manager.save).toHaveBeenCalled();
+  });
+
+  it('rejects an existing unsupported security type source config without writing', async () => {
+    const security = Object.assign(new Security(), {
+      id: 4,
+      code: '000300',
+      type: 'BOND' as any,
       status: SecurityStatus.ACTIVE,
     });
     const config = Object.assign(new SecuritySourceConfig(), {

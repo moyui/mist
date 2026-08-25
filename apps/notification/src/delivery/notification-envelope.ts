@@ -44,7 +44,7 @@ export function buildNotificationEnvelope(
   const securityCode =
     security?.code ?? String(signal?.securityId ?? alertEvent.strategySignalId);
   const securityName = security?.name ?? '';
-  const direction = directionLabel(signal?.signalKind);
+  const direction = directionLabel(signal?.signalKind, ctx);
   const strategyName = strategyDefinition?.name ?? '';
   const periodLabel = signal ? formatPeriod(signal.period) : '';
   const signalTime = signal ? formatShanghaiTime(signal.signalTime) : '';
@@ -93,7 +93,22 @@ function buildSummary(parts: {
   }`;
 }
 
-function directionLabel(kind: unknown): string {
+const CHAN_BSP_TYPE_NAMES: Record<string, string> = {
+  first_buy: '一买',
+  second_buy: '二买',
+  third_buy: '三买',
+  first_sell: '一卖',
+  second_sell: '二卖',
+  third_sell: '三卖',
+};
+
+function directionLabel(kind: unknown, ctx?: Record<string, unknown>): string {
+  const chanBsp = ctx?.chanBsp as Record<string, unknown> | undefined;
+  if (chanBsp && typeof chanBsp.type === 'string') {
+    const typeName = CHAN_BSP_TYPE_NAMES[chanBsp.type] ?? chanBsp.type;
+    const unitLabel = chanBsp.units === 'duan' ? '段级' : '笔级';
+    return `${typeName} (${unitLabel})`;
+  }
   if (kind === 'entry') return '买入';
   if (kind === 'exit') return '卖出';
   return String(kind ?? 'signal');

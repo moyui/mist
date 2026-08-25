@@ -156,6 +156,7 @@ describe('RealtimeStrategyEvaluationService dispatch', () => {
       barType: 'complete',
     });
     expect(candidates[0].contextSnapshot).toEqual({
+      triggerPrice: 12.5,
       chanBsp: {
         type: 'third_buy',
         units: 'duan',

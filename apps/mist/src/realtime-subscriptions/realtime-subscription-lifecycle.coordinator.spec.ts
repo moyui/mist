@@ -83,8 +83,8 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     await settleRounds();
 
     expect(calls).toEqual(['get', 'sync:600030.SH,300502.SZ', 'get']);
-    expect(query.where).toHaveBeenCalledWith('security.type = :stock', {
-      stock: SecurityType.STOCK,
+    expect(query.where).toHaveBeenCalledWith('security.type IN (:...types)', {
+      types: [SecurityType.STOCK, SecurityType.INDEX],
     });
     expect(query.andWhere).toHaveBeenCalledWith(
       'source_config.source = :source',

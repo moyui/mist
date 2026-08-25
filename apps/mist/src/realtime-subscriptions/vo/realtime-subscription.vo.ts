@@ -57,8 +57,8 @@ export class RealtimeSubscriptionVo {
   @ApiProperty()
   securityName!: string;
 
-  @ApiProperty({ enum: [SecurityType.STOCK] })
-  securityType!: SecurityType.STOCK;
+  @ApiProperty({ enum: SecurityType })
+  securityType!: SecurityType;
 
   @ApiProperty({ enum: REALTIME_SECURITY_STATUSES })
   securityStatus!: RealtimeSecurityStatus;

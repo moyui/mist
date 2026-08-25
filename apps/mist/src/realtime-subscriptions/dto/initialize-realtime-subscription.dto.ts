@@ -28,8 +28,8 @@ export class NewRealtimeSubscriptionDto {
   @ApiProperty({ minLength: 1, maxLength: 100, example: '贵州茅台' })
   securityName!: string;
 
-  @ApiProperty({ enum: [SecurityType.STOCK] })
-  securityType!: SecurityType.STOCK;
+  @ApiProperty({ enum: [SecurityType.STOCK, SecurityType.INDEX] })
+  securityType!: SecurityType;
 
   @ApiProperty({ enum: REALTIME_SUBSCRIPTION_SOURCES })
   source!: DataSource.TDX | DataSource.QMT;
@@ -59,7 +59,8 @@ class RealtimeSubscriptionInitializationShapeConstraint
       return (
         typeof input.securityCode === 'string' &&
         typeof input.securityName === 'string' &&
-        input.securityType === SecurityType.STOCK &&
+        (input.securityType === SecurityType.STOCK ||
+          input.securityType === SecurityType.INDEX) &&
         REALTIME_SUBSCRIPTION_SOURCES.includes(
           input.source as (typeof REALTIME_SUBSCRIPTION_SOURCES)[number],
         ) &&
@@ -104,10 +105,10 @@ export class InitializeRealtimeSubscriptionDto {
   @MaxLength(100)
   securityName?: string;
 
-  @ApiPropertyOptional({ enum: [SecurityType.STOCK] })
+  @ApiPropertyOptional({ enum: [SecurityType.STOCK, SecurityType.INDEX] })
   @IsOptional()
-  @IsIn([SecurityType.STOCK])
-  securityType?: SecurityType.STOCK;
+  @IsIn([SecurityType.STOCK, SecurityType.INDEX])
+  securityType?: SecurityType;
 
   @ApiPropertyOptional({ enum: REALTIME_SUBSCRIPTION_SOURCES })
   @IsOptional()

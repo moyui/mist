@@ -306,7 +306,7 @@ function assertCriteria(criteria: StrategyRealtimeWindowCriteria): void {
     !REALTIME_PERIODS.has(criteria.period) ||
     !Number.isSafeInteger(criteria.requiredBars) ||
     criteria.requiredBars <= 0 ||
-    criteria.requiredBars > 131 ||
+    criteria.requiredBars > 800 ||
     criteria.anchorAt.getTime() % 60_000 !== 0
   ) {
     throw new TypeError('Invalid realtime window criteria');

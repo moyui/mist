@@ -54,8 +54,8 @@ describe('RealtimeSecurityAllowlistService', () => {
       formatCode: '300502.SZ',
       securityId: 8,
     });
-    expect(builder.where).toHaveBeenCalledWith('security.type = :stock', {
-      stock: SecurityType.STOCK,
+    expect(builder.where).toHaveBeenCalledWith('security.type IN (:...types)', {
+      types: [SecurityType.STOCK, SecurityType.INDEX],
     });
     expect(builder.andWhere).toHaveBeenCalledWith(
       'source_config.source = :source',

@@ -69,7 +69,9 @@ export class RealtimeSecurityAllowlistService {
       .addSelect('security.id', 'securityId')
       .innerJoin('assignment.security', 'security')
       .innerJoin('assignment.sourceConfig', 'source_config')
-      .where('security.type = :stock', { stock: SecurityType.STOCK })
+      .where('security.type IN (:...types)', {
+        types: [SecurityType.STOCK, SecurityType.INDEX],
+      })
       .andWhere('source_config.source = :source', { source })
       .andWhere('source_config.enabled = :enabled', { enabled: true })
       .andWhere('security.status = :status', { status: SecurityStatus.ACTIVE })

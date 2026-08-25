@@ -10,6 +10,7 @@ import type { ChanBspEvent } from './chan-bsp.types';
  * `add-chan-bsp-realtime-evaluation` delta specs.
  */
 export interface ChanBspContextSnapshot {
+  readonly triggerPrice?: number;
   readonly chanBsp: Readonly<{
     readonly type: ChanBspEvent['type'];
     readonly units: ChanBspEvent['units'];
@@ -38,6 +39,7 @@ export function serializeChanBspContextSnapshot(
     zd: event.zd,
   };
   return Object.freeze({
+    triggerPrice: event.price,
     chanBsp: Object.freeze(chanBsp),
   });
 }

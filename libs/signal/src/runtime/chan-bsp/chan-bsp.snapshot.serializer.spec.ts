@@ -21,6 +21,7 @@ describe('serializeChanBspContextSnapshot', () => {
     const snapshot = serializeChanBspContextSnapshot(event, 30);
 
     expect(snapshot).toEqual({
+      triggerPrice: 10.5,
       chanBsp: {
         type: 'first_buy',
         units: 'bi',
@@ -35,19 +36,23 @@ describe('serializeChanBspContextSnapshot', () => {
   it('keeps null central-zone fields for second-type points', () => {
     const event = buildEvent({
       type: 'second_buy',
+      price: 10.5,
       zhongshuIndex: null,
       zg: null,
       zd: null,
     });
     const snapshot = serializeChanBspContextSnapshot(event, 5);
 
-    expect(snapshot.chanBsp).toEqual({
-      type: 'second_buy',
-      units: 'bi',
-      level: 5,
-      zhongshuIndex: null,
-      zg: null,
-      zd: null,
+    expect(snapshot).toEqual({
+      triggerPrice: 10.5,
+      chanBsp: {
+        type: 'second_buy',
+        units: 'bi',
+        level: 5,
+        zhongshuIndex: null,
+        zg: null,
+        zd: null,
+      },
     });
   });
 
@@ -59,11 +64,15 @@ describe('serializeChanBspContextSnapshot', () => {
   });
 
   it('matches the shape previously built inline by realtime evaluation', () => {
-    const event = buildEvent({ type: 'third_sell', units: 'duan' });
+    const event = buildEvent({
+      type: 'third_sell',
+      units: 'duan',
+      price: 10.5,
+    });
     const snapshot = serializeChanBspContextSnapshot(event, 60);
 
-    // 收敛前的实时侧内联构造（行为等价断言，防收敛漂移）。
     const legacyInline = Object.freeze({
+      triggerPrice: 10.5,
       chanBsp: Object.freeze({
         type: event.type,
         units: event.units,

@@ -382,7 +382,9 @@ export class RealtimeSubscriptionLifecycleCoordinator
       .addSelect('security.status', 'securityStatus')
       .innerJoin('assignment.security', 'security')
       .innerJoin('assignment.sourceConfig', 'source_config')
-      .where('security.type = :stock', { stock: SecurityType.STOCK })
+      .where('security.type IN (:...types)', {
+        types: [SecurityType.STOCK, SecurityType.INDEX],
+      })
       .andWhere('source_config.source = :source', { source })
       .andWhere('source_config.enabled = :enabled', { enabled: true })
       .orderBy('source_config.formatCode', 'ASC')

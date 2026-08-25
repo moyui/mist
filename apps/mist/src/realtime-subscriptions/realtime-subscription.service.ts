@@ -136,7 +136,7 @@ export class RealtimeSubscriptionService {
       manager.create(Security, {
         code: dto.securityCode,
         name: dto.securityName,
-        type: SecurityType.STOCK,
+        type: dto.securityType ?? SecurityType.STOCK,
         status: SecurityStatus.ACTIVE,
       }),
     );
@@ -209,7 +209,10 @@ export class RealtimeSubscriptionService {
     if (!security) {
       throw new Error('Source config Security relation invariant is invalid');
     }
-    if (security.type !== SecurityType.STOCK) {
+    if (
+      security.type !== SecurityType.STOCK &&
+      security.type !== SecurityType.INDEX
+    ) {
       return this.securityNotEligible(security.id, 'security_not_stock');
     }
     if (security.status !== SecurityStatus.ACTIVE) {
@@ -268,7 +271,9 @@ export class RealtimeSubscriptionService {
       .innerJoin('assignment.security', 'security')
       .innerJoin('assignment.sourceConfig', 'source_config')
       .where('security.status = :active', { active: SecurityStatus.ACTIVE })
-      .andWhere('security.type = :stock', { stock: SecurityType.STOCK })
+      .andWhere('security.type IN (:...types)', {
+        types: [SecurityType.STOCK, SecurityType.INDEX],
+      })
       .andWhere('source_config.source = :source', { source })
       .andWhere('source_config.enabled = :enabled', { enabled: true })
       .getCount();
@@ -282,7 +287,9 @@ export class RealtimeSubscriptionService {
       .innerJoin('assignment.security', 'security')
       .innerJoin('assignment.sourceConfig', 'source_config')
       .where('security.status = :active', { active: SecurityStatus.ACTIVE })
-      .andWhere('security.type = :stock', { stock: SecurityType.STOCK })
+      .andWhere('security.type IN (:...types)', {
+        types: [SecurityType.STOCK, SecurityType.INDEX],
+      })
       .andWhere('source_config.enabled = :enabled', { enabled: true })
       .groupBy('source_config.source')
       .getRawMany<{ source: string; activeAssignmentCount: string }>();
@@ -303,7 +310,8 @@ export class RealtimeSubscriptionService {
     const sourceConfig = assignment.sourceConfig;
     if (
       !security ||
-      security.type !== SecurityType.STOCK ||
+      (security.type !== SecurityType.STOCK &&
+        security.type !== SecurityType.INDEX) ||
       !sourceConfig ||
       !sourceConfig.enabled ||
       !this.isRealtimeSource(sourceConfig.source) ||
@@ -340,7 +348,7 @@ export class RealtimeSubscriptionService {
       securitySourceConfigId: sourceConfig.id,
       securityCode: security.code,
       securityName: security.name,
-      securityType: SecurityType.STOCK,
+      securityType: security.type,
       securityStatus: this.toPublicStatus(security.status),
       source: sourceConfig.source,
       providerSymbol: sourceConfig.formatCode,

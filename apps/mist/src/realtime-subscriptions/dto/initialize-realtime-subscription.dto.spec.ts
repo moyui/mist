@@ -22,6 +22,19 @@ describe('InitializeRealtimeSubscriptionDto', () => {
     ).resolves.toHaveLength(0);
   });
 
+  it('accepts new mode shape with INDEX securityType', async () => {
+    await expect(
+      errors({
+        mode: 'new',
+        securityCode: '000001',
+        securityName: '上证指数',
+        securityType: 'INDEX',
+        source: 'qmt',
+        providerSymbol: '000001.SH',
+      }),
+    ).resolves.toHaveLength(0);
+  });
+
   it('accepts the exact existing mode shape', async () => {
     await expect(
       errors({ mode: 'existing', securitySourceConfigId: 17 }),
