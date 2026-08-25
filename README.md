@@ -1,109 +1,180 @@
-# Mist 智能股票分析系统
+# Mist 智能量化分析核心系统
 
-Mist 是面向 A 股的行情采集、技术指标、缠论分析、策略信号与告警系统。仓库采用
-NestJS monorepo，生产环境由 Windows Docker Compose appliance、TDX/QMT 桌面终端
-及其 builtin bridge 组成。
+<p align="left">
+  <img src="https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen.svg" alt="Node Version" />
+  <img src="https://img.shields.io/badge/pnpm-%5E9.0.0-blue.svg" alt="pnpm" />
+  <img src="https://img.shields.io/badge/NestJS-v10-red.svg" alt="NestJS" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-blue.svg" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/License-BSD--3--Clause-green.svg" alt="License" />
+</p>
 
-## 能力边界
+Mist 是面向 A 股市场的核心量化计算与行情服务系统。采用 NestJS Monorepo 架构构建，集成了底层硬件行情接入（TDX/QMT）、实时 1 分钟蜡烛线聚合、纯正缠论（Chan Theory）算法引擎、TA-Lib 技术指标、实时策略求值与告警推送、以及独立的分布式回测运行时。
 
-- 技术指标：MACD、RSI、KDJ、ADX、ATR 等 TA-Lib 指标。
-- 缠论：合并 K、分型、笔、中枢，以及 Phase A/Phase B 诊断输出。
-- 多数据源：东方财富、TDX、大 QMT。
-- 策略：定义、版本、信号、告警事件和 signal-level 回测。
-- 对外集成：同源 Web API、`mist-fe`、`mist-skills` 与 AstrBot。
+---
 
-TDX 与 QMT 不共用 datasource contract：TDX 历史接口返回 normalized rows，QMT
-历史接口保留 native column shape；backend 在业务边界统一。当前实时 transport 已
-通过 Windows HIL，但仍是 memory-only，不写快照表、不合成实时 K、不触发通知。
+## 🌟 核心特性
 
-## 仓库结构
+- **多源实时行情接收与订阅生命周期**：严格解码 TDX / QMT 原生数据帧（schema-v2），支持声明式订阅同步、自动对账与盘前健康巡检。
+- **当日 1m 蜡烛产品化（Candle Aggregator）**：基于事件驱动的高性能内存聚合与 Redis 原子封存（MULTI/EXEC），支持 A 股 242 桶交易宇宙与延迟 Grace 窗口。
+- **纯正缠论算法库（ChanCore）**：严格遵循缠论原典算法——合并 K、宽笔、特征序列分段、对称无方向中枢、第一/二/三类买卖点（BSP）全量实时与回测求值。
+- **完整指标计算套件**：内置 MACD、RSI、KDJ、ATR、ADX 等常用技术指标与量能剖面。
+- **事件驱动策略信号引擎**：基于 BullMQ 实现蜡烛封存即刻分发，支持策略扫描注册表与并发互斥执行。
+- **多渠道告警通知投递**：支持企业微信机器人、Webhook 投递与 OpenObserve 告警联动。
+- **独立回测运行时（Backtest Runtime）**：将计算密集的策略与缠论回测剥离为独立微服务，支持 TCP RPC 调用与资源准入控制。
+- **收盘权威数据同步**：收盘后自动从数据源拉取权威 K 线覆盖入库，确保历史数据纯净。
+
+---
+
+## 🏛️ Monorepo 架构与服务拓扑
 
 ```text
-apps/
-  mist/                 主 API，端口 8001
-  chan/                 缠论分析 API，端口 8008
-libs/                   配置、共享数据、时区与工具
-deploy/database/        SQL migrations
-deploy/docker/          镜像内 Docker 契约
-docs/                   规范中心、living guides、当前运行手册与集成说明
-openspec/               产品规范、living roadmap 与历史归档
-tools/                  迁移、契约和维护脚本
+mist (NestJS Monorepo)
+├── apps/
+│   ├── mist/                      # 主业务 API 与 Ingress 接收端 (HTTP :8001)
+│   ├── chan/                      # 缠论计算独立 API (HTTP :8008)
+│   ├── signal/                    # 实时策略信号评估引擎 (HTTP :8010, TCP RPC :9010)
+│   ├── backtest/                  # 隔离回测计算运行时 (HTTP :8004, TCP RPC :8005)
+│   ├── notification/              # 告警与消息通知服务 (HTTP :8006)
+│   ├── schedule/                  # 定时任务与收盘权威数据同步 (HTTP :8003)
+│   └── realtime-subscription-hil/ # 实时订阅硬件在环 (HIL) 验证工具
+└── libs/
+    ├── chancore/                  # 缠论核心纯算法库（分型/笔/段/中枢/买卖点）
+    ├── indicators/                # 技术指标计算库 (TA-Lib)
+    ├── realtime/                  # 实时行情接收、聚合器、Redis 存储与时钟抽象
+    ├── strategy/                  # 策略定义、条件语法解析与执行框架
+    ├── signal/                    # 实时信号调度与注册表客户端
+    ├── backtest/                  # 回测领域模型与 RPC 客户端
+    ├── shared-data/               # TypeORM 实体定义与数据库 Repository
+    ├── timezone/                  # 上海时区 (Asia/Shanghai) 交易时段计算
+    ├── transport/                 # TCP RPC 传输契约与编解码
+    └── decimal/ / constants/      # 精度计算与全局常量
 ```
 
-`apps/schedule` 不属于当前生产 Docker 栈。数据采集调度的后续归属由 active
-OpenSpec change 管理，不要通过恢复旧 scheduler 目录绕过该决策。
+---
 
-## 本地开发
+## 📋 环境与依赖要求
 
-要求：Node.js 24+、pnpm、MySQL 8+。
+- **Node.js**：`>= 24.0.0`
+- **包管理器**：`pnpm` (`pnpm install --frozen-lockfile`)
+- **MySQL**：`>= 8.0`（生产与开发均通过 migration 管理）
+- **Redis**：`>= 7.0`（用于实时蜡烛封存与 BullMQ 任务队列）
+
+---
+
+## 🚀 快速上手
+
+### 1. 安装依赖
 
 ```bash
 pnpm install
-pnpm run start:dev:mist
-pnpm run start:dev:chan
 ```
 
-常用地址：
+### 2. 环境配置与数据库迁移
 
-- Mist API：`http://127.0.0.1:8001`
-- Swagger：`http://127.0.0.1:8001/api-docs`
-- Chan API：`http://127.0.0.1:8008`
+复制并配置环境变量文件：
+```bash
+cp .env.example .env
+```
 
-数据库必须通过 migration 管理，所有环境保持 `synchronize: false`：
-
+执行单向递增数据库迁移（禁止使用 `synchronize: true`）：
 ```bash
 pnpm run db:migrate
 ```
 
-## 验证
+### 3. 启动开发服务
 
 ```bash
+# 启动主后端 API 服务 (端口: 8001)
+pnpm run start:dev:mist
+
+# 启动缠论 API 服务 (端口: 8008)
+pnpm run start:dev:chan
+
+# 启动实时信号评估服务 (端口: 8010)
+pnpm run start:dev:signal
+
+# 启动隔离回测服务 (端口: 8004)
+pnpm run start:dev:backtest
+```
+
+访问常用服务入口：
+- 主后端 Swagger 文档：`http://127.0.0.1:8001/api-docs`
+- 主后端健康探针：`http://127.0.0.1:8001/app/hello`
+- 缠论服务探针：`http://127.0.0.1:8008/app/hello`
+
+---
+
+## 🧪 测试与质量门禁
+
+为避免本地时区影响 A 股交易日边界计算，CI 与本地集成测试统一在 `TZ=UTC` 下运行：
+
+```bash
+# 运行单元与集成测试 (TZ=UTC 门禁)
 env TZ=UTC pnpm run test:ci
+
+# 代码格式与类型检查
 pnpm run lint
 pnpm run typecheck
+
+# 跨服务与契约校验
 pnpm run ci:contracts
+
+# 生产镜像构建检查
 pnpm run build:docker
+
+# OpenSpec 规范一致性校验
 openspec validate --all --strict
 ```
 
-UTC 测试用于防止 A 股交易时段与日期格式依赖本机时区。
+---
 
-## 生产部署
+## 🚢 生产部署拓扑
 
-生产环境不从本仓库直接执行 `docker compose up`。唯一部署入口是
-`mist-deploy` 的 `Deploy Windows Mist Stack` workflow，镜像标签必须是完整 commit
-SHA。当前拓扑：
+生产环境部署由 `mist-deploy` 统一编排，服务通过 Docker Compose 运行于 Windows 宿主环境：
 
 ```text
-Docker Desktop
-  mysql, mist-backend, chan-api, mist-fe, web-gateway
-  tdx-datasource :9001, qmt-datasource :9002, monitoring
-
-Windows 用户会话
-  TDX Desktop + builtin bridge
-  QMT Desktop + builtin bridge
+Docker Appliance 容器网格
+  ├── mysql:3306                 # 关系型数据库
+  ├── mist-realtime-redis:6379   # 实时 Candle 缓存与 BullMQ
+  ├── mist-backend:8001          # 主 API 与行情 Ingress
+  ├── chan-api:8008              # 缠论计算 API
+  ├── signal:8010 (RPC :9010)    # 实时策略评估
+  ├── backtest:8004 (RPC :8005)  # 隔离回测运行时
+  ├── notification:8006          # 消息通知网关
+  ├── mist-schedule:8003         # 定时采集与收盘同步
+  ├── mist-fe:3000               # 前端应用
+  ├── web-gateway:80             # Nginx 反向代理
+  └── openobserve:5080           # OTLP 统一日志/指标平台
 ```
 
-生产访问统一走 `http://www.moyui.mist`：
+生产网关入口统一指向 `http://www.mist.local`：
+- 前端页面：`/`、`/k`、`/strategies`
+- 业务后端：`/api/mist/*`
+- 缠论接口：`/api/chan/*`
 
-- 前端：`/k`、`/strategies`
-- Mist API：`/api/mist/*`
-- Chan API：`/api/chan/*`
+---
 
-## 文档入口
+## 📚 目录与文档入口
 
-- [Mist 规范中心与开发手册](docs/governance/README.md)
-- [项目质量常驻治理指南](docs/project-quality-governance-guide.md)
-- [生产基线验证](docs/production-baseline-verification.md)
-- [跨仓库文档盘点](docs/documentation-audit-2026-07-22.md)
-- [Backend 与 datasource 集成](docs/backend-datasource-integration.md)
-- [Windows Docker 拓扑](deploy/docker/README-Windows-Docker.md)
-- [Chan 当前算法](apps/chan/README.md)
-- [Living production roadmap](openspec/changes/define-mist-production-roadmap/)
+- **子应用说明书**：
+  - [主业务 API (apps/mist)](./apps/mist/README.md)
+  - [缠论 API (apps/chan)](./apps/chan/README.md)
+  - [实时信号引擎 (apps/signal)](./apps/signal/README.md)
+  - [隔离回测运行时 (apps/backtest)](./apps/backtest/README.md)
+  - [通知服务 (apps/notification)](./apps/notification/README.md)
+  - [收盘同步与定时任务 (apps/schedule)](./apps/schedule/README.md)
+  - [实时订阅 HIL 工具 (apps/realtime-subscription-hil)](./apps/realtime-subscription-hil/README.md)
+- **核心算法与库说明**：
+  - [缠论算法核心库 (libs/chancore)](./libs/chancore/README.md)
+  - [技术指标库 (libs/indicators)](./libs/indicators/README.md)
+  - [实时行情与聚合库 (libs/realtime)](./libs/realtime/README.md)
+- **工程治理规范**：
+  - [Mist 规范中心与开发手册](./docs/governance/README.md)
+  - [项目质量常驻治理指南](./docs/project-quality-governance-guide.md)
+  - [契约与数据治理指南](./docs/governance/contract-and-data-governance-guide.md)
 
-`Roadmap.md` 是早期历史草稿，不是当前执行清单。当前任务与完成状态只以 OpenSpec
-active changes 和 living roadmap 为准。
+---
 
-## 许可证
+## 📄 许可证
 
-BSD-3-Clause
+本项目遵循 [BSD-3-Clause](https://opensource.org/licenses/BSD-3-Clause) 开源许可证。
