@@ -252,7 +252,6 @@ export class PostCloseSyncService {
   }
 
   private formatDateString(date: Date): string {
-    const beijingDate = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-    return beijingDate.toISOString().slice(0, 10);
+    return this.timezoneService.formatDate(date);
   }
 }

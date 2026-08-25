@@ -9,7 +9,10 @@ import {
 import { toZonedTime } from 'date-fns-tz';
 import { ERROR_MESSAGES } from '@app/constants';
 import { UtilsService } from '@app/utils';
-import { BEIJING_DATE_REGEX } from './date-format.const';
+import {
+  ASIA_SHANGHAI_TIMEZONE,
+  BEIJING_DATE_REGEX,
+} from './date-format.const';
 
 /**
  * SZSE API response type.
@@ -94,7 +97,14 @@ export class TimezoneService {
    * @returns Current date/time in Beijing timezone
    */
   getCurrentBeijingTime(): Date {
-    return toZonedTime(new Date(), 'Asia/Shanghai');
+    return toZonedTime(new Date(), ASIA_SHANGHAI_TIMEZONE);
+  }
+
+  /**
+   * Format Date object to Beijing date string (YYYY-MM-DD).
+   */
+  formatDate(date: Date): string {
+    return format(date, 'yyyy-MM-dd');
   }
 
   /**

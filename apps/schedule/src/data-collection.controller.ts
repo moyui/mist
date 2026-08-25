@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
-import { TimezoneService } from '@app/timezone';
+import { ASIA_SHANGHAI_TIMEZONE, TimezoneService } from '@app/timezone';
 import { PostCloseSyncService } from '../../mist/src/collector';
 import { addDays, getMonth, subDays } from 'date-fns';
 
@@ -26,9 +26,12 @@ export class DataCollectionController {
   ) {}
 
   /**
-   * 晚间主同步任务：周一至周五 22:30 触发
+   * 晚间主同步任务：周一至周五 22:30 触发（北京时间）
    */
-  @Cron('30 22 * * 1-5')
+  @Cron('30 22 * * 1-5', {
+    name: 'schedule-post-close-nightly-2230',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
+  })
   async handleNightlyPostCloseSync(): Promise<void> {
     const now = this.timezoneService.getCurrentBeijingTime();
     if (!(await this.timezoneService.isTradingDay(now))) {
@@ -79,9 +82,12 @@ export class DataCollectionController {
   }
 
   /**
-   * 晨间兜底重试任务：周二至周六 06:30 触发（针对前一交易日）
+   * 晨间兜底重试任务：周二至周六 06:30 触发（北京时间，针对前一交易日）
    */
-  @Cron('30 6 * * 2-6')
+  @Cron('30 6 * * 2-6', {
+    name: 'schedule-post-close-morning-0630',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
+  })
   async handleMorningRetrySync(): Promise<void> {
     const now = this.timezoneService.getCurrentBeijingTime();
     const previousTradingDay = await this.resolvePreviousTradingDay(now);

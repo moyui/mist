@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { DataSource, Period, Security, SecurityStatus } from '@app/shared-data';
 import { PostCloseSyncService } from './post-close-sync.service';
 import { DataFreshnessStatus } from './types/post-close-sync.types';
@@ -32,6 +33,7 @@ describe('PostCloseSyncService', () => {
       parseDateString: jest.fn(
         (str: string) => new Date(str.replace(' ', 'T') + '+08:00'),
       ),
+      formatDate: jest.fn((date: Date) => format(date, 'yyyy-MM-dd')),
     };
 
     const freshnessValidator = {
@@ -160,5 +162,16 @@ describe('PostCloseSyncService', () => {
       DataSource.QMT,
       Period.ONE_MIN,
     );
+  });
+
+  it('correctly resolves targetDate for late evening Beijing time (22:30) without jumping to next day', async () => {
+    const { service, timezoneService } = createHarness();
+    // Simulate Beijing time 2026-08-24 22:30:00
+    timezoneService.getCurrentBeijingTime.mockReturnValue(
+      new Date('2026-08-24T22:30:00+08:00'),
+    );
+
+    const report = await service.syncPostClose({ window: 'nightly_2230' });
+    expect(report.targetDate).toBe('2026-08-24');
   });
 });
