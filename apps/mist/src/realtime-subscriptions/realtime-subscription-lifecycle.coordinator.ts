@@ -15,6 +15,7 @@ import {
 } from '@app/shared-data';
 import { Repository } from 'typeorm';
 import { toZonedTime } from 'date-fns-tz';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import { Clock } from '../realtime/clock.service';
 import { RealtimeSecurityAllowlistService } from '../realtime/realtime-security-allowlist.service';
 import { RealtimeSnapshotIngressService } from '../realtime/realtime-snapshot-ingress.service';
@@ -153,7 +154,7 @@ export class RealtimeSubscriptionLifecycleCoordinator
 
   @Cron('0 15 9 * * 1-5', {
     name: 'realtime-subscription-weekday-0915-reset',
-    timeZone: 'Asia/Shanghai',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
   })
   runWeekday0915Barrier(): void {
     if (this.shuttingDown || !this.autoReconcile()) return;
@@ -486,7 +487,7 @@ function hasExactKeys(
 }
 
 export function isIntradayAddWindow(now: Date): boolean {
-  const shanghai = toZonedTime(now, 'Asia/Shanghai');
+  const shanghai = toZonedTime(now, ASIA_SHANGHAI_TIMEZONE);
   const day = shanghai.getDay();
   if (day === 0 || day === 6) return false;
   const minutes = shanghai.getHours() * 60 + shanghai.getMinutes();

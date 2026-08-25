@@ -12,6 +12,7 @@ import {
   StrategyVersion,
   type BacktestTargetIssue,
 } from '@app/shared-data';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import {
   compileStoredStrategyRule,
   evaluateStrategyPlan,
@@ -506,7 +507,7 @@ function replayStartFor(run: BacktestRun, plan: ReplayPlan): Date {
     return new Date(run.startDate.getTime());
   }
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

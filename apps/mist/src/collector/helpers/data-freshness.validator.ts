@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Period } from '@app/shared-data';
+import { TimezoneService } from '@app/timezone';
 import {
   DataFreshnessStatus,
   FreshnessValidationResult,
@@ -7,6 +8,10 @@ import {
 
 @Injectable()
 export class DataFreshnessValidator {
+  constructor(
+    @Optional()
+    private readonly timezoneService?: TimezoneService,
+  ) {}
   private static readonly EXPECTED_BAR_COUNTS: Partial<Record<Period, number>> =
     {
       [Period.ONE_MIN]: 240,
@@ -133,7 +138,9 @@ export class DataFreshnessValidator {
       const d =
         bar.timestamp instanceof Date ? bar.timestamp : new Date(bar.timestamp);
       if (!isNaN(d.getTime())) {
-        return d.toISOString().slice(0, 10);
+        return this.timezoneService
+          ? this.timezoneService.formatDate(d)
+          : d.toISOString().slice(0, 10);
       }
     }
     if (bar.time) {

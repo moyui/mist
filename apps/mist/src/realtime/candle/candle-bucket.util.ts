@@ -4,6 +4,7 @@ import {
   AFTERNOON_START_MIN,
   MORNING_END_MIN,
   MORNING_START_MIN,
+  ASIA_SHANGHAI_TIMEZONE,
 } from '@app/timezone';
 import type { CandleBucket, CandleSession } from './candle.types';
 
@@ -27,7 +28,7 @@ import type { CandleBucket, CandleSession } from './candle.types';
  * HK sessions are not handled here yet; they require HIL-confirmed close-auction
  * timing (design mentions 16:10) and will be added in a follow-up.
  */
-const TIME_ZONE = 'Asia/Shanghai';
+const TIME_ZONE = ASIA_SHANGHAI_TIMEZONE;
 
 /**
  * @param eventTimeIso - RFC3339 eventTime from the canonical snapshot.

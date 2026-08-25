@@ -18,6 +18,7 @@ import type {
   LiveStrategyPersistenceService,
 } from './live-strategy-persistence.service';
 import type { SignalRuntimeObservabilityService } from '../signal-runtime-observability.service';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 
 export type CandleFinalizedJobOutcome =
   | 'completed'
@@ -327,7 +328,7 @@ function completed(outcome: Exclude<CandleFinalizedJobOutcome, 'completed'>) {
 
 function shanghaiDay(timestamp: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

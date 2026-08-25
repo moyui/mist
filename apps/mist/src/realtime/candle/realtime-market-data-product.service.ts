@@ -14,6 +14,7 @@ import {
 } from '@app/config';
 import { DataSource } from '@app/shared-data';
 import { toZonedTime } from 'date-fns-tz';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import type Redis from 'ioredis';
 import { Clock } from '../clock.service';
 import { RealtimeRedisService } from '../realtime-redis.service';
@@ -1056,7 +1057,7 @@ export class RealtimeMarketDataProductService
     const iso = new Date(nowMs).toISOString();
     const bucket = resolveCandleBucket(iso);
     if (bucket) return bucket.tradingDay;
-    const zoned = toZonedTime(new Date(nowMs), 'Asia/Shanghai');
+    const zoned = toZonedTime(new Date(nowMs), ASIA_SHANGHAI_TIMEZONE);
     return [
       zoned.getFullYear().toString().padStart(4, '0'),
       (zoned.getMonth() + 1).toString().padStart(2, '0'),

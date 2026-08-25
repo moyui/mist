@@ -19,10 +19,11 @@ import {
 import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import { DATASOURCE_HTTP_TIMEOUT_MS } from '../constants';
 import { saveBaseK } from '../k-save.helper';
 
-const MARKET_TIME_ZONE = 'Asia/Shanghai';
+const MARKET_TIME_ZONE = ASIA_SHANGHAI_TIMEZONE;
 
 // TypeORM .orUpdate() expects DATABASE column names, not entity property names.
 // amplitude keeps its property name (no DB rename); the rest map to snake_case.

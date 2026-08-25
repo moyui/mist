@@ -69,4 +69,53 @@ describe('DataFreshnessValidator', () => {
       'No bars returned for target date 2026-08-24',
     );
   });
+
+  describe('extractBarDateStr with bar.timestamp and TimezoneService', () => {
+    it('correctly extracts Beijing date from bar.timestamp Date objects using TimezoneService', () => {
+      const mockTimezoneService = {
+        formatDate: jest.fn((date: Date) => {
+          // Verify it formats correctly
+          const d = new Date(date);
+          const year = d.getUTCFullYear();
+          const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(d.getUTCDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }),
+      };
+      const injectedValidator = new DataFreshnessValidator(
+        mockTimezoneService as any,
+      );
+
+      const bars = [
+        { timestamp: new Date('2026-08-24T07:00:00.000Z') }, // 15:00 in Beijing
+      ];
+
+      const result = injectedValidator.validateFreshness(
+        bars,
+        '2026-08-24',
+        Period.DAY,
+      );
+      expect(result.status).toBe(DataFreshnessStatus.READY);
+      expect(mockTimezoneService.formatDate).toHaveBeenCalled();
+    });
+
+    it('handles bar.timestamp as string timestamps', () => {
+      const mockTimezoneService = {
+        formatDate: jest.fn(() => '2026-08-24'),
+      };
+      const injectedValidator = new DataFreshnessValidator(
+        mockTimezoneService as any,
+      );
+
+      const bars = [{ timestamp: '2026-08-24T15:00:00+08:00' }];
+
+      const result = injectedValidator.validateFreshness(
+        bars,
+        '2026-08-24',
+        Period.DAY,
+      );
+      expect(result.status).toBe(DataFreshnessStatus.READY);
+      expect(mockTimezoneService.formatDate).toHaveBeenCalled();
+    });
+  });
 });

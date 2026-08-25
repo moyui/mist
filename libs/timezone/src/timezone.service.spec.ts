@@ -1,4 +1,3 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AxiosError } from 'axios';
 import { UtilsService } from '@app/utils';
 import { TimezoneService } from './timezone.service';
@@ -26,24 +25,16 @@ describe('TimezoneService', () => {
     },
   };
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mockAxios = {
       get: jest.fn(),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        TimezoneService,
-        {
-          provide: UtilsService,
-          useValue: {
-            createAxiosInstance: jest.fn(() => mockAxios),
-          },
-        },
-      ],
-    }).compile();
+    const mockUtilsService = {
+      createAxiosInstance: jest.fn(() => mockAxios),
+    } as unknown as UtilsService;
 
-    service = module.get<TimezoneService>(TimezoneService);
+    service = new TimezoneService(mockUtilsService);
   });
 
   afterEach(() => {

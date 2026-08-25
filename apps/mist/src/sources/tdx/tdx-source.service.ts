@@ -13,6 +13,7 @@ import {
 import { DataSource as TypeOrmDataSource } from 'typeorm';
 import { parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import { ITdxSourceFetcher } from './tdx-source-fetcher.interface';
 import {
   TdxResponse,
@@ -37,7 +38,7 @@ const TDX_BAR_FIELDS = [
   'VolInStock',
 ];
 
-const MARKET_TIME_ZONE = 'Asia/Shanghai';
+const MARKET_TIME_ZONE = ASIA_SHANGHAI_TIMEZONE;
 
 // TypeORM .orUpdate() expects DATABASE column names, not entity property names.
 // These match the @Column name: values in KExtensionTdx.

@@ -17,6 +17,7 @@ import {
 } from '@app/realtime';
 import { Decimal8 } from '@app/decimal';
 import { fromZonedTime } from 'date-fns-tz';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import { LessThan, Repository } from 'typeorm';
 import { SignalRealtimeRedisService } from './signal-realtime-redis.service';
 
@@ -250,7 +251,7 @@ function shanghaiTradingDay(timestamp: Date): string {
 function shanghaiDayStart(tradingDay: string): Date {
   return fromZonedTime(
     `${tradingDay.slice(0, 4)}-${tradingDay.slice(4, 6)}-${tradingDay.slice(6, 8)}T00:00:00.000`,
-    'Asia/Shanghai',
+    ASIA_SHANGHAI_TIMEZONE,
   );
 }
 
@@ -265,7 +266,7 @@ function shanghaiParts(timestamp: Date): {
     throw new TypeError('realtime K timestamp must be valid');
   }
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

@@ -20,6 +20,7 @@ import {
   QmtExtension,
 } from '../source-fetcher.interface';
 import { saveBaseK } from '../k-save.helper';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import {
   QmtBarsResponseData,
   QmtEnvelope,
@@ -28,7 +29,7 @@ import {
   QmtSymbolMarketData,
 } from './types';
 
-const MARKET_TIME_ZONE = 'Asia/Shanghai';
+const MARKET_TIME_ZONE = ASIA_SHANGHAI_TIMEZONE;
 const QMT_CANONICAL_DIVIDEND_TYPE = 'front_ratio';
 
 const QMT_DEFAULT_FIELDS = [

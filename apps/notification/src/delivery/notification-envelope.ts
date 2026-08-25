@@ -5,6 +5,7 @@ import {
   StrategyDefinition,
   StrategySignal,
 } from '@app/shared-data';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 
 export interface NotificationMessage {
   readonly securityCode: string;
@@ -107,7 +108,7 @@ function formatPeriod(period: unknown): string {
 
 function formatShanghaiTime(date: Date): string {
   const parts = new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

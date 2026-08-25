@@ -8,6 +8,7 @@ import {
 } from './realtime-subscription-lifecycle.coordinator';
 import { RealtimeSubscriptionRuntimeRegistry } from './realtime-subscription-runtime.registry';
 import { RealtimeSubscriptionLifecycleObservationStore } from './realtime-subscription-lifecycle-observation.store';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 
 describe('RealtimeSubscriptionLifecycleCoordinator', () => {
   it('skips convergence when auto_reconcile is off', async () => {
@@ -385,7 +386,7 @@ describe('RealtimeSubscriptionLifecycleCoordinator', () => {
     ) as Record<string, unknown>;
     expect(options).toMatchObject({
       cronTime: '0 15 9 * * 1-5',
-      timeZone: 'Asia/Shanghai',
+      timeZone: ASIA_SHANGHAI_TIMEZONE,
       name: 'realtime-subscription-weekday-0915-reset',
     });
   });

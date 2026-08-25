@@ -1,4 +1,5 @@
 import { toZonedTime } from 'date-fns-tz';
+import { ASIA_SHANGHAI_TIMEZONE } from './date-format.const';
 
 /**
  * A-share trading-session boundaries (Asia/Shanghai), half-open with a 1-minute
@@ -8,7 +9,7 @@ import { toZonedTime } from 'date-fns-tz';
  *   morning   [09:30, 11:31)  → 11:30 is the last bucket
  *   afternoon [13:00, 15:01)  → 15:00 is the last bucket
  */
-const TIME_ZONE = 'Asia/Shanghai';
+const TIME_ZONE = ASIA_SHANGHAI_TIMEZONE;
 
 export const MORNING_START_MIN = 9 * 60 + 30; // 09:30
 export const MORNING_END_MIN = 11 * 60 + 31; // 11:31 (half-open)

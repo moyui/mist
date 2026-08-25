@@ -1,5 +1,6 @@
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { Period } from '@app/shared-data';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 
 export interface KCandleBoundary {
   startTime: Date;
@@ -13,7 +14,7 @@ interface MarketDateParts {
   dayOfWeek: number;
 }
 
-const MARKET_TIME_ZONE = 'Asia/Shanghai';
+const MARKET_TIME_ZONE = ASIA_SHANGHAI_TIMEZONE;
 
 /**
  * Pure utility for calculating the previous completed K candle's time boundaries.

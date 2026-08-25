@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import axios from 'axios';
 import {
   format,
@@ -47,7 +53,9 @@ export class TimezoneService {
    */
   private cacheTimestamps: Map<string, number> = new Map();
 
-  constructor(private readonly utilsService: UtilsService) {
+  constructor(
+    @Inject(UtilsService) private readonly utilsService: UtilsService,
+  ) {
     this.axios = this.utilsService.createAxiosInstance({
       timeout: 10000,
     });

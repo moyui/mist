@@ -14,6 +14,7 @@ import {
 } from '@app/realtime';
 import type { CandleFinalizedTriggerV1 } from '@app/signal';
 import { DataSource } from '@app/shared-data';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import type Redis from 'ioredis';
 import { Clock } from '../clock.service';
 import { RealtimeRedisService } from '../realtime-redis.service';
@@ -207,7 +208,7 @@ function compareTriggers(
 
 function shanghaiDayCompact(value: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

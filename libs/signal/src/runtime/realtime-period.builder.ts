@@ -1,4 +1,5 @@
 import { Decimal8 } from '@app/decimal';
+import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 import type { StrategyBar, StrategyTrigger } from '@app/strategy';
 
 export const REALTIME_STRATEGY_PERIODS = [1, 5, 15, 30, 60] as const;
@@ -131,7 +132,7 @@ function sessionPosition(timestamp: Date): SessionPosition {
     throw new TypeError('finalized strategy trigger must be minute-aligned');
   }
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: ASIA_SHANGHAI_TIMEZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
