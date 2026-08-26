@@ -14,12 +14,30 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
       .fn()
       .mockImplementation((url: string | URL | Request) => {
         const urlStr = url.toString();
+        if (
+          urlStr.includes('/backend/health') ||
+          urlStr.includes(':8001/health')
+        ) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              status: 'ok',
+              instance: 'backend',
+              productizationMode: 'on',
+              strategyMode: 'on',
+              redisAvailable: true,
+              allowlistCount: 2,
+            }),
+          } as any);
+        }
         if (urlStr.includes('/qmt/health')) {
           return Promise.resolve({
             ok: true,
             status: 200,
             json: async () => ({
               status: 'ok',
+              realtimeMode: 'builtin',
               bridge: { ready: true },
               subscriptions: {
                 ready: !qmtReconRequired,
@@ -39,12 +57,17 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
             status: 200,
             json: async () => ({
               status: 'ok',
+              realtimeMode: 'builtin',
               bridge: { ready: tdxReady },
               subscriptions: { ready: tdxReady },
             }),
           } as any);
         }
-        if (urlStr.includes('/signal/health') || urlStr.includes('/signal')) {
+        if (
+          urlStr.includes('/signal/health') ||
+          urlStr.includes('/signal') ||
+          urlStr.includes(':8010/health')
+        ) {
           return Promise.resolve({
             ok: signalOk,
             status: signalOk ? 200 : 503,
@@ -53,6 +76,13 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
               instance: 'signal',
               realtimeMode: 'on',
             }),
+          } as any);
+        }
+        if (urlStr.includes('qyapi.weixin.qq.com')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ errcode: 0, errmsg: 'ok' }),
           } as any);
         }
         return Promise.resolve({
@@ -94,7 +124,11 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
       get: (key: string) => {
         if (key === 'TDX_BASE_URL') return 'http://127.0.0.1:9876/tdx';
         if (key === 'QMT_BASE_URL') return 'http://127.0.0.1:9876/qmt';
+        if (key === 'BACKEND_HEALTH_URL')
+          return 'http://127.0.0.1:9876/backend/health';
         if (key === 'SIGNAL_HEALTH_URL') return 'http://127.0.0.1:9876/signal';
+        if (key === 'NOTIFICATION_WECHAT_WEBHOOK')
+          return 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock';
         return undefined;
       },
     };
@@ -120,6 +154,7 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
     );
 
     expect(report.overallStatus).toBe('PASSED');
+    expect(report.dimensions.pipelineSwitches.passed).toBe(true);
     expect(report.dimensions.datasource.passed).toBe(true);
     expect(report.dimensions.klines.passed).toBe(true);
     expect(report.dimensions.subscription.passed).toBe(true);

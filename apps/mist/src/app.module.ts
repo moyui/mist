@@ -23,6 +23,7 @@ import { LoggerModule } from 'nestjs-pino';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AppHealthController } from './health/app-health.controller';
 import { ChanModule } from './chan/chan.module';
 import { HistoricalCollectorModule } from './collector/historical-collector.module';
 import { TdxRealtimeModule } from './sources/tdx/realtime/realtime.module';
@@ -70,7 +71,7 @@ import { RealtimeSubscriptionModule } from './realtime-subscriptions/realtime-su
     ...tdxRealtimeModulesForMode(process.env.TDX_REALTIME_MODE),
     ...qmtRealtimeModulesForMode(process.env.QMT_REALTIME_MODE),
   ],
-  controllers: [AppController],
+  controllers: [AppController, AppHealthController],
   providers: [AppService],
 })
 export class AppModule {}

@@ -3,15 +3,19 @@ import { SecurityStatus } from '@app/shared-data';
 
 describe('PreMarketInspectionService', () => {
   let service: PreMarketInspectionService;
-  let kRepo: any;
-  let securityRepo: any;
-  let assignmentRepo: any;
-  let timezoneService: any;
-  let configService: any;
+  let kRepo: { count: jest.Mock };
+  let securityRepo: { query: jest.Mock };
+  let assignmentRepo: { find: jest.Mock };
+  let timezoneService: {
+    getCurrentBeijingTime: jest.Mock;
+    formatDate: jest.Mock;
+    isTradingDay: jest.Mock;
+  };
+  let configService: { get: jest.Mock };
 
   beforeEach(() => {
     kRepo = {
-      count: jest.fn().mockResolvedValue(1),
+      count: jest.fn().mockResolvedValue(48), // Mock 48 bars for intraday
     };
     securityRepo = {
       query: jest.fn().mockResolvedValue([{ 1: 1 }]),
@@ -23,25 +27,21 @@ describe('PreMarketInspectionService', () => {
           security: { id: 1, status: SecurityStatus.ACTIVE },
           sourceConfig: { source: 'tdx' },
         },
-        {
-          securityId: 2,
-          security: { id: 2, status: SecurityStatus.ACTIVE },
-          sourceConfig: { source: 'qmt' },
-        },
       ]),
     };
     timezoneService = {
       getCurrentBeijingTime: jest
         .fn()
         .mockReturnValue(new Date('2026-08-25T09:05:00+08:00')),
-      formatDate: jest.fn(() => '2026-08-25'),
+      formatDate: jest.fn().mockReturnValue('2026-08-25'),
       isTradingDay: jest.fn().mockResolvedValue(true),
     };
     configService = {
-      get: jest.fn((key: string) => {
-        if (key === 'TDX_BASE_URL') return 'http://tdx-datasource:9001';
-        if (key === 'QMT_BASE_URL') return 'http://qmt-datasource:9002';
-        if (key === 'SIGNAL_HEALTH_URL') return 'http://signal:8010/health';
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'TDX_BASE_URL') return 'http://127.0.0.1:9001';
+        if (key === 'QMT_BASE_URL') return 'http://127.0.0.1:9002';
+        if (key === 'BACKEND_HEALTH_URL') return 'http://127.0.0.1:8001/health';
+        if (key === 'SIGNAL_HEALTH_URL') return 'http://127.0.0.1:8010/health';
         if (key === 'NOTIFICATION_WECHAT_WEBHOOK')
           return 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock';
         return undefined;
@@ -49,21 +49,35 @@ describe('PreMarketInspectionService', () => {
     };
 
     service = new PreMarketInspectionService(
-      kRepo,
-      securityRepo,
-      assignmentRepo,
-      timezoneService,
-      configService,
+      kRepo as any,
+      securityRepo as any,
+      assignmentRepo as any,
+      timezoneService as any,
+      configService as any,
     );
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('passes all dimensions when systems are green', async () => {
+  it('runs complete 6-dimensional health check successfully (All Green)', async () => {
     const originalFetch = global.fetch;
     global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes(':8001/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                status: 'ok',
+                instance: 'backend',
+                productizationMode: 'on',
+                strategyMode: 'on',
+                redisAvailable: true,
+                allowlistCount: 4,
+              },
+            }),
+        });
+      }
       if (url.includes(':9001/health')) {
         return Promise.resolve({
           ok: true,
@@ -71,6 +85,7 @@ describe('PreMarketInspectionService', () => {
           json: () =>
             Promise.resolve({
               status: 'ok',
+              realtimeMode: 'builtin',
               bridge: { ready: true },
               subscriptions: { ready: true },
             }),
@@ -83,6 +98,7 @@ describe('PreMarketInspectionService', () => {
           json: () =>
             Promise.resolve({
               status: 'ok',
+              realtimeMode: 'builtin',
               bridge: { ready: true },
               subscriptions: {
                 ready: true,
@@ -97,7 +113,12 @@ describe('PreMarketInspectionService', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => Promise.resolve({ status: 'ok', instance: 'signal' }),
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              instance: 'signal',
+              realtimeMode: 'on',
+            }),
         });
       }
       if (url.includes('qyapi.weixin.qq.com')) {
@@ -115,21 +136,41 @@ describe('PreMarketInspectionService', () => {
         new Date('2026-08-25T09:05:00+08:00'),
       );
       expect(report.overallStatus).toBe('PASSED');
+      expect(report.dimensions.pipelineSwitches.passed).toBe(true);
       expect(report.dimensions.datasource.passed).toBe(true);
       expect(report.dimensions.klines.passed).toBe(true);
       expect(report.dimensions.subscription.passed).toBe(true);
       expect(report.dimensions.realtime.passed).toBe(true);
       expect(report.dimensions.infrastructure.passed).toBe(true);
       expect(report.markdown).toContain('09:05 盘前系统体检通过 (All Green)');
+      expect(report.markdown).toContain('backend=on | signal=on');
       expect(report.sentToWechat).toBe(true);
     } finally {
       global.fetch = originalFetch;
     }
   });
 
-  it('detects QMT journal reconciliation blocking state and outputs remediation guide', async () => {
+  it('detects Backend productization off and outputs remediation guide', async () => {
     const originalFetch = global.fetch;
     global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes(':8001/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                status: 'ok',
+                instance: 'backend',
+                productizationMode: 'off',
+                strategyMode: 'on',
+                redisAvailable: true,
+                allowlistCount: 4,
+              },
+            }),
+        });
+      }
       if (url.includes(':9001/health')) {
         return Promise.resolve({
           ok: true,
@@ -137,6 +178,7 @@ describe('PreMarketInspectionService', () => {
           json: () =>
             Promise.resolve({
               status: 'ok',
+              realtimeMode: 'builtin',
               bridge: { ready: true },
               subscriptions: { ready: true },
             }),
@@ -149,6 +191,96 @@ describe('PreMarketInspectionService', () => {
           json: () =>
             Promise.resolve({
               status: 'ok',
+              realtimeMode: 'builtin',
+              bridge: { ready: true },
+              subscriptions: {
+                ready: true,
+                journalHealthy: true,
+                reconciliationRequired: false,
+                startupReconciliation: { phase: 'completed' },
+              },
+            }),
+        });
+      }
+      if (url.includes(':8010/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              instance: 'signal',
+              realtimeMode: 'on',
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as any;
+
+    try {
+      const report = await service.runInspection(
+        new Date('2026-08-25T09:05:00+08:00'),
+      );
+      expect(report.overallStatus).toBe('FAILED');
+      expect(report.dimensions.pipelineSwitches.passed).toBe(false);
+      expect(report.dimensions.pipelineSwitches.details).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Backend Candle 产品化开关处于 off'),
+        ]),
+      );
+      expect(report.dimensions.pipelineSwitches.remediation).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('REALTIME_PRODUCTIZATION_MODE'),
+        ]),
+      );
+      expect(report.markdown).toContain('09:05 盘前体检发现异常 (需立即介入)');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('detects QMT journal reconciliation blocking state and outputs remediation guide', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes(':8001/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                status: 'ok',
+                instance: 'backend',
+                productizationMode: 'on',
+                strategyMode: 'on',
+                redisAvailable: true,
+                allowlistCount: 4,
+              },
+            }),
+        });
+      }
+      if (url.includes(':9001/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              realtimeMode: 'builtin',
+              bridge: { ready: true },
+              subscriptions: { ready: true },
+            }),
+        });
+      }
+      if (url.includes(':9002/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              realtimeMode: 'builtin',
               bridge: { ready: true },
               subscriptions: {
                 ready: false,
@@ -166,17 +298,15 @@ describe('PreMarketInspectionService', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => Promise.resolve({ status: 'ok', instance: 'signal' }),
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              instance: 'signal',
+              realtimeMode: 'on',
+            }),
         });
       }
-      if (url.includes('qyapi.weixin.qq.com')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve({ errcode: 0, errmsg: 'ok' }),
-        });
-      }
-      return Promise.reject(new Error(`unexpected fetch ${url}`));
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     }) as any;
 
     try {
@@ -207,6 +337,36 @@ describe('PreMarketInspectionService', () => {
 
     const originalFetch = global.fetch;
     global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes(':8001/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                status: 'ok',
+                instance: 'backend',
+                productizationMode: 'on',
+                strategyMode: 'on',
+                redisAvailable: true,
+                allowlistCount: 4,
+              },
+            }),
+        });
+      }
+      if (url.includes(':8010/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              instance: 'signal',
+              realtimeMode: 'on',
+            }),
+        });
+      }
       if (url.includes('health')) {
         return Promise.resolve({
           ok: true,
@@ -214,6 +374,7 @@ describe('PreMarketInspectionService', () => {
           json: () =>
             Promise.resolve({
               status: 'ok',
+              realtimeMode: 'builtin',
               bridge: { ready: true },
               subscriptions: {
                 ready: true,
@@ -259,13 +420,44 @@ describe('PreMarketInspectionService', () => {
     ]);
 
     const originalFetch = global.fetch;
-    global.fetch = jest.fn().mockImplementation(() =>
-      Promise.resolve({
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes(':8001/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              data: {
+                status: 'ok',
+                instance: 'backend',
+                productizationMode: 'on',
+                strategyMode: 'on',
+                redisAvailable: true,
+                allowlistCount: 3,
+              },
+            }),
+        });
+      }
+      if (url.includes(':8010/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              instance: 'signal',
+              realtimeMode: 'on',
+            }),
+        });
+      }
+      return Promise.resolve({
         ok: true,
         status: 200,
         json: () =>
           Promise.resolve({
             status: 'ok',
+            realtimeMode: 'builtin',
             bridge: { ready: true },
             subscriptions: {
               ready: true,
@@ -274,8 +466,8 @@ describe('PreMarketInspectionService', () => {
               startupReconciliation: { phase: 'completed' },
             },
           }),
-      }),
-    ) as any;
+      });
+    }) as any;
 
     try {
       const report = await service.runInspection(

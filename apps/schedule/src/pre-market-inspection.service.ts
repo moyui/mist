@@ -28,6 +28,7 @@ export interface PreMarketInspectionReport {
     readonly subscription: DimensionCheckResult;
     readonly realtime: DimensionCheckResult;
     readonly infrastructure: DimensionCheckResult;
+    readonly pipelineSwitches: DimensionCheckResult;
   };
   readonly markdown: string;
   readonly sentToWechat: boolean;
@@ -66,21 +67,29 @@ export class PreMarketInspectionService {
 
     this.logger.log(`[PreMarketInspection] Starting inspection for ${dateStr}`);
 
-    const [datasource, klines, subscription, realtime, infrastructure] =
-      await Promise.all([
-        this.checkDatasourceControlPlane(),
-        this.checkHistoricalKLines(checkTime),
-        this.checkSubscriptionLifecycle(),
-        this.checkRealtimePipeline(),
-        this.checkInfrastructure(),
-      ]);
+    const [
+      datasource,
+      klines,
+      subscription,
+      realtime,
+      infrastructure,
+      pipelineSwitches,
+    ] = await Promise.all([
+      this.checkDatasourceControlPlane(),
+      this.checkHistoricalKLines(checkTime),
+      this.checkSubscriptionLifecycle(),
+      this.checkRealtimePipeline(),
+      this.checkInfrastructure(),
+      this.checkPipelineSwitches(),
+    ]);
 
     const overallStatus: 'PASSED' | 'FAILED' =
       datasource.passed &&
       klines.passed &&
       subscription.passed &&
       realtime.passed &&
-      infrastructure.passed
+      infrastructure.passed &&
+      pipelineSwitches.passed
         ? 'PASSED'
         : 'FAILED';
 
@@ -93,6 +102,7 @@ export class PreMarketInspectionService {
         subscription,
         realtime,
         infrastructure,
+        pipelineSwitches,
       },
       markdown: this.buildMarkdownReport(dateStr, overallStatus, {
         datasource,
@@ -100,6 +110,7 @@ export class PreMarketInspectionService {
         subscription,
         realtime,
         infrastructure,
+        pipelineSwitches,
       }),
       sentToWechat: false,
     };
@@ -405,6 +416,167 @@ export class PreMarketInspectionService {
   }
 
   /**
+   * 维度 6: 运行时开关与防断链闸门检查
+   */
+  async checkPipelineSwitches(): Promise<DimensionCheckResult> {
+    const backendHealthUrl =
+      this.configService.get<string>('BACKEND_HEALTH_URL') ??
+      'http://mist-backend:8001/health';
+    const signalHealthUrl =
+      this.configService.get<string>('SIGNAL_HEALTH_URL') ??
+      'http://signal:8010/health';
+    const tdxBase =
+      this.configService.get<string>('TDX_BASE_URL') ??
+      'http://tdx-datasource:9001';
+    const qmtBase =
+      this.configService.get<string>('QMT_BASE_URL') ??
+      'http://qmt-datasource:9002';
+    const wechatWebhook =
+      this.configService.get<string>('OO_ALERT_WECHAT_WEBHOOK') ||
+      this.configService.get<string>('NOTIFICATION_WECHAT_WEBHOOK');
+
+    const errors: string[] = [];
+    const remediation: string[] = [];
+    const statusBadges: Record<string, string> = {
+      backend: 'unknown',
+      signal: 'unknown',
+      tdx: 'unknown',
+      qmt: 'unknown',
+      redis: 'unknown',
+      wechat: wechatWebhook ? 'ok' : 'missing',
+    };
+
+    if (!wechatWebhook) {
+      errors.push('微信告警 Webhook 未配置 (NOTIFICATION_WECHAT_WEBHOOK 缺失)');
+      remediation.push(
+        '在 .env 中配置有效企业微信 Webhook: NOTIFICATION_WECHAT_WEBHOOK',
+      );
+    }
+
+    // 1. Probe Backend health & runtime switches
+    try {
+      const res = await fetch(backendHealthUrl, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) {
+        errors.push(`Backend 健康端点返回 HTTP ${res.status}`);
+        statusBadges.backend = 'error';
+      } else {
+        const body = (await res.json()) as Record<string, unknown>;
+        const data = (body['data'] ?? body) as Record<string, unknown>;
+        const prodMode = data['productizationMode'];
+        const stratMode = data['strategyMode'];
+        const redisOk = data['redisAvailable'] === true;
+
+        statusBadges.backend = String(prodMode ?? 'unknown');
+        statusBadges.redis = redisOk ? 'ok' : 'unavailable';
+
+        if (prodMode !== 'on') {
+          errors.push(`Backend Candle 产品化开关处于 ${prodMode} (必须为 on)`);
+          remediation.push(
+            '在 Windows 宿主机执行: Set-DockerEnvValue -Path F:\\MistDocker\\.env -Key REALTIME_PRODUCTIZATION_MODE -Value on; docker compose up -d --force-recreate mist-backend',
+          );
+        }
+        if (stratMode !== 'on') {
+          errors.push(`Backend 策略派发开关处于 ${stratMode} (必须为 on)`);
+          remediation.push(
+            '在 Windows 宿主机执行: Set-DockerEnvValue -Path F:\\MistDocker\\.env -Key REALTIME_STRATEGY_MODE -Value on; docker compose up -d --force-recreate mist-backend',
+          );
+        }
+        if (!redisOk) {
+          errors.push('Backend Realtime Redis 处于不可用状态');
+          remediation.push(
+            '检查 mist-realtime-redis 容器状态及 MIST_REALTIME_REDIS_URL 配置',
+          );
+        }
+      }
+    } catch (err) {
+      errors.push(
+        `Backend 健康端点无法访问: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      statusBadges.backend = 'unreachable';
+    }
+
+    // 2. Probe Signal health & runtime switches
+    try {
+      const res = await fetch(signalHealthUrl, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) {
+        errors.push(`Signal 服务健康端点返回 HTTP ${res.status}`);
+        statusBadges.signal = 'error';
+      } else {
+        const body = (await res.json()) as Record<string, unknown>;
+        const data = (body['data'] ?? body) as Record<string, unknown>;
+        const realtimeMode = data['realtimeMode'];
+        statusBadges.signal = String(realtimeMode ?? 'unknown');
+
+        if (realtimeMode !== 'on') {
+          errors.push(`Signal 实时策略模式处于 ${realtimeMode} (必须为 on)`);
+          remediation.push(
+            '在 Windows 宿主机执行: Set-DockerEnvValue -Path F:\\MistDocker\\.env -Key REALTIME_STRATEGY_MODE -Value on; docker compose up -d --force-recreate mist-signal',
+          );
+        }
+      }
+    } catch (err) {
+      errors.push(
+        `Signal 服务无法访问: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      statusBadges.signal = 'unreachable';
+    }
+
+    // 3. Probe TDX datasource realtime mode
+    try {
+      const res = await fetch(`${tdxBase}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        const body = (await res.json()) as Record<string, unknown>;
+        const mode = body['realtimeMode'];
+        statusBadges.tdx = String(mode ?? 'unknown');
+        if (mode !== 'builtin') {
+          errors.push(`TDX 数据源实时模式处于 ${mode} (必须为 builtin)`);
+        }
+      }
+    } catch {
+      statusBadges.tdx = 'unreachable';
+    }
+
+    // 4. Probe QMT datasource realtime mode
+    try {
+      const res = await fetch(`${qmtBase}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        const body = (await res.json()) as Record<string, unknown>;
+        const mode = body['realtimeMode'];
+        statusBadges.qmt = String(mode ?? 'unknown');
+        if (mode !== 'builtin') {
+          errors.push(`QMT 数据源实时模式处于 ${mode} (必须为 builtin)`);
+        }
+      }
+    } catch {
+      statusBadges.qmt = 'unreachable';
+    }
+
+    const badgeStr = `backend=${statusBadges.backend} | signal=${statusBadges.signal} | tdx=${statusBadges.tdx} | qmt=${statusBadges.qmt} | redis=${statusBadges.redis} | wechat=${statusBadges.wechat}`;
+
+    if (errors.length > 0) {
+      return {
+        passed: false,
+        summary: `关键链路开关异常 (${badgeStr})`,
+        details: errors,
+        remediation: [...new Set(remediation)],
+      };
+    }
+
+    return {
+      passed: true,
+      summary: badgeStr,
+    };
+  }
+
+  /**
    * 生成深度结构化 Markdown 简报
    */
   buildMarkdownReport(
@@ -421,6 +593,7 @@ export class PreMarketInspectionService {
     const lines: string[] = [
       `### ${headerEmoji} ${headerTitle}`,
       `- **交易日期**：${dateStr}`,
+      `- **链路开关**：${dimensions.pipelineSwitches.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.pipelineSwitches.summary}）`,
       `- **数据源/Journal**：${dimensions.datasource.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.datasource.summary}）`,
       `- **昨夜收盘K线**：${dimensions.klines.passed ? '🟢 完整' : '🔴 缺失'}（${dimensions.klines.summary}）`,
       `- **活跃订阅分配**：${dimensions.subscription.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.subscription.summary}）`,
