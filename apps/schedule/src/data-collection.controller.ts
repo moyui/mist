@@ -1,4 +1,4 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, Post } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Period } from '@app/shared-data';
 import {
@@ -9,7 +9,10 @@ import {
   TimezoneService,
 } from '@app/timezone';
 import { PostCloseSyncService } from '../../mist/src/collector';
-import { PreMarketInspectionService } from './pre-market-inspection.service';
+import {
+  PreMarketInspectionReport,
+  PreMarketInspectionService,
+} from './pre-market-inspection.service';
 import { addDays, getMonth, subDays } from 'date-fns';
 
 /**
@@ -17,7 +20,7 @@ import { addDays, getMonth, subDays } from 'date-fns';
  * and 09:05 Pre-Market Automated Health Inspection.
  *
  * 1. Pre-market health inspection at 09:05 (Monday - Friday on A-share trading days)
- *    - 5-dimension comprehensive health & readiness probe before 09:15 reset barrier
+ *    - 6-dimension comprehensive health & readiness probe before 09:15 reset barrier
  * 2. Nightly primary sync at 22:30 (Monday - Friday on A-share trading days)
  *    - Ingests authoritative DAY, 1m, 5m, 15m, 30m, 60m K-lines
  *    - Automatically appends WEEK on Friday and MONTH on last trading day of month
@@ -35,6 +38,15 @@ export class DataCollectionController {
     private readonly timezoneService: TimezoneService,
     private readonly preMarketInspectionService: PreMarketInspectionService,
   ) {}
+
+  /**
+   * 盘前主动巡检 HTTP 触发入口（支持运维随时主动巡检并推送到企微）
+   */
+  @Post('pre-market-inspection')
+  async triggerPreMarketInspection(): Promise<PreMarketInspectionReport> {
+    const now = this.timezoneService.getCurrentBeijingTime();
+    return this.preMarketInspectionService.runInspection(now);
+  }
 
   /**
    * 盘前主动巡检任务：周一至周五 09:05 触发（北京时间）
