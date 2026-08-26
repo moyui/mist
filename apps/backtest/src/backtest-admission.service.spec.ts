@@ -1,5 +1,5 @@
 import { BacktestAdmissionService } from './backtest-admission.service';
-import { BacktestHealthStateService } from './backtest-health-state.service';
+import { HealthStateService } from './health/health-state.service';
 
 function deferred(): {
   promise: Promise<void>;
@@ -24,7 +24,7 @@ function runs(status: string = 'pending') {
 
 describe('BacktestAdmissionService', () => {
   it('rejects before readiness and does not call the executor', async () => {
-    const health = new BacktestHealthStateService();
+    const health = new HealthStateService();
     const executor = { execute: jest.fn() };
     const admission = new BacktestAdmissionService(
       config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,
@@ -43,7 +43,7 @@ describe('BacktestAdmissionService', () => {
 
   it('deduplicates active and waiting runs before applying capacity', async () => {
     const first = deferred();
-    const health = new BacktestHealthStateService();
+    const health = new HealthStateService();
     const executor = { execute: jest.fn().mockReturnValue(first.promise) };
     const admission = new BacktestAdmissionService(
       config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,
@@ -72,7 +72,7 @@ describe('BacktestAdmissionService', () => {
     const first = deferred();
     const second = deferred();
     const third = deferred();
-    const health = new BacktestHealthStateService();
+    const health = new HealthStateService();
     const executor = {
       execute: jest
         .fn()
@@ -110,7 +110,7 @@ describe('BacktestAdmissionService', () => {
   });
 
   it('returns run_failed for a durable failed run without reserving capacity', async () => {
-    const health = new BacktestHealthStateService();
+    const health = new HealthStateService();
     const executor = { execute: jest.fn() };
     const admission = new BacktestAdmissionService(
       config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,
@@ -130,7 +130,7 @@ describe('BacktestAdmissionService', () => {
   });
 
   it('keeps startup reservations unpublished until readiness is opened', () => {
-    const health = new BacktestHealthStateService();
+    const health = new HealthStateService();
     const executor = { execute: jest.fn().mockResolvedValue(undefined) };
     const admission = new BacktestAdmissionService(
       config({ BACKTEST_CONCURRENCY: 1, BACKTEST_QUEUE_CAPACITY: 1 }) as any,

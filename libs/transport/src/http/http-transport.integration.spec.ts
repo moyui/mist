@@ -20,6 +20,7 @@ import { HttpBusinessRejection } from './http-business-rejection';
 import { installHttpRequestContext } from './http-request-context.middleware';
 import { HttpResponseMessage } from './http-response-message.decorator';
 import { HttpTransportModule } from './http-transport.module';
+import { RawResponse } from './raw-response.decorator';
 
 class ChildDto {
   @IsString()
@@ -176,11 +177,25 @@ class ContractController {
   primitive(): never {
     throw 'unsafe primitive';
   }
+
+  @Get('raw')
+  @RawResponse()
+  rawEndpoint(): { status: string; raw: boolean } {
+    return { status: 'ok', raw: true };
+  }
+}
+
+@Controller()
+class HealthTestController {
+  @Get('health')
+  getHealth(): { status: string; service: string; instance: string } {
+    return { status: 'ok', service: 'test-service', instance: 'test-service' };
+  }
 }
 
 @Module({
   imports: [HttpTransportModule],
-  controllers: [ContractController],
+  controllers: [ContractController, HealthTestController],
 })
 class ContractModule {}
 
@@ -439,5 +454,29 @@ describe('HttpTransportModule integration', () => {
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy.mock.calls[0][1]).toContain('outer failure');
     expect(errorSpy.mock.calls[0][1]).toContain('inner cause');
+  });
+
+  it('bypasses response envelope for @RawResponse decorated endpoints', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/contract/raw')
+      .expect(200);
+
+    expect(response.body).toEqual({ status: 'ok', raw: true });
+    expect(response.body).not.toHaveProperty('success');
+    expect(response.body).not.toHaveProperty('data');
+  });
+
+  it('bypasses response envelope for GET /health endpoint', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/health')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      status: 'ok',
+      service: 'test-service',
+      instance: 'test-service',
+    });
+    expect(response.body).not.toHaveProperty('success');
+    expect(response.body).not.toHaveProperty('data');
   });
 });

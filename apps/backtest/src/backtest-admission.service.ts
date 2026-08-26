@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BacktestRun, BacktestRunStatus } from '@app/shared-data';
 import type { Repository } from 'typeorm';
-import { BacktestHealthStateService } from './backtest-health-state.service';
+import { HealthStateService } from './health/health-state.service';
 import { BacktestRunExecutor } from './backtest-run.executor';
 
 export type BacktestAdmissionResult =
@@ -29,7 +29,7 @@ export class BacktestAdmissionService {
   constructor(
     config: ConfigService,
     private readonly executor: BacktestRunExecutor,
-    private readonly health: BacktestHealthStateService,
+    private readonly health: HealthStateService,
     @InjectRepository(BacktestRun)
     private readonly runs: Repository<BacktestRun>,
   ) {

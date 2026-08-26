@@ -22,7 +22,8 @@ import {
 import * as path from 'node:path';
 import { LoggerModule } from 'nestjs-pino';
 
-import { SignalHealthController } from './signal-health.controller';
+import { AppController } from './app.controller';
+import { HealthController } from './health/health.controller';
 import { SignalRegistryController } from './signal-registry.controller';
 import { SignalRealtimeModule } from './realtime/signal-realtime.module';
 import { SignalRegistryModule } from './signal-registry.module';
@@ -90,7 +91,7 @@ import { SignalRegistryModule } from './signal-registry.module';
       resolveRealtimeStrategyMode(process.env.REALTIME_STRATEGY_MODE),
     ),
   ],
-  controllers: [SignalHealthController, SignalRegistryController],
+  controllers: [AppController, HealthController, SignalRegistryController],
 })
 export class SignalAppModule {}
 

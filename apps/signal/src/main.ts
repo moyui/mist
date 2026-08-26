@@ -2,10 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Logger } from 'nestjs-pino';
 import { SignalAppModule } from './signal-app.module';
+import { HealthStateService } from './health/health-state.service';
+import { registerSignalMetrics } from './observability/metrics';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(SignalAppModule);
   app.useLogger(app.get(Logger));
+  registerSignalMetrics(app.get(HealthStateService));
   app.enableShutdownHooks();
   app.connectMicroservice<MicroserviceOptions>(
     {

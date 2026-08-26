@@ -12,7 +12,7 @@ import {
   type CandleFinalizedJobResult,
 } from './candle-finalized-job.processor';
 import { SignalRuntimeMutex } from '../signal-runtime-mutex.service';
-import { SignalHealthStateService } from '../signal-health-state.service';
+import { HealthStateService } from '../health/health-state.service';
 
 @Processor(STRATEGY_TRIGGER_QUEUE_NAME, {
   concurrency: STRATEGY_TRIGGER_WORKER_CONCURRENCY,
@@ -23,7 +23,7 @@ export class CandleFinalizedBullMqWorker extends WorkerHost {
   constructor(
     private readonly processor: CandleFinalizedJobProcessor,
     private readonly runtimeMutex: SignalRuntimeMutex,
-    private readonly healthState: SignalHealthStateService,
+    private readonly healthState: HealthStateService,
   ) {
     super();
   }

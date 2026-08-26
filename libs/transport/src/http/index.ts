@@ -10,3 +10,4 @@ export * from './http-response-message.decorator';
 export * from './http-response.interceptor';
 export * from './http-transport.module';
 export * from './http-validation-error.factory';
+export * from './raw-response.decorator';

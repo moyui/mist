@@ -12,10 +12,11 @@ import { ApiResponseDto } from './api-response.dto';
 import { HttpBusinessRejection } from './http-business-rejection';
 import { HttpRequestContextService } from './http-request-context.service';
 import { HTTP_RESPONSE_MESSAGE } from './http-response-message.decorator';
+import { BYPASS_RESPONSE_ENVELOPE } from './raw-response.decorator';
 
 @Injectable()
 export class HttpResponseInterceptor<T>
-  implements NestInterceptor<T, ApiResponseDto<T> | ApiErrorDto>
+  implements NestInterceptor<T, ApiResponseDto<T> | ApiErrorDto | T>
 {
   constructor(
     private readonly reflector: Reflector,
@@ -25,7 +26,7 @@ export class HttpResponseInterceptor<T>
   intercept(
     context: ExecutionContext,
     next: CallHandler<T>,
-  ): Observable<ApiResponseDto<T> | ApiErrorDto> {
+  ): Observable<ApiResponseDto<T> | ApiErrorDto | T> {
     const http = context.switchToHttp();
     const request = http.getRequest<Request>();
     const response = http.getResponse<Response>();
@@ -33,6 +34,18 @@ export class HttpResponseInterceptor<T>
     return next.handle().pipe(
       map((data) => {
         const requestId = this.ensureRequestId(response);
+
+        // Exempt /health or explicitly @RawResponse() decorated endpoints from Envelope
+        const isBypass =
+          requestPath(request) === '/health' ||
+          this.reflector.getAllAndOverride<boolean>(BYPASS_RESPONSE_ENVELOPE, [
+            context.getHandler(),
+            context.getClass(),
+          ]);
+        if (isBypass) {
+          return data;
+        }
+
         if (data instanceof HttpBusinessRejection) {
           response.status(200);
           return {

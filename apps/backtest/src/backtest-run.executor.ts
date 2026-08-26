@@ -33,7 +33,7 @@ import {
 import { DataSource as TypeOrmDataSource, In, Repository } from 'typeorm';
 import { BacktestMarketDataAdapter } from './backtest-market-data.adapter';
 import { BacktestRunFailure } from './backtest-run-error';
-import { BacktestHealthStateService } from './backtest-health-state.service';
+import { HealthStateService } from './health/health-state.service';
 
 const BACKTEST_CALCULATION_BATCH_SIZE = 100;
 const BACKTEST_RESULT_BATCH_SIZE = 100;
@@ -105,7 +105,7 @@ export class BacktestRunExecutor {
     private readonly marketData: BacktestMarketDataAdapter,
     private readonly dataSource: TypeOrmDataSource,
     private readonly config: ConfigService,
-    private readonly health: BacktestHealthStateService,
+    private readonly health: HealthStateService,
   ) {}
 
   async execute(runId: number): Promise<void> {

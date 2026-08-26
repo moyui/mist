@@ -19,9 +19,10 @@ import {
 import { RpcTransportModule } from '@app/transport/rpc';
 import { LoggerModule } from 'nestjs-pino';
 
+import { AppController } from './app.controller';
 import { BacktestCommandController } from './backtest-command.controller';
-import { BacktestHealthController } from './backtest-health.controller';
-import { BacktestHealthStateService } from './backtest-health-state.service';
+import { HealthController } from './health/health.controller';
+import { HealthStateService } from './health/health-state.service';
 import { BacktestMarketDataAdapter } from './backtest-market-data.adapter';
 import { BacktestAdmissionService } from './backtest-admission.service';
 import { BacktestRunExecutor } from './backtest-run.executor';
@@ -82,9 +83,9 @@ import { BacktestStartupService } from './backtest-startup.service';
       BacktestSignalResult,
     ]),
   ],
-  controllers: [BacktestHealthController, BacktestCommandController],
+  controllers: [AppController, HealthController, BacktestCommandController],
   providers: [
-    BacktestHealthStateService,
+    HealthStateService,
     BacktestMarketDataAdapter,
     BacktestRunExecutor,
     BacktestAdmissionService,

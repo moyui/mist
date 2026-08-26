@@ -4,14 +4,14 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Logger } from 'nestjs-pino';
 import { BacktestAppModule } from './backtest-app.module';
 import { BacktestAdmissionService } from './backtest-admission.service';
-import { BacktestHealthStateService } from './backtest-health-state.service';
-import { registerBacktestMetrics } from './observability/backtest-metrics';
+import { HealthStateService } from './health/health-state.service';
+import { registerBacktestMetrics } from './observability/metrics';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(BacktestAppModule);
   app.useLogger(app.get(Logger));
   registerBacktestMetrics(
-    app.get(BacktestHealthStateService),
+    app.get(HealthStateService),
     app.get(BacktestAdmissionService),
   );
   app.enableShutdownHooks();

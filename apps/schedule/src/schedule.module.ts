@@ -21,6 +21,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { scheduleEnvSchema } from '@app/config';
 import { LoggerModule } from 'nestjs-pino';
 
+import { AppController } from './app.controller';
+import { HealthController } from './health/health.controller';
 import { DataCollectionController } from './data-collection.controller';
 import { PreMarketInspectionService } from './pre-market-inspection.service';
 import { HistoricalCollectorModule } from '../../mist/src/collector/historical-collector.module';
@@ -92,7 +94,7 @@ import * as path from 'path';
     TimezoneModule,
     TypeOrmModule.forFeature([K, Security, RealtimeSubscriptionAssignment]),
   ],
-  controllers: [DataCollectionController],
+  controllers: [AppController, HealthController, DataCollectionController],
   providers: [PreMarketInspectionService],
   exports: [PreMarketInspectionService],
 })

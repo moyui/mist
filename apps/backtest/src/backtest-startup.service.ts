@@ -8,7 +8,7 @@ import {
 } from '@app/shared-data';
 import { DataSource, LessThanOrEqual, Repository } from 'typeorm';
 import { BacktestAdmissionService } from './backtest-admission.service';
-import { BacktestHealthStateService } from './backtest-health-state.service';
+import { HealthStateService } from './health/health-state.service';
 
 @Injectable()
 export class BacktestStartupService implements OnApplicationBootstrap {
@@ -17,7 +17,7 @@ export class BacktestStartupService implements OnApplicationBootstrap {
     @InjectRepository(BacktestRun)
     private readonly runs: Repository<BacktestRun>,
     private readonly admission: BacktestAdmissionService,
-    private readonly health: BacktestHealthStateService,
+    private readonly health: HealthStateService,
     private readonly config: ConfigService,
     private readonly dataSource: DataSource,
   ) {}

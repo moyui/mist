@@ -6,7 +6,7 @@ import {
 import { BullRegistrar } from '@nestjs/bullmq';
 import { SignalRegistryService } from '../signal-registry.service';
 import { CandleFinalizedJobProcessor } from './candle-finalized-job.processor';
-import { SignalHealthStateService } from '../signal-health-state.service';
+import { HealthStateService } from '../health/health-state.service';
 
 @Injectable()
 export class SignalRealtimeStartupService
@@ -18,7 +18,7 @@ export class SignalRealtimeStartupService
     private readonly registry: SignalRegistryService,
     private readonly registrar: BullRegistrar,
     private readonly processor: CandleFinalizedJobProcessor,
-    private readonly healthState: SignalHealthStateService,
+    private readonly healthState: HealthStateService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {

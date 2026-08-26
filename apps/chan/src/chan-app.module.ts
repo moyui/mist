@@ -5,7 +5,8 @@ import { LoggerModule } from 'nestjs-pino';
 
 import { ChanModule } from '../../mist/src/chan/chan.module';
 import * as path from 'path';
-import { HealthController } from './health.controller';
+import { AppController } from './app.controller';
+import { HealthController } from './health/health.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   K,
@@ -72,6 +73,6 @@ import { HttpTransportModule } from '@app/transport/http';
     }),
     ChanModule,
   ],
-  controllers: [HealthController],
+  controllers: [AppController, HealthController],
 })
 export class ChanAppModule {}

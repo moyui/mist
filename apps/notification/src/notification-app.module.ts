@@ -8,8 +8,9 @@ import { notificationEnvSchema } from '@app/config';
 import { NOTIFICATION_ENTITIES } from './notification-entities';
 import { NotificationDeliveryModule } from './delivery/notification-delivery.module';
 import { OoAlertModule } from './oo-alert/oo-alert.module';
+import { AppController } from './app.controller';
+import { HealthController } from './health/health.controller';
 import { NotificationAdminController } from './notification-admin.controller';
-import { NotificationHealthController } from './notification-health.controller';
 
 @Module({
   imports: [
@@ -55,6 +56,6 @@ import { NotificationHealthController } from './notification-health.controller';
     NotificationDeliveryModule,
     OoAlertModule,
   ],
-  controllers: [NotificationHealthController, NotificationAdminController],
+  controllers: [AppController, HealthController, NotificationAdminController],
 })
 export class NotificationAppModule {}

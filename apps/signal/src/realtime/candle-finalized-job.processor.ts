@@ -17,7 +17,7 @@ import type {
   LiveStrategyPersistenceOutcome,
   LiveStrategyPersistenceService,
 } from './live-strategy-persistence.service';
-import type { SignalRuntimeObservabilityService } from '../signal-runtime-observability.service';
+import type { RuntimeObservabilityService } from '../observability/runtime-observability.service';
 import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
 
 export type CandleFinalizedJobOutcome =
@@ -74,7 +74,7 @@ export class CandleFinalizedJobProcessor {
       'persist'
     >,
     private readonly runtimeObservability?: Pick<
-      SignalRuntimeObservabilityService,
+      RuntimeObservabilityService,
       'recordTradingDayRollover' | 'recordConsumerRemoval'
     >,
   ) {}

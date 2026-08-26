@@ -183,13 +183,13 @@
         "tsConfigPath": "apps/notification/tsconfig.app.json"
       }
     },
-    "otel": {
+    "observability": {
       "type": "library",
-      "root": "libs/otel",
+      "root": "libs/observability",
       "entryFile": "index",
-      "sourceRoot": "libs/otel/src",
+      "sourceRoot": "libs/observability/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/otel/tsconfig.lib.json"
+        "tsConfigPath": "libs/observability/tsconfig.lib.json"
       }
     },
     "indicators": {

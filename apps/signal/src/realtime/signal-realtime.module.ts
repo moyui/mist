@@ -18,7 +18,7 @@ import { SignalRealtimeStartupService } from './signal-realtime-startup.service'
 import { LiveStrategyPersistenceService } from './live-strategy-persistence.service';
 import { StrategyAlertDeliveryHandoffModule } from './notification/strategy-alert-delivery-handoff.module';
 import { resolveRealtimeStrategyMode } from '@app/config';
-import { SignalRuntimeObservabilityService } from '../signal-runtime-observability.service';
+import { RuntimeObservabilityService } from '../observability/runtime-observability.service';
 
 @Module({
   imports: [
@@ -50,14 +50,14 @@ import { SignalRuntimeObservabilityService } from '../signal-runtime-observabili
         SignalRegistryService,
         ConfigService,
         LiveStrategyPersistenceService,
-        SignalRuntimeObservabilityService,
+        RuntimeObservabilityService,
       ],
       useFactory(
         marketData: SignalStrategyMarketDataAdapter,
         registry: SignalRegistryService,
         config: ConfigService,
         persistence: LiveStrategyPersistenceService,
-        runtimeObservability: SignalRuntimeObservabilityService,
+        runtimeObservability: RuntimeObservabilityService,
       ) {
         return new CandleFinalizedJobProcessor(
           marketData,

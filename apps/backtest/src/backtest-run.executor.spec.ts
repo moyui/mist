@@ -2,7 +2,7 @@ import { BacktestRunStatus, DataSource, Period } from '@app/shared-data';
 import { compileStoredStrategyRule, type StrategyBar } from '@app/strategy';
 import { createChanFullOutputFixture } from '../../../libs/chancore/src/chan-full-output.characterization.fixture';
 import type { ChanBspEvent } from '../../../libs/signal/src/runtime/chan-bsp/chan-bsp.types';
-import { BacktestHealthStateService } from './backtest-health-state.service';
+import { HealthStateService } from './health/health-state.service';
 import { BacktestRunExecutor } from './backtest-run.executor';
 
 // chan_bsp 用例聚焦回放链路（分派/完整信号流/防重复/门禁）——编译细节由
@@ -83,7 +83,7 @@ function executor(overrides: Record<string, unknown> = {}) {
             : undefined,
       ),
     },
-    health: new BacktestHealthStateService(),
+    health: new HealthStateService(),
   };
   return {
     instance: (() => {

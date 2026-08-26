@@ -20,7 +20,7 @@ import {
   type RealtimeStrategyExecutionPlan,
   type SignalRegistryRefreshV1,
 } from '@app/signal';
-import { SignalHealthStateService } from './signal-health-state.service';
+import { HealthStateService } from './health/health-state.service';
 import type {
   SignalRegistryDefinition,
   SignalRegistryExecutionPlan,
@@ -48,7 +48,7 @@ export class SignalRegistryService implements OnApplicationBootstrap {
     private readonly definitions: Repository<StrategyDefinition>,
     @InjectRepository(Security)
     private readonly securities: Repository<Security>,
-    private readonly healthState: SignalHealthStateService,
+    private readonly healthState: HealthStateService,
     private readonly runtimeMutex: SignalRuntimeMutex,
   ) {}
 
