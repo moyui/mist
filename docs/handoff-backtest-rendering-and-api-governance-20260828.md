@@ -1,0 +1,82 @@
+# 回测图表渲染与接口治理修复交接文档 (2026-08-28)
+
+本文档汇总了本次关于**回测历史接口质量治理**、**前端 TradingView 缠论图表渲染修复**、**时区与买卖点语义对齐**以及 **Windows 部署与 CI/CD 运维基建加固**的完整排查过程、核心根因、修改代码和验证结论，供后续 Agent / 开发者直接交接与参考。
+
+---
+
+## 一、本次解决的核心问题概览
+
+| 维度 | 问题现象 | 根因 (Root Cause) | 解决方案与结论 |
+| :--- | :--- | :--- | :--- |
+| **后端 API 质量治理** | `GET /v1/strategy-backtests` 存在缺少标准 DTO、未校验 limit 边界、未对齐 OpenSpec 契约等质量问题 | 接口初版实现为内部直查，未通过 `class-validator` DTO 隔离边界与 Swagger 错误码注解 | 创建 [`ListBacktestRunsQueryDto`](file:///Users/moyui/sean/mist/mist/apps/mist/src/strategy/dto/list-backtest-runs-query.dto.ts)，使用 `@Type(() => Number)` / `@Min(1)` / `@Max(100)` 严格校验，补全 `@ApiTechnicalErrorResponse` 与 OpenSpec 规范，单测覆盖率 100%。 |
+| **前端 K 线与笔段渲染** | 回测工作台图表不显示 K 线蜡烛图，仅显示孤立笔/段直线 | MySQL `DECIMAL` 类型在 JSON 序列化为字符串（如 `"3905.20"`），前端 `Number.isFinite(item.open)` 对字符串求值为 `false`，导致 100% K 线被错误过滤剔除 | 在 [`TradingViewChart.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/components/tv-chart/TradingViewChart.tsx) 过滤与格式化前，对 OHLCV 及画图坐标显式执行 `Number(...)` 转换，并支持 `volume ?? amount` 成交量字段回退。 |
+| **时区与买卖点语义** | 图表 X 轴与下方命中信号列表显示 UTC 原始时间（如 `02:20`），信号类型显示为 `▼ signal` | 1. 时间戳直接使用 UTC 未本地化；<br>2. 缠论买卖点类型位于 `contextSnapshot.chanBsp.type`（如 `third_buy`），触发价格位于 `triggerPrice` | 1. TradingView 配置 `Asia/Shanghai` 本地化格式器；<br>2. [`BacktestSignalTable.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/components/BacktestSignalTable.tsx) 适配 `contextSnapshot.chanBsp`，准确展示 `▲ 3买` 徽标、触发价格与 CST 时间。 |
+| **Windows 宿主部署基建** | 电脑重启后 Docker compose 无法拉起；非交互环境 `docker login`/`docker pull` 失败 | 1. Runner 环境变量 PATH 缺失 Docker 路径；<br>2. `credsStore: "desktop"` 在非桌面交互 Session 下无法调用 wincred GUI；<br>3. `docker-compose` 插件未安装至全用户目录 | 1. 将 Docker CLI/Plugins 添加到 Machine PATH；<br>2. 部署插件到全用户目录；<br>3. 重命名 `docker-credential-wincred/desktop` 禁用 GUI 凭据管理器，回退至原生配置存储。 |
+
+---
+
+## 二、关键文件修改明细
+
+### 1. `mist` 仓库 (主后端)
+
+- [`apps/mist/src/strategy/dto/list-backtest-runs-query.dto.ts`](file:///Users/moyui/sean/mist/mist/apps/mist/src/strategy/dto/list-backtest-runs-query.dto.ts) *(新增)*
+  - 使用 `class-validator` 和 `class-transformer` 定义标准分页过滤 DTO。
+  - 属性：`limit` (可选，整数，1~100，默认 20)，`cursor` (可选，整数)，`status` (可选，枚举)，`strategyDefinitionId` (可选，整数)。
+- [`apps/mist/src/strategy/controllers/strategy-backtest.controller.ts`](file:///Users/moyui/sean/mist/mist/apps/mist/src/strategy/controllers/strategy-backtest.controller.ts)
+  - 标准化 `@Get()` 请求参数为 `@Query() query: ListBacktestRunsQueryDto`。
+  - 增加 `@ApiTechnicalErrorResponse({ status: 400, codes: ['VALIDATION_ERROR'] })` 装饰器。
+- [`apps/mist/src/strategy/services/backtest-run-query.service.ts`](file:///Users/moyui/sean/mist/mist/apps/mist/src/strategy/services/backtest-run-query.service.ts)
+  - 重构 `listRuns` 支持标准 DTO 入参，在服务端执行 `limit` 范围硬夹紧 (1~100)。
+- [`apps/mist/src/strategy/services/backtest-run-query.service.spec.ts`](file:///Users/moyui/sean/mist/mist/apps/mist/src/strategy/services/backtest-run-query.service.spec.ts) *(新增)*
+  - 验证空参默认值、分页过滤、limit 越界夹紧。
+- [`openspec/specs/backtest-runtime/spec.md`](file:///Users/moyui/sean/mist/mist/openspec/specs/backtest-runtime/spec.md)
+  - 补充 `Requirement: Backtest Run List Query Shall Use The Mist HTTP DTO/VO Boundary` 规范。
+
+### 2. `mist-fe` 仓库 (前端)
+
+- [`app/components/tv-chart/TradingViewChart.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/components/tv-chart/TradingViewChart.tsx)
+  - **数值强转与有效性过滤**：在 `sortedK` 处理链中先对 `open`/`high`/`low`/`close`/`volume` 进行 `Number(...)` 转换，再执行 `Number.isFinite(...)` 过滤。
+  - **时区本地化配置**：在 `createChart` 初始化时注入 `localization`（`timeFormatter` 使用 `Asia/Shanghai`）及 `timeScale.tickMarkFormatter`。
+  - **笔/线段/中枢线数值保护**：确保 `line.startPrice`、`line.endPrice`、`band.top`、`band.bottom` 进行 `Number(...)` 校验与数值强转。
+- [`app/backtests/components/BacktestSignalTable.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/components/BacktestSignalTable.tsx)
+  - **买卖点语义解析**：从 `sig.contextSnapshot.chanBsp` 提取 `type`（如 `third_buy`），正确映射至 `3买` / `3卖`。
+  - **触发价格解析**：读取 `ctx.triggerPrice ?? ctx.price`。
+  - **时间格式化**：`formatDateTime` 改为基于 `Asia/Shanghai` CST 本地时间格式化输出。
+- [`app/backtests/BacktestWorkspace.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/BacktestWorkspace.tsx)
+  - 默认优选包含信号的已完成回测任务（`signalCount > 0`），便于用户直接查看图表与买卖点复盘。
+- [`app/api/client.ts`](file:///Users/moyui/sean/mist/mist-fe/app/api/client.ts)
+  - 定义 `ListStrategyBacktestRunsQuery` 类型并标准化 `listStrategyBacktestRuns` 方法。
+
+---
+
+## 三、部署与环境运维要点 (Windows API Machine)
+
+在 Windows 10/11 + Docker Desktop 环境中运行 GitHub Actions self-hosted runner 时，踩坑记录与标准配置：
+
+1. **Docker CLI 与 Compose 环境变量**：
+   - 必须确保 `C:\Program Files\Docker\Docker\resources\bin` 与 `C:\Program Files\Docker\Docker\resources\cli-plugins` 位于 **Machine PATH**（系统全局环境变量），避免 Runner Windows Service 启动后找不到 `docker` 命令。
+   - Compose 插件须同时拷贝至 `C:\Users\<user>\.docker\cli-plugins` 与 `C:\Program Files\Docker\cli-plugins`。
+2. **非交互 SSH / CI Runner 下的 Docker Pull 凭据**：
+   - Docker Desktop 默认启用的 `docker-credential-desktop.exe` 和 `docker-credential-wincred.exe` 依赖 Windows 交互式桌面 Session，在 SSH / Runner 后台服务环境下调用会抛出 `A specified logon session does not exist`。
+   - **解决方式**：禁用/重命名该两项凭据二进制，并将 `config.json` 中的 `credsStore: "desktop"` 移除，Docker CLI 将自动使用基于配置文件的标准认证流程。
+
+---
+
+## 四、验证证据
+
+1. **自动化测试**：
+   - `mist`: `strategy` 模块 11 个测试套件全数通过（含 `backtest-run-query.service.spec.ts`）。
+   - `mist-fe`: 19 个测试套件，150/150 个单元测试全数通过。
+2. **生产容器状态**：
+   - `mist-docker-appliance` 13 个容器（`web-gateway`, `mist-fe`, `mist-backend`, `chan-api`, `mist-signal`, `mist-notification`, `mist-backtest`, `mist-schedule`, `mysql`, `mist-realtime-redis`, `openobserve`, `tdx-datasource`, `qmt-datasource`）全部正常启动并处于 `healthy` 状态。
+3. **真机无头浏览器截屏复核**：
+   - 访问 `http://192.168.31.182/backtests`，2,928 根 K 线、黄色笔、洋红色线段、中枢参考线、7 个 3 买标记点以及下方 CST 信号列表均精确渲染。
+
+---
+
+## 五、后续交接建议
+
+1. **更多策略回测验证**：
+   - 当前已验证通过的策略为 `#22 平均股价 30m 段级缠论买卖点`（在 5m K 线上执行求值并产生 7 个买卖点）。后续接入新策略时可直接在回测工作台发起测试。
+2. **数据源回测覆盖**：
+   - QMT 5m 数据较全（数千根），TDX 5m 当前本地存量较少。若需要长时间跨度的 TDX 回测，需通过定时采集任务补全历史分时 K 线。
