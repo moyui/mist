@@ -109,6 +109,7 @@ export class BacktestRunExecutor {
   ) {}
 
   async execute(runId: number): Promise<void> {
+    this.chanBspCursors.clear();
     let claimed: BacktestRun | null;
     try {
       claimed = await this.claim(runId);
@@ -303,6 +304,7 @@ export class BacktestRunExecutor {
     onSignal: () => void,
   ): Promise<{ hasBars: boolean }> {
     const imputer = new StrategySeriesImputer();
+    const seenSignalTimes = new Set<number>();
     let afterTimestamp: Date | undefined;
     let hasPublicBars = false;
     const replayStart = replayStartFor(run, plan);
@@ -360,7 +362,11 @@ export class BacktestRunExecutor {
               units: plan.plan.units,
             };
             const fresh = cursor.advance(identity, events);
+            let freshEmitted = false;
             for (const event of fresh) {
+              const timeKey = event.time.getTime();
+              if (seenSignalTimes.has(timeKey)) continue;
+              seenSignalTimes.add(timeKey);
               results.push(
                 this.resultRepository.create({
                   backtestRunId: run.id,
@@ -373,8 +379,9 @@ export class BacktestRunExecutor {
                   ruleSnapshot,
                 }),
               );
+              freshEmitted = true;
             }
-            if (fresh.length > 0) {
+            if (freshEmitted) {
               matchedCodes.add(securityCode);
               onSignal();
               if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
@@ -383,27 +390,32 @@ export class BacktestRunExecutor {
           } else {
             const evaluation = evaluateStrategyPlan(plan.plan, imputer.read());
             if (evaluation.status === 'evaluated' && evaluation.matched) {
-              results.push(
-                this.resultRepository.create({
-                  backtestRunId: run.id,
-                  securityCode,
-                  signalTime: bar.timestamp,
-                  contextSnapshot: serializeStrategyContextSnapshot(
-                    plan.plan,
-                    evaluation.context,
-                  ) as Record<string, unknown>,
-                  ruleSnapshot,
-                }),
-              );
-              matchedCodes.add(securityCode);
-              onSignal();
-              if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
-                await this.flushResults(results);
+              const timeKey = bar.timestamp.getTime();
+              if (!seenSignalTimes.has(timeKey)) {
+                seenSignalTimes.add(timeKey);
+                results.push(
+                  this.resultRepository.create({
+                    backtestRunId: run.id,
+                    securityCode,
+                    signalTime: bar.timestamp,
+                    contextSnapshot: serializeStrategyContextSnapshot(
+                      plan.plan,
+                      evaluation.context,
+                    ) as Record<string, unknown>,
+                    ruleSnapshot,
+                  }),
+                );
+                matchedCodes.add(securityCode);
+                onSignal();
+                if (results.length >= BACKTEST_RESULT_BATCH_SIZE)
+                  await this.flushResults(results);
+              }
             }
           }
         }
         await budget.checkpoint();
       }
+
       await budget.checkpoint(true);
       if (!page.nextAfterTimestamp) break;
       const lastBar = page.bars.at(-1);
