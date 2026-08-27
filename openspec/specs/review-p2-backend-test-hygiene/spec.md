@@ -1,7 +1,7 @@
 # review-p2-backend-test-hygiene Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p2-backend-test-hygiene. Update Purpose after archive.
+Track the P2 backend test hygiene remediation: coverage exclusions for non-application files, archived Chan diagnostics handling and explicit closure criteria for the selected findings.
 ## Requirements
 ### Requirement: Selected backend test hygiene findings are explicit
 

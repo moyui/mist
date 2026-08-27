@@ -1,7 +1,7 @@
 # review-p2-backend-runtime-sweep Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p2-backend-runtime-sweep. Update Purpose after archive.
+Track the P2 backend runtime hygiene sweep: explicit source typing, period mapping, centralized TDX WebSocket timing and explicit closure criteria for the selected findings.
 ## Requirements
 ### Requirement: Selected backend runtime P2 findings are explicit
 

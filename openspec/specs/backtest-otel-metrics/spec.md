@@ -1,7 +1,7 @@
 # backtest-otel-metrics Specification
 
 ## Purpose
-TBD - created by archiving change extract-backtest-runtime. Update Purpose after archive.
+Define backtest runtime observability as OTel observable gauges: readiness and admission, command outcomes, run status and duration, persistence and failure reasons, target issues and startup-compensation outcome, with bounded low-cardinality labels.
 ## Requirements
 ### Requirement: Backtest runtime metrics are exported as OTel gauges
 

@@ -1,7 +1,7 @@
 # tdx-provider-boundaries Specification
 
 ## Purpose
-TBD - created by archiving change refactor-tdx-provider-boundaries. Update Purpose after archive.
+Define the TDX provider boundary: a stable facade, capability-scoped implementation and isolated native response normalization separate from provider orchestration.
 ## Requirements
 ### Requirement: TDX provider facade remains stable
 

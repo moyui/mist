@@ -1,7 +1,7 @@
 # strategy-runtime-architecture Specification
 
 ## Purpose
-TBD - created by archiving change define-strategy-runtime-architecture. Update Purpose after archive.
+Define the strategy runtime architecture: single-owner responsibilities for market, analysis, evaluation and delivery, a market-to-delivery dependency flow and a single internal market-data capability contract.
 ## Requirements
 ### Requirement: Strategy Runtime Responsibilities Shall Have Single Owners
 Mist SHALL assign market state, analysis kernels, strategy control APIs, realtime evaluation, signal persistence

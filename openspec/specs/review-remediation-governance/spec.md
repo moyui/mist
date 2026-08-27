@@ -1,7 +1,7 @@
 # review-remediation-governance Specification
 
 ## Purpose
-TBD - created by archiving change stabilize-review-remediation. Update Purpose after archive.
+Define the review remediation governance: inventory-driven scope, bounded batches, item-to-evidence traceability and retention of production and user-work boundaries.
 ## Requirements
 ### Requirement: Review inventory governs remediation scope
 

@@ -1,7 +1,7 @@
 # repository-cleanup Specification
 
 ## Purpose
-TBD - created by archiving change cleanup-repo-redundancy. Update Purpose after archive.
+Define the repository cleanup contract: tracked inventory, safe-deletion criteria and user-work protection with auditable evidence for every change.
 ## Requirements
 ### Requirement: Repository inventory
 The cleanup process SHALL inventory each child repository independently and SHALL classify root-level workspace artifacts separately from repository files.

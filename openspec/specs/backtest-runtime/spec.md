@@ -1,7 +1,7 @@
 # backtest-runtime Specification
 
 ## Purpose
-TBD - created by archiving change extract-backtest-runtime. Update Purpose after archive.
+Define the split backtest runtime: `apps/backtest` owns historical replay, bounded context construction and result persistence while `apps/mist` owns public request/query APIs and the RPC command boundary, with no local executor fallback.
 ## Requirements
 ### Requirement: Backtest Runtime Shall Use The Backtest Application
 Mist SHALL run historical backtest execution in the Nest project `backtest` located at `apps/backtest` and

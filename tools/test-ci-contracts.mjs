@@ -650,6 +650,12 @@ function assertFrontendContracts() {
   assertIncludes(workflow, 'validate:', 'mist-fe docker workflow');
   assertIncludes(workflow, 'needs: validate', 'mist-fe docker workflow');
   assertIncludes(workflow, 'node-version: 24.x', 'mist-fe docker workflow');
+  assertIncludes(
+    workflow,
+    'Verify contract fixtures',
+    'mist-fe docker workflow',
+  );
+  assertIncludes(workflow, 'sha256sum -c', 'mist-fe docker workflow');
   assertIncludes(workflow, 'pnpm lint', 'mist-fe docker workflow');
   assertIncludes(workflow, 'pnpm run typecheck', 'mist-fe docker workflow');
   assertIncludes(workflow, 'pnpm run test:ci', 'mist-fe docker workflow');

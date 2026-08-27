@@ -1,7 +1,7 @@
 # review-p2-business-completion Specification
 
 ## Purpose
-TBD - created by archiving change finish-business-p2-review. Update Purpose after archive.
+Track the P2 business-completion remediation: auditable completion evidence, shared adapter error wrapping and QMT WebSocket dependency handling with explicit closure criteria.
 ## Requirements
 ### Requirement: Business P2 completion is auditable
 The business P2 completion pass SHALL distinguish verification-only repositories

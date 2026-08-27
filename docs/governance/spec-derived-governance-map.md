@@ -1,7 +1,7 @@
 # Mist OpenSpec 规范提炼映射
 
 状态：Living inventory
-基线：本地 `master` `ec72ae0255bc095ca7738518601c9f821f45d98f`，2026-08-04
+基线：本地 `master` `f79412045436b990b0d89ff96cb7c79c914649c8`，2026-08-28
 
 ## 1. 目的
 
@@ -77,13 +77,13 @@
 
 具体 finding、文件名和已完成证据继续留在 stable/archive，不建立对应长期 guide。
 
-## 7. 暂不提炼与文档债务
+## 7. 暂不提炼与边界
 
-- Purpose 仍为 `TBD - created by archiving change ...` 的 stable specs 应由 owning capability 单独补全；
-  Purpose 修复是 stable spec 质量工作，不通过通用 guide 掩盖。
 - 仍在逐项评审的 schema、provider unit、retry/dead-letter、兼容和 HIL 决策不得提前写成规范。
 - task 数量、branch、worktree、deployment snapshot 和 dated test count 不进入 living guide。
 - 已归档 evidence 保留历史原文和路径，不为当前术语一致性追溯改写。
+- 本轮 33 个 `TBD - created by archiving change ...` 的 stable spec Purpose 已于 2026-08-28
+  按 owning change 真实语义一次性回填（见 §2 来历），`grep -r "TBD - created" openspec/specs` 当前为 0。
 
 ## 8. 后续复核触发点
 

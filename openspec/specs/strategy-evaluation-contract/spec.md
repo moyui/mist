@@ -1,7 +1,7 @@
 # strategy-evaluation-contract Specification
 
 ## Purpose
-TBD - created by archiving change evolve-strategy-evaluation-contract. Update Purpose after archive.
+Define the strategy market-data domain contract: a single runtime-neutral `StrategyBar` and `StrategyMarketDataPort`, one shared `KPriceProjector` for historical and realtime prices and one typed strategy-field catalog.
 ## Requirements
 ### Requirement: Strategy Market Data Domain Contract Shall Have One Owner
 The shared strategy domain SHALL define one runtime-neutral canonical `StrategyBar` and

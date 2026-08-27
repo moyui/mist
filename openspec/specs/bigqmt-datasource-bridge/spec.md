@@ -1,7 +1,7 @@
 # bigqmt-datasource-bridge Specification
 
 ## Purpose
-TBD - created by archiving change add-bigqmt-datasource-bridge. Update Purpose after archive.
+Define the QMT datasource bridge surface: native history and owner/command/result routes plus subscription-control and callback snapshot routes gated by `QMT_REALTIME_MODE`, an independent Windows service and official snake_case market-data parameters.
 ## Requirements
 ### Requirement: QMT service exposes only the native production surface
 

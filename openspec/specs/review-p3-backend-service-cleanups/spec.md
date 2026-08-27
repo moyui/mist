@@ -1,7 +1,7 @@
 # review-p3-backend-service-cleanups Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p3-backend-service-cleanups. Update Purpose after archive.
+Track the P3 backend service-cleanup batch: minimal-shape service cleanups and behavior-adjacent Chan maintenance with explicit closure criteria and regression guards.
 ## Requirements
 ### Requirement: Batch 2 backend service P3 findings are explicit
 

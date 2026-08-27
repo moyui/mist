@@ -1,7 +1,7 @@
 # review-p2-tooling-hygiene Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p2-tooling-hygiene. Update Purpose after archive.
+Track the P2 tooling hygiene remediation: backend script and TypeScript-path contracts, datasource repository hygiene and test-backed closure criteria.
 ## Requirements
 ### Requirement: Tooling hygiene scope is explicit
 

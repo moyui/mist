@@ -1,7 +1,7 @@
 # review-p2-datasource-model-hygiene Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p2-datasource-model-hygiene. Update Purpose after archive.
+Track the P2 datasource model hygiene remediation: TDX route dependencies, shared normalization helpers and explicit closure criteria for the selected findings.
 ## Requirements
 ### Requirement: Selected datasource model P2 findings are explicit
 

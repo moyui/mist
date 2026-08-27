@@ -1,7 +1,7 @@
 # review-p1-cleanup Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p1-cleanup. Update Purpose after archive.
+Track the remaining P1 hygiene remediation scope: Python runtime/dev dependency separation, backend package-script hygiene and explicit closure criteria for P1 findings.
 ## Requirements
 ### Requirement: Remaining P1 review scope is explicit
 

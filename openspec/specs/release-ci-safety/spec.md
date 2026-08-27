@@ -1,7 +1,7 @@
 # release-ci-safety Specification
 
 ## Purpose
-TBD - created by archiving change harden-release-ci. Update Purpose after archive.
+Define release publishing and CI safety: protected-environment gates, validation-dependent Docker publishing and coverage of every first-wave repository before publish or deploy.
 ## Requirements
 ### Requirement: Release publishing is gated
 

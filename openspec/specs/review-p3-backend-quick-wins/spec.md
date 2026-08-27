@@ -1,7 +1,7 @@
 # review-p3-backend-quick-wins Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p3-backend-quick-wins. Update Purpose after archive.
+Track the P3 backend quick-win remediation: targeted dead-code removal and utility cleanup with auditable per-item evidence and explicit closure criteria.
 ## Requirements
 ### Requirement: Selected P3 backend quick-win findings are explicit
 

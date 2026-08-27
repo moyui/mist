@@ -1,8 +1,7 @@
 # backend-datasource-integration Specification
 
 ## Purpose
-
-TBD - created by archiving change connect-backend-to-datasource. Update Purpose after archive.
+Define the configured Python datasource service as the sole TDX/QMT product boundary for the Mist backend: configured HTTP/WS clients, normalized bar-query mapping and no direct native SDK calls.
 ## Requirements
 ### Requirement: Configured datasource client boundary
 

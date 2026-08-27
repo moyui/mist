@@ -1,7 +1,7 @@
 # review-p2-backend-http-config-hygiene Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p2-backend-http-config-hygiene. Update Purpose after archive.
+Track the P2 backend HTTP and configuration hygiene remediation: configuration-driven external URLs, shared datasource HTTP timeouts and explicit closure criteria for the selected findings.
 ## Requirements
 ### Requirement: Selected backend HTTP config findings are explicit
 

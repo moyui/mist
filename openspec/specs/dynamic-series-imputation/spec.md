@@ -1,7 +1,7 @@
 # dynamic-series-imputation Specification
 
 ## Purpose
-TBD - created by archiving change add-dynamic-series-imputation. Update Purpose after archive.
+Define the shared series imputer: one unified bidirectional rule for OHLC (four-tuple) and quantity fields, monotonic immutable effective values after hydration, and current-window operation without future look-ahead.
 ## Requirements
 ### Requirement: Series Imputation Shall Apply One Unified Bidirectional Rule To OHLC And Quantity Fields
 

@@ -1,7 +1,7 @@
 # strategy-notification-delivery Specification
 
 ## Purpose
-TBD - created by archiving change deliver-strategy-notifications. Update Purpose after archive.
+Define notification delivery for persisted strategy alert events: BullMQ-backed at-least-once delivery via an independent worker, channel-isolated retry and dead-letter handling without blocking committed alert events.
 ## Requirements
 ### Requirement: Notification Delivery Shall Consume Persisted Alert Events
 Proactive notification delivery SHALL consume Mist-owned PENDING AlertEvent records and SHALL NOT evaluate

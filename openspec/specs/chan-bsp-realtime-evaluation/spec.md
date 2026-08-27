@@ -1,7 +1,7 @@
 # chan-bsp-realtime-evaluation Specification
 
 ## Purpose
-TBD - created by archiving change add-chan-bsp-realtime-evaluation. Update Purpose after archive.
+Define chan_bsp as a distinct strategy kind with a declarative `{units, points, direction}` rule, evaluated by a stateless window-to-events detector over realtime StrategyBars with bounded confirmation semantics.
 ## Requirements
 ### Requirement: Chan Bsp Strategies Shall Be A Distinct Strategy Kind With A Declarative Configuration
 

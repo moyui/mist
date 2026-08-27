@@ -1,7 +1,7 @@
 # monitoring-health-alerts Specification
 
 ## Purpose
-TBD - created by archiving change deliver-strategy-notifications. Update Purpose after archive.
+Define the separated health and alert contracts for notification delivery, candle foundation and realtime strategy evaluation with bounded low-cardinality metrics and no cross-domain inference.
 ## Requirements
 ### Requirement: Notification Health Shall Be Channel-Aware And Separate
 Monitoring SHALL expose notification queue depth, consumption, claim, latency, per-channel delivery results,

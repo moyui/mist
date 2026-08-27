@@ -1,7 +1,7 @@
 # mist-production-baseline Specification
 
 ## Purpose
-TBD - created by archiving change verify-mist-production-baseline. Update Purpose after archive.
+Define the production baseline evidence contract: immutable inputs for every repository and image, hybrid Windows Docker deployment proof and host/container/gateway/datasource health evidence.
 ## Requirements
 ### Requirement: Baseline records immutable production inputs
 The production baseline SHALL record immutable inputs for every repository,

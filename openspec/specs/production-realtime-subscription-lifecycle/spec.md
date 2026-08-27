@@ -1,7 +1,7 @@
 # production-realtime-subscription-lifecycle Specification
 
 ## Purpose
-TBD - created by archiving change integrate-production-realtime-subscription-lifecycle. Update Purpose after archive.
+Define the production realtime subscription lifecycle: one immutable routing assignment per ACTIVE STOCK Security and enabled TDX/QMT config, bounded version-first HTTP contracts, a single backend convergence coordinator and provider-specific recovery boundaries.
 ## Requirements
 ### Requirement: Realtime assignments persist one immutable route per security
 

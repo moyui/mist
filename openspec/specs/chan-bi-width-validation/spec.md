@@ -1,7 +1,7 @@
 # chan-bi-width-validation Specification
 
 ## Purpose
-TBD - created by archiving change fix-chan-wide-bi-distance. Update Purpose after archive.
+Define wide-Bi distance validation as ordered raw-K positions inside `originData`, not database-ID arithmetic, preserving identity boundaries and failing closed on missing or ambiguous Fenxing positions.
 ## Requirements
 ### Requirement: Wide Bi Distance Shall Use Ordered Raw K Positions
 

@@ -1,7 +1,7 @@
 # frontend-image-deployment Specification
 
 ## Purpose
-TBD - created by archiving change package-mist-fe-image. Update Purpose after archive.
+Define the frontend production image and deployment contract: pnpm-lock reproducible builds, gateway-relative `/api/mist` and `/api/chan` paths, and deployment-owned nginx gateway configuration in the Windows Docker stack.
 ## Requirements
 ### Requirement: Frontend repository publishes production Docker images
 The Mist frontend repository SHALL publish a production Docker image that can be

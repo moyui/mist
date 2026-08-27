@@ -1,7 +1,7 @@
 # realtime-subscription-operator-ux Specification
 
 ## Purpose
-TBD - created by archiving change add-realtime-subscription-operator-ux. Update Purpose after archive.
+Define the realtime subscription operator UX at `/settings/realtime-subscriptions`: single-page immutable routing initialization, bounded contract-driven inventory and separate display of security status versus provider active evidence.
 ## Requirements
 ### Requirement: Operators can initialize immutable realtime routing from one page
 

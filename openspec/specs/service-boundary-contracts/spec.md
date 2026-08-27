@@ -1,7 +1,7 @@
 # service-boundary-contracts Specification
 
 ## Purpose
-TBD - created by archiving change standardize-service-boundary-contracts. Update Purpose after archive.
+Define service boundary contracts for the Mist backend: transport-library envelopes, distinct HTTP and RPC envelope semantics and faithful HTTP success-status mapping.
 ## Requirements
 ### Requirement: Service Boundary Contracts Shall Use The Transport Library
 Mist SHALL provide shared public HTTP and internal request-response primitives through the Nest library

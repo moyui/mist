@@ -1,7 +1,7 @@
 # chan-analysis-http-contract Specification
 
 ## Purpose
-TBD - created by archiving change extract-chan-core. Update Purpose after archive.
+Define the K and Chan HTTP price-field contract: canonical `high`/`low` in every response model, no `highest`/`lowest` compatibility fields, and a coordinated consumer cutover without dual-field aliases.
 ## Requirements
 ### Requirement: K And Chan HTTP Outputs Shall Use Canonical Price Field Names
 Mist-owned K and Chan HTTP response models SHALL expose price interval fields as `high` and `low`, matching the

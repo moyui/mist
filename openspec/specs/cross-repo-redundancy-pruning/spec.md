@@ -1,7 +1,7 @@
 # cross-repo-redundancy-pruning Specification
 
 ## Purpose
-TBD - created by archiving change prune-cross-repo-redundancy. Update Purpose after archive.
+Define the cross-repository redundancy pruning process: candidate classification, contract-preserving deletions, legacy-interface protection and verification before completion.
 ## Requirements
 ### Requirement: Candidate Classification
 The cleanup process SHALL classify every redundancy candidate before deletion as local-only cleanup, tracked safe removal, tracked migration candidate, or keep-with-rationale.

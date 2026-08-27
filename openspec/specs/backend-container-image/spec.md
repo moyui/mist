@@ -1,7 +1,7 @@
 # backend-container-image Specification
 
 ## Purpose
-TBD - created by archiving change harden-docker-deploy-path. Update Purpose after archive.
+Define the production Docker image contract for the Mist backend: non-root runtime, single pnpm-built dependency tree, configurable npm registry, minimal build context and a strict singular entrypoint.
 ## Requirements
 ### Requirement: Backend runtime image runs as non-root
 

@@ -1,7 +1,7 @@
 # review-p2-backend-logging-hygiene Specification
 
 ## Purpose
-TBD - created by archiving change continue-review-p2-backend-logging-hygiene. Update Purpose after archive.
+Track the P2 backend logging hygiene remediation: structured NestJS Logger usage on production paths, datasource fallback warnings and explicit closure criteria for the selected findings.
 ## Requirements
 ### Requirement: Selected backend logging findings are explicit
 
