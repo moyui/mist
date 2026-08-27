@@ -492,7 +492,7 @@ describe('BacktestRunExecutor chan_bsp replay', () => {
     fixture.dependencies.marketData.readReplayPage
       .mockResolvedValueOnce({
         bars: bars.slice(0, 24),
-        nextAfterTimestamp: new Date(bars[23].timestamp.getTime() + 1),
+        nextAfterTimestamp: new Date(bars[23].timestamp.getTime()),
       })
       .mockResolvedValueOnce({
         bars: bars.slice(24),

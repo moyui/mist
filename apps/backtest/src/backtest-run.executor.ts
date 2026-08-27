@@ -409,7 +409,7 @@ export class BacktestRunExecutor {
       const lastBar = page.bars.at(-1);
       if (
         !lastBar ||
-        page.nextAfterTimestamp <= lastBar.timestamp ||
+        page.nextAfterTimestamp < lastBar.timestamp ||
         (afterTimestamp && page.nextAfterTimestamp <= afterTimestamp)
       ) {
         throw new BacktestRunFailure('BACKTEST_EXECUTION_FAILED');
