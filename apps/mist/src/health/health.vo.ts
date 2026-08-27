@@ -25,4 +25,7 @@ export class BackendHealthVo implements BaseHealthVo {
 
   @ApiProperty({ example: 4 })
   allowlistCount!: number;
+
+  @ApiProperty({ example: true })
+  autoReconcile!: boolean;
 }

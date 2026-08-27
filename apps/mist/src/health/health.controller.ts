@@ -1,10 +1,11 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Optional } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from '@app/shared-data';
 import { RawResponse } from '@app/transport/http';
 import { RealtimeRedisService } from '../realtime/realtime-redis.service';
 import { RealtimeSecurityAllowlistService } from '../realtime/realtime-security-allowlist.service';
+import { RuntimeConfigService } from '../realtime-subscriptions/runtime-config.service';
 import { BackendHealthVo } from './health.vo';
 
 @ApiTags('health')
@@ -14,6 +15,7 @@ export class HealthController {
     private readonly config: ConfigService,
     private readonly redis: RealtimeRedisService,
     private readonly allowlist: RealtimeSecurityAllowlistService,
+    @Optional() private readonly runtimeConfig?: RuntimeConfigService,
   ) {}
 
   @Get('health')
@@ -46,6 +48,7 @@ export class HealthController {
       strategyMode: stratMode,
       redisAvailable: this.redis.isAvailable(),
       allowlistCount,
+      autoReconcile: this.runtimeConfig?.getAutoReconcileCached() ?? false,
     };
   }
 }

@@ -3,12 +3,14 @@ import { ConfigService } from '@nestjs/config';
 import { HealthController } from './health.controller';
 import { RealtimeRedisService } from '../realtime/realtime-redis.service';
 import { RealtimeSecurityAllowlistService } from '../realtime/realtime-security-allowlist.service';
+import { RuntimeConfigService } from '../realtime-subscriptions/runtime-config.service';
 
 describe('HealthController (mist)', () => {
   let controller: HealthController;
   let mockConfigService: { get: jest.Mock };
   let mockRedisService: { isAvailable: jest.Mock };
   let mockAllowlistService: { assignedCountFor: jest.Mock };
+  let mockRuntimeConfigService: { getAutoReconcileCached: jest.Mock };
 
   beforeEach(async () => {
     mockConfigService = {
@@ -20,6 +22,9 @@ describe('HealthController (mist)', () => {
     mockAllowlistService = {
       assignedCountFor: jest.fn().mockReturnValue(2),
     };
+    mockRuntimeConfigService = {
+      getAutoReconcileCached: jest.fn().mockReturnValue(true),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [HealthController],
@@ -29,6 +34,10 @@ describe('HealthController (mist)', () => {
         {
           provide: RealtimeSecurityAllowlistService,
           useValue: mockAllowlistService,
+        },
+        {
+          provide: RuntimeConfigService,
+          useValue: mockRuntimeConfigService,
         },
       ],
     }).compile();
@@ -52,6 +61,7 @@ describe('HealthController (mist)', () => {
       strategyMode: 'on',
       redisAvailable: true,
       allowlistCount: 4,
+      autoReconcile: true,
     });
     expect(result.timestamp).toEqual(expect.any(String));
   });

@@ -443,6 +443,7 @@ export class PreMarketInspectionService {
       tdx: 'unknown',
       qmt: 'unknown',
       redis: 'unknown',
+      lifecycle: 'unknown',
       wechat: wechatWebhook ? 'ok' : 'missing',
     };
 
@@ -467,9 +468,11 @@ export class PreMarketInspectionService {
         const prodMode = data['productizationMode'];
         const stratMode = data['strategyMode'];
         const redisOk = data['redisAvailable'] === true;
+        const autoReconcileOk = data['autoReconcile'] === true;
 
         statusBadges.backend = String(prodMode ?? 'unknown');
         statusBadges.redis = redisOk ? 'ok' : 'unavailable';
+        statusBadges.lifecycle = autoReconcileOk ? 'ok' : 'disabled';
 
         if (prodMode !== 'on') {
           errors.push(`Backend Candle 产品化开关处于 ${prodMode} (必须为 on)`);
@@ -487,6 +490,14 @@ export class PreMarketInspectionService {
           errors.push('Backend Realtime Redis 处于不可用状态');
           remediation.push(
             '检查 mist-realtime-redis 容器状态及 MIST_REALTIME_REDIS_URL 配置',
+          );
+        }
+        if (!autoReconcileOk) {
+          errors.push(
+            'Backend 订阅生命周期自动对账处于禁用状态 (autoReconcile=false)',
+          );
+          remediation.push(
+            "在 MySQL 中执行: INSERT INTO runtime_configs (config_key, config_value) VALUES ('realtime_subscription_auto_reconcile', 'true') ON DUPLICATE KEY UPDATE config_value='true';",
           );
         }
       }
@@ -559,7 +570,7 @@ export class PreMarketInspectionService {
       statusBadges.qmt = 'unreachable';
     }
 
-    const badgeStr = `backend=${statusBadges.backend} | signal=${statusBadges.signal} | tdx=${statusBadges.tdx} | qmt=${statusBadges.qmt} | redis=${statusBadges.redis} | wechat=${statusBadges.wechat}`;
+    const badgeStr = `backend=${statusBadges.backend} | signal=${statusBadges.signal} | tdx=${statusBadges.tdx} | qmt=${statusBadges.qmt} | redis=${statusBadges.redis} | lifecycle=${statusBadges.lifecycle} | wechat=${statusBadges.wechat}`;
 
     if (errors.length > 0) {
       return {

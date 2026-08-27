@@ -28,6 +28,7 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
               strategyMode: 'on',
               redisAvailable: true,
               allowlistCount: 2,
+              autoReconcile: true,
             }),
           } as any);
         }

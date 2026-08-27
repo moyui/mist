@@ -74,6 +74,7 @@ describe('PreMarketInspectionService', () => {
                 strategyMode: 'on',
                 redisAvailable: true,
                 allowlistCount: 4,
+                autoReconcile: true,
               },
             }),
         });
@@ -167,6 +168,7 @@ describe('PreMarketInspectionService', () => {
                 strategyMode: 'on',
                 redisAvailable: true,
                 allowlistCount: 4,
+                autoReconcile: true,
               },
             }),
         });
@@ -256,6 +258,7 @@ describe('PreMarketInspectionService', () => {
                 strategyMode: 'on',
                 redisAvailable: true,
                 allowlistCount: 4,
+                autoReconcile: true,
               },
             }),
         });
@@ -351,6 +354,7 @@ describe('PreMarketInspectionService', () => {
                 strategyMode: 'on',
                 redisAvailable: true,
                 allowlistCount: 4,
+                autoReconcile: true,
               },
             }),
         });
@@ -435,6 +439,7 @@ describe('PreMarketInspectionService', () => {
                 strategyMode: 'on',
                 redisAvailable: true,
                 allowlistCount: 3,
+                autoReconcile: true,
               },
             }),
         });
@@ -476,6 +481,74 @@ describe('PreMarketInspectionService', () => {
       expect(report.dimensions.subscription.passed).toBe(true);
       expect(report.dimensions.subscription.summary).toContain(
         '活跃订阅池 (tdx: 2 标的, qmt: 1 标的)',
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('detects Backend autoReconcile disabled and outputs remediation guide', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes(':8001/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              instance: 'backend',
+              productizationMode: 'on',
+              strategyMode: 'on',
+              redisAvailable: true,
+              allowlistCount: 4,
+              autoReconcile: false,
+            }),
+        });
+      }
+      if (url.includes(':9001/health') || url.includes(':9002/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              realtimeMode: 'builtin',
+              bridge: { ready: true },
+              subscriptions: { ready: true },
+            }),
+        });
+      }
+      if (url.includes(':8010/health')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              status: 'ok',
+              instance: 'signal',
+              realtimeMode: 'on',
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as any;
+
+    try {
+      const report = await service.runInspection(
+        new Date('2026-08-25T09:05:00+08:00'),
+      );
+      expect(report.overallStatus).toBe('FAILED');
+      expect(report.dimensions.pipelineSwitches.passed).toBe(false);
+      expect(report.dimensions.pipelineSwitches.details).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Backend 订阅生命周期自动对账处于禁用状态'),
+        ]),
+      );
+      expect(report.dimensions.pipelineSwitches.remediation).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('realtime_subscription_auto_reconcile'),
+        ]),
       );
     } finally {
       global.fetch = originalFetch;
