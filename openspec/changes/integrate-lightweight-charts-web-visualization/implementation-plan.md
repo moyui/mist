@@ -77,17 +77,13 @@
    ```
 2. **创建组件目录**：
    - 路径：`mist-fe/app/components/tv-chart/`
-   - 文件：`TradingViewChart.tsx`
+   - 文件：`TradingViewChart.tsx` (主图) 与 `TradingViewLineChart.tsx` (看板统计图)
    - 支持属性：
      - `klines`: 基础 K 线数据（`time`, `open`, `high`, `low`, `close`）
      - `commands`: 通用绘图指令集（`VisualCommand[]`）
      - `height`: 图表高度（默认 600px）
      - `theme`: 自动适配 Ant Design 暗黑/明亮色彩体系
-     - `onCrosshairMove`: 十字光标悬停回调（用于实时展示当前 K 线的指标与状态）
-3. **编写容器单测**：
-   - `TradingViewChart.spec.tsx`：验证 DOM 挂载、`createChart` 实例化与组件卸载时的 `chart.remove()` 清理。
-
----
+     - `onCrosshairMove`: 十字光标悬停回调
 
 ### 阶段二：TradingView 缠论自定义系列与插件开发 (Phase 2)
 1. **中枢矩形方框插件（`ChanBoxPrimitive`）**：
@@ -102,7 +98,6 @@
      - 买点（1买/2买/3买）：红色底标（`position: 'belowBar'`, `shape: 'arrowUp'`, `color: '#EF4444'`）；
      - 卖点（1卖/2卖/3卖）：绿色顶标（`position: 'aboveBar'`, `shape: 'arrowDown'`, `color: '#22C55E'`）。
 
----
 
 ### 阶段三：数据层接入与存量三大页面平滑替换 (Phase 3)
 1. **封装统一数据请求（`mist-fe/app/api/client.ts`）**：
