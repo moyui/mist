@@ -181,7 +181,8 @@
       "^@app/decimal$": "<rootDir>/libs/decimal/src/index.ts",
       "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts",
       "^@app/indicators$": "<rootDir>/libs/indicators/src/index.ts",
-      "^@app/observability(|/.*)$": "<rootDir>/libs/observability/src/$1"
+      "^@app/observability(|/.*)$": "<rootDir>/libs/observability/src/$1",
+      "^@app/visual-command$": "<rootDir>/libs/visual-command/src/index.ts"
     }
   },
   "pkg": {

@@ -47,10 +47,10 @@ describe('mock mode module matrix', () => {
     expect(mockModeModulesForMode(true)).toEqual([]);
   });
 
-  it('keeps TypeORM root + 6 business modules in production mode', () => {
+  it('keeps TypeORM root + 7 business modules in production mode', () => {
     const modules = mockModeModulesForMode(false);
 
-    expect(modules).toHaveLength(7);
+    expect(modules).toHaveLength(8);
     // First entry is the TypeORM forRootAsync dynamic module (object with
     // a module class); the rest are business module classes (functions).
     expect(typeof modules[0]).toBe('object');

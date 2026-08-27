@@ -35,6 +35,7 @@ import { StrategyModule } from './strategy/strategy.module';
 import { HttpTransportModule } from '@app/transport/http';
 import { RealtimeIngressModule } from './realtime/realtime-ingress.module';
 import { RealtimeSubscriptionModule } from './realtime-subscriptions/realtime-subscription.module';
+import { VisualModule } from './visual/visual.module';
 
 @Module({
   imports: [
@@ -162,5 +163,6 @@ export function mockModeModulesForMode(
         SecurityModule,
         ChanModule,
         StrategyModule,
+        VisualModule,
       ];
 }

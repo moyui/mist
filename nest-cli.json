@@ -200,6 +200,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/indicators/tsconfig.lib.json"
       }
+    },
+    "visual-command": {
+      "type": "library",
+      "root": "libs/visual-command",
+      "entryFile": "index",
+      "sourceRoot": "libs/visual-command/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/visual-command/tsconfig.lib.json"
+      }
     }
   }
 }

@@ -89,6 +89,9 @@
       ],
       "@app/observability/*": [
         "libs/observability/src/*"
+      ],
+      "@app/visual-command": [
+        "libs/visual-command/src/index.ts"
       ]
     }
   },
