@@ -56,6 +56,25 @@ export class BacktestRunQueryService {
     return mapRun(run);
   }
 
+  async listRuns(
+    strategyDefinitionId?: number,
+    limit = 50,
+  ): Promise<BacktestRunVo[]> {
+    const builder = this.runRepository
+      .createQueryBuilder('run')
+      .orderBy('run.id', 'DESC')
+      .take(limit);
+
+    if (strategyDefinitionId) {
+      builder.where('run.strategyDefinitionId = :strategyDefinitionId', {
+        strategyDefinitionId,
+      });
+    }
+
+    const runs = await builder.getMany();
+    return runs.map(mapRun);
+  }
+
   async listSignals(
     runId: number,
     query: BacktestSignalResultQueryDto,

@@ -82,6 +82,17 @@ export class StrategyBacktestController {
     }
   }
 
+  @Get()
+  @ApiEnvelopeResponse({ status: 200, type: BacktestRunVo, isArray: true })
+  async listRuns(@Query('strategyDefinitionId') strategyDefinitionId?: string) {
+    const defId = strategyDefinitionId
+      ? parseInt(strategyDefinitionId, 10)
+      : undefined;
+    return await this.queryService.listRuns(
+      Number.isFinite(defId) && defId! > 0 ? defId : undefined,
+    );
+  }
+
   @Get(':runId')
   @ApiEnvelopeResponse({ status: 200, type: BacktestRunVo })
   async findRun(@Param() params: BacktestRunIdParamDto) {

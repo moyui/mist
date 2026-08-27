@@ -53,4 +53,13 @@ describe('StrategyBacktestController', () => {
       '/v1/strategy-backtests/2',
     );
   });
+
+  it('delegates listRuns to queryService', async () => {
+    const query = {
+      listRuns: jest.fn().mockResolvedValue([{ id: 10 }]),
+    };
+    const controller = new StrategyBacktestController({} as any, query as any);
+    await expect(controller.listRuns('22')).resolves.toEqual([{ id: 10 }]);
+    expect(query.listRuns).toHaveBeenCalledWith(22);
+  });
 });
