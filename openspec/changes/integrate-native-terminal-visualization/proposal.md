@@ -1,4 +1,4 @@
-# Proposal: 原厂交易终端（TDX & QMT）原生图表可视化与架构解耦
+# Proposal: 原厂交易终端（TDX & QMT）原生图表可视化与极简架构解耦
 
 ## 背景与痛点
 
@@ -18,19 +18,19 @@
    - 坚决**不依赖** TDX 或 QMT 自带的传统回测系统，避免因撮合机制、滑点逻辑与数据格式不一致导致回测口径割裂。
 
 2. **终端角色定位：纯粹的 UI 渲染器（Headless Core + UI Projection）**：
-   - **TDX 终端**：作为原生看盘与复盘界面，利用成熟的开源 DLL 插件（如 `CZSC.dll` / `ChanlunX` 接口标准）与主图公式（`DRAWLINE`、`STICKLINE`、`DRAWTEXT`），将 Mist 算好的缠论几何图元直接投影到通达信主图；
-   - **QMT 终端**：利用 QMT 原生 Python 解释器与 `ContextInfo.paint()` 绘图 API，编写极简脚本直连 Mist 本地 API，在 QMT 原生主图上渲染中枢、笔与买卖点；
+   - **QMT 终端（第一优先级）**：采用 **QMT「主图自定义指标」模式**，利用 QMT 原生 Python 解释器与 `ContextInfo.paint()` 绘图 API，编写极简脚本直连 Mist 本地 API，在换股和切换周期时自动在 QMT 原生主图上渲染中枢、笔与买卖点；
+   - **TDX 终端（第二阶段）**：采用 **瘦 DLL 桥接模式**，DLL 仅作为轻量网络桥接，实时向 Mist 后端拉取计算好的缠论端点数据，通过主图公式（`DRAWLINE`、`STICKLINE`、`DRAWTEXT`）投影到通达信主图；
    - **数据源闭环原则**：从 TDX 采集的数据可在 TDX 原厂回显，从 QMT 采集的数据可在 QMT 原厂回显。
 
-3. **前端与网关层瘦身（Lean Frontend & Gateway Simplification）**：
+3. **前端与网关层瘦身（Lean Frontend & Gateway Removal）**：
    - `mist-fe` 重新定位于**轻量级研发测试、状态看板与接口诊断工具**，不再承担高复杂度的沉重桌面图表自研负担；
-   - 简化部署拓扑与 Nginx 路由依赖，保持系统极简、高内聚。
+   - **彻底移除 Nginx 网关容器**，各服务（`8001` 后端/API、`3000` 测试前端、`5080` 监控等）直接通过宿主机端口独立访问，极大简化 Docker Compose 部署栈。
 
 ---
 
 ## 影响范围
 
-- **后端 (`mist`)**：在 `apps/chan` 或 `apps/mist` 中固化供 TDX/QMT 调用的轻量极速几何数据查询接口（支持以代码、周期、时间窗口批量吐出笔端点、中枢矩形序列和买卖点标记）。
-- **QMT 终端集成**：提供开源标准的 QMT Python 主图指标脚本（`< 50` 行），调用 `ContextInfo.paint()` 绘制。
-- **TDX 终端集成**：集成开源通达信 DLL 插件标准与配套通达信公式（`.tne` / 源码），实现 `TDXDLL` 驱动的毫秒级绘制。
-- **部署与网关 (`mist-deploy`)**：支持直连端口与可选网关，降低前端和 Nginx 的运维强绑定。
+- **后端 (`mist`)**：在 `apps/chan` 或 `apps/mist` 中提供供 QMT/TDX 调用的轻量极速几何数据查询接口 `/v1/chan/projection`（支持以代码、周期、时间窗口批量吐出笔端点、中枢矩形序列和买卖点标记）。
+- **QMT 终端集成 (`mist-datasource`)**：提供标准 QMT Python 主图指标脚本（`< 50` 行），在 `handlebar(ContextInfo)` 中调用 `ContextInfo.paint()` 实时绘制。
+- **TDX 终端集成 (`mist-datasource`)**：集成开源通达信瘦 DLL 插件与配套通达信公式（`.tne` / 源码），实现 `TDXDLL` 驱动的毫秒级绘制。
+- **部署与网关 (`mist-deploy`)**：从 Compose 栈中移除 `mist-web-gateway`（Nginx）容器，直接映射各服务端口（`8001`、`3000`），简化部署流程。

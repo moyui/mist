@@ -25,28 +25,28 @@
 - **THEN** 响应必须包含平铺的笔数组、线段数组、中枢区间（ZG/ZD/GG/DD）及买卖点标签。
 - **AND** 单次几何计算与序列序列化耗时不得超过 `50ms`。
 
-### 2.2 QMT 原生绘图集成
-- **GIVEN** QMT 客户端运行原生 Python 主图指标
-- **WHEN** `handlebar(ContextInfo)` 触发时
-- **THEN** 脚本必须通过本地 HTTP 向 Mist 请求几何数据。
+### 2.2 QMT 原生绘图集成规范（第一阶段）
+- **GIVEN** QMT 客户端加载 `MistChan.py` 主图自定义指标
+- **WHEN** 用户在 QMT 中切换股票或周期触发 `handlebar(ContextInfo)` 时
+- **THEN** 脚本必须向本地 Mist 服务（`http://127.0.0.1:8001/api/chan/projection`）拉取几何数据。
 - **AND** 必须调用 `ContextInfo.paint()` 接口以 C++ 硬件加速方式在主图绘制笔、中枢及买卖点。
 - **AND** 图表必须保留 QMT 自带的鼠标滚轮无级缩放、平移与十字光标吸附能力。
 
-### 2.3 TDX（通达信）DLL 插件与公式集成
+### 2.3 TDX（通达信）瘦 DLL 插件与公式集成规范（第二阶段）
 - **GIVEN** 通达信客户端主图挂载缠论指标公式
 - **WHEN** 通达信主图刷新并调用 `TDXDLL1`
-- **THEN** DLL 插件必须向 Mist 后端提取该股票对应周期的结构端点。
+- **THEN** 瘦 DLL 插件必须向 Mist 后端（`http://127.0.0.1:8001/v1/chan/projection`）提取该股票对应周期的结构端点。
 - **AND** 通达信主图公式必须使用 `DRAWLINE` 绘制笔/线段，使用 `STICKLINE` 绘制中枢区间，使用 `DRAWTEXT` 绘制买卖点标签。
 - **AND** 键盘输入股票代码或切换周期（如 F5）时，主图必须自动重绘最新缠论结构。
 
 ---
 
-## 3. 前端与网关降级简化规范 (Lean Frontend & Simplified Gateway)
+## 3. 前端与网关精简规范 (Lean Frontend & Gateway Removal)
 
 ### 3.1 前端职责收敛
 - **SHALL** 将 `mist-fe` 定位为研发测试、策略管理、实时订阅状态配置与接口健康检查看板。
 - **SHALL NOT** 在 Web 端强制要求自研高复杂度桌面级金融图表。
 
-### 3.2 网关与网络拓扑简化
-- **SHALL** 允许客户端与开发工具直接通过独立服务端口（`8001`、`8008` 等）访问后端服务。
-- **SHALL** 支持简化版 Nginx 反向代理配置，移除对复杂 SPA 路由的硬依赖。
+### 3.2 彻底移除 Nginx 网关容器
+- **SHALL** 从 Docker Compose 部署栈中移除 `mist-web-gateway` 容器。
+- **SHALL** 直接将后端服务映射至宿主机 `8001` 端口，测试前端映射至 `3000` 端口。
