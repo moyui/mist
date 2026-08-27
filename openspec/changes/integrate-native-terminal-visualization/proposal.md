@@ -22,10 +22,9 @@
    - QMT 与 TDX 接收完全一致的通用绘图指令协议；
    - 未来后台新增任何指标或策略可视化图层，**QMT 与 TDX 客户端 Bridge 代码无需修改一行**，终身免维护。
 
-3. **回测唯一真理与前端瘦身**：
-   - 保持 `apps/backtest` 作为全系统唯一回测与撮合引擎；
-   - `mist-fe` 重新定位于轻量研发测试看板与接口健康检查工具；
-   - 彻底移除 Nginx 网关容器，所有服务直接暴露宿主机固定端口（`8001`、`3000`、`5080`）。
+3. **前端定位转型为纯后台管理系统与 Nginx 保留**：
+   - **`mist-fe` 转型为纯管理后台（Admin Console）**：聚焦于策略配置、实时订阅生命周期管理、告警事件确认、回测历史任务调度、盘前巡检体检等核心运维管理功能，不再自研重型金融桌面图表；
+   - **Nginx（Web Gateway）保留作为统一 80 端口入口**：对外提供标准单域反向代理（`/` ➔ 前端管理后台，`/api/mist/` ➔ 后端，`/api/chan/` ➔ 缠论服务），免除跨域 CORS 困扰，统一管理访问。
 
 4. **交易时段安全守则（Market-Hour Safety Invariant）**：
    - 所有涉及后端接口新增、容器重构与 QMT 脚本更新的实操操作，**必须严格在收盘后（15:05+）执行**，坚决保障日内交易时段行情入库与实时评估的稳定性。
@@ -35,6 +34,6 @@
 ## 影响范围
 
 - **后端 (`mist`)**：在 `libs/visual-command` 与 `apps/mist/src/visual` 中提供通用绘图指令生成器与 `GET /v1/visual/commands` 接口。
-- **QMT 终端集成 (`mist-datasource`)**：编写极简 QMT Python 哑执行器指标脚本（`< 30` 行），做指令映射与 `ContextInfo.paint()` 渲染。
-- **TDX 终端集成 (`mist-datasource`)**：编写标准 TDX 瘦 DLL 哑执行器与主图公式，做通用指令映射与绘制。
-- **部署与网关 (`mist-deploy`)**：从 Compose 栈中移除 `mist-web-gateway` 容器，直接映射各服务端口（`8001`、`3000`）。
+- **QMT 终端集成 (`mist-datasource`)**：编写极简 QMT Python 哑执行器主图指标脚本（`< 30` 行），做指令映射与 `ContextInfo.paint()` 渲染。
+- **TDX 终端集成 (`mist-datasource`)**：编写标准 TDX 64 位瘦 DLL 哑执行器与主图公式，做通用指令映射与绘制。
+- **前端 (`mist-fe`)**：作为纯后台管理系统运行，由 Nginx 统一反向代理。

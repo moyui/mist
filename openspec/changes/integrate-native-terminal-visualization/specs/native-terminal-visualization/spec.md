@@ -7,7 +7,7 @@
 - **SHALL NOT** 在任何业务领域算法库中混入颜色、图元类型或终端绘图 API 依赖。
 
 ### 1.2 通用绘图指令层独立性
-- **SHALL** 由独立的 `libs/visual-command` 模块负责将领域模型转换为标准绘图原语（`line`, `band`, `text`, `icon`）。
+- **SHALL** 由独立的 `libs/visual-command` 纯内存工具库负责将领域模型转换为标准绘图原语（`line`, `band`, `text`, `icon`）。
 - **SHALL** 支持通过 `layers` 参数自由组合图层（如 `chan`, `indicator`, `backtest`）。
 
 ---
@@ -39,12 +39,27 @@
 
 ---
 
-## 4. 部署拓扑与交易时段安全规范 (Deployment & Safety)
+## 4. 后台管理系统与统一网关规范 (Admin Console & Web Gateway)
 
-### 4.1 彻底移除 Nginx 网关
-- **SHALL** 从 Docker Compose 中移除 `mist-web-gateway` 容器。
-- **SHALL** 直接通过宿主机 `8001` 端口提供后端与绘图指令服务，`3000` 端口提供测试前端。
+### 4.1 前端定位为纯管理后台
+- **SHALL** 将 `mist-fe` 构建为轻量高效的纯管理后台，负责：
+  - 策略定义与版本切换；
+  - 实时行情订阅 ACTIVE 证券分配控制台；
+  - 策略告警事件监控与确认；
+  - 回测任务调度与历史流水管理；
+  - 09:05 盘前巡检体检诊断。
 
-### 4.2 交易时段安全守则
+### 4.2 Nginx 统一 80 端口网关保留
+- **SHALL** 保留 `mist-web-gateway` 容器监听宿主机 80 端口。
+- **SHALL** 提供标准反向代理路由：
+  - `/` ➔ `mist-fe:3000`
+  - `/api/mist/` ➔ `mist-backend:8001/`
+  - `/api/chan/` ➔ `chan-api:8008/`
+
+---
+
+## 5. 交易时段安全规范 (Trading-Hour Safety Invariant)
+
+### 5.1 盘中变更禁令
 - **SHALL NOT** 在交易时段（上海时间 09:15 ~ 15:05）执行任何代码部署与容器变更。
 - **SHALL** 全部落地与验证在 15:05 收盘后启动。
