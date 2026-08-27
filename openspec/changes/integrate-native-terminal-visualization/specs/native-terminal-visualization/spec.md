@@ -2,8 +2,8 @@
 
 ## 1. 统一算法与回测核心唯一性规范 (Unified Core Authority)
 
-### 1.1 缠论算法唯一权威
-- **SHALL** 由 `libs/chancore` 作为全系统缠论算法的唯一计算源，包含：
+### 1.1 缠论算法唯一权威与零重复开发
+- **SHALL** 100% 由 `libs/chancore` 作为全系统缠论算法的唯一计算源，包含：
   - 严格顶底分型与包含关系合并；
   - 宽笔标准（`isWideBi`）；
   - 特征序列线段划分；
@@ -19,7 +19,7 @@
 
 ## 2. 原厂终端图表投影规范 (Terminal UI Projection)
 
-### 2.1 极速几何投影接口
+### 2.1 极速一站式几何投影接口
 - **GIVEN** 通达信 DLL 或 QMT Python 脚本请求缠论几何数据
 - **WHEN** 调用 `GET /v1/chan/projection` 传入标的代码、周期及时间范围
 - **THEN** 响应必须包含平铺的笔数组、线段数组、中枢区间（ZG/ZD/GG/DD）及买卖点标签。
@@ -28,7 +28,7 @@
 ### 2.2 QMT 原生绘图集成规范（第一阶段）
 - **GIVEN** QMT 客户端加载 `MistChan.py` 主图自定义指标
 - **WHEN** 用户在 QMT 中切换股票或周期触发 `handlebar(ContextInfo)` 时
-- **THEN** 脚本必须向本地 Mist 服务（`http://127.0.0.1:8001/api/chan/projection`）拉取几何数据。
+- **THEN** 脚本必须向本地 Mist 服务（`http://127.0.0.1:8001/v1/chan/projection`）拉取几何数据。
 - **AND** 必须调用 `ContextInfo.paint()` 接口以 C++ 硬件加速方式在主图绘制笔、中枢及买卖点。
 - **AND** 图表必须保留 QMT 自带的鼠标滚轮无级缩放、平移与十字光标吸附能力。
 
@@ -50,3 +50,11 @@
 ### 3.2 彻底移除 Nginx 网关容器
 - **SHALL** 从 Docker Compose 部署栈中移除 `mist-web-gateway` 容器。
 - **SHALL** 直接将后端服务映射至宿主机 `8001` 端口，测试前端映射至 `3000` 端口。
+
+---
+
+## 4. 交易时段安全规范 (Trading-Hour Safety Invariant)
+
+### 4.1 盘中变更禁令
+- **SHALL NOT** 在交易时段（上海时间 09:15 ~ 15:05）执行任何涉及后端服务重构、Docker Compose 部署或 QMT 进程内脚本覆盖的操作。
+- **SHALL** 所有的落地与部署必须在 15:05 收盘后进行。

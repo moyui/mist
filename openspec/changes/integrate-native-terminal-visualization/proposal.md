@@ -13,24 +13,31 @@
 
 ## 核心设计决策（Architectural Invariants）
 
-1. **核心大脑唯一真理原则（Unified Computational & Backtest Authority）**：
-   - 缠论核心算法（`libs/chancore`，包含包含关系处理、宽笔、线段、中枢延伸全量公共交集 v4、1/2/3 类趋势背驰与回抽买卖点）以及回测运行系统（`apps/backtest`），**必须 100% 保留在 Mist 后端系统中统一计算与执行**；
+1. **核心大脑唯一真理与零重复造轮子（Unified Chancore Authority & Bridge Reuse）**：
+   - 缠论核心算法（`libs/chancore`，包含包含关系处理、宽笔、线段、中枢延伸全量公共交集 v4、1/2/3 类趋势背驰与回抽买卖点）以及回测运行系统（`apps/backtest`），**100% 复用已有算法库，零重复开发，统一计算与执行**；
+   - 深度复用 `mist-datasource` 已建好的 **QMT Builtin Bridge** 运行环境（`mist_qmt_realtime_bridge.py`），直接利用其持有的 `ContextInfo` 原生对象调用 `ContextInfo.paint()` 接口进行极速主图绘制；
    - 坚决**不依赖** TDX 或 QMT 自带的传统回测系统，避免因撮合机制、滑点逻辑与数据格式不一致导致回测口径割裂。
 
-2. **终端角色定位：纯粹的 UI 渲染器（Headless Core + UI Projection）**：
-   - **QMT 终端（第一优先级）**：采用 **QMT「主图自定义指标」模式**，利用 QMT 原生 Python 解释器与 `ContextInfo.paint()` 绘图 API，编写极简脚本直连 Mist 本地 API，在换股和切换周期时自动在 QMT 原生主图上渲染中枢、笔与买卖点；
-   - **TDX 终端（第二阶段）**：采用 **瘦 DLL 桥接模式**，DLL 仅作为轻量网络桥接，实时向 Mist 后端拉取计算好的缠论端点数据，通过主图公式（`DRAWLINE`、`STICKLINE`、`DRAWTEXT`）投影到通达信主图；
+2. **一站式几何投影接口（One-Stop Fast Projection API）**：
+   - 后端仅需在 `apps/mist/src/chan` 增补一个极薄的聚合接口 `GET /v1/chan/projection`，将笔、段、中枢区间（ZG/ZD/GG/DD）与买卖点标签一次性打包输出（延迟 `< 50ms`），避免终端分次请求。
+
+3. **终端角色定位：纯粹的 UI 渲染器（Headless Core + UI Projection）**：
+   - **QMT 终端（第一优先级）**：采用 **QMT「主图自定义指标」模式**，复用已建 bridge 环境与原生 Python，调用 `ContextInfo.paint()`，在换股和切换周期时自动在 QMT 原生主图上渲染中枢、笔与买卖点；
+   - **TDX 终端（第二阶段）**：采用 **瘦 DLL 桥接模式**，DLL 仅作为轻量网络桥接，向 Mist 聚合接口拉取计算好的缠论端点数据，通过主图公式（`DRAWLINE`、`STICKLINE`、`DRAWTEXT`）投影到通达信主图；
    - **数据源闭环原则**：从 TDX 采集的数据可在 TDX 原厂回显，从 QMT 采集的数据可在 QMT 原厂回显。
 
-3. **前端与网关层瘦身（Lean Frontend & Gateway Removal）**：
+4. **前端与网关层瘦身（Lean Frontend & Gateway Removal）**：
    - `mist-fe` 重新定位于**轻量级研发测试、状态看板与接口诊断工具**，不再承担高复杂度的沉重桌面图表自研负担；
    - **彻底移除 Nginx 网关容器**，各服务（`8001` 后端/API、`3000` 测试前端、`5080` 监控等）直接通过宿主机端口独立访问，极大简化 Docker Compose 部署栈。
+
+5. **交易时段安全守则（Market-Hour Safety Invariant）**：
+   - 所有涉及后端接口新增、容器重构与 QMT 脚本更新的实操操作，**必须严格在收盘后（15:00+）执行**，坚决保障日内交易时段行情入库与实时评估的稳定性。
 
 ---
 
 ## 影响范围
 
-- **后端 (`mist`)**：在 `apps/chan` 或 `apps/mist` 中提供供 QMT/TDX 调用的轻量极速几何数据查询接口 `/v1/chan/projection`（支持以代码、周期、时间窗口批量吐出笔端点、中枢矩形序列和买卖点标记）。
-- **QMT 终端集成 (`mist-datasource`)**：提供标准 QMT Python 主图指标脚本（`< 50` 行），在 `handlebar(ContextInfo)` 中调用 `ContextInfo.paint()` 实时绘制。
-- **TDX 终端集成 (`mist-datasource`)**：集成开源通达信瘦 DLL 插件与配套通达信公式（`.tne` / 源码），实现 `TDXDLL` 驱动的毫秒级绘制。
-- **部署与网关 (`mist-deploy`)**：从 Compose 栈中移除 `mist-web-gateway`（Nginx）容器，直接映射各服务端口（`8001`、`3000`），简化部署流程。
+- **后端 (`mist`)**：在 `apps/mist/src/chan` 中提供 `GET /v1/chan/projection` 极速几何聚合接口。
+- **QMT 终端集成 (`mist-datasource`)**：复用 `mist_qmt_realtime_bridge.py` 宿主环境，提供标准 QMT Python 主图指标，调用 `ContextInfo.paint()` 实时绘制。
+- **TDX 终端集成 (`mist-datasource`)**：集成开源通达信瘦 DLL 插件与配套公式，实现 `TDXDLL` 驱动的毫秒级绘制。
+- **部署与网关 (`mist-deploy`)**：从 Compose 栈中移除 `mist-web-gateway`（Nginx）容器，直接映射各服务端口（`8001`、`3000`）。

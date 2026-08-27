@@ -1,10 +1,10 @@
 # Implementation Plan: 原厂交易终端原生可视化与极简架构落地计划
 
-## 实施阶段与里程碑
+## 实施阶段与里程碑（盘后执行：15:05+）
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 1: 几何投影 API 封装与统一导出 (/v1/chan/projection)    │
+│ Phase 1: 几何投影 API 封装与统一导出 (apps/mist/src/chan)     │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
@@ -25,16 +25,17 @@
 
 ---
 
-### Phase 1: 几何投影 API 封装与统一导出
-- 在 `apps/chan` 或 `apps/mist` 中实现 `GET /v1/chan/projection` 控制器；
-- 聚合 `Chancore` 的分型、笔、线段、笔中枢、段中枢与买卖点，转换为以 K 线索引（Index）或时间戳为基准的平铺数组；
+### Phase 1: 几何投影 API 封装与统一导出（盘后执行）
+- 在 `apps/mist/src/chan/chan.controller.ts` 中实现 `GET /v1/chan/projection` 控制器；
+- 100% 复用 `libs/chancore` 的分型、笔、线段、笔中枢、段中枢与买卖点算法；
+- 聚合转换为以 K 线索引（Index）或时间戳为基准的平铺结构 `ChanProjectionVo`；
 - 编写端到端单元测试与基准性能测试（响应时间 `< 50ms`）。
 
 ### Phase 2: QMT Python 主图自定义指标与 paint() 绘图集成（重点推进）
-- 编写标准 QMT Python 主图指标脚本 `MistChan.py`；
-- 在 `handlebar(ContextInfo)` 中调用 `http://127.0.0.1:8001/api/chan/projection`；
+- 编写标准 QMT Python 主图指标脚本 `MistChan.py`（复用已有 bridge 宿主环境）；
+- 在 `handlebar(ContextInfo)` 中调用 `http://127.0.0.1:8001/v1/chan/projection`；
 - 使用 `ContextInfo.paint()` 绘制笔折线、中枢区间带以及 1/2/3 类买卖点文字；
-- 在 Windows 宿主机 QMT 实盘/模拟盘终端中挂载并验证 5m/30m/日线 绘图流畅度。
+- 在 Windows 宿主机 QMT 终端中挂载为主图指标并验证 5m/30m/日线 绘图流畅度。
 
 ### Phase 3: 通达信开源瘦 DLL 插件接入与主图公式配置
 - 基于开源标准（`ChanlunX` / `CZSC`）配置通达信瘦 DLL 插件 `mist_chan_tdx.dll`（作为向 Mist API 请求的网络桥接）；

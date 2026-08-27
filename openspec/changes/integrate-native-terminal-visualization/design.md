@@ -1,34 +1,35 @@
 # Design: 原厂交易终端原生可视化与极简架构设计
 
-## 1. 架构总览
+## 1. 架构总览与资产复用
 
-系统采用 **“Headless Core（统一核心大脑） + UI Projection（多端原生投影）”** 架构，并彻底精简网络与网关层。
+系统采用 **“Headless Core（统一核心大脑） + UI Projection（多端原生投影）”** 架构，深度复用现有 `libs/chancore` 算法与 `mist-datasource` 的 QMT Bridge 运行环境。
 
 ```
                   ┌────────────────────────────────────────────────────────┐
                   │                 Mist Core Backend & Storage             │
                   │                                                        │
-                  │  1. libs/chancore (缠论算法引擎 v4 唯一权威)              │
-                  │     - 包含关系 / 宽笔 / 特征序列段 / 中枢延伸全量交集      │
+                  │  1. libs/chancore (100% 复用已有算法库，算法唯一权威)     │
+                  │     - 包含关系 / 宽笔 / 特征序列段 / 中枢延伸全量交集 v4   │
                   │     - 1/2/3 类趋势背驰与回抽买卖点                       │
-                  │  2. apps/backtest (统一回测运行时)                      │
+                  │  2. apps/backtest (100% 复用已有统一回测运行时)         │
                   │     - 历史 K 线流式回放、信号撮合、策略评估              │
-                  │  3. apps/chan (极速几何投影 API: 端口 8001/8008)        │
-                  │     - /v1/chan/projection: 批量导出笔/段/中枢/买卖点      │
+                  │  3. apps/mist/src/chan (新增极速一站式几何投影接口)      │
+                  │     - GET /v1/chan/projection: 毫秒级打包笔/段/中枢/买卖点│
                   └──────────────┬──────────────────────────┬──────────────┘
                                  │                          │
                  HTTP REST 直连  │              HTTP REST 直连│ (Thin DLL)
-                 (:8001/api/chan)│             (:8001/api/chan)
+                 (:8001/v1/chan) │              (:8001/v1/chan)
                                  ▼                          ▼
                   ┌────────────────────────┐  ┌────────────────────────┐
                   │   迅投 (QMT 主图指标)   │  │   通达信 (TDX 瘦DLL)   │
                   │      【第一阶段重点】   │  │       【第二阶段】     │
                   │                        │  │                        │
-                  │  - 主图自定义指标模式   │  │  - 瘦 DLL 网络桥接    │
-                  │  - ContextInfo.paint() │  │  - TDX 主图公式        │
-                  │  - 换股自动刷新        │  │  - DRAWLINE / STICKLINE│
-                  │  - 原生 C++ 硬件加速   │  │  - 小键盘极速换股      │
-                  │  - 十字光标/量价精准吸附│  │  - 毫秒级重绘          │
+                  │  - 深度复用已建 Bridge │  │  - 瘦 DLL 网络桥接    │
+                  │    ContextInfo 原生环境│  │  - TDX 主图公式        │
+                  │  - ContextInfo.paint() │  │  - DRAWLINE / STICKLINE│
+                  │  - 换股自动刷新        │  │  - 小键盘极速换股      │
+                  │  - 原生 C++ 硬件加速   │  │  - 毫秒级重绘          │
+                  │  - 十字光标/量价精准吸附│  │                        │
                   └────────────────────────┘  └────────────────────────┘
 ```
 
@@ -36,15 +37,20 @@
 
 ## 2. 核心模块与端到端交互设计
 
-### 2.1 后端极速几何投影 API (`/v1/chan/projection`)
-后端提供结构扁平、无需客户端计算的投影接口：
-- **请求方法**：`GET /v1/chan/projection`（或 `/api/chan/v1/chan/projection`）
+### 2.1 后端极速一站式几何投影 API (`/v1/chan/projection`)
+由于现有接口（`/v1/chan/bi`、`/v1/chan/channel`、`/v1/chan/duan`）各自独立返回，为了让终端在换股瞬间以一次网络 I/O 获取全套图元，在 `apps/mist/src/chan/chan.controller.ts` 中新增聚合端点：
+- **请求方法**：`GET /v1/chan/projection`（或 `POST /v1/chan/projection`）
 - **请求参数**：
-  - `code`：标的代码（如 `000001` 或 `880003`）
+  - `code`：标的代码（如 `000001`、`880003`、`600519`）
   - `period`：周期（如 `5`, `30`, `1440`）
   - `source`：数据源（`qmt` 或 `tdx`）
   - `startDate` / `endDate`：时间范围（可选，默认最近 N 根 K 线）
   - `count`：K 线根数（默认 500 根）
+- **内部实现原理**：
+  1. 调用 `IndicatorService.findKData` 拿到 K 线数组；
+  2. 连续调用 `ChanCore.mergeK` ➔ `ChanCore.createBi` ➔ `ChanCore.createDuan` ➔ `ChanCore.createChannel` ➔ `ChanCore.detectBuySellPoints`；
+  3. 将各层级几何数据平铺打包为扁平的 `ChanProjectionVo`；
+  4. 单次全量计算响应耗时 `< 50ms`。
 - **返回数据结构（Canonical Projection Schema）**：
   ```json
   {
@@ -75,31 +81,45 @@
 
 ---
 
-### 2.2 QMT（迅投）主图自定义指标集成设计（阶段一）
+### 2.2 QMT（迅投）主图指标与已建 Bridge 复用设计（阶段一）
 
-在 QMT 客户端中，将其作为标准**主图技术指标**加载：
+我们在 `mist-datasource/qmt/builtin_bridge/mist_qmt_realtime_bridge.py` 已经打通了在 Windows 宿主机 QMT 进程内的 Python 运行环境。
+在 QMT 客户端中接入主图绘图指标极度轻量：
 1. **指标注册**：在 QMT “主图指标管理” 中新建 Python 主图指标 `MistChan.py`；
-2. **事件驱动**：在 `handlebar(ContextInfo)` 函数中（或首次加载/换股时）：
+2. **事件驱动**：在 `handlebar(ContextInfo)` 函数中：
    ```python
-   # 示例 QMT 主图指标伪代码
+   # coding: gbk
+   # MistChan QMT 主图缠论指标
+   import urllib.request
+   import json
+
    def handlebar(ContextInfo):
        if not ContextInfo.is_last_bar():
            return
        stock = ContextInfo.stockcode
        period = ContextInfo.period
-       # 向 Mist 本地服务发起请求
-       resp = requests.get("http://127.0.0.1:8001/api/chan/projection", params={
-           "code": stock, "period": period, "source": "qmt"
-       })
-       data = resp.json().get("data", {})
-       # 调用 QMT 原生绘图 API
-       for bi in data.get("bi", []):
-           ContextInfo.paint(f"BI_{bi['startIndex']}", bi['startPrice'], draw_type=0, color='yellow')
-       for zs in data.get("zhongshu", []):
-           ContextInfo.paint(f"ZG_{zs['startIndex']}", zs['zg'], draw_type=0, color='cyan')
-           ContextInfo.paint(f"ZD_{zs['startIndex']}", zs['zd'], draw_type=0, color='cyan')
-       for sig in data.get("signals", []):
-           ContextInfo.paint(f"SIG_{sig['index']}", sig['price'], draw_type=3, text=sig['label'], color='green' if '卖' in sig['label'] else 'red')
+       url = f"http://127.0.0.1:8001/v1/chan/projection?code={stock}&period={period}&source=qmt"
+       try:
+           req = urllib.request.Request(url)
+           with urllib.request.urlopen(req, timeout=1.0) as resp:
+               payload = json.loads(resp.read().decode('utf-8'))
+               data = payload.get("data", {})
+               
+               # 1. 绘制笔折线
+               for bi in data.get("bi", []):
+                   ContextInfo.paint(f"BI_{bi['startIndex']}", bi['startPrice'], draw_type=0, color='yellow')
+               
+               # 2. 绘制中枢区间 (ZG/ZD)
+               for zs in data.get("zhongshu", []):
+                   ContextInfo.paint(f"ZG_{zs['startIndex']}", zs['zg'], draw_type=0, color='cyan')
+                   ContextInfo.paint(f"ZD_{zs['startIndex']}", zs['zd'], draw_type=0, color='cyan')
+               
+               # 3. 绘制买卖点标签
+               for sig in data.get("signals", []):
+                   is_sell = "卖" in sig["label"]
+                   ContextInfo.paint(f"SIG_{sig['index']}", sig["price"], draw_type=3, text=sig["label"], color='green' if is_sell else 'red')
+       except Exception as e:
+           pass
    ```
 3. **交互效果**：
    - 只要在 QMT K 线界面切换股票（如 `000001`）或切换周期（5m、30m），QMT 自动拉取 Mist 计算结果并在主图上以硬件加速重绘；
