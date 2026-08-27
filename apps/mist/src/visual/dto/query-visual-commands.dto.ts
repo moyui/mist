@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { DataSource, Period } from '@app/shared-data';
 
-export class GetVisualCommandsDto {
+export class QueryVisualCommandsDto {
   @ApiProperty({
     description: '证券代码，例如 000001、600519',
     example: '000001',

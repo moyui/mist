@@ -4,7 +4,7 @@ import { ApiEnvelopeResponse } from '@app/transport/http';
 import { TimezoneService } from '@app/timezone';
 import { VisualCommandService } from '@app/visual-command';
 import { IndicatorService } from '../indicator/indicator.service';
-import { GetVisualCommandsDto } from './dto/get-visual-commands.dto';
+import { QueryVisualCommandsDto } from './dto/query-visual-commands.dto';
 import { VisualCommandPayloadVo } from './vo/visual-command.vo';
 
 @ApiTags('visual')
@@ -27,7 +27,7 @@ export class VisualController {
     description: '成功返回通用绘图指令集合',
     type: VisualCommandPayloadVo,
   })
-  async getCommands(@Query() query: GetVisualCommandsDto) {
+  async getCommands(@Query() query: QueryVisualCommandsDto) {
     const count = query.count ?? 500;
     const now = new Date();
     const endDate = query.endDate
