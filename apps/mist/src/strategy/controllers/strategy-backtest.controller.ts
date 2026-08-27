@@ -20,6 +20,8 @@ import {
 import { CreateBacktestRunDto } from '../dto/create-backtest-run.dto';
 import { BacktestRunIdParamDto } from '../dto/backtest-run-id-param.dto';
 import { BacktestSignalResultQueryDto } from '../dto/backtest-signal-result-query.dto';
+import { ListBacktestRunsQueryDto } from '../dto/list-backtest-runs-query.dto';
+
 import {
   BacktestCommandHttpException,
   BacktestRunCommandService,
@@ -84,13 +86,12 @@ export class StrategyBacktestController {
 
   @Get()
   @ApiEnvelopeResponse({ status: 200, type: BacktestRunVo, isArray: true })
-  async listRuns(@Query('strategyDefinitionId') strategyDefinitionId?: string) {
-    const defId = strategyDefinitionId
-      ? parseInt(strategyDefinitionId, 10)
-      : undefined;
-    return await this.queryService.listRuns(
-      Number.isFinite(defId) && defId! > 0 ? defId : undefined,
-    );
+  @ApiTechnicalErrorResponse({
+    status: 400,
+    codes: ['VALIDATION_ERROR'],
+  })
+  async listRuns(@Query() query: ListBacktestRunsQueryDto) {
+    return await this.queryService.listRuns(query);
   }
 
   @Get(':runId')

@@ -59,7 +59,8 @@ describe('StrategyBacktestController', () => {
       listRuns: jest.fn().mockResolvedValue([{ id: 10 }]),
     };
     const controller = new StrategyBacktestController({} as any, query as any);
-    await expect(controller.listRuns('22')).resolves.toEqual([{ id: 10 }]);
-    expect(query.listRuns).toHaveBeenCalledWith(22);
+    const dto = { strategyDefinitionId: 22, limit: 50 };
+    await expect(controller.listRuns(dto)).resolves.toEqual([{ id: 10 }]);
+    expect(query.listRuns).toHaveBeenCalledWith(dto);
   });
 });

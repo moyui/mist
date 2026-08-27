@@ -8,6 +8,8 @@ import {
 import { HttpBusinessRejection } from '@app/transport/http';
 import { Repository } from 'typeorm';
 import { BacktestSignalResultQueryDto } from '../dto/backtest-signal-result-query.dto';
+import { ListBacktestRunsQueryDto } from '../dto/list-backtest-runs-query.dto';
+
 import {
   decodeBacktestResultCursor,
   encodeBacktestResultCursor,
@@ -56,18 +58,16 @@ export class BacktestRunQueryService {
     return mapRun(run);
   }
 
-  async listRuns(
-    strategyDefinitionId?: number,
-    limit = 50,
-  ): Promise<BacktestRunVo[]> {
+  async listRuns(query?: ListBacktestRunsQueryDto): Promise<BacktestRunVo[]> {
+    const limit = Math.min(Math.max(query?.limit ?? 50, 1), 100);
     const builder = this.runRepository
       .createQueryBuilder('run')
       .orderBy('run.id', 'DESC')
       .take(limit);
 
-    if (strategyDefinitionId) {
+    if (query?.strategyDefinitionId) {
       builder.where('run.strategyDefinitionId = :strategyDefinitionId', {
-        strategyDefinitionId,
+        strategyDefinitionId: query.strategyDefinitionId,
       });
     }
 

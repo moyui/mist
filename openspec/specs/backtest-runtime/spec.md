@@ -167,6 +167,23 @@ approved Mist Backend DTO/VO and shared HTTP conventions.
   `ApiErrorDto.code=INTERNAL_ERROR`
 - **AND** the response MUST omit `data` and `Location`
 
+### Requirement: Backtest Run List Query Shall Use The Mist HTTP DTO/VO Boundary
+`GET /v1/strategy-backtests` SHALL provide a MySQL-backed collection query for historical backtest runs,
+filtered optionally by strategy definition ID and bounded by page size.
+
+#### Scenario: Backtest runs are listed with valid parameters
+- **WHEN** `GET /v1/strategy-backtests` is requested with optional `strategyDefinitionId` and `limit` (1-100)
+- **THEN** `apps/mist` MUST query authoritative `BacktestRun` records directly from MySQL ordered descending by ID
+- **AND** the response MUST be `200` with `ApiResponseDto<BacktestRunVo[]>` and `message=SUCCESS`
+- **AND** if `strategyDefinitionId` is provided, only runs for that definition MUST be returned
+- **AND** `limit` MUST be bounded to at most 100 items (defaulting to 50)
+
+#### Scenario: Backtest run list query contains invalid query parameters
+- **WHEN** `strategyDefinitionId` or `limit` is non-integer, negative or exceeds the maximum limit
+- **THEN** `ListBacktestRunsQueryDto` validation MUST reject the request with HTTP `400` and `ApiErrorDto.code=VALIDATION_ERROR`
+- **AND** the request MUST NOT execute database queries
+
+
 #### Scenario: A failed run contains persistence failure evidence
 - **WHEN** `BacktestRunVo.errorMessage` is produced
 - **THEN** it MUST expose only an approved bounded stable Backtest failure class
