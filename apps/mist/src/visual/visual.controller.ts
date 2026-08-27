@@ -51,17 +51,27 @@ export class VisualController {
     const sliced =
       kEntities.length > count ? kEntities.slice(-count) : kEntities;
 
-    const chanKlines = sliced.map((k) => ({
-      id: k.id,
-      symbol: k.security?.code ?? query.code,
-      time: k.timestamp,
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-      amount: k.amount,
-    }));
+    const chanKlines = sliced
+      .map((k) => ({
+        id: k.id,
+        symbol: k.security?.code ?? query.code,
+        time: k.timestamp,
+        open: Number(k.open),
+        high: Number(k.high),
+        low: Number(k.low),
+        close: Number(k.close),
+        volume:
+          k.volume !== null && k.volume !== undefined ? String(k.volume) : null,
+        amount:
+          k.amount !== null && k.amount !== undefined ? String(k.amount) : null,
+      }))
+      .filter(
+        (k) =>
+          Number.isFinite(k.open) &&
+          Number.isFinite(k.high) &&
+          Number.isFinite(k.low) &&
+          Number.isFinite(k.close),
+      );
 
     const requestedLayers = query.layers
       ? query.layers.split(',').map((s) => s.trim())
