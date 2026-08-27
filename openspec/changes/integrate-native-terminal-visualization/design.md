@@ -142,8 +142,8 @@ def handlebar(ContextInfo):
 
 ## 4. TDX（通达信）哑执行器设计（第二阶段）
 
-通达信端结构完全统一：
-- 通达信加载标准瘦 DLL 插件（`mist_visual_tdx.dll`）；
+通达信端目标运行环境锁定为 **通达信金融终端 V7.73（64 位 / x64）**，结构完全统一：
+- 通达信加载标准 64 位瘦 DLL 插件（`mist_visual_tdx.dll`，存放于 `T0002/dlls/` 目录）；
 - DLL 同样向 `GET /v1/visual/commands?source=tdx` 获取同一份指令 JSON；
 - DLL 按照 `type` 将数据填充至通达信数组中；
 - 通达信公式执行：
