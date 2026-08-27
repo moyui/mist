@@ -3,6 +3,9 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiEnvelopeResponse } from '@app/transport/http';
 import { TimezoneService } from '@app/timezone';
 import { VisualCommandService } from '@app/visual-command';
+import { KPriceProjector } from '@app/strategy';
+import type { ChanK } from '@app/chancore';
+import type { K } from '@app/shared-data';
 import { IndicatorService } from '../indicator/indicator.service';
 import { QueryVisualCommandsDto } from './dto/query-visual-commands.dto';
 import { VisualCommandPayloadVo } from './vo/visual-command.vo';
@@ -51,27 +54,14 @@ export class VisualController {
     const sliced =
       kEntities.length > count ? kEntities.slice(-count) : kEntities;
 
-    const chanKlines = sliced
-      .map((k) => ({
-        id: k.id,
-        symbol: k.security?.code ?? query.code,
-        time: k.timestamp,
-        open: Number(k.open),
-        high: Number(k.high),
-        low: Number(k.low),
-        close: Number(k.close),
-        volume:
-          k.volume !== null && k.volume !== undefined ? String(k.volume) : null,
-        amount:
-          k.amount !== null && k.amount !== undefined ? String(k.amount) : null,
-      }))
-      .filter(
-        (k) =>
-          Number.isFinite(k.open) &&
-          Number.isFinite(k.high) &&
-          Number.isFinite(k.low) &&
-          Number.isFinite(k.close),
-      );
+    // Use canonical KPriceProjector without unsafe brute-force casting
+    const chanKlines: ChanK[] = [];
+    for (const k of sliced) {
+      const projected = projectToChanK(k, query.code);
+      if (projected !== null) {
+        chanKlines.push(projected);
+      }
+    }
 
     const requestedLayers = query.layers
       ? query.layers.split(',').map((s) => s.trim())
@@ -84,5 +74,35 @@ export class VisualController {
       klines: chanKlines,
       layers: requestedLayers,
     });
+  }
+}
+
+/**
+ * Project a stored MySQL K entity into the canonical ChanK structure.
+ * Uses official KPriceProjector to guarantee finite decimal precision without rounding or data mutation.
+ */
+function projectToChanK(k: K, defaultCode: string): ChanK | null {
+  try {
+    const open = KPriceProjector(k.open);
+    const high = KPriceProjector(k.high);
+    const low = KPriceProjector(k.low);
+    const close = KPriceProjector(k.close);
+
+    return Object.freeze({
+      id: k.id,
+      symbol: k.security?.code ?? defaultCode,
+      time: k.timestamp,
+      open,
+      high,
+      low,
+      close,
+      volume:
+        k.volume !== null && k.volume !== undefined ? String(k.volume) : null,
+      amount:
+        k.amount !== null && k.amount !== undefined ? String(k.amount) : null,
+    });
+  } catch {
+    // Unprojectable or corrupted bars are defensively dropped per governance guidelines
+    return null;
   }
 }
