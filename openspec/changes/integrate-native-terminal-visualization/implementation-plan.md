@@ -1,46 +1,46 @@
-# Implementation Plan: 原厂交易终端原生可视化与极简架构落地计划
+# Implementation Plan: 通用绘图指令协议与原厂交易终端落地计划
 
 ## 实施阶段与里程碑（盘后执行：15:05+）
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 1: 几何投影 API 封装与统一导出 (apps/mist/src/chan)     │
+│ Phase 1: 通用绘图指令层开发 (libs/visual-command & API)        │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 2: QMT Python 主图自定义指标与 paint() 绘图集成        │
+│ Phase 2: QMT 极简 Python 哑执行器主图指标与 paint() 联调     │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 3: 通达信开源瘦 DLL 插件接入与主图公式配置              │
+│ Phase 3: TDX 极简瘦 DLL 哑执行器与主图公式接入 (二期)        │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Phase 4: 彻底移除 Nginx 网关容器与 mist-fe 职责收敛          │
-└─────────────────────────────────────────────────────────────┘
+└──────────────────────────────┬──────────────────────────────┘
 ```
 
 ---
 
-### Phase 1: 几何投影 API 封装与统一导出（盘后执行）
-- 在 `apps/mist/src/chan/chan.controller.ts` 中实现 `GET /v1/chan/projection` 控制器；
-- 100% 复用 `libs/chancore` 的分型、笔、线段、笔中枢、段中枢与买卖点算法；
-- 聚合转换为以 K 线索引（Index）或时间戳为基准的平铺结构 `ChanProjectionVo`；
-- 编写端到端单元测试与基准性能测试（响应时间 `< 50ms`）。
+### Phase 1: 通用绘图指令层开发（盘后执行）
+- 创建 `libs/visual-command` 通用库，定义 `VisualCommand` 原语契约（`line`, `band`, `text`, `icon`）；
+- 编写 `ChanVisualAdapter`，将 `libs/chancore` 输出（笔、段、中枢、买卖点）转为标准指令；
+- 在 `apps/mist/src/visual` 中提供 `GET /v1/visual/commands` 控制器；
+- 编写单元测试与性能门禁测试（单次转换 `< 50ms`）。
 
-### Phase 2: QMT Python 主图自定义指标与 paint() 绘图集成（重点推进）
-- 编写标准 QMT Python 主图指标脚本 `MistChan.py`（复用已有 bridge 宿主环境）；
-- 在 `handlebar(ContextInfo)` 中调用 `http://127.0.0.1:8001/v1/chan/projection`；
-- 使用 `ContextInfo.paint()` 绘制笔折线、中枢区间带以及 1/2/3 类买卖点文字；
-- 在 Windows 宿主机 QMT 终端中挂载为主图指标并验证 5m/30m/日线 绘图流畅度。
+### Phase 2: QMT 极简 Python 哑执行器主图指标与 paint() 联调（重点推进）
+- 编写 `< 30` 行的 QMT Python 哑执行器脚本 `MistVisualBridge.py`；
+- 在 `handlebar(ContextInfo)` 中向 `http://127.0.0.1:8001/v1/visual/commands` 拉取指令；
+- 执行 `switch-case` 映射到 `ContextInfo.paint()` 渲染；
+- 在 Windows 宿主机 QMT 客户端挂载为主图指标并验证 5m/30m/日线 自动重绘手感。
 
-### Phase 3: 通达信开源瘦 DLL 插件接入与主图公式配置
-- 基于开源标准（`ChanlunX` / `CZSC`）配置通达信瘦 DLL 插件 `mist_chan_tdx.dll`（作为向 Mist API 请求的网络桥接）；
-- 编写配套通达信主图公式（`DRAWLINE` 画笔/线段，`STICKLINE` 画中枢矩形，`DRAWTEXT` 标买卖点）；
-- 部署至通达信 `T0002/dlls/` 目录，在通达信中测试多股票快速切换与 F5 周期切换。
+### Phase 3: TDX 极简瘦 DLL 哑执行器与主图公式接入（第二阶段）
+- 配置通达信瘦 DLL 哑执行器 `mist_visual_tdx.dll`（作为向 `/v1/visual/commands` 请求的本地客户端）；
+- 编写配套通达信主图公式（`DRAWLINE`、`STICKLINE`、`DRAWTEXT`）；
+- 部署至通达信 `T0002/dlls/` 目录并在通达信中测试多股票快速切换。
 
 ### Phase 4: 彻底移除 Nginx 网关容器与 mist-fe 职责收敛
 - `mist-fe` 明确作为轻量研发测试看板，保留策略定义、实时订阅状态配置、接口健康检查；
