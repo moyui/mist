@@ -65,14 +65,14 @@ export class ChanVisualAdapter {
       idToIndex.set(k.id, idx);
     });
 
-    const getKIndex = (time: Date, id?: number): number | null => {
+    const getKIndex = (time: Date, id?: number): number => {
       const byTime = timeToIndex.get(new Date(time).getTime());
       if (byTime !== undefined) return byTime;
       if (id !== undefined) {
         const byId = idToIndex.get(id);
         if (byId !== undefined) return byId;
       }
-      return null;
+      return 0;
     };
 
     // 1. Compute Bis (Strokes)
@@ -86,7 +86,6 @@ export class ChanVisualAdapter {
           bi.endTime,
           bi.originIds[bi.originIds.length - 1],
         );
-        if (startIdx === null || endIdx === null) return;
         const isUp = bi.trend === TrendDirection.Up;
         const startPrice = isUp ? bi.low : bi.high;
         const endPrice = isUp ? bi.high : bi.low;
@@ -119,7 +118,6 @@ export class ChanVisualAdapter {
 
         const fromIdx = getKIndex(first.startTime, zs.startId);
         const toIdx = getKIndex(last.endTime, zs.endId);
-        if (fromIdx === null || toIdx === null) return;
 
         const bandCmd: BandVisualCommand = {
           id: `chan_zs_bi_${i}_${fromIdx}_${toIdx}`,
@@ -150,7 +148,6 @@ export class ChanVisualAdapter {
           duan.endTime,
           duan.originIds[duan.originIds.length - 1],
         );
-        if (startIdx === null || endIdx === null) return;
         const isUp = duan.trend === TrendDirection.Up;
         const startPrice = isUp ? duan.low : duan.high;
         const endPrice = isUp ? duan.high : duan.low;
@@ -183,7 +180,6 @@ export class ChanVisualAdapter {
 
         const fromIdx = getKIndex(first.startTime, zs.startId);
         const toIdx = getKIndex(last.endTime, zs.endId);
-        if (fromIdx === null || toIdx === null) return;
 
         const bandCmd: BandVisualCommand = {
           id: `chan_zs_duan_${i}_${fromIdx}_${toIdx}`,
@@ -228,7 +224,6 @@ export class ChanVisualAdapter {
         const unit = bspUnits[pt.unitIndex];
         if (!unit) return;
         const idx = getKIndex(unit.endTime);
-        if (idx === null) return;
         const label = formatBspLabel(pt.type);
         const isSell = isSellBsp(pt.type);
 
