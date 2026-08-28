@@ -38,6 +38,38 @@ export class VisualCommandVo {
   @ApiPropertyOptional({ description: '区间下轨' })
   bottom?: number;
 
+  @ApiPropertyOptional({ description: '起始索引（band）' })
+  fromIndex?: number;
+
+  @ApiPropertyOptional({ description: '结束索引（band）' })
+  toIndex?: number;
+
+  @ApiPropertyOptional({ description: '起始时间（band）' })
+  fromTime?: string;
+
+  @ApiPropertyOptional({ description: '结束时间（band）' })
+  toTime?: string;
+
+  @ApiPropertyOptional({ description: '极值高点 gg' })
+  gg?: number;
+
+  @ApiPropertyOptional({ description: '极值低点 dd' })
+  dd?: number;
+
+  @ApiPropertyOptional({ description: '是否填充（band）' })
+  fill?: boolean;
+
+  @ApiPropertyOptional({ description: '线宽（line）' })
+  width?: number;
+
+  @ApiPropertyOptional({ description: '线型 solid|dashed|dotted' })
+  style?: string;
+
+  @ApiPropertyOptional({
+    description: '图标形态 arrow_up|arrow_down|dot|square',
+  })
+  shape?: string;
+
   @ApiPropertyOptional({ description: '文本或标记位置' })
   index?: number;
 
@@ -49,6 +81,9 @@ export class VisualCommandVo {
 
   @ApiPropertyOptional({ description: '颜色十六进制或名称' })
   color?: string;
+
+  @ApiPropertyOptional({ description: '文本位置 above|below' })
+  position?: string;
 }
 
 export class VisualCommandPayloadVo {
