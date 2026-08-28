@@ -38,7 +38,7 @@ export class OoAlertQueueService implements OnModuleDestroy {
    *  one-minute window so a persistent anomaly does not spam WeCom/QQ). */
   async enqueueAlert(job: OoAlertJobV1): Promise<void> {
     await this.queue.add(OO_ALERT_JOB, job, {
-      jobId: `${job.alertName}:${windowStartMs(job.ts)}`,
+      jobId: `${job.alertName}-${windowStartMs(job.ts)}`,
       attempts: 3,
       backoff: { type: 'exponential', delay: 2_000 },
       removeOnComplete: 1_000,
