@@ -60,4 +60,53 @@ describe('Mist naming layout', () => {
       }
     }
   });
+
+  it('keeps Http wrapper modules importing their controller dependencies', () => {
+    const checks: Array<{
+      file: string;
+      mustContain: string[];
+      missingHint: string;
+    }> = [
+      {
+        file: 'indicator/indicator.module.ts',
+        mustContain: [
+          'IndicatorHttpModule',
+          'IndicatorModule',
+          'TimezoneModule',
+        ],
+        missingHint:
+          'IndicatorHttpModule must import IndicatorModule + TimezoneModule',
+      },
+      {
+        file: 'chan/chan.module.ts',
+        mustContain: [
+          'ChanHttpModule',
+          'ChanModule',
+          'IndicatorModule',
+          'TimezoneModule',
+        ],
+        missingHint:
+          'ChanHttpModule must import ChanModule + IndicatorModule + TimezoneModule',
+      },
+    ];
+
+    for (const { file, mustContain } of checks) {
+      const source = readFileSync(join(appRoot, file), 'utf8');
+      for (const token of mustContain) {
+        expect(source).toContain(token);
+      }
+      // The Http wrapper's @Module imports line must list all required deps together.
+      // Regression 5841f23 only imported the base module and missed Timezone/Indicator.
+      const httpModuleMatch = source.match(
+        /@Module\(\s*\{\s*imports:\s*\[([^\]]+)\][^\}]*controllers:\s*\[[^\]]+Controller[^\]]*\][^}]*\}\s*\)\s*export class \w*HttpModule/s,
+      );
+      expect(httpModuleMatch).not.toBeNull();
+      const importsBlock = httpModuleMatch?.[1] ?? '';
+      for (const token of mustContain.filter(
+        (t) => !t.endsWith('HttpModule'),
+      )) {
+        expect(importsBlock).toContain(token);
+      }
+    }
+  });
 });
