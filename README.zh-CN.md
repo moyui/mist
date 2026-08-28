@@ -152,7 +152,7 @@ Docker Appliance 容器网格
   └── openobserve:5080           # OTLP 统一日志/指标平台
 ```
 
-生产网关入口统一指向 `http://www.mist.local`：
+生产网关入口：
 - 前端页面：`/`、`/k`、`/strategies`
 - 业务后端：`/api/mist/*`
 - 缠论接口：`/api/chan/*`
