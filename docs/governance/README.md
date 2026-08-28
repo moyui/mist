@@ -35,6 +35,7 @@ guide 不得覆盖 owning spec，归档材料也不得反向恢复被 stable spe
 | [Mist Backend 代码风格指南](../mist-backend-code-style-guide.md) | 新增或实质修改 Backend DTO/VO/Entity/domain contract 时 | 命名、文件布局、HTTP/RPC 类型和受管 MySQL 对象命名 |
 | [OpenSpec 与文档治理指南](openspec-and-documentation-governance-guide.md) | 创建、修改、同步或归档 spec，以及维护 living docs 时 | source of truth、change 生命周期、文档类型和规范提炼规则 |
 | [OpenSpec 规范提炼映射](spec-derived-governance-map.md) | 判断某项 spec 是否应升格为长期 guide 时 | stable/active spec 家族的归类、已提炼项、候选项和保留项 |
+| [文档编写指南](documentation-guide.md) | 新写或修改 README、CONTRIBUTING、远端 About 时 | README 13 节模板、双语、Badge、远端 About、检查与发布 |
 
 运行手册、当前架构说明和 dated evidence 不属于本目录的长期规范：
 
@@ -66,6 +67,8 @@ docs/governance/
   runtime-and-observability-governance-guide.md
   openspec-and-documentation-governance-guide.md
   spec-derived-governance-map.md
+  documentation-guide.md          # README/文档编写规范（canonical）
+docs/readme-governance/           # 工具产物：模板骨架、github-about 清单与同步脚本
 ```
 
 三份既有 living guide 暂时保留在 `docs/` 根目录，因为 `AGENTS.md` 和 active OpenSpec 已引用其稳定路径。
