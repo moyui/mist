@@ -2,6 +2,9 @@
 
 `libs/realtime` 定义了实时行情处理中的核心契约、Redis 存储结构模式及连接层配置。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

@@ -2,6 +2,9 @@
 
 `apps/backtest` 是 Mist 的计算隔离型回测运行时微服务，将计算密集的策略回测与缠论买卖点（BSP）历史模拟从主后端解耦，保障实时业务的低延迟。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

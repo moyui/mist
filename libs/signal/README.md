@@ -2,6 +2,9 @@
 
 `libs/signal` 提供了实时策略信号相关的共享契约定义、注册表数据结构、以及与 `apps/signal` 通信的 TCP RPC 客户端封装。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

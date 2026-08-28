@@ -2,6 +2,9 @@
 
 `apps/chan` 是独立的缠论（Chan Theory）计算微服务，将底层的 `@app/chancore` 纯算法封装为高性能无状态 HTTP API。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

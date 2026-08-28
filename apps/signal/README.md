@@ -2,6 +2,9 @@
 
 `apps/signal` 是 Mist 的事件驱动型实时策略信号评估微服务，负责实时消费封存的 1m 蜡烛线并触发策略规则求值。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

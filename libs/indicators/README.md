@@ -2,6 +2,9 @@
 
 `libs/indicators` 提供标准化的金融技术指标计算纯函数与向量化工具，供主后端 API、策略引擎与回测运行时共享使用。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

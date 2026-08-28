@@ -2,6 +2,9 @@
 
 `libs/shared-data` 集中定义了 Mist 系统的 TypeORM 数据库实体、共享枚举及数据传输映射器（Mappers）。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

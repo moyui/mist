@@ -2,6 +2,9 @@
 
 `libs/chancore` 是严谨遵循缠论原典算法的纯 TypeScript 算法库，无框架依赖，提供高性能、高精度的缠论几何结构与买卖点计算。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

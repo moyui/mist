@@ -2,6 +2,9 @@
 
 `apps/mist` 是 Mist 的主后端应用，承担用户侧 REST API、证券基础信息管理、数据源实时快照接收（Ingress）、1m 蜡烛线产品化汇聚接入、以及订阅生命周期管理。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

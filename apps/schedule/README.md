@@ -2,6 +2,9 @@
 
 `apps/schedule` 负责 Mist 系统的周期性调度任务，包括盘前主动体检巡检、历史 K 线定时采集、以及收盘后数据源权威数据同步。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

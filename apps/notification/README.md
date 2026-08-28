@@ -2,6 +2,9 @@
 
 `apps/notification` 是 Mist 的统一告警通知分发微服务，负责将策略信号事件与系统运行告警可靠投递至企业微信、Webhook 及外部平台。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

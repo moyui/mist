@@ -2,6 +2,9 @@
 
 `apps/realtime-subscription-hil` 是行情订阅生命周期的硬件在环（Hardware-in-the-Loop）CLI 验证工具，用于在实机交易环境中验证 TDX 与 QMT 数据源的订阅控制协议。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

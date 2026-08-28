@@ -2,6 +2,9 @@
 
 `libs/strategy` 封装了量化策略的核心领域模型、多周期条件规则语法解析器、指标/缠论过滤器及求值引擎。
 
+
+> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](../../docs/governance/documentation-guide.md)
+
 ---
 
 ## 🎯 模块职责

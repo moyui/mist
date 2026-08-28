@@ -132,6 +132,37 @@ About 的 `description` / `topics` / `homepage` / Social Preview 由 `mist/docs/
 
 ---
 
+## 5.1 子 README 规范（`apps/*` / `libs/*` 模块级）
+
+`mist` 仓内 `apps/` 与 `libs/` 下共有 13 份子 README（`apps/mist|chan|schedule|signal|backtest|notification|realtime-subscription-hil` 7 份 + `libs/chancore|indicators|realtime|shared-data|signal|strategy` 6 份）。它们为模块级文档，不套用 §5 的仓库 13 节模板，遵循本节专属规范。
+
+### 适用与语言
+
+- 适用路径：`mist/apps/*/README.md`、`mist/libs/*/README.md`（当前 13 份，新增模块沿用）。
+- 语言：保持中文单语，不做 `README.zh-CN.md` 双语（避免 26 份的维护量）；命令、`API path`、`class` 名等标识符保持原文。
+- 顶部：在首个 `#` 标题后加一行返回链接：`> 返回：[顶层 README](../../README.zh-CN.md) · [文档编写指南](./../../docs/governance/documentation-guide.md)`（相对路径以模块所在层级为准，`apps/mist` 为 `../../`，`libs/chancore` 为 `../../`，`apps/realtime-subscription-hil` 为 `../../`，以此类推）。
+
+### 固定 5 节顺序
+
+二级标题用 `##`，`Emoji` 固定为现有集合，顺序与标题写法如下（标题后缀与示例严格一致）：
+
+| 序号 | 标题 | 必选 | 说明 |
+|------|------|------|------|
+| 1 | `## 🎯 模块职责` | 必选 | 1–3 段说明模块在 `mist` 中的职责，不复制 `openspec` 全文 |
+| 2 | `## 🔌 核心接口与路由` / `## 🔌 核心导出品与 API` / `## 🔌 核心接口与协议` 等 | 必选 | `apps` 用“路由/协议/调度机制”，`libs` 用“导出品与 API / 实体列表 / Key 格式”，以现有 13 份的表述为准；表格或代码块列出 `GET /v1/...`、`import { ... } from '@app/...'` 等 |
+| 3 | `## 📂 关键文件速查` | 必选 | 2–4 行 `src/...` 路径与职责，避免列出已删除或重命名文件 |
+| 4 | `## 🛠️ 专属调试与测试` / `## 🛠️ 专属测试` / `## 🛠️ 专属执行命令` | 必选 | 仅写本模块可直接执行的 `pnpm run test -- apps/...` / `pnpm exec nest start ...` / `pnpm run test -- libs/...` 命令，不写全仓通用门禁 |
+| 5 | `## 🔗 上下游边界` / `## 🔗 边界说明` | 必选 | 明确依赖（`libs/...`、`mist-datasource` 等）与消费方（`apps/signal`、`mist-fe` 等），与 `project-quality-governance-guide.md` 的影响链保持一致 |
+
+结构以保留业务准确性为前提，仅做章节标题与顺序统一，不为对齐而改动业务事实。新增子模块从现有 13 份中挑最近似的一份复制骨架。
+
+### 检查（子 README 提交前）
+
+- [ ] 顶部返回链接可达（`../../README.zh-CN.md` 与 `../../docs/governance/documentation-guide.md`）。
+- [ ] 5 节标题与顺序符合本节，`Emoji` 未新增种类。
+- [ ] `关键文件速查` 中的路径在当前 `HEAD` 存在；`专属调试与测试` 的命令可直接执行。
+- [ ] `上下游边界` 与实际依赖一致，未虚构已删除的 `app`/`lib`。
+
 ## 8. 模板与工具产物
 
 | 产物 | 路径 | 用途 |
