@@ -32,18 +32,36 @@
 - [`openspec/specs/backtest-runtime/spec.md`](file:///Users/moyui/sean/mist/mist/openspec/specs/backtest-runtime/spec.md)
   - 补充 `Requirement: Backtest Run List Query Shall Use The Mist HTTP DTO/VO Boundary` 规范。
 
-### 2. `mist-fe` 仓库 (前端)
+#### 2. `mist-fe` 仓库 (前端)
 
+- [`app/lib/time.ts`](file:///Users/moyui/sean/mist/mist-fe/app/lib/time.ts) *(新增)*
+  - 建立全前端统一的 `Asia/Shanghai` 时区核心库。
+  - 提供 `formatShanghaiDateTime`、`formatShanghaiDate`、`formatShanghaiTime`、`formatShanghaiShort`、`formatShanghaiLocalDateTimeInput`、`parseShanghaiDateTimeToIso`、`getShanghaiDateParts` 等纯函数，杜绝跨端 hydration 不一致与 UTC 漂移。
 - [`app/components/tv-chart/TradingViewChart.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/components/tv-chart/TradingViewChart.tsx)
   - **数值强转与有效性过滤**：在 `sortedK` 处理链中先对 `open`/`high`/`low`/`close`/`volume` 进行 `Number(...)` 转换，再执行 `Number.isFinite(...)` 过滤。
-  - **时区本地化配置**：在 `createChart` 初始化时注入 `localization`（`timeFormatter` 使用 `Asia/Shanghai`）及 `timeScale.tickMarkFormatter`。
+  - **时区本地化配置**：在 `createChart` 初始化时注入 `localization`（`timeFormatter` 使用 `formatShanghaiDateTime`）及 `timeScale.tickMarkFormatter`（使用 `formatShanghaiTime`）。
   - **笔/线段/中枢线数值保护**：确保 `line.startPrice`、`line.endPrice`、`band.top`、`band.bottom` 进行 `Number(...)` 校验与数值强转。
+- [`app/components/tv-chart/TradingViewLineChart.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/components/tv-chart/TradingViewLineChart.tsx)
+  - 补全 `localization` 与 `timeScale` 时区本地化，统一为 `Asia/Shanghai`。
+- [`app/backtests/components/BacktestConfigPanel.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/components/BacktestConfigPanel.tsx)
+  - 时间输入框默认值与快捷按钮（近1周/近1月/近半年/今年以来等）严格基于 `Asia/Shanghai` 09:30~15:00 交易时段生成。
+  - 表单提交时通过 `parseShanghaiDateTimeToIso` 将本地时间绑定 `+08:00` 转换为标准 UTC ISO 字符串，防止因浏览器本地时区导致的日界错位。
+- [`app/backtests/components/BacktestRunHistory.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/components/BacktestRunHistory.tsx)
+  - 任务历史列表时间采用 `formatShanghaiShort` 显示为 CST 时间（如 `08-28 00:15:22`）。
 - [`app/backtests/components/BacktestSignalTable.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/components/BacktestSignalTable.tsx)
   - **买卖点语义解析**：从 `sig.contextSnapshot.chanBsp` 提取 `type`（如 `third_buy`），正确映射至 `3买` / `3卖`。
   - **触发价格解析**：读取 `ctx.triggerPrice ?? ctx.price`。
-  - **时间格式化**：`formatDateTime` 改为基于 `Asia/Shanghai` CST 本地时间格式化输出。
+  - **时间格式化**：采用 `formatShanghaiDateTime` 统一输出 CST 时间。
+- [`app/backtests/components/ChanDiagnosisDrawer.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/components/ChanDiagnosisDrawer.tsx)
+  - 时间格式化采用 `formatShanghaiDateTime`，并支持从 `chanBsp` 读取 `zg`/`zd`/`gg`/`dd`/`price`。
+- [`app/strategies/StrategiesWorkspace.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/strategies/StrategiesWorkspace.tsx)
+  - 替换 naive 字符串切分，统一使用 `formatShanghaiDateTime`。
+- [`app/settings/realtime-subscriptions/page.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/settings/realtime-subscriptions/page.tsx)
+  - 实时订阅列表更新时间统一使用 `formatShanghaiDateTime`。
+- [`app/k/KLineLivePage.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/k/KLineLivePage.tsx)
+  - K 线图表页日期选择与快捷区间统一基于 `Asia/Shanghai`。
 - [`app/backtests/BacktestWorkspace.tsx`](file:///Users/moyui/sean/mist/mist-fe/app/backtests/BacktestWorkspace.tsx)
-  - 默认优选包含信号的已完成回测任务（`signalCount > 0`），便于用户直接查看图表与买卖点复盘。
+  - 顶部指标栏回测起止日期采用 `formatShanghaiDate` 格式化。
 - [`app/api/client.ts`](file:///Users/moyui/sean/mist/mist-fe/app/api/client.ts)
   - 定义 `ListStrategyBacktestRunsQuery` 类型并标准化 `listStrategyBacktestRuns` 方法。
 
@@ -58,17 +76,19 @@
    - Compose 插件须同时拷贝至 `C:\Users\<user>\.docker\cli-plugins` 与 `C:\Program Files\Docker\cli-plugins`。
 2. **非交互 SSH / CI Runner 下的 Docker Pull 凭据**：
    - Docker Desktop 默认启用的 `docker-credential-desktop.exe` 和 `docker-credential-wincred.exe` 依赖 Windows 交互式桌面 Session，在 SSH / Runner 后台服务环境下调用会抛出 `A specified logon session does not exist`。
-   - **解决方式**：禁用/重命名该两项凭据二进制，并将 `config.json` 中的 `credsStore: "desktop"` 移除，Docker CLI 将自动使用基于配置文件的标准认证流程。
+   - 解决方案：重命名两个可执行文件为 `.bak`，并在 `%USERPROFILE%\.docker\config.json` 中移除 `"credsStore": "desktop"`，回退至原生 base64 存储。
 
 ---
 
-## 四、验证证据
+## 四、验证结果与交付物
 
-1. **自动化测试**：
-   - `mist`: `strategy` 模块 11 个测试套件全数通过（含 `backtest-run-query.service.spec.ts`）。
-   - `mist-fe`: 19 个测试套件，150/150 个单元测试全数通过。
-2. **生产容器状态**：
-   - `mist-docker-appliance` 13 个容器（`web-gateway`, `mist-fe`, `mist-backend`, `chan-api`, `mist-signal`, `mist-notification`, `mist-backtest`, `mist-schedule`, `mysql`, `mist-realtime-redis`, `openobserve`, `tdx-datasource`, `qmt-datasource`）全部正常启动并处于 `healthy` 状态。
+1. **单测与 CI 门禁**：
+   - `mist` 仓库：回测模块 11 个测试套件（91 个单测）全部通过。
+   - `mist-fe` 仓库：全量 20 个测试套件（157 个单测）全部通过。
+2. **生产环境验证**：
+   - `mist-docker-appliance` 栈内全部 13 个容器均处于 `UP (healthy)` 状态。
+   - 回测历史时间、指标栏起止日期、TradingView 时间轴、信号明细表格均严格对齐 `Asia/Shanghai` (UTC+8) 北京时间。
+   - 完整复盘图表：2,928 根 5 分钟 K 线、成交量柱状图、笔折线（金黄）、线段折线（洋红）、7 个精准买卖点标记（3买等）均正常渲染无缺失。（`web-gateway`, `mist-fe`, `mist-backend`, `chan-api`, `mist-signal`, `mist-notification`, `mist-backtest`, `mist-schedule`, `mysql`, `mist-realtime-redis`, `openobserve`, `tdx-datasource`, `qmt-datasource`）全部正常启动并处于 `healthy` 状态。
 3. **真机无头浏览器截屏复核**：
    - 访问 `http://192.168.31.182/backtests`，2,928 根 K 线、黄色笔、洋红色线段、中枢参考线、7 个 3 买标记点以及下方 CST 信号列表均精确渲染。
 
