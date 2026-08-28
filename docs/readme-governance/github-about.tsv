@@ -1,0 +1,8 @@
+repo	description	homepage	topics
+mist-trade/mist	A-share quantitative engine: realtime 1m candles + Chan Theory + strategy & backtest (NestJS)		quant;a-shares;nestjs;chan-theory;trading;backtest;ta-lib;realtime
+mist-trade/mist-fe	A-share visual trading desk: K-line & Chan geometry with Next.js + lightweight-charts		nextjs;trading;kline;chan-theory;lightweight-charts;visualization
+mist-trade/mist-datasource	TDX/QMT terminal bridge: HTTP + WebSocket gateway over schema-v2 frames (FastAPI)		fastapi;datasource;tdx;qmt;websocket;gateway
+mist-trade/mist-deploy	Windows Docker appliance for Mist stack: deploy / backup / guards & observability		docker;windows;deploy;observability;openobserve;compose
+mist-trade/mist-skills	LLM/Agent skills for Mist: Chan / indicators / query / alerts (AstrBot)		llm;agent-skills;astrbot;quant;chan-theory
+moyui/zcode-cpu-guard	Limit ZCode CPU on Intel MacBooks to prevent thermal throttling		macos;intel;cpulimit;electron;thermal
+moyui/opencode-retry-proxy	Transparent retry proxy for opencode.ai Responses API — self-heals referenced response not found or expired by merging full history and retrying once.		muse-spark;nodejs;opencode;proxy;reasonix;responses-api;retry;reverse-proxy;self-healing;previous-response-id

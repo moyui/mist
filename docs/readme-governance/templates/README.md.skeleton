@@ -1,0 +1,100 @@
+<p align="right">
+  <a href="./README.zh-CN.md">中文</a> | <strong>English</strong>
+</p>
+
+# {{REPO_NAME}}
+
+<p align="left">
+  <img src="https://img.shields.io/badge/{{RUNTIME_BADGE}}" alt="{{RUNTIME}}" />
+  <img src="https://img.shields.io/badge/{{PM_BADGE}}" alt="{{PM}}" />
+  <img src="https://img.shields.io/badge/{{FRAMEWORK_BADGE}}" alt="{{FRAMEWORK}}" />
+  <img src="https://img.shields.io/badge/License-{{LICENSE}}-{{COLOR}}.svg" alt="License" />
+</p>
+
+One-sentence English description (≤120 chars, keywords included).
+
+---
+
+## Why
+
+Pain point, scope and non-goals; clarify who should / should not use it.
+
+---
+
+## Features
+
+- Feature 1
+- Feature 2
+- Feature 3
+
+---
+
+## Architecture & Topology (if applicable)
+
+```text
+Topology diagram or data flow
+```
+
+---
+
+## Requirements
+
+- Runtime >= ...
+- Package manager / Python version
+- External dependencies (MySQL/Redis/etc if applicable)
+
+---
+
+## Quick Start
+
+```bash
+# install
+# env setup
+# start
+```
+
+---
+
+## Env Vars (tool repos required)
+
+| Var | Default | Notes |
+|-----|---------|-------|
+| `EXAMPLE` | `value` | description |
+
+---
+
+## How it Works (if applicable)
+
+Step-by-step mechanism.
+
+---
+
+## Testing & Quality Gate
+
+```bash
+# tests / lint / typecheck / contract checks
+```
+
+---
+
+## Deploy (if applicable)
+
+Deployment topology and entry (e.g. `mist-deploy` workflow).
+
+---
+
+## Directory Index (optional)
+
+- [Module](./path/README.md)
+
+---
+
+## Security & Privacy (tool repos required)
+
+- Bind address, auth forwarding, log hygiene, etc.
+
+---
+
+## License
+
+{{LICENSE_TEXT}} — see [LICENSE](./LICENSE).

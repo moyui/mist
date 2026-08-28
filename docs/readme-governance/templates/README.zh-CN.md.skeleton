@@ -1,0 +1,100 @@
+<p align="right">
+  <strong>中文</strong> | <a href="./README.md">English</a>
+</p>
+
+# {{REPO_NAME}}
+
+<p align="left">
+  <img src="https://img.shields.io/badge/{{RUNTIME_BADGE}}" alt="{{RUNTIME}}" />
+  <img src="https://img.shields.io/badge/{{PM_BADGE}}" alt="{{PM}}" />
+  <img src="https://img.shields.io/badge/{{FRAMEWORK_BADGE}}" alt="{{FRAMEWORK}}" />
+  <img src="https://img.shields.io/badge/License-{{LICENSE}}-{{COLOR}}.svg" alt="License" />
+</p>
+
+一句话中文简介（与英文语义一致，可更详细）。
+
+---
+
+## 为什么需要它
+
+痛点、适用与不适用边界。
+
+---
+
+## 核心特性
+
+- 特性 1
+- 特性 2
+- 特性 3
+
+---
+
+## 架构与数据链路（如适用）
+
+```text
+拓扑图/数据流
+```
+
+---
+
+## 环境与依赖
+
+- 运行时版本
+- 包管理器 / Python 版本
+- 外部依赖（MySQL/Redis 等如适用）
+
+---
+
+## 快速上手
+
+```bash
+# 安装
+# 环境配置
+# 启动
+```
+
+---
+
+## 环境变量（工具类必选）
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `EXAMPLE` | `value` | 说明 |
+
+---
+
+## 工作原理（如适用）
+
+分步机制说明。
+
+---
+
+## 测试与质量门禁
+
+```bash
+# 测试 / lint / typecheck / 契约检查
+```
+
+---
+
+## 生产部署（如适用）
+
+部署拓扑与入口（如 `mist-deploy` 工作流）。
+
+---
+
+## 目录索引（可选）
+
+- [模块](./path/README.md)
+
+---
+
+## 安全与隐私（工具类必选）
+
+- 绑定地址、鉴权转发、日志脱敏等。
+
+---
+
+## 许可证
+
+{{LICENSE_TEXT}} — 见 [LICENSE](./LICENSE)。

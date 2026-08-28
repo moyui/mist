@@ -1,8 +1,8 @@
 <p align="right">
-  <a href="./README.zh-CN.md">中文</a> | <strong>English</strong>
+  <strong>中文</strong> | <a href="./README.md">English</a>
 </p>
 
-# Mist — A-share Quantitative Core System
+# Mist 智能量化分析核心系统
 
 <p align="left">
   <img src="https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen.svg" alt="Node Version" />
@@ -12,11 +12,8 @@
   <img src="https://img.shields.io/badge/License-BSD--3--Clause-green.svg" alt="License" />
 </p>
 
-A-share quantitative core & market-data service. NestJS Monorepo spanning hardware行情 ingest (TDX/QMT), realtime 1m candle aggregation, Chan Theory engine, TA-Lib indicators, realtime strategy evaluation & alert delivery, and an isolated backtest runtime.
-
-> 中文版见 [README.zh-CN.md](./README.zh-CN.md)。
-
 Mist 是面向 A 股市场的核心量化计算与行情服务系统。采用 NestJS Monorepo 架构构建，集成了底层硬件行情接入（TDX/QMT）、实时 1 分钟蜡烛线聚合、纯正缠论（Chan Theory）算法引擎、TA-Lib 技术指标、实时策略求值与告警推送、以及独立的分布式回测运行时。
+
 
 ---
 
