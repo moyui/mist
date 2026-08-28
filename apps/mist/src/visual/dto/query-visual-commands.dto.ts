@@ -1,13 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsEnum,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { DataSource, Period } from '@app/shared-data';
 
 export class QueryVisualCommandsDto {
@@ -60,14 +53,4 @@ export class QueryVisualCommandsDto {
   @IsOptional()
   @IsString()
   endDate?: string;
-
-  @ApiPropertyOptional({
-    description: '最大K线根数（默认 500）',
-    example: 500,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(10)
-  count?: number;
 }

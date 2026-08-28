@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Logger, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiEnvelopeResponse } from '@app/transport/http';
 import { TimezoneService } from '@app/timezone';
@@ -13,6 +13,8 @@ import { VisualCommandPayloadVo } from './vo/visual-command.vo';
 @ApiTags('visual')
 @Controller('v1/visual')
 export class VisualController {
+  private readonly logger = new Logger(VisualController.name);
+
   constructor(
     private readonly visualCommandService: VisualCommandService,
     private readonly indicatorService: IndicatorService,
@@ -23,7 +25,7 @@ export class VisualController {
   @ApiOperation({
     summary: '获取统一绘图指令流',
     description:
-      '供 QMT / TDX 终端极简执行器调用的通用绘图指令接口，按请求图层批量返回折线、区间带与买卖点标记',
+      '供 QMT / TDX 终端极简执行器调用的通用绘图指令接口，按请求图层批量返回折线、区间带与买卖点标记。以时间窗口为唯一真源，不做 count 尾部裁剪。',
   })
   @ApiEnvelopeResponse({
     status: 200,
@@ -31,7 +33,6 @@ export class VisualController {
     type: VisualCommandPayloadVo,
   })
   async getCommands(@Query() query: QueryVisualCommandsDto) {
-    const count = query.count ?? 500;
     const now = new Date();
     const endDate = query.endDate
       ? this.timezoneService.parseDateString(query.endDate)
@@ -50,17 +51,21 @@ export class VisualController {
       source: query.source,
     });
 
-    // Take the last `count` items
-    const sliced =
-      kEntities.length > count ? kEntities.slice(-count) : kEntities;
-
-    // Use canonical KPriceProjector without unsafe brute-force casting
+    // Pure time-window: no count-based tail slicing. KPriceProjector is the sole gate.
     const chanKlines: ChanK[] = [];
-    for (const k of sliced) {
+    let dropped = 0;
+    for (const k of kEntities) {
       const projected = projectToChanK(k, query.code);
       if (projected !== null) {
         chanKlines.push(projected);
+      } else {
+        dropped++;
       }
+    }
+    if (dropped > 0) {
+      this.logger.warn(
+        `visual KPriceProjector dropped ${dropped}/${kEntities.length} bars code=${query.code} period=${query.period} source=${query.source ?? 'default'}`,
+      );
     }
 
     const requestedLayers = query.layers

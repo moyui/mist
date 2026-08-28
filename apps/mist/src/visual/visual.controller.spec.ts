@@ -81,7 +81,6 @@ describe('VisualController', () => {
       code: '000001',
       period: Period.FIVE_MIN,
       layers: 'chan_bi',
-      count: 100,
     });
 
     expect(result).toBeDefined();
@@ -95,5 +94,37 @@ describe('VisualController', () => {
         layers: ['chan_bi'],
       }),
     );
+  });
+
+  it('does not slice by count and passes all K-lines to generateCommands', async () => {
+    const manyKs = Array.from({ length: 600 }, (_, i) => ({
+      id: i + 1,
+      security: { code: '000001' },
+      timestamp: new Date(
+        `2026-08-${String((i % 28) + 1).padStart(2, '0')}T09:30:00.000Z`,
+      ),
+      open: 100,
+      high: 102,
+      low: 99,
+      close: 101,
+      volume: '1000',
+      amount: '100000',
+    }));
+    (mockIndicatorService.findKData as jest.Mock).mockResolvedValueOnce(manyKs);
+
+    await controller.getCommands({
+      code: '000001',
+      period: Period.FIVE_MIN,
+    });
+
+    // All 600 bars must be passed through (no 500 slicing)
+    expect(mockVisualCommandService.generateCommands).toHaveBeenCalledWith(
+      expect.objectContaining({
+        klines: expect.arrayContaining([]),
+      }),
+    );
+    const call = (mockVisualCommandService.generateCommands as jest.Mock).mock
+      .calls[0][0];
+    expect(call.klines.length).toBe(600);
   });
 });
