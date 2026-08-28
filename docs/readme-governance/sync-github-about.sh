@@ -55,7 +55,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   echo "  homepage: ${homepage:-<empty>}"
   echo "  topics: $topics"
   if $APPLY; then
-    gh repo edit "$repo" --description "$description" --visibility public 2>&1 || gh repo edit "$repo" --description "$description" 2>&1 || true
+    gh repo edit "$repo" --description "$description" 2>&1 || true
     if [[ -n "$homepage" ]]; then gh repo edit "$repo" --homepage "$homepage" 2>&1 || true; fi
     topics_csv=$(echo "$topics" | tr ';' ',')
     if [[ -n "$topics_csv" ]]; then gh repo edit "$repo" --add-topic "$topics_csv" 2>&1 || true; fi
@@ -68,4 +68,3 @@ done < "$FILE"
 
 echo ""
 echo "Done. Dry-run by default; re-run with --apply to write."
-echo "Note: mist-deploy is PRIVATE; gh may refuse --visibility public — remove that flag for it."
