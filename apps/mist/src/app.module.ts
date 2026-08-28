@@ -24,11 +24,11 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
-import { ChanModule } from './chan/chan.module';
+import { ChanHttpModule } from './chan/chan.module';
 import { HistoricalCollectorModule } from './collector/historical-collector.module';
 import { TdxRealtimeModule } from './sources/tdx/realtime/realtime.module';
 import { QmtRealtimeModule } from './sources/qmt/realtime/realtime.module';
-import { IndicatorModule } from './indicator/indicator.module';
+import { IndicatorHttpModule } from './indicator/indicator.module';
 import { SecurityModule } from './security/security.module';
 import { isMockMode, mistEnvSchema } from '@app/config';
 import { StrategyModule } from './strategy/strategy.module';
@@ -159,9 +159,9 @@ export function mockModeModulesForMode(
         }),
         HistoricalCollectorModule,
         RealtimeSubscriptionModule,
-        IndicatorModule,
+        IndicatorHttpModule,
         SecurityModule,
-        ChanModule,
+        ChanHttpModule,
         StrategyModule,
         VisualModule,
       ];

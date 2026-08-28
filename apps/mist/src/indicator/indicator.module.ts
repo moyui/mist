@@ -12,8 +12,13 @@ import { IndicatorService } from './indicator.service';
     UtilsModule,
     TimezoneModule,
   ],
-  controllers: [IndicatorController],
   providers: [IndicatorService],
   exports: [IndicatorService],
 })
 export class IndicatorModule {}
+
+@Module({
+  imports: [IndicatorModule],
+  controllers: [IndicatorController],
+})
+export class IndicatorHttpModule {}
