@@ -13,7 +13,7 @@ import { TimezoneModule } from '@app/timezone';
 export class ChanModule {}
 
 @Module({
-  imports: [ChanModule, TimezoneModule],
+  imports: [ChanModule, IndicatorModule, TimezoneModule],
   controllers: [ChanController],
 })
 export class ChanHttpModule {}
