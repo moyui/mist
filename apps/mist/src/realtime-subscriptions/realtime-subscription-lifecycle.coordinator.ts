@@ -283,9 +283,15 @@ export class RealtimeSubscriptionLifecycleCoordinator
       .catch((error: unknown) => {
         const reason = stableFailureReason(error);
         this.observations.fail(source, reason);
-        this.logger.warn(
-          `Realtime subscription reconciliation failed source=${source} reason=${reason}`,
-        );
+        if (reason === 'QMT_JOURNAL_RECONCILIATION_REQUIRED') {
+          this.logger.debug(
+            `Realtime subscription reconciliation failed source=${source} reason=${reason}`,
+          );
+        } else {
+          this.logger.warn(
+            `Realtime subscription reconciliation failed source=${source} reason=${reason}`,
+          );
+        }
       })
       .finally(() => {
         if (state.running !== running) return;

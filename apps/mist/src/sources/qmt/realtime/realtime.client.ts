@@ -391,7 +391,7 @@ export class QmtRealtimeClient
             .sort()
             .slice(0, 20)
             .join(',');
-          this.logger.log(
+          this.logger.debug(
             `candle ingest start source=qmt symbol=${providerSymbol} capturedAt=${decoded.data.capturedAt} nativeKeys=${nativeKeys} asOf=${nativeField(nativeRecord['asOf'])} volume=${nativeField(nativeRecord['volume'])} amount=${nativeField(nativeRecord['amount'])}`,
           );
           this.ingress?.handleSnapshot(snapshot);

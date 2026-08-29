@@ -397,7 +397,7 @@ export class TdxRealtimeClient
           .sort()
           .slice(0, 20)
           .join(',');
-        this.logger.log(
+        this.logger.debug(
           `candle ingest start source=tdx symbol=${providerSymbol} capturedAt=${decoded.data.capturedAt} nativeKeys=${nativeKeys} asOf=${nativeField(nativeRecord['AsOf'])} volume=${nativeField(nativeRecord['Volume'])} amount=${nativeField(nativeRecord['Amount'])}`,
         );
         this.ingress?.handleSnapshot(snapshot);

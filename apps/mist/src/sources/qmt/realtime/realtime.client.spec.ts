@@ -90,6 +90,7 @@ function message(buf: unknown): Buffer {
 
 describe('QmtRealtimeClient WS lifecycle logging', () => {
   let logSpy: jest.SpyInstance;
+  let debugSpy: jest.SpyInstance;
   let warnSpy: jest.SpyInstance;
   let errorSpy: jest.SpyInstance;
 
@@ -99,6 +100,9 @@ describe('QmtRealtimeClient WS lifecycle logging', () => {
     logSpy = jest
       .spyOn(Logger.prototype, 'log')
       .mockImplementation(() => undefined);
+    debugSpy = (
+      jest.spyOn as unknown as (t: unknown, m: string) => jest.SpyInstance
+    )(Logger.prototype, 'debug').mockImplementation(() => undefined);
     warnSpy = jest
       .spyOn(Logger.prototype, 'warn')
       .mockImplementation(() => undefined);
@@ -120,7 +124,9 @@ describe('QmtRealtimeClient WS lifecycle logging', () => {
     ws.emit('open');
     ws.emit('message', message(buildReady()));
 
-    const logs = logSpy.mock.calls.map((c) => String(c[0]));
+    const logs = [...logSpy.mock.calls, ...debugSpy.mock.calls].map((c) =>
+      String(c[0]),
+    );
     const connecting = logs.find((s) => s.includes('event=connecting'));
     expect(connecting).toBeDefined();
     expect(connecting).toContain('wsUrl=');
@@ -165,7 +171,9 @@ describe('QmtRealtimeClient WS lifecycle logging', () => {
           s.includes('event=disconnected') && s.includes('willReconnect=true'),
       ),
     ).toBe(true);
-    const logs = logSpy.mock.calls.map((c) => String(c[0]));
+    const logs = [...logSpy.mock.calls, ...debugSpy.mock.calls].map((c) =>
+      String(c[0]),
+    );
     expect(logs.some((s) => s.includes('event=reconnecting'))).toBe(true);
   });
 
@@ -183,7 +191,9 @@ describe('QmtRealtimeClient WS lifecycle logging', () => {
     expect(warns.filter((s) => s.includes('event=disconnected'))).toHaveLength(
       0,
     );
-    const logs = logSpy.mock.calls.map((c) => String(c[0]));
+    const logs = [...logSpy.mock.calls, ...debugSpy.mock.calls].map((c) =>
+      String(c[0]),
+    );
     expect(
       logs.some(
         (s) =>
@@ -247,7 +257,9 @@ describe('QmtRealtimeClient WS lifecycle logging', () => {
       ),
     );
 
-    const logs = logSpy.mock.calls.map((c) => String(c[0]));
+    const logs = [...logSpy.mock.calls, ...debugSpy.mock.calls].map((c) =>
+      String(c[0]),
+    );
     const ingest = logs.find((s) => s.includes('candle ingest start'));
     expect(ingest).toBeDefined();
     expect(ingest).toContain('nativeKeys=');

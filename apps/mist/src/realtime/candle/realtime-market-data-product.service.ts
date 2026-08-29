@@ -346,9 +346,15 @@ export class RealtimeMarketDataProductService
               snapshotBucket.bucketStartMs,
             );
           }
-          this.logger.warn(
-            `candle skipped reason=${outcome.reason} securityId=${snapshot.securityId} source=${snapshot.source}`,
-          );
+          if (outcome.reason === 'out_of_session') {
+            this.logger.debug(
+              `candle skipped reason=${outcome.reason} securityId=${snapshot.securityId} source=${snapshot.source}`,
+            );
+          } else {
+            this.logger.warn(
+              `candle skipped reason=${outcome.reason} securityId=${snapshot.securityId} source=${snapshot.source}`,
+            );
+          }
         }
         return;
 
