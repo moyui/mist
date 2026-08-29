@@ -152,8 +152,32 @@ export class ChanVisualAdapter {
         );
         if (startIdx === null || endIdx === null) return;
         const isUp = duan.trend === TrendDirection.Up;
-        const startPrice = isUp ? duan.low : duan.high;
-        const endPrice = isUp ? duan.high : duan.low;
+        const startBi =
+          duan.startBi ??
+          (duan.originBis && duan.originBis.length > 0
+            ? duan.originBis[0]
+            : null);
+        const endBi =
+          duan.endBi ??
+          (duan.originBis && duan.originBis.length > 0
+            ? duan.originBis[duan.originBis.length - 1]
+            : null);
+
+        const startPrice = startBi
+          ? startBi.trend === TrendDirection.Up
+            ? startBi.low
+            : startBi.high
+          : isUp
+            ? duan.low
+            : duan.high;
+
+        const endPrice = endBi
+          ? endBi.trend === TrendDirection.Up
+            ? endBi.high
+            : endBi.low
+          : isUp
+            ? duan.high
+            : duan.low;
 
         const duanCmd: LineVisualCommand = {
           id: `chan_duan_${i}_${startIdx}_${endIdx}`,
