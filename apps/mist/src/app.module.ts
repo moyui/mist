@@ -41,8 +41,11 @@ import { VisualModule } from './visual/visual.module';
   imports: [
     LoggerModule.forRoot({
       pinoHttp: {
-        level:
-          process.env.MIST_STDOUT_LOG_LEVEL ?? process.env.LOG_LEVEL ?? 'info',
+        level: (
+          process.env.MIST_STDOUT_LOG_LEVEL ??
+          process.env.LOG_LEVEL ??
+          'info'
+        ).toLowerCase(),
         autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
       },
     }),
