@@ -162,7 +162,7 @@ describe('QmtSource', () => {
       end_time: '20260703150000',
       count: -1,
       dividend_type: 'front_ratio',
-      fill_data: true,
+      fill_data: false,
       include_raw: false,
     });
     expect(rows).toEqual([

@@ -94,7 +94,7 @@ export class QmtSource implements ISourceFetcher<QmtResponse> {
           end_time: this.formatRequestTime(endDate, period),
           count: -1,
           dividend_type: QMT_CANONICAL_DIVIDEND_TYPE,
-          fill_data: true,
+          fill_data: false,
           include_raw: false,
         },
       );

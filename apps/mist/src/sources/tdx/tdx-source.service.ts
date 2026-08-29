@@ -106,7 +106,7 @@ export class TdxSource implements ITdxSourceFetcher {
           endTime: endDate.toISOString(),
           fields: TDX_BAR_FIELDS,
           dividendType: 'front',
-          fillData: true,
+          fillData: false,
         },
       );
       const envelope = response.data;

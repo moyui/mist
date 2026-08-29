@@ -787,7 +787,7 @@ describe('TdxSource', () => {
             'VolInStock',
           ],
           dividendType: 'front',
-          fillData: true,
+          fillData: false,
         }),
       );
       expect(result[0].extensions).toEqual({
