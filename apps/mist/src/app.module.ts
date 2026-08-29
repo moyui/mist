@@ -41,11 +41,14 @@ import { VisualModule } from './visual/visual.module';
   imports: [
     LoggerModule.forRoot({
       pinoHttp: {
-        level: (
-          process.env.MIST_STDOUT_LOG_LEVEL ??
-          process.env.LOG_LEVEL ??
-          'info'
-        ).toLowerCase(),
+        level: (() => {
+          const raw = (
+            process.env.MIST_STDOUT_LOG_LEVEL ??
+            process.env.LOG_LEVEL ??
+            'info'
+          ).toLowerCase();
+          return raw === 'warning' ? 'warn' : raw;
+        })(),
         autoLogging: false, // 不自动打 HTTP 请求日志（避免噪音），保留业务日志
       },
     }),
