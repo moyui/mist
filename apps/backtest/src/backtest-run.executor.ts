@@ -17,11 +17,11 @@ import {
   compileStoredStrategyRule,
   evaluateStrategyPlan,
   serializeStrategyContextSnapshot,
-  StrategySeriesImputer,
   type CompiledStrategyExecutionPlan,
   type StrategyMarketSource,
   type StrategyRealtimeSource,
 } from '@app/strategy';
+import { StrategySeriesImputer } from '@app/market-data';
 import {
   ChanBspDetector,
   ChanBspEpisodeCursor,

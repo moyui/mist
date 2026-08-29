@@ -1,5 +1,5 @@
 import type { ChanK } from '@app/chancore';
-import type { ProjectedStrategyBar } from '@app/strategy';
+import type { ProjectedStrategyBar } from '@app/market-data';
 
 /**
  * Map a projected evaluation window into the ChanCore input series.

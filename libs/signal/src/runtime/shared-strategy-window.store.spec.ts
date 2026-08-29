@@ -167,7 +167,7 @@ function bar(
 }
 
 function byTimestamp(
-  bars: readonly import('@app/strategy').ProjectedStrategyBar[],
+  bars: readonly import('@app/market-data').ProjectedStrategyBar[],
   isoTimestamp: string,
 ) {
   return bars.find(

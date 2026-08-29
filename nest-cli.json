@@ -209,6 +209,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/visual-command/tsconfig.lib.json"
       }
+    },
+    "market-data": {
+      "type": "library",
+      "root": "libs/market-data",
+      "entryFile": "index",
+      "sourceRoot": "libs/market-data/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/market-data/tsconfig.lib.json"
+      }
     }
   }
 }

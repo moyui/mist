@@ -9,6 +9,7 @@ import { KDJVo } from './vo/kdj.vo';
 import { MACDVo } from './vo/macd.vo';
 import { RSIVo } from './vo/rsi.vo';
 import { KVo } from './vo/k.vo';
+import { prepareMarketData } from '@app/market-data';
 
 // Internal interface for KDJ calculation
 interface RunKDJDto {
@@ -196,15 +197,28 @@ export class IndicatorController {
       source: queryDto.source,
     });
 
-    return data.map((item) => ({
-      id: item.id,
-      high: item.high,
-      low: item.low,
-      open: item.open,
-      close: item.close,
-      symbol: item.security.code,
-      time: item.timestamp,
-      amount: item.amount,
-    }));
+    // 统一走全局 market-data pipeline：先精度(KPriceProjector via mapKToStrategyBar) → 再补齐(Imputer) → 视图
+    // 非法数据修复+数据补全一口气完成，TypeORM DECIMAL string → Number(v).toFixed(2) 无损转换
+    const pipeline = prepareMarketData({
+      rawBars: data,
+      period: queryDto.period,
+      requiredBars: data.length || 1,
+      windowStartAt: startDate,
+      windowEndAt: endDate,
+    });
+
+    // 用 pipeline.projected 的 effective 视图回填 KVo，保证与 visual/策略同一序列
+    return pipeline.projected
+      .filter((bar) => bar.ohlc.effective !== null)
+      .map((bar) => ({
+        id: bar.rawBar.securityId,
+        high: bar.ohlc.effective!.high,
+        low: bar.ohlc.effective!.low,
+        open: bar.ohlc.effective!.open,
+        close: bar.ohlc.effective!.close,
+        symbol: queryDto.code,
+        time: bar.rawBar.timestamp,
+        amount: bar.amount.effective,
+      }));
   }
 }

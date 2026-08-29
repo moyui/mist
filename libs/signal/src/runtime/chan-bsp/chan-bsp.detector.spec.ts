@@ -1,5 +1,5 @@
 import { createChanFullOutputFixture } from '../../../../../libs/chancore/src/chan-full-output.characterization.fixture';
-import type { ProjectedStrategyBar } from '@app/strategy';
+import type { ProjectedStrategyBar } from '@app/market-data';
 import { ChanBspDetector, matchesChanBspPlan } from './chan-bsp.detector';
 import type { ChanBspEvent, ChanBspPlan } from './chan-bsp.types';
 

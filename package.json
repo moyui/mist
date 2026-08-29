@@ -1,7 +1,7 @@
 {
   "name": "mist",
   "version": "1.0.0",
-  "description": "股票市场分析和预警系统 - A-share market analysis and alert system with AI-powered intelligent agents",
+  "description": "\u80a1\u7968\u5e02\u573a\u5206\u6790\u548c\u9884\u8b66\u7cfb\u7edf - A-share market analysis and alert system with AI-powered intelligent agents",
   "author": "moyui",
   "private": true,
   "license": "BSD-3-Clause",
@@ -182,7 +182,9 @@
       "^@app/realtime$": "<rootDir>/libs/realtime/src/index.ts",
       "^@app/indicators$": "<rootDir>/libs/indicators/src/index.ts",
       "^@app/observability(|/.*)$": "<rootDir>/libs/observability/src/$1",
-      "^@app/visual-command$": "<rootDir>/libs/visual-command/src/index.ts"
+      "^@app/visual-command$": "<rootDir>/libs/visual-command/src/index.ts",
+      "^@app/market-data$": "<rootDir>/libs/market-data/src/index.ts",
+      "^@app/market-data/(.*)$": "<rootDir>/libs/market-data/src/$1"
     }
   },
   "pkg": {

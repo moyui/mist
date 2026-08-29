@@ -14,7 +14,7 @@ import type {
   StrategyEvaluationOutcome,
   StrategyFieldObservation,
 } from './strategy-evaluation.types';
-import type { ProjectedStrategyBar } from '../projection/strategy-series-imputer';
+import type { ProjectedStrategyBar } from '@app/market-data';
 
 export function evaluateStrategyPlan(
   plan: CompiledStrategyExecutionPlan,

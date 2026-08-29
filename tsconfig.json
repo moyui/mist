@@ -92,6 +92,12 @@
       ],
       "@app/visual-command": [
         "libs/visual-command/src/index.ts"
+      ],
+      "@app/market-data": [
+        "libs/market-data/src/index.ts"
+      ],
+      "@app/market-data/*": [
+        "libs/market-data/src/*"
       ]
     }
   },

@@ -4,7 +4,7 @@ import {
   type StrategyBar,
   type StrategyRealtimeMarketDataPort,
   type StrategyRealtimeSource,
-} from '@app/strategy';
+} from '@app/market-data';
 
 interface WindowGroup {
   capacity: number;

@@ -8,7 +8,7 @@ import {
   calculateStrategyMacd,
   type StrategyMacdObservation,
 } from '../analysis/strategy-macd';
-import type { ProjectedStrategyBar } from '../projection/strategy-series-imputer';
+import type { ProjectedStrategyBar } from '@app/market-data';
 import type { StrategyBar } from '../market-data/strategy-bar';
 import type { StrategyFieldPath } from '../rules/strategy-field.catalog';
 import type {

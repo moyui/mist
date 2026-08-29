@@ -1,5 +1,5 @@
-export { KPriceProjector } from './market-data/k-price-projector';
-export type { StrategyPriceInput } from './market-data/k-price-projector';
+export { KPriceProjector } from '@app/market-data';
+export type { StrategyPriceInput } from '@app/market-data';
 export {
   STRATEGY_KDJ_CALCULATION_BAR_COUNT,
   calculateStrategyKdj,
@@ -15,7 +15,7 @@ export type {
   StrategyBarType,
   StrategyMarketSource,
   StrategyRealtimeSource,
-} from './market-data/strategy-bar';
+} from '@app/market-data';
 export type {
   StrategyMarketDataPort,
   StrategyMarketObservation,
@@ -28,7 +28,7 @@ export type {
   StrategyReplayWindow,
   StrategyReplayWindowCriteria,
   StrategyTrigger,
-} from './market-data/strategy-market-data.port';
+} from '@app/market-data';
 export {
   STRATEGY_FIELD_CATALOG,
   STRATEGY_FIELD_PATHS,
@@ -56,17 +56,14 @@ export type {
   StrategyRuleOperator,
   StrategySignalKind,
 } from './rules/strategy-rule.types';
-export {
-  imputeSeries,
-  StrategySeriesImputer,
-} from './projection/strategy-series-imputer';
+export { imputeSeries, StrategySeriesImputer } from '@app/market-data';
 export type {
   ProjectedStrategyBar,
   ProjectedStrategyOhlc,
   ProjectedStrategyQuantity,
   StrategyImputationResolution,
   StrategyOhlcTuple,
-} from './projection/strategy-series-imputer';
+} from '@app/market-data';
 export { buildStrategyEvaluationContext } from './evaluation/strategy-context.builder';
 export type { StrategyContextBuildResult } from './evaluation/strategy-context.builder';
 export { serializeStrategyContextSnapshot } from './evaluation/strategy-context-snapshot.serializer';

@@ -3,9 +3,8 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiEnvelopeResponse } from '@app/transport/http';
 import { TimezoneService } from '@app/timezone';
 import { VisualCommandService } from '@app/visual-command';
-import { KPriceProjector } from '@app/strategy';
+import { prepareMarketData } from '@app/market-data';
 import type { ChanK } from '@app/chancore';
-import type { K } from '@app/shared-data';
 import { IndicatorService } from '../indicator/indicator.service';
 import { QueryVisualCommandsDto } from './dto/query-visual-commands.dto';
 import { VisualCommandPayloadVo } from './vo/visual-command.vo';
@@ -51,22 +50,46 @@ export class VisualController {
       source: query.source,
     });
 
-    // Pure time-window: no count-based tail slicing. KPriceProjector is the sole gate.
-    const chanKlines: ChanK[] = [];
-    let dropped = 0;
-    for (const k of kEntities) {
-      const projected = projectToChanK(k, query.code);
-      if (projected !== null) {
-        chanKlines.push(projected);
-      } else {
-        dropped++;
-      }
-    }
-    if (dropped > 0) {
+    // 统一走全局 market-data pipeline：精度门控(KPriceProjector) → 补齐(Imputer) → 视图
+    // - 精度：KPriceProjector 对 string DECIMAL(20,2) 做校验，异常整根 dropped；number 已在 DB 侧 toFixed(2) 无损
+    // - 补齐：Imputer 对 OHLC/量额缺失做 backfilled/forwardFilled/unavailable，跨日不补
+    // - 非法数据修复+数据补全一口气在 pipeline 内完成，历史/实时/展示/指标同一份代码
+    // Imputer 要求严格递增时间戳，DB 侧已保证有序，但测试/容错侧先排序去重
+    const sortedEntities = [...kEntities]
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+      .filter(
+        (item, idx, arr) =>
+          idx === 0 ||
+          item.timestamp.getTime() !== arr[idx - 1].timestamp.getTime(),
+      );
+    const pipeline = prepareMarketData({
+      rawBars: sortedEntities,
+      period: query.period,
+      requiredBars: sortedEntities.length || 1,
+      windowStartAt: startDate,
+      windowEndAt: endDate,
+    });
+
+    if (pipeline.droppedKlines > 0) {
       this.logger.warn(
-        `visual KPriceProjector dropped ${dropped}/${kEntities.length} bars code=${query.code} period=${query.period} source=${query.source ?? 'default'}`,
+        `visual pipeline dropped ${pipeline.droppedKlines}/${pipeline.requestedKlines} bars code=${query.code} period=${query.period} source=${query.source ?? 'default'} resolutions=${JSON.stringify(pipeline.diagnostics.resolutionCounts)}`,
       );
     }
+
+    // pipeline.projected 是 Imputer 后的 effective 视图，转 ChanK 供 visual-command 消费
+    const chanKlines: ChanK[] = pipeline.projected
+      .filter((bar) => bar.ohlc.effective !== null)
+      .map((bar, idx) => ({
+        id: idx + 1,
+        symbol: query.code,
+        time: bar.rawBar.timestamp,
+        open: bar.ohlc.effective!.open,
+        high: bar.ohlc.effective!.high,
+        low: bar.ohlc.effective!.low,
+        close: bar.ohlc.effective!.close,
+        volume: bar.volume.effective,
+        amount: bar.amount.effective,
+      }));
 
     const requestedLayers = query.layers
       ? query.layers.split(',').map((s) => s.trim())
@@ -79,35 +102,5 @@ export class VisualController {
       klines: chanKlines,
       layers: requestedLayers,
     });
-  }
-}
-
-/**
- * Project a stored MySQL K entity into the canonical ChanK structure.
- * Uses official KPriceProjector to guarantee finite decimal precision without rounding or data mutation.
- */
-function projectToChanK(k: K, defaultCode: string): ChanK | null {
-  try {
-    const open = KPriceProjector(k.open);
-    const high = KPriceProjector(k.high);
-    const low = KPriceProjector(k.low);
-    const close = KPriceProjector(k.close);
-
-    return Object.freeze({
-      id: k.id,
-      symbol: k.security?.code ?? defaultCode,
-      time: k.timestamp,
-      open,
-      high,
-      low,
-      close,
-      volume:
-        k.volume !== null && k.volume !== undefined ? String(k.volume) : null,
-      amount:
-        k.amount !== null && k.amount !== undefined ? String(k.amount) : null,
-    });
-  } catch {
-    // Unprojectable or corrupted bars are defensively dropped per governance guidelines
-    return null;
   }
 }

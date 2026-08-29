@@ -100,9 +100,7 @@ describe('VisualController', () => {
     const manyKs = Array.from({ length: 600 }, (_, i) => ({
       id: i + 1,
       security: { code: '000001' },
-      timestamp: new Date(
-        `2026-08-${String((i % 28) + 1).padStart(2, '0')}T09:30:00.000Z`,
-      ),
+      timestamp: new Date(Date.UTC(2026, 7, 10, 9, 30, 0) + i * 60000),
       open: 100,
       high: 102,
       low: 99,
@@ -117,7 +115,9 @@ describe('VisualController', () => {
       period: Period.FIVE_MIN,
     });
 
-    // All 600 bars must be passed through (no 500 slicing)
+    // All 600 bars must be passed through (no 500 slicing) via unified pipeline
+    // Pipeline now does precision gate + Imputer; timestamps are deduped only if truly duplicate
+    // Here each bar has unique timestamp (day + second offset), so all 600 survive after sorting
     expect(mockVisualCommandService.generateCommands).toHaveBeenCalledWith(
       expect.objectContaining({
         klines: expect.arrayContaining([]),

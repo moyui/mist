@@ -1,5 +1,5 @@
 import type { ChanK } from '@app/chancore';
-import type { ProjectedStrategyBar } from '@app/strategy';
+import type { ProjectedStrategyBar } from '@app/market-data';
 import { toChanKSeries } from './chan-bsp.k-mapper';
 
 function bar(

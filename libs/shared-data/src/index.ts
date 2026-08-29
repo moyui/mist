@@ -12,6 +12,5 @@ export * from './enums/strategy-signal-kind.enum';
 export * from './enums/strategy-kind.enum';
 export * from './enums/strategy-status.enum';
 export * from './enums/backtest-run-status.enum';
-export * from './mappers/k-strategy-bar.mapper';
 export * from './backtest-target-issue';
 export * from './utils/mysql-unique-conflict.util';

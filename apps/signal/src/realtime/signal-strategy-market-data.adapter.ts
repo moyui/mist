@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, K, mapKToStrategyBar } from '@app/shared-data';
+import { DataSource, K } from '@app/shared-data';
+import { mapKToStrategyBar } from '@app/market-data';
 import {
   KPriceProjector,
   type StrategyBar,

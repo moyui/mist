@@ -3,12 +3,11 @@ import {
   serializeStrategyContextSnapshot,
   StrategyAnalysisObservationCache,
   type CompiledStrategyExecutionPlan,
-  type StrategyBar,
   type StrategyEvaluationOutcome,
-  type ProjectedStrategyBar,
   type StrategyRealtimeMarketDataPort,
   type StrategyRealtimeSource,
 } from '@app/strategy';
+import type { ProjectedStrategyBar, StrategyBar } from '@app/market-data';
 import {
   RealtimeEpisodeStore,
   type RealtimeEpisodeIdentity,

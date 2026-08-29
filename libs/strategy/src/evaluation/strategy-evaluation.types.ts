@@ -2,7 +2,7 @@ import type { StrategyBarType } from '../market-data/strategy-bar';
 import type {
   ProjectedStrategyBar,
   StrategyImputationResolution,
-} from '../projection/strategy-series-imputer';
+} from '@app/market-data';
 import type { StrategyFieldPath } from '../rules/strategy-field.catalog';
 
 export type StrategyUnavailableReason =

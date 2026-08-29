@@ -1,11 +1,8 @@
 import { normalizeExternalDecimalText } from '@app/decimal';
-import {
-  KPriceProjector,
-  type StrategyBar,
-  type StrategyMarketSource,
-} from '@app/strategy';
-import { DataSource } from '../enums/data-source.enum';
-import { K } from '../entities/k.entity';
+import { KPriceProjector } from './k-price-projector';
+import type { StrategyBar, StrategyMarketSource } from './strategy-bar';
+import { DataSource } from '@app/shared-data';
+import { K } from '@app/shared-data';
 
 /**
  * Historical K → canonical StrategyBar mapping.

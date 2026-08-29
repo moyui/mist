@@ -1,4 +1,4 @@
-import type { ProjectedStrategyBar } from '@app/strategy';
+import type { ProjectedStrategyBar } from '@app/market-data';
 import { runChanBspPipeline } from './chan-bsp.pipeline';
 import { toChanKSeries } from './chan-bsp.k-mapper';
 import type {

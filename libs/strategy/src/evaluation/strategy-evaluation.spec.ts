@@ -1,5 +1,5 @@
 import type { StrategyBar } from '../market-data/strategy-bar';
-import { StrategySeriesImputer } from '../projection/strategy-series-imputer';
+import { StrategySeriesImputer } from '@app/market-data';
 import { compileStoredStrategyRule } from '../rules/strategy-rule.compiler';
 import {
   buildStrategyEvaluationContext,
