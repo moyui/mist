@@ -1,6 +1,6 @@
 # monitoring-health-alerts Specification Delta
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Standardized Raw Health and Liveness Across All Microservices
 

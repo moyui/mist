@@ -1,6 +1,6 @@
 # pre-market-health-inspection Specification Delta
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Pre-market automated health inspection executes at 09:05 on A-share trading days
 

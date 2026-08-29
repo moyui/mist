@@ -1,7 +1,8 @@
-# mist-observability Specification Delta
+# mist-observability Specification
 
+## Purpose
+TBD - created by archiving change standardize-health-and-observability-architecture. Update Purpose after archive.
 ## Requirements
-
 ### Requirement: OpenTelemetry Metrics Lifecycle and Stream Naming Invariance
 
 The standardization of the `observability/` directories SHALL preserve all existing `mist_*` metric stream names and label schemas exported over OTLP to OpenObserve, and SHALL register process-scoped meters in each application's `observability/metrics.ts`.
@@ -13,3 +14,4 @@ The standardization of the `observability/` directories SHALL preserve all exist
 #### Scenario: Missing metrics are added for Signal and Schedule
 - **WHEN** Signal, Schedule, or Chan applications are bootstrapped
 - **THEN** their respective `src/observability/metrics.ts` MUST register their baseline readiness and operational gauges under `mist_signal_*`, `mist_schedule_*`, and `mist_chan_*`
+
