@@ -57,7 +57,7 @@ const SHANGHAI_TRADING_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
  *   nearest later anchor (`backfilled`); a trailing missing value is forward-filled from
  *   the nearest earlier anchor (`forwardFilled`); with no anchor anywhere it stays
  *   `unavailable` — nothing is invented;
- * - an OHLC anchor requires all four values finite and non-zero; a quantity anchor
+ * - an OHLC anchor requires all four values finite (0是有可能的); a quantity anchor
  *   requires a valid non-zero canonical decimal string (invalid raw fails closed,
  *   never silently zero-filled; a valid zero is an anomaly and is corrected like null);
  * - imputation never crosses trading days (both OHLC and quantity).

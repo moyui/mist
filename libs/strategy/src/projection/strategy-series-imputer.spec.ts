@@ -240,22 +240,22 @@ describe('imputeSeries', () => {
     expect(middle.volume.effective).toBe(bars[2].volume);
   });
 
-  it('treats a bar with an OHLC value of zero as invalid and imputes the tuple', () => {
+  it('treats a bar with an OHLC value of zero as valid (0是有可能的)', () => {
     const bars = buildBars(3);
     bars[0] = { ...bars[0], open: 0 };
 
     const [first] = imputeSeries(bars);
 
-    expect(first.ohlc.resolution).toBe('backfilled');
+    expect(first.ohlc.resolution).toBe('observed');
     expect(first.ohlc.effective).toEqual({
-      open: bars[1].open,
-      high: bars[1].high,
-      low: bars[1].low,
-      close: bars[1].close,
+      open: 0,
+      high: bars[0].high,
+      low: bars[0].low,
+      close: bars[0].close,
     });
   });
 
-  it('keeps OHLC unavailable when the whole window has zero OHLC', () => {
+  it('keeps OHLC observed when the whole window has zero OHLC (0是有可能的)', () => {
     const bars = buildBars(3).map((bar) => ({
       ...bar,
       open: 0,
@@ -265,10 +265,12 @@ describe('imputeSeries', () => {
     }));
 
     for (const projected of imputeSeries(bars)) {
-      expect(projected.ohlc).toEqual({
-        raw: null,
-        effective: null,
-        resolution: 'unavailable',
+      expect(projected.ohlc.resolution).toBe('observed');
+      expect(projected.ohlc.effective).toEqual({
+        open: 0,
+        high: 0,
+        low: 0,
+        close: 0,
       });
     }
   });

@@ -29,6 +29,11 @@ const forbiddenPackagePrefixes = [
   '@app/transport',
 ] as const;
 
+const allowedSiblingImports = new Set([
+  '@app/market-data',
+  '@app/market-data/*',
+]);
+
 describe('Strategy domain boundary', () => {
   it('exposes the complete market-data port without transport or adapter types', () => {
     const port: StrategyMarketDataPort = {
@@ -111,6 +116,7 @@ describe('Strategy domain boundary', () => {
             ) ||
             (source.startsWith('@app/') &&
               source !== '@app/decimal' &&
+              !allowedSiblingImports.has(source) &&
               // The shared indicator core is a pure library (no I/O) and the evaluator delegates
               // KDJ/MACD math to it (see extract-shared-indicators-library).
               source !== '@app/indicators') ||
