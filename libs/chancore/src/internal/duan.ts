@@ -143,12 +143,62 @@ export class DuanCalculator {
             }
             // 未确认：prev 归属段内，继续扫描下一分型
           }
+        } else if (first === null) {
+          // 缠论 71 课「第一笔破坏」：转折笔 prev 是段内第一根反向笔（假设转折点前无特征
+          // 序列元素，67 课分型结构无法成立）。转笔延伸出三笔且第三笔或其后的同向笔破点
+          // 转笔的结束位置 → 新的线段一定形成、前线段一定在假设转折点结束；若先破转笔的
+          // 开始位置（= 假设转折点极值）→ 旧线段只被一笔破坏、依然延续，判据作废。
+          // 该判据确认的段恒为单笔（prev 必为段起点后第一笔，endIdx === segStartIdx），
+          // 按 65 课「线段至少有三笔」为 71 课显式特例：单笔 Complete 段合法输出。
+          if (this.firstBiBreak(bis, prev, direction) === 'confirmed') {
+            return { endIdx: prev.biIndex - 1, nextStart: prev.biIndex };
+          }
         }
         stdSeq = this.mergeFeatureInclusion(stdSeq, prev, direction);
       }
       prev = rev;
     }
     return null;
+  }
+
+  /**
+   * 缠论 71 课「第一笔破坏」判据（方向对称）：转笔 prev（段内第一根反向笔，从假设转折点
+   * 开始的第一笔）的破位竞争。按时间顺序扫描转笔之后的每一笔，先到者定论，可无限延伸
+   * （71 课复杂分支「最终还是先破…谁先破…」）：
+   * - 与转笔同向的笔（第 3 笔起）破转笔终点（破点第一笔的结束位置）→ 'confirmed'：新线段
+   *   一定形成、前线段一定结束；
+   * - 与段同向的笔破转笔起点（先破第一笔的开始位置，= 假设转折点极值）→ 'extended'：
+   *   旧线段只被一笔破坏、依然延续，判据作废；
+   * - 全程无突破 → 'none'：判据不确认，转笔并入段内特征序列继续常规流程。
+   */
+  private firstBiBreak(
+    bis: readonly ChanBi[],
+    prev: FeatureElement,
+    direction: TrendDirection,
+  ): 'confirmed' | 'extended' | 'none' {
+    const turnEnd = direction === TrendDirection.Up ? prev.low : prev.high; // 转笔终点（破位目标）
+    const turnStart = direction === TrendDirection.Up ? prev.high : prev.low; // 转笔起点（= 假设转折点极值）
+    for (let i = prev.biIndex + 1; i < bis.length; i++) {
+      const bi = bis[i];
+      if (direction === TrendDirection.Up) {
+        // 原 Up 段：转笔是 Dn。Dn 笔破转笔终点 → 确认；Up 笔破转笔起点 → 延续
+        if (bi.trend === TrendDirection.Down && bi.low < turnEnd) {
+          return 'confirmed';
+        }
+        if (bi.trend === TrendDirection.Up && bi.high > turnStart) {
+          return 'extended';
+        }
+      } else {
+        // 原 Dn 段：转笔是 Up。Up 笔破转笔终点 → 确认；Dn 笔破转笔起点 → 延续
+        if (bi.trend === TrendDirection.Up && bi.high > turnEnd) {
+          return 'confirmed';
+        }
+        if (bi.trend === TrendDirection.Down && bi.low < turnStart) {
+          return 'extended';
+        }
+      }
+    }
+    return 'none';
   }
 
   /**
