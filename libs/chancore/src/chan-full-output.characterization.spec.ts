@@ -13,10 +13,11 @@ import {
   ChanCharacterizationK,
   createChanFullOutputFixture,
 } from './chan-full-output.characterization.fixture';
+import { createChanDuanAnchorFixture } from './chan-duan-anchor.characterization.fixture';
 import { DuanStatus, DuanType, TrendDirection } from './contracts';
 
 const EXPECTED_FULL_OUTPUT_SHA256 =
-  'a2b8cde26f8519e7e970cc96ee6451f8d5a061f9ff26367168ce60906ef08ad9';
+  '2ea100a3c0ea346ed06e3b6dd61e06d7059c4c58d77436f9831137a960ddb593';
 
 function toContractK(source: ChanK): ChanCharacterizationK {
   return {
@@ -109,8 +110,9 @@ function runCoreFullPipeline() {
     bis,
     channels,
     fingerprintPayload: {
-      // 2：add-chan-central-extension 起 createChannels/createDuanChannels 增加中枢扩张归并
-      algorithmVersion: 2,
+      // 5：add-duan-first-bi-break-rule 起（历次算法版本 bump 同步）；主管道仅锁定
+      // mergedK/fenxings/bis/channels，duan 输出由 chan-duan-anchor fingerprint 单独锁定
+      algorithmVersion: 5,
       input,
       output: {
         mergedK: merged.map(toContractMergedK),
@@ -190,7 +192,7 @@ describe('ChanCore full-output differential characterization', () => {
     expect(phaseB[0].zd).toBe(1); // 波动重叠区下沿 = max(dd1,dd2)
 
     const payload = {
-      algorithmVersion: 2,
+      algorithmVersion: 5,
       duans: duans.map(toContractDuan),
       output: {
         phaseA: phaseA.map(toContractDuanChannel),
@@ -202,11 +204,60 @@ describe('ChanCore full-output differential characterization', () => {
       .digest('hex');
     expect(fingerprint).toBe(EXPECTED_DUAN_EXPANSION_SHA256);
   });
+
+  it('locks the lesson-71 first-Bi-break Duan outcomes on the 5m 000001 anchor window', () => {
+    // 真实 5m/qmt/000001 窗口（2026-06-17 ~ 2026-06-30 上海）：覆盖锚点 A 全链
+    // （06-18 10:05 顶 4117.45 → Dn → 单笔 Up 段至 06-23 10:40 顶 4175.35 → 新 Dn 段）。
+    // 锁定的正是 71 课第一笔破坏判据引入后的段输出形态。
+    const k = createChanDuanAnchorFixture();
+    const { phaseB: bis } = ChanCore.createBi(k);
+    const duans = ChanCore.createDuan(bis);
+
+    // 语义断言（防 SHA 失效时无法定位）：
+    // 1) 存在单笔 Complete Up 段，其终点 = 2026-06-23 10:40 上海（02:40Z，4175.35 顶）
+    expect(duans.length).toBeGreaterThan(0);
+    const anchorTime = new Date('2026-06-23T02:40:00.000Z');
+    const singleIdx = duans.findIndex(
+      (d) =>
+        d.type === DuanType.Complete &&
+        d.trend === TrendDirection.Up &&
+        d.originBis.length === 1 &&
+        d.endBi?.endTime.getTime() === anchorTime.getTime() &&
+        d.high === 4175.35,
+    );
+    expect(singleIdx).toBeGreaterThanOrEqual(0);
+    // 2) 该单笔段的后一段从同一时刻起（10:40 顶是段边界）
+    expect(duans[singleIdx + 1].startBi!.startTime.getTime()).toBe(
+      anchorTime.getTime(),
+    );
+    // 3) 没有任何段跨过 4175.35 极值（该极值只作为段端点出现）
+    for (const d of duans) {
+      if (d.high !== 4175.35) continue;
+      const endAtAnchor = d.endBi?.endTime.getTime() === anchorTime.getTime();
+      const startAtAnchor =
+        d.startBi!.startTime.getTime() === anchorTime.getTime();
+      expect(endAtAnchor || startAtAnchor).toBe(true);
+    }
+
+    const payload = {
+      algorithmVersion: 5,
+      bis: bis.map(toContractBi),
+      duans: duans.map(toContractDuan),
+    };
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    expect(fingerprint).toBe(EXPECTED_DUAN_71_SHA256);
+  });
 });
 
 /** Duan-level central-extension fingerprint（add-chan-central-extension 新增）。 */
 const EXPECTED_DUAN_EXPANSION_SHA256 =
-  '0083a44b1edf367638185645fef43a6f1ba800d0c1fe716c230748361258fe24';
+  '3e174f87be8419364f3506aa9eac4ee36ce0cbbdb8a20b9bcfbaa781d62896d9';
+
+/** Duan lesson-71 first-Bi-break fingerprint（add-duan-first-bi-break-rule 新增，锚点窗口）。 */
+const EXPECTED_DUAN_71_SHA256 =
+  '2f5a3fef3761d04136be7c7be01bc6ff8d0c0a01aa7792c4e21fe4f548deb22a';
 
 function toContractDuan(duan: ChanDuan) {
   return {

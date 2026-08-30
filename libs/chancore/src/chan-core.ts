@@ -24,7 +24,10 @@ import { KMergeCalculator } from './internal/k-merge';
 export class ChanCore {
   // 4：update-chan-central-extension-intersection 起，笔级中枢延伸升级为全量公共重叠交集
   // 语义（[zd, zg] 动态收敛为所有构成笔的公共重叠区间），扩张判定保持严格中心定理二。
-  static readonly algorithmVersion = 4 as const;
+  // 5：add-duan-first-bi-break-rule 起，duan 终止判定补充缠论 71 课「第一笔破坏」规则
+  // （findSegmentEnd first===null 分支：转笔延伸三笔破点转笔终点 → 前线段结束，单笔 Complete
+  // 段合法输出；先破转笔起点 → 旧段延续）。
+  static readonly algorithmVersion = 5 as const;
 
   private constructor() {}
 
