@@ -4,9 +4,9 @@
 
 ## ADDED Requirements
 
-### Requirement: 双请求 K 线与可视化指令同参同源
+### Requirement: Web Visualization Dual Requests Shall Share Same K-Line Source And Time Window
 
-`mist-fe` 的 `KLineLivePage` 与 `BacktestWorkspace` 采用**双请求并发**：`fetchK`（`POST /v1/indicators/k`）与 `fetchVisualCommands`（`GET /v1/visual/commands`）以**同一 query** `{code, period, source, startDate, endDate}` 并发请求，后端两端点必须以**同一查询真源** `IndicatorService.findKData` 提供数据，且 `WHERE`/`ORDER BY` 语义等价。
+The system SHALL enforce dual-request same-source: `mist-fe` 的 `KLineLivePage` 与 `BacktestWorkspace` SHALL 采用**双请求并发**：`fetchK`（`POST /v1/indicators/k`）与 `fetchVisualCommands`（`GET /v1/visual/commands`）以**同一 query** `{code, period, source, startDate, endDate}` 并发请求，后端两端点必须以**同一查询真源** `IndicatorService.findKData` 提供数据，且 `WHERE`/`ORDER BY` 语义等价。
 
 #### Scenario: 同参同源查询
 - **WHEN** 前端以同一 query 并发请求 `POST /v1/indicators/k` 与 `GET /v1/visual/commands`
@@ -18,18 +18,18 @@
 - **THEN** `VisualController` 不得执行默认 `count=500` 的 `slice(-count)` 尾部裁剪；查询以**时间窗口**为唯一真源，返回窗口内全部可投射 K
 - **AND** 如需限流/分页，需显式引入新参数并在 Spec 中另行约束，不在本变更以默认裁剪实现
 
-### Requirement: 价格投射前后端一致且可观测
+### Requirement: Price Projection Shall Be Consistent And Observable
 
-`K` 端点与 `Visual` 端点对 MySQL `DECIMAL` 的校验/投射策略必须一致；任何不可投射 bar 的过滤必须可观测，不得一端静默丢弃一端透传。
+The system SHALL ensure `K` 端点与 `Visual` 端点对 MySQL `DECIMAL` 的校验/投射策略一致；任何不可投射 bar 的过滤必须可观测，不得一端静默丢弃一端透传。
 
 #### Scenario: 不可投射 bar 可观测
 - **WHEN** `projectToChanK` 经 `KPriceProjector` 对某根 K 的 `open/high/low/close` 校验失败
 - **THEN** 该 bar 的丢弃必须可观测（日志/指标/契约字段三选一，具体由实施计划选定），且 `totalKlines` 与实际 `chanKlines` 的差值不得静默
 - **AND** `IndicatorController.k` 与 `VisualController` 对 `open/high/low/close` 的容错策略必须一致（同以 `KPriceProjector` 为准或同以宽松策略为准，不允许分叉）
 
-### Requirement: 可视化索引映射零伪造
+### Requirement: Visual Command Index Mapping Shall Enforce Zero-Forgery
 
-`ChanVisualAdapter` 将 Bi/Duan/Channel/Zhongshu 的时间/ID 映射到 K 索引时，未命中不得回退到 0，且 VO 字段必须与 `visual-command.types.ts` 单一来源对齐。
+`ChanVisualAdapter` SHALL ensure when mapping Bi/Duan/Channel/Zhongshu time/ID to K index, cache-miss SHALL not fallback to 0,且 VO 字段必须与 `visual-command.types.ts` 单一来源对齐。
 
 #### Scenario: 未命中索引丢弃
 - **WHEN** `getKIndex(time, id)` 在 `timeToIndex/idToIndex` 均未命中

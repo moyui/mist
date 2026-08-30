@@ -2,9 +2,9 @@
 
 ## ADDED Requirements
 
-### Requirement: ChanVisualAdapter 索引与投射契约
+### Requirement: ChanVisualAdapter Shall Enforce Index And Projection Contracts
 
-`libs/visual-command/src/adapters/chan-visual.adapter.ts` 作为双请求架构下 `GET /v1/visual/commands` 的几何生成器，必须满足零伪造与投射一致契约。
+`libs/visual-command/src/adapters/chan-visual.adapter.ts` SHALL 作为双请求架构下 `GET /v1/visual/commands` 的几何生成器，必须满足零伪造与投射一致契约。
 
 #### Scenario: 索引映射零伪造
 - **WHEN** 任意 `Bi/Duan/Channel/Zhongshu/BSP` 的 `getKIndex` 未命中

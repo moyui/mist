@@ -3,13 +3,13 @@
 ## Purpose
 TBD - created by archiving change integrate-lightweight-charts-web-visualization. Update Purpose after archive.
 ## Requirements
-### Requirement: Web Visualization SHALL Render Chan Layers From A Single Visual Command Request
+### Requirement: Web Visualization SHALL Render Chan Layers Via Dual-Request Same-Source Pipeline
 
-The web frontend SHALL fetch chart layers and Chan structure via one request (`GET /v1/visual/commands?code=...&period=...&source=...&layers=chan`) and render the main candlestick series plus all Chan layers (Bi, Duan, Bi-channel, Duan-channel, buy/sell points) on a TradingView Lightweight Charts canvas at 60 FPS without coordinate offset.
+The web frontend SHALL fetch chart data via dual-request same-source: `fetchK` (`POST /v1/indicators/k`) for the main candlestick series and `fetchVisualCommands` (`GET /v1/visual/commands?code=...&period=...&source=...&layers=chan`) for Chan geometry, both driven by the same query `{code, period, source, startDate, endDate}`. Both controllers SHALL share the same query source `IndicatorService.findKData` with identical `WHERE`/`ORDER BY` semantics and co-consume the unified `MarketDataPipeline` (先精度 `KPriceProjector: 多零归一 1.200→1.20 / clamp / 0可锚` → 后补齐 `Imputer: 0=observed, null/NaN→补全` → `effective`) to render all Chan layers (Bi, Duan, Bi-channel, Duan-channel, buy/sell points) on the TradingView Lightweight Charts canvas at 60 FPS without coordinate offset. Single-request mode SHALL be considered deprecated.
 
 #### Scenario: Single request renders the full Chan layer set
 - **WHEN** the frontend loads a security/period K-line analysis page (e.g. code `000001`, period `5m`)
-- **THEN** it MUST issue one request `GET /v1/visual/commands` with unified envelope and `VisualCommandPayload` response within 50 ms
+- **THEN** it MUST issue dual requests (`POST /v1/indicators/k` for candlesticks and `GET /v1/visual/commands` for Chan geometry, same query) with unified envelope and `VisualCommandPayload` response within 50 ms
 - **AND** the Lightweight Charts canvas MUST initialize the main Candlestick series and draw all layers on the same canvas:
 
 | 图层名称 | 指令类型 | 几何表现 |
