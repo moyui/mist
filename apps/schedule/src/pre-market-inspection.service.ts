@@ -728,7 +728,13 @@ export class PreMarketInspectionService {
     }
     return {
       title,
-      content: rows.map((text) => [{ tag: 'text', text }]),
+      // 每行段落之间插入空文本段落，飞书 post 渲染为空行，方便区分各标题行。
+      content: rows.flatMap((text, index) => {
+        const paragraph = [{ tag: 'text', text }] as const;
+        return index === rows.length - 1
+          ? [paragraph]
+          : [paragraph, [{ tag: 'text', text: '' }] as const];
+      }),
     };
   }
 

@@ -611,6 +611,8 @@ describe('PreMarketInspectionService', () => {
         expect.objectContaining({ tag: 'text' }),
       ]);
       expect(String(zhCn.content[0][0].text)).toContain('链路开关');
+      // 第二个段落应为空行段落（标题行之间空行分隔）
+      expect(zhCn.content[1]).toEqual([{ tag: 'text', text: '' }]);
       // no markdown symbols leaked into rich-text lines
       const allText = zhCn.content
         .map((row: any[]) => row.map((n: any) => n.text).join(''))
