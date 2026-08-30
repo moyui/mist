@@ -1,9 +1,6 @@
-# chan-duan-segment Specification
+# chan-duan-segment Specification Delta
 
-## Purpose
-Define Duan (段, segment) derivation from Bi via the standard characteristic-sequence method as a pure
-ChanCore facade, mirroring the ChanBi output contract without altering existing Chan output.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: ChanCore Shall Derive Duan From Bi Via The Standard Characteristic-Sequence Method
 
 ChanCore SHALL expose a stateless `createDuan(bis)` facade that consumes the `ChanBi[]` Phase B sequence returned by
@@ -100,32 +97,6 @@ missing elements, and a Duan of a single Bi confirmed this way SHALL be a legal 
 - **AND** it MUST NOT introduce epsilon equality, rounding, tick normalization or Decimal conversion
 - **AND** `volume/amount` MUST NOT participate in Duan decisions
 
-### Requirement: ChanDuan Output Contract Shall Mirror ChanBi
-
-`createDuan` SHALL return a flat `readonly ChanDuan[]` (no phaseA/phaseB envelope) containing the confirmed Duan
-sequence. `ChanDuan` SHALL mirror `ChanBi`'s field structure, with endpoint Bi in place of endpoint Fenxing and
-constituent Bi in place of constituent raw K. The characteristic sequence and its fenxings are internal algorithm
-intermediates and SHALL NOT be exposed as separate result fields.
-
-#### Scenario: A complete Duan is emitted
-- **WHEN** `createDuan` emits a complete `ChanDuan`
-- **THEN** it MUST contain endpoint `startTime/endTime`, algorithm-derived `high/low`, `trend`, `type`, `status`,
-  `independentCount`, ordered identity-deduplicated `originIds`, the constituent `originBis` and both endpoint Bi
-  (`startBi`/`endBi`)
-- **AND** `originIds` MUST identify the raw K values covered by the constituent Bi
-- **AND** `startBi` and `endBi` MUST both be non-null for a complete Duan
-
-#### Scenario: The confirmed Duan list is returned
-- **WHEN** `createDuan` completes its characteristic-sequence fenxing detection and gap-case retrospection
-- **THEN** it MUST return the confirmed Duan as a flat `ChanDuan[]` in temporal order
-- **AND** each Duan MUST be either a confirmed complete Duan or the final uncomplete tail Duan
-- **AND** callers MUST NOT need to flatten, merge or select a phase
-
-#### Scenario: An empty Bi sequence is evaluated
-- **WHEN** `createDuan` receives an empty `ChanBi[]`
-- **THEN** it MUST return `[]`
-- **AND** no empty result MUST be represented as a database, contract or algorithm error
-
 ### Requirement: Existing Chan Output Shall Remain Unchanged By Duan Introduction
 
 Introducing Duan SHALL NOT alter the output of the existing `mergeK/findFenxings/createBi/createChannels`
@@ -145,4 +116,3 @@ change itself. The Duan division algorithm evolves independently through version
   `createDuanChannels`
 - **AND** the Bi-level Channel scope requirement (`createChannels` produces `level=bi` only) MUST remain
   unchanged
-
