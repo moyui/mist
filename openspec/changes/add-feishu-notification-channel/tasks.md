@@ -16,7 +16,7 @@
 - [x] 3.2 Wire `NotificationDeliveryModule` `CHANNEL_ADAPTERS` to include the Feishu adapter behind `NOTIFICATION_CHANNELS`, and add `OO_ALERT_FEISHU_ADAPTER` + worker fanout in `OoAlertModule` / `OoAlertDeliveryWorker` (channel-isolated `sendChannel`, countable).
 - [x] 3.3 Extend `PreMarketInspectionService` to parallel-deliver the Markdown report to WeCom and Feishu via `OO_ALERT_*_WEBHOOK` (helper reuse, isolated failures, spec-covered).
 
-## 4. Verification and release baseline — 1/2 (deploy HIL pending)
+## 4. Verification and release baseline — 2/2
 
 - [x] 4.1 Run the host-reported verification surface (`lint:check`, `typecheck`, `test:ci`, `ci:contracts`, `build:docker`) and `openspec validate --all --strict` over affected repos; ensure rollback/repair-forward note matches ENUM widening compatibility (旧应用读新 ENUM 需整组发布或 repair-forward).
-- [ ] 4.2 Proof that strategy `deliver.fanout -> deliver.channel` and OO `oo-alert-delivery` each fan out to `feishu` independently, with `permanent_failure` on missing webhook and `transient_failure` on rate-limit/timeout, and that no `ready`-scope drift or padding-zero regressions exist (governance §6.1/§6.5).
+- [x] 4.2 [deploy HIL 2026-08-30] Proof that strategy `deliver.fanout -> deliver.channel` and OO `oo-alert-delivery` each fan out to `feishu` independently, with `permanent_failure` on missing webhook and `transient_failure` on rate-limit/timeout, and that no `ready`-scope drift or padding-zero regressions exist (governance §6.1/§6.5).

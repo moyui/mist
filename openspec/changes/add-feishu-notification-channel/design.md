@@ -6,7 +6,7 @@ Notification delivery is `AlertEvent(dev) -> strategy_alert_delivery(BullMQ + My
 ## Decisions
 
 ### D1 Feishu access shape: group custom-bot webhook, not app token
-- Webhook: `https://open.feishu.cn/open-apis/bot/v2/hook/{token}` with optional `*_SECRET` signature (`timestamp` + `"\n" + secret` -> HMAC-SHA256 -> base64, sent as `timestamp` + `sign` fields).
+- Webhook: `https://open.feishu.cn/open-apis/bot/v2/hook/{token}` with optional `*_SECRET` signature. Feishu official algorithm: HMAC key = `timestamp + "\n" + secret` with EMPTY message, output base64, sent as `timestamp` + `sign` fields. (Verified live: official arrangement returns StatusCode 0; secret-as-key with message arrangement returns 19021 once signing enforcement is on.)
 - Rationale: parity with WeCom webhook, minimal permission surface, no tenant token lifecycle. App robot (app_id/app_secret) deferred.
 
 ### D2 Single adapter, two env bindings
