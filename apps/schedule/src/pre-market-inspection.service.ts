@@ -730,10 +730,10 @@ export class PreMarketInspectionService {
       const trimmed = secret.trim();
       if (trimmed) {
         // Keep signing clock injectable in tests via Date.now mock; production uses wall clock.
+        // Feishu official signing: HMAC key = `${timestamp}\n${secret}`, EMPTY message.
         const timestamp = String(Math.floor(Date.now() / 1000));
-        const sign = createHmac('sha256', trimmed)
-          .update(`${timestamp}\n${trimmed}`)
-          .digest('base64');
+        const stringToSign = `${timestamp}\n${trimmed}`;
+        const sign = createHmac('sha256', stringToSign).digest('base64');
         payload.timestamp = timestamp;
         payload.sign = sign;
       }

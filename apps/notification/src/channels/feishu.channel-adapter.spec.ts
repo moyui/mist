@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { FeishuChannelAdapter } from './feishu.channel-adapter';
 
@@ -88,8 +89,11 @@ describe('FeishuChannelAdapter', () => {
       (fetchMock.mock.calls[0][1] as RequestInit).body as string,
     );
     expect(body.timestamp).toBe('1700000000');
-    expect(typeof body.sign).toBe('string');
-    expect(body.sign.length).toBeGreaterThan(10);
+    // Feishu official algorithm: HMAC key = `${timestamp}\n${secret}`, empty message.
+    const expectedSign = createHmac('sha256', '1700000000\ns3cret').digest(
+      'base64',
+    );
+    expect(body.sign).toBe(expectedSign);
   });
 
   it('permanent_failure for invalid token code 19024', async () => {

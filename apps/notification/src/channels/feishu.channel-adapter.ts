@@ -71,9 +71,10 @@ export class FeishuChannelAdapter implements ChannelAdapter {
       const timestamp = String(
         this.clock?.nowSeconds() ?? Math.floor(Date.now() / 1000),
       );
-      const sign = createHmac('sha256', secret)
-        .update(`${timestamp}\n${secret}`)
-        .digest('base64');
+      // Feishu official signing: HMAC key = `${timestamp}\n${secret}` with
+      // EMPTY message (not secret-as-key with timestamp\nsecret as payload).
+      const stringToSign = `${timestamp}\n${secret}`;
+      const sign = createHmac('sha256', stringToSign).digest('base64');
       payload.timestamp = timestamp;
       payload.sign = sign;
     }
