@@ -554,4 +554,71 @@ describe('PreMarketInspectionService', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('delivers Feishu rich-text post (not markdown) when feishu webhook configured', async () => {
+    configService.get.mockImplementation((key: string) => {
+      if (key === 'TDX_BASE_URL') return 'http://127.0.0.1:9001';
+      if (key === 'QMT_BASE_URL') return 'http://127.0.0.1:9002';
+      if (key === 'BACKEND_HEALTH_URL') return 'http://127.0.0.1:8001/health';
+      if (key === 'SIGNAL_HEALTH_URL') return 'http://127.0.0.1:8010/health';
+      if (key === 'NOTIFICATION_WECHAT_WEBHOOK')
+        return 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock';
+      if (key === 'OO_ALERT_FEISHU_WEBHOOK')
+        return 'https://open.feishu.cn/open-apis/bot/v2/hook/mock';
+      if (key === 'OO_ALERT_FEISHU_SECRET') return 's3cret';
+      return undefined;
+    });
+
+    const originalFetch = global.fetch;
+    let feishuBody: unknown;
+    global.fetch = jest
+      .fn()
+      .mockImplementation(async (url: string, init?: RequestInit) => {
+        if (String(url).includes('open.feishu.cn')) {
+          feishuBody = JSON.parse(String(init?.body));
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ StatusCode: 0 }),
+          }) as unknown as Response;
+        }
+        if (String(url).includes('qyapi.weixin.qq.com')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ errcode: 0 }),
+          }) as unknown as Response;
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({}),
+        }) as unknown as Response;
+      }) as unknown as typeof fetch;
+
+    try {
+      const report = await service.runInspection(
+        new Date('2026-08-25T09:05:00+08:00'),
+      );
+      expect(report.sentToFeishu).toBe(true);
+      const body = feishuBody as Record<string, any>;
+      // Feishu has no markdown msg_type; the report must be sent as post (rich text).
+      expect(body.msg_type).toBe('post');
+      const zhCn = body.content.post.zh_cn;
+      expect(zhCn.title).toContain('盘前');
+      expect(Array.isArray(zhCn.content)).toBe(true);
+      expect(zhCn.content[0]).toEqual([
+        expect.objectContaining({ tag: 'text' }),
+      ]);
+      expect(String(zhCn.content[0][0].text)).toContain('链路开关');
+      // no markdown symbols leaked into rich-text lines
+      const allText = zhCn.content
+        .map((row: any[]) => row.map((n: any) => n.text).join(''))
+        .join('');
+      expect(allText).not.toContain('**');
+      expect(allText).not.toContain('###');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

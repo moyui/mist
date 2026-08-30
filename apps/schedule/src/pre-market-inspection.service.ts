@@ -120,7 +120,7 @@ export class PreMarketInspectionService {
 
     const [sentWechat, sentFeishu] = await Promise.all([
       this.deliverWechatReport(report.markdown),
-      this.deliverFeishuReport(report.markdown),
+      this.deliverFeishuReport(report),
     ]);
     this.logger.log(
       `[PreMarketInspection] delivery result wechat=${sentWechat ? 'sent' : 'skipped/failed'} feishu=${sentFeishu ? 'sent' : 'skipped/failed'} targetDate=${dateStr} status=${overallStatus}`,
@@ -668,9 +668,11 @@ export class PreMarketInspectionService {
   }
 
   /**
-   * 推送飞书群机器人 Webhook（可选加签）
+   * 推送飞书群机器人 Webhook（可选加签，富文本 post）
    */
-  async deliverFeishuReport(markdown: string): Promise<boolean> {
+  async deliverFeishuReport(
+    report: PreMarketInspectionReport,
+  ): Promise<boolean> {
     const webhook =
       this.configService.get<string>('OO_ALERT_FEISHU_WEBHOOK') ||
       this.configService.get<string>('NOTIFICATION_FEISHU_WEBHOOK');
@@ -681,7 +683,53 @@ export class PreMarketInspectionService {
       this.configService.get<string>('OO_ALERT_FEISHU_SECRET') ||
       this.configService.get<string>('NOTIFICATION_FEISHU_SECRET') ||
       '';
-    return this.postFeishuText(webhook, secret, markdown);
+    return this.postFeishuPost(webhook, secret, this.buildFeishuPost(report));
+  }
+
+  /**
+   * 从结构化报告构建飞书富文本（post）——飞书 text 不渲染 markdown，
+   * post 的每个段落（[]）是一行，text 标签不支持加粗，用 emoji+状态词呈现。
+   */
+  private buildFeishuPost(report: PreMarketInspectionReport): {
+    title: string;
+    content: ReadonlyArray<readonly { tag: 'text'; text: string }[]>;
+  } {
+    const isPassed = report.overallStatus === 'PASSED';
+    const title = isPassed
+      ? '🟢 09:05 盘前系统体检通过 (All Green)'
+      : '🔴 09:05 盘前体检发现异常 (需立即介入)';
+    const d = report.dimensions;
+    const badge = (ok: boolean): string => (ok ? '🟢' : '🔴');
+    const rows: string[] = [
+      `${badge(d.pipelineSwitches.passed)}链路开关：${d.pipelineSwitches.passed ? '正常' : '异常'}（${d.pipelineSwitches.summary}）`,
+      `${badge(d.datasource.passed)}数据源/Journal：${d.datasource.passed ? '正常' : '异常'}（${d.datasource.summary}）`,
+      `${badge(d.klines.passed)}昨夜收盘K线：${d.klines.passed ? '完整' : '缺失'}（${d.klines.summary}）`,
+      `${badge(d.subscription.passed)}活跃订阅分配：${d.subscription.passed ? '正常' : '异常'}（${d.subscription.summary}）`,
+      `${badge(d.realtime.passed)}实时通信链路：${d.realtime.passed ? '通畅' : '异常'}（${d.realtime.summary}）`,
+      `${badge(d.infrastructure.passed)}基础服务状态：${d.infrastructure.passed ? '正常' : '故障'}（${d.infrastructure.summary}）`,
+    ];
+    if (isPassed) {
+      rows.push(
+        '全系统就绪，距离 09:15 订阅重置还有 10 分钟，距离 09:30 开盘还有 25 分钟。',
+      );
+    } else {
+      rows.push('————', '⚠️ 故障详情与排查指引：');
+      for (const [dimKey, result] of Object.entries(d)) {
+        if (!result.passed) {
+          rows.push(`【${dimKey}】${result.summary}`);
+          for (const detail of result.details ?? []) {
+            rows.push(`❌ ${detail}`);
+          }
+          for (const remediation of result.remediation ?? []) {
+            rows.push(`⚡ ${remediation}`);
+          }
+        }
+      }
+    }
+    return {
+      title,
+      content: rows.map((text) => [{ tag: 'text', text }]),
+    };
   }
 
   private async postWecomMarkdown(
@@ -717,15 +765,18 @@ export class PreMarketInspectionService {
     }
   }
 
-  private async postFeishuText(
+  private async postFeishuPost(
     webhook: string,
     secret: string,
-    text: string,
+    post: {
+      title: string;
+      content: ReadonlyArray<readonly { tag: 'text'; text: string }[]>;
+    },
   ): Promise<boolean> {
     try {
       const payload: Record<string, unknown> = {
-        msg_type: 'text',
-        content: { text },
+        msg_type: 'post',
+        content: { post: { zh_cn: post } },
       };
       const trimmed = secret.trim();
       if (trimmed) {

@@ -2,7 +2,7 @@
 
 ### Requirement: Notification Delivery Shall Support Feishu Webhook As A First-Class Channel
 
-Notification delivery SHALL support Feishu (group custom-bot webhook `https://open.feishu.cn/open-apis/bot/v2/hook/{token}`) as a first-class `NotificationChannel` (`feishu`) alongside `qq` and `wechat`, with parity in per-channel fanout, per-channel result recording, at-least-once retry/dead-letter isolation, and direct provider-protocol invocation (no AstrBot/mist-skills hop). Text payload parity with WeCom (`msg_type:'text'`) and optional `timestamp`/`sign` (HMAC-SHA256 over `timestamp\nsecret`) when a secret is configured MUST be used; credentials MUST be redacted from logs.
+Notification delivery SHALL support Feishu (group custom-bot webhook `https://open.feishu.cn/open-apis/bot/v2/hook/{token}`) as a first-class `NotificationChannel` (`feishu`) alongside `qq` and `wechat`, with parity in per-channel fanout, per-channel result recording, at-least-once retry/dead-letter isolation, and direct provider-protocol invocation (no AstrBot/mist-skills hop). Strategy/OO notifications use `msg_type:'text'` parity with WeCom; the inspection report uses Feishu rich-text `post` and optional `timestamp`/`sign` (HMAC-SHA256 over `timestamp\nsecret`) when a secret is configured MUST be used; credentials MUST be redacted from logs.
 
 #### Scenario: Strategy delivery fans out to Feishu when enabled
 
@@ -31,11 +31,11 @@ OO health-alert delivery SHALL support Feishu as an additional outbound channel 
 
 ### Requirement: Pre-Market Inspection Shall Deliver The Report To WeCom And Feishu
 
-The 09:05 pre-market inspection report (Markdown) SHALL be delivered to the WeCom webhook when configured and independently to the Feishu webhook when configured; the two destinations MUST be attempted separately so absence or failure of one does not suppress the other.
+The 09:05 pre-market inspection report SHALL be delivered to the WeCom webhook when configured (as WeCom `markdown` message) and independently to the Feishu webhook when configured (as Feishu rich-text `post` built from the structured report — Feishu has no markdown message type); the two destinations MUST be attempted separately so absence or failure of one does not suppress the other.
 
 #### Scenario: Inspection report delivery is attempted for each configured webhook
 
-- **WHEN** `runInspection()` builds the report Markdown
+- **WHEN** `runInspection()` builds the report
 - **THEN** delivery to the WeCom webhook (`OO_ALERT_WECHAT_WEBHOOK` / `NOTIFICATION_WECHAT_WEBHOOK`) MUST be attempted when that env is present
 - **AND** delivery to the Feishu webhook (`OO_ALERT_FEISHU_WEBHOOK` / `NOTIFICATION_FEISHU_WEBHOOK`) MUST be attempted when that env is present
 

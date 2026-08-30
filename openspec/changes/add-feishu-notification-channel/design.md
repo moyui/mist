@@ -23,7 +23,7 @@ Notification delivery is `AlertEvent(dev) -> strategy_alert_delivery(BullMQ + My
 
 ### D5 OO lane and pre-market inspection
 - OO `OoAlertDeliveryWorker` adds optional Feishu fanout alongside WeCom+QQ (each `sendChannel` failure isolated, counted, not blocking other channels).
-- `PreMarketInspectionService` parallel-delivers Markdown report to WeCom **and** Feishu (separate `OO_ALERT_*_WEBHOOK` lookups, shared helper, no cross-channel fallback).
+- `PreMarketInspectionService` parallel-delivers the inspection report to WeCom (markdown msgtype, officially supported) **and** Feishu as **rich-text `post`** built from the structured `PreMarketInspectionReport` (Feishu has no markdown msgtype; `text` also does not render line breaks reliably — post paragraphs provide one line per `[]`).
 
 ## Data flow
 
@@ -31,12 +31,12 @@ Notification delivery is `AlertEvent(dev) -> strategy_alert_delivery(BullMQ + My
 producer -> wire -> decoder -> state/persistence -> consumer -> deploy/monitoring
 strategy: SignalRuntime -> BullMQ fanout(AlertEvent) -> fanout service -> strategy_alert_deliveries(event×feishu)+deliver.channel job -> AlertChannelDeliveryService -> FeishuChannelAdapter -> open.feishu.cn
 OO:       OO rule -> Receiver(Token) -> BullMQ oo-alert-delivery -> OoAlertDeliveryWorker -> WeCom+QQ+Feishu adapters (isolated)
-inspect:  schedule 09:05 runInspection -> buildMarkdownReport -> deliverWechatReport + deliverFeishuReport (parallel)
+inspect:  schedule 09:05 runInspection -> buildMarkdownReport (WeCom) + buildFeishuPost (rich text) -> deliverWechatReport + deliverFeishuReport (parallel)
 ```
 
 ## Risks / Trade-offs
 - Feishu signature clock skew (<1h) may cause permanent-looking failures; treated as retryable category only if service returns transient code, otherwise surfaced via `last_error`.
-- No card rendering: first iteration stays `text` to keep envelope parity and avoid template drift.
+- Strategy/OO notifications stay `text` (single-line envelopes). Inspection report uses Feishu `post` rich text (official multi-line paragraphs); no card (`interactive`) rendering.
 
 ## Alternatives considered
 - Unified webhook secret store / card builder: rejected for iteration 1 to keep adapter parity and bounded scope.
