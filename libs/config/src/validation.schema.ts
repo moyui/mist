@@ -245,6 +245,10 @@ export const scheduleEnvSchema = commonEnvSchema.append({
   PORT: Joi.number().port().default(8003),
   NOTIFICATION_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
   OO_ALERT_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
+  NOTIFICATION_FEISHU_WEBHOOK: Joi.string().uri().allow('').default(''),
+  NOTIFICATION_FEISHU_SECRET: Joi.string().allow('').default(''),
+  OO_ALERT_FEISHU_WEBHOOK: Joi.string().uri().allow('').default(''),
+  OO_ALERT_FEISHU_SECRET: Joi.string().allow('').default(''),
 });
 
 /**
@@ -281,6 +285,8 @@ export const notificationEnvSchema = commonEnvSchema.append({
     .valid('group', 'private')
     .default('group'),
   NOTIFICATION_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
+  NOTIFICATION_FEISHU_WEBHOOK: Joi.string().uri().allow('').default(''),
+  NOTIFICATION_FEISHU_SECRET: Joi.string().allow('').default(''),
   NOTIFICATION_HTTP_TIMEOUT_MS: Joi.number()
     .integer()
     .positive()
@@ -289,6 +295,8 @@ export const notificationEnvSchema = commonEnvSchema.append({
   // default); WeCom bot unset => WeCom send permanent_failure (QQ/日志 fallback).
   OO_ALERT_RECEIVER_TOKEN: Joi.string().allow('').default(''),
   OO_ALERT_WECHAT_WEBHOOK: Joi.string().uri().allow('').default(''),
+  OO_ALERT_FEISHU_WEBHOOK: Joi.string().uri().allow('').default(''),
+  OO_ALERT_FEISHU_SECRET: Joi.string().allow('').default(''),
 });
 
 /**

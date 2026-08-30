@@ -68,7 +68,7 @@ export class DataCollectionController {
       const report = await this.preMarketInspectionService.runInspection(now);
       this.logger.log(
         `[Schedule] event=pre_market_inspection_completed targetDate=${report.targetDate} ` +
-          `status=${report.overallStatus} sentToWechat=${report.sentToWechat}`,
+          `status=${report.overallStatus} sentToWechat=${report.sentToWechat} sentToFeishu=${report.sentToFeishu}`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

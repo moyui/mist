@@ -30,6 +30,7 @@ describe('DataCollectionController scheduling', () => {
         dimensions: {},
         markdown: 'All Green',
         sentToWechat: true,
+        sentToFeishu: false,
       }),
     };
     const controller = new DataCollectionController(

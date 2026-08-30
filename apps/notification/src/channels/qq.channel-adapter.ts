@@ -47,6 +47,7 @@ export class QqChannelAdapter implements ChannelAdapter {
         status: 'permanent_failure',
         error:
           'QQ adapter not configured (NOTIFICATION_QQ_BASE_URL/TARGET missing)',
+        errorCode: 'QQ_NOT_CONFIGURED',
       };
     }
 

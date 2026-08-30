@@ -8,6 +8,14 @@ function createWorker(channels = 'wechat') {
       key === 'NOTIFICATION_CHANNELS' ? channels : undefined,
   };
   const wecom = { channel: 'WECHAT', send: jest.fn() };
+  const feishu = {
+    channel: 'FEISHU',
+    send: jest.fn().mockResolvedValue({
+      status: 'permanent_failure',
+      error: 'Feishu webhook not configured (OO_ALERT_FEISHU_WEBHOOK missing)',
+      errorCode: 'FEISHU_WEBHOOK_MISSING',
+    }),
+  };
   const qq = { channel: 'QQ', send: jest.fn() };
   const counters = {
     recordSent: jest.fn(),
@@ -16,10 +24,11 @@ function createWorker(channels = 'wechat') {
   const worker = new OoAlertDeliveryWorker(
     config as never,
     wecom as never,
+    feishu as never,
     qq as never,
     counters as never,
   );
-  return { worker, wecom, qq, counters };
+  return { worker, wecom, feishu, qq, counters };
 }
 
 const JOB = {

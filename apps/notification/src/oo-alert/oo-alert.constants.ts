@@ -11,6 +11,9 @@ export const OO_ALERT_JOB = 'oo_alert';
 /** Dedicated WeCom adapter for OO alerts (own bot webhook, OO_ALERT_WECHAT_WEBHOOK). */
 export const OO_ALERT_WECHAT_ADAPTER = Symbol('OO_ALERT_WECHAT_ADAPTER');
 
+/** Dedicated Feishu adapter for OO alerts (own bot webhook, OO_ALERT_FEISHU_WEBHOOK). */
+export const OO_ALERT_FEISHU_ADAPTER = Symbol('OO_ALERT_FEISHU_ADAPTER');
+
 export type OoAlertSeverity = 'P0' | 'P1' | 'P2';
 
 /**

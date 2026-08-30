@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -32,6 +33,7 @@ export interface PreMarketInspectionReport {
   };
   readonly markdown: string;
   readonly sentToWechat: boolean;
+  readonly sentToFeishu: boolean;
 }
 
 const REQUIRED_INTRADAY_PERIODS: Period[] = [
@@ -113,10 +115,17 @@ export class PreMarketInspectionService {
         pipelineSwitches,
       }),
       sentToWechat: false,
+      sentToFeishu: false,
     };
 
-    const sent = await this.deliverWechatReport(report.markdown);
-    return { ...report, sentToWechat: sent };
+    const [sentWechat, sentFeishu] = await Promise.all([
+      this.deliverWechatReport(report.markdown),
+      this.deliverFeishuReport(report.markdown),
+    ]);
+    this.logger.log(
+      `[PreMarketInspection] delivery result wechat=${sentWechat ? 'sent' : 'skipped/failed'} feishu=${sentFeishu ? 'sent' : 'skipped/failed'} targetDate=${dateStr} status=${overallStatus}`,
+    );
+    return { ...report, sentToWechat: sentWechat, sentToFeishu: sentFeishu };
   }
 
   /**
@@ -655,6 +664,30 @@ export class PreMarketInspectionService {
       return false;
     }
 
+    return this.postWecomMarkdown(webhook, markdown);
+  }
+
+  /**
+   * 推送飞书群机器人 Webhook（可选加签）
+   */
+  async deliverFeishuReport(markdown: string): Promise<boolean> {
+    const webhook =
+      this.configService.get<string>('OO_ALERT_FEISHU_WEBHOOK') ||
+      this.configService.get<string>('NOTIFICATION_FEISHU_WEBHOOK');
+    if (!webhook) {
+      return false;
+    }
+    const secret =
+      this.configService.get<string>('OO_ALERT_FEISHU_SECRET') ||
+      this.configService.get<string>('NOTIFICATION_FEISHU_SECRET') ||
+      '';
+    return this.postFeishuText(webhook, secret, markdown);
+  }
+
+  private async postWecomMarkdown(
+    webhook: string,
+    markdown: string,
+  ): Promise<boolean> {
     try {
       const res = await fetch(webhook, {
         method: 'POST',
@@ -679,6 +712,65 @@ export class PreMarketInspectionService {
     } catch (err) {
       this.logger.error(
         `[PreMarketInspection] Failed to send report to WeChat: ${err}`,
+      );
+      return false;
+    }
+  }
+
+  private async postFeishuText(
+    webhook: string,
+    secret: string,
+    text: string,
+  ): Promise<boolean> {
+    try {
+      const payload: Record<string, unknown> = {
+        msg_type: 'text',
+        content: { text },
+      };
+      const trimmed = secret.trim();
+      if (trimmed) {
+        // Keep signing clock injectable in tests via Date.now mock; production uses wall clock.
+        const timestamp = String(Math.floor(Date.now() / 1000));
+        const sign = createHmac('sha256', trimmed)
+          .update(`${timestamp}\n${trimmed}`)
+          .digest('base64');
+        payload.timestamp = timestamp;
+        payload.sign = sign;
+      }
+      const res = await fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        this.logger.error(
+          `[PreMarketInspection] Feishu webhook returned HTTP ${res.status}`,
+        );
+        return false;
+      }
+      const json = (await res.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >;
+      const code =
+        typeof json.StatusCode === 'number'
+          ? json.StatusCode
+          : typeof json.code === 'number'
+            ? json.code
+            : undefined;
+      if (code !== undefined && code !== 0) {
+        this.logger.error(
+          `[PreMarketInspection] Feishu webhook returned code=${code} msg=${String(json.msg ?? json.StatusMessage ?? '')}`,
+        );
+        return false;
+      }
+      this.logger.log(
+        '[PreMarketInspection] Successfully delivered report to Feishu',
+      );
+      return true;
+    } catch (err) {
+      this.logger.error(
+        `[PreMarketInspection] Failed to send report to Feishu: ${err}`,
       );
       return false;
     }

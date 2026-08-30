@@ -44,6 +44,7 @@ export class WeComChannelAdapter implements ChannelAdapter {
       return {
         status: 'permanent_failure',
         error: `WeCom webhook not configured (${this.webhookEnvName} missing)`,
+        errorCode: 'WECOM_WEBHOOK_MISSING',
       };
     }
 

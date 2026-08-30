@@ -16,6 +16,7 @@ import {
 } from '@app/shared-data';
 import { OoAlertModule } from '../oo-alert/oo-alert.module';
 import { CHANNEL_ADAPTERS } from '../channels/channel-adapter.port';
+import { FeishuChannelAdapter } from '../channels/feishu.channel-adapter';
 import { QqChannelAdapter } from '../channels/qq.channel-adapter';
 import { WeComChannelAdapter } from '../channels/wechat.channel-adapter';
 import { AlertChannelDeliveryService } from './alert-channel-delivery.service';
@@ -64,12 +65,19 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
     PendingAlertDeliverySweepService,
     QqChannelAdapter,
     WeComChannelAdapter,
+    FeishuChannelAdapter,
     {
       provide: CHANNEL_ADAPTERS,
-      inject: [QqChannelAdapter, WeComChannelAdapter, ConfigService],
+      inject: [
+        QqChannelAdapter,
+        WeComChannelAdapter,
+        FeishuChannelAdapter,
+        ConfigService,
+      ],
       useFactory: (
         qq: QqChannelAdapter,
         wecom: WeComChannelAdapter,
+        feishu: FeishuChannelAdapter,
         config: ConfigService,
       ) => {
         const enabled = new Set(
@@ -81,7 +89,7 @@ import { StrategyAlertDeliveryWorker } from './strategy-alert-delivery.worker';
         // Only adapters whose channel is listed in NOTIFICATION_CHANNELS are
         // active. Keeps an unconfigured channel from dead-lettering every event
         // (V1 ships WeCom-only via NOTIFICATION_CHANNELS=wechat).
-        return [qq, wecom].filter((a) => enabled.has(a.channel));
+        return [qq, wecom, feishu].filter((a) => enabled.has(a.channel));
       },
     },
   ],
