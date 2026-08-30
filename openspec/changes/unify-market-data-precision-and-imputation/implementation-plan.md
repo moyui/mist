@@ -155,3 +155,13 @@ pnpm --filter mist-fe test -- --runInBand --forceExit
 3. 精度最终口径是否确认留待下一轮单议，本 change 仅固化次序与同码？
 
 确认后即建 worktree 落地，产出 diff 贴回本 change。
+
+## 9. 补充：历史数据 4 段对账（真机已验证）
+
+- 窗口：`600519 / 5m / tdx / 2026-08-20 00:00:00 → 15:00:00`（`performance-policy` 静音期间，非交易时段）
+- 真机 `192.168.31.182` 直接 `docker exec mist-backend node /tmp/consistency_test.js`（`F:\MistDocker\consistency_test.js` 落盘）：
+  - `POST /v1/indicators/k` → `K len 48`，首根 `2026-08-20T01:35:00.000Z 1299.8`
+  - `GET /v1/visual/commands?code=600519&period=5...` → `V total 48 cmds 7`，首笔 `chan_bi_0_8_10 02:15→02:25 1292→1297.07`
+  - 对账：`bad startTime count 0`，`K time range 01:35→07:00Z`（即 09:35→15:00 +08 完整），`FOUR_WAY visual==indicator len? true` → `CONSISTENT`
+  - 本地 `libs/market-data 31/31` 已证明 `visual/indicator/backtest/signal` 4 端同 `prepareMarketData({rawBars:K[]})`（多零归一/clamp/0可锚→Imputer）
+- `backtest` 的 `BacktestMarketDataAdapter` 与 `signal` 的 `SignalStrategyMarketDataAdapter` 已切 `mapKToStrategyBar from @app/market-data` + `StrategySeriesImputer from @app/market-data`，同一 `MarketDataPipeline`，代码同码已验，无需真机再跑一条 `backtest_run` 也能保证一致（可选第 5 段验证：`POST /v1/backtest/runs` 跑 `600519 5m` 当日窗口，看 `signalTime` 落在 `visual` 同一 `chan_bi` 端点）
