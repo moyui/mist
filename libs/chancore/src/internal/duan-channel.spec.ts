@@ -110,6 +110,18 @@ describe('DuanChannelCalculator (段级中枢，对称重叠无方向)', () => {
     expect(result.phaseB[0].duans).toHaveLength(3);
   });
 
+  it('excludes an unconfirmed tail Duan (status unknown) from Duan-level Channel derivation', () => {
+    const confirmed: ChanDuan[] = [
+      makeDuan('up', 10, 0, 0),
+      makeDuan('down', 8, 2, 1),
+      makeDuan('up', 9, 3, 2),
+    ];
+    const tail = makeUncompleteDuan('down', 7, 4, 3);
+    const calc = new DuanChannelCalculator();
+    expect(calc.createDuanChannels([...confirmed, tail])).toEqual(
+      calc.createDuanChannels(confirmed),
+    );
+  });
   it('is deterministic across repeated calls and does not mutate input', () => {
     const duans: ChanDuan[] = [
       makeDuan('up', 10, 0, 0),
@@ -161,5 +173,23 @@ function makeDuan(
     originBis: [startBi],
     startBi,
     endBi: startBi,
+  };
+}
+
+/**
+ * 未确认尾段（UnComplete / status=Unknown / endBi=null）——
+ * 18 课"次级别前三个走势类型都是完成的才构成中枢"：不得进入段中枢。
+ */
+function makeUncompleteDuan(
+  trend: 'up' | 'down',
+  high: number,
+  low: number,
+  id: number,
+): ChanDuan {
+  return {
+    ...makeDuan(trend, high, low, id),
+    type: DuanType.UnComplete,
+    status: DuanStatus.Unknown,
+    endBi: null,
   };
 }

@@ -1,4 +1,5 @@
 import {
+  BiStatus,
   ChannelLevel,
   ChannelStatus,
   ChannelType,
@@ -35,11 +36,16 @@ export class ChannelCalculator {
    * @returns 两阶段中枢结果 { phaseA, phaseB }
    */
   createChannels(data: readonly ChanBi[]): ChanChannelTwoPhaseResult {
+    // 仅确认且有效的笔构成中枢（status !== Valid 的 Invalid/Unknown 单元不参与：
+    // 18 课"次级别前三个走势类型都是完成的才构成中枢"；统一 status 判据，
+    // 数据层 createBi 输出不变）。
+    const confirmed = data.filter((b) => b.status === BiStatus.Valid);
+
     // Phase A：固定5笔滑窗枚举所有基础中枢
-    const phaseA = this.enumerateChannels(data);
+    const phaseA = this.enumerateChannels(confirmed);
 
     // Phase B：先延伸（首尾各+2笔），再重合合并
-    const merged = this.mergeChannels(phaseA, data);
+    const merged = this.mergeChannels(phaseA, confirmed);
 
     // Phase C：中枢扩张归并（相邻波动区间重叠/相切 → 合并为一个更高级别中枢，到不动点）
     const phaseB = resolveCentralExpansions(merged, mergeBiCentralExpansion);

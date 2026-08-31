@@ -27,7 +27,10 @@ export class ChanCore {
   // 5：add-duan-first-bi-break-rule 起，duan 终止判定补充缠论 71 课「第一笔破坏」规则
   // （findSegmentEnd first===null 分支：转笔延伸三笔破点转笔终点 → 前线段结束，单笔 Complete
   // 段合法输出；先破转笔起点 → 旧段延续）。
-  static readonly algorithmVersion = 5 as const;
+  // 6：exclude-unconfirmed-chan-units-from-central-and-view 起，仅确认且有效的单元进入
+  // 笔/段中枢统计（status === Valid 统一判据：Invalid 宽笔失败候选与 Unknown 未确认尾单元
+  // 不参与中枢；可视化同口径），数据层 createBi/createDuan 输出不变。
+  static readonly algorithmVersion = 6 as const;
 
   private constructor() {}
 
