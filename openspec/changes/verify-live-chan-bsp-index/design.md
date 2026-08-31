@@ -35,7 +35,7 @@ flowchart TD
     subgraph Notification App [通知运行时 apps/notification]
         SignalQueue --> NotifWorker[StrategyAlertDeliveryWorker]
         NotifWorker --> Envelope[NotificationEnvelope: 解析笔/段及买卖点]
-        Envelope --> WeCom[企业微信群机器人 Webhook]
+        Envelope --> Feishu[飞书群机器人 Webhook（已弃用企业微信）]
     end
 ```
 
