@@ -2,8 +2,8 @@
 
 ## 1. Bridge 透传 startedAt
 
-- [ ] 1.1 `mist_qmt_realtime_bridge.py` `_make_register_frame()` 增加 `startedAt` 字段（复用 `STATE.started_at`）
-- [ ] 1.2 确认 bridge health/observability 负载已含 startedAt（含或另加）
+- [ ] 1.1 `mist_qmt_realtime_bridge.py` `_make_register_frame()` 增加 `startedAt` 字段（复用 `STATE.started_at`，`"%Y-%m-%d %H:%M:%S"` 本地格式不变）
+- [ ] 1.2 确认 bridge 模块加载 + `init()` 双赋值保证 `STATE.started_at` 恒非空
 
 ## 2. Gateway 存储与暴露
 
@@ -14,8 +14,9 @@
 
 - [ ] 3.1 `subscription.py` 增加 `_earliest_unresolved_recovery_time()`（扫描 startup_recovery_intent 无对应 terminal 的最早时间 + native_intent 孤儿）
 - [ ] 3.2 增加 `_attempt_auto_unlock()`：三层保护（reconciliation_required / earliest 存在 / startedAt 严格晚于 earliest）
-- [ ] 3.3 在 `reconcile_startup()` 尾部调用，仅 per-startup 一次（phase degraded → completed 后不再重复）
-- [ ] 3.4 更新 `reconcile_startup` 注释说明自动解锁路径
+- [ ] 3.3 时间解析：bridge `started_at`（`%Y-%m-%d %H:%M:%S` 本地）用 `ZoneInfo("Asia/Shanghai")` 硬编码 +8 解析为 UTC epoch，与 journal recordedAt（RFC3339 UTC）比较
+- [ ] 3.4 在 `reconcile_startup()` 尾部调用，仅 per-startup 一次（phase degraded → completed 后不再重复）
+- [ ] 3.5 更新 `reconcile_startup` 注释说明自动解锁路径
 
 ## 4. 单测
 

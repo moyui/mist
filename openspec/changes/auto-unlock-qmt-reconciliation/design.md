@@ -18,10 +18,12 @@ QMT 终端进程（XtItClient.exe）
 `_make_register_frame()` 增加：
 
 ```python
-"startedAt": STATE.started_at,  # "%Y-%m-%d %H:%M:%S" 本地时间
+"startedAt": STATE.started_at,  # "%Y-%m-%d %H:%M:%S" 本地时间（QMT 终端本地）
 ```
 
-现有 `STATE.started_at` 已在入口处赋值（终端 tick 上下文），此处仅为透传。
+现有 `STATE.started_at` 在模块加载（行 134）与 `init()`（行 141）双赋值，恒非空；
+bridge 由终端进程内加载执行（ownerId=`bigqmt-<pid>` 即终端 PID），
+`started_at` 语义 = 终端进程加载 bridge 时刻。
 
 ### 2. gateway 存储 startedAt
 
@@ -33,6 +35,8 @@ QMT realtime gateway 的 owner 注册路径解析新增字段，存入
 在 `reconcile_startup()` 完成后、`reconciliation_required = true` 时：
 
 ```python
+QMT_TERMINAL_TIMEZONE = timezone(timedelta(hours=8))  # 硬编码 +8，项目拍板：QMT 终端恒 Asia/Shanghai
+
 def _attempt_auto_unlock(self) -> None:
     if not self.reconciliation_required:
         return
@@ -42,7 +46,7 @@ def _attempt_auto_unlock(self) -> None:
     earliest = self._earliest_unresolved_recovery_time()
     if earliest is None:
         return  # 无 recovery 残留，不解锁
-    # bridge startedAt 是否晚于最早 unresolved intent
+    # bridge startedAt（本地 +8）→ UTC epoch，严格晚于最早 unresolved intent 才解锁
     started = self.journal.register_started_at  # 从 gateway owner 透传
     if started is None or started <= earliest:
         return  # 终端未重启，不解锁（fail-closed）
@@ -65,14 +69,22 @@ def _attempt_auto_unlock(self) -> None:
 - journal 必须有 unresolved recovery intent 且时间可解析
 - `bridge.started_at > earliest_unresolved_intent_at` 严格大于（等于不算）
 
-### 4. 时间解析
+### 4. 时间解析（方案 X 简化版：datasource 默认 +8）
 
 - recovery intent 的 `recordedAt` 是 RFC3339 UTC
-- bridge `started_at` 是 `"%Y-%m-%d %H:%M:%S"` 本地（terminal process 本地时区）
-- 比较前统一转 UTC epoch：`datetime.strptime(started_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=local_tz).timestamp()`
-- local_tz 从何处取：与 bridge 同机的时区，datasource 侧无法直接获知 → 方案：
-  bridge 直接传 UTC（`time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())`），
-  并在 register frame 兼容旧格式（无 startedAt 时不解锁）
+- bridge `started_at` 是 `"%Y-%m-%d %H:%M:%S"` 本地（QMT 终端本地）
+- datasource 硬编码 +8 时区（Asia/Shanghai）解析：
+
+```python
+from zoneinfo import ZoneInfo
+started_utc = datetime.strptime(
+    started_at, "%Y-%m-%d %H:%M:%S"
+).replace(tzinfo=ZoneInfo("Asia/Shanghai")).timestamp()
+```
+
+- 理由（项目拍板 2026-08-28）：QMT 终端恒部署在中国时区（+8），
+  datasource 不需要感知终端实际时区；改动最小——bridge 只需透传现有字段，
+  所有解析逻辑留在 datasource（Python 3.12，`zoneinfo` 可用）。
 
 ## 单测用例
 
