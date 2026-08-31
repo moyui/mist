@@ -1,4 +1,9 @@
-import { ChannelLevel, ChannelStatus, ChannelType } from '../contracts';
+import {
+  ChannelLevel,
+  ChannelStatus,
+  ChannelType,
+  DuanStatus,
+} from '../contracts';
 import type {
   ChanDuan,
   ChanDuanChannel,
@@ -28,8 +33,12 @@ export class DuanChannelCalculator {
   createDuanChannels(
     duans: readonly ChanDuan[],
   ): ChanDuanChannelTwoPhaseResult {
-    const phaseA = this.enumerateChannels(duans);
-    const merged = this.mergeChannels(phaseA, duans);
+    // 仅确认且有效的段构成中枢（status !== Valid 的未确认尾段不参与：
+    // 18 课"次级别前三个走势类型都是完成的才构成中枢"；统一 status 判据，
+    // 现时 status=Unknown ⇔ endBi===null；数据层 createDuan 输出不变）。
+    const confirmed = duans.filter((d) => d.status === DuanStatus.Valid);
+    const phaseA = this.enumerateChannels(confirmed);
+    const merged = this.mergeChannels(phaseA, confirmed);
     // Phase C：中枢扩张归并（相邻波动区间重叠/相切 → 合并为一个更高级别中枢，到不动点）
     const phaseB = resolveCentralExpansions(merged, mergeDuanCentralExpansion);
     return { phaseA, phaseB };

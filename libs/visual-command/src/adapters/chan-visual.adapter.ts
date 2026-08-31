@@ -1,5 +1,7 @@
 import {
+  BiStatus,
   ChanCore,
+  DuanStatus,
   TrendDirection,
   ChanBspType,
   type ChanBspUnit,
@@ -81,6 +83,8 @@ export class ChanVisualAdapter {
 
     if (includeBi && bis.length > 0) {
       bis.forEach((bi, i) => {
+        // 仅确认且有效的笔渲染（Invalid 宽笔失败候选与 Unknown 未完成尾笔不画）
+        if (bi.status !== BiStatus.Valid) return;
         const startIdx = getKIndex(bi.startTime, bi.originIds[0]);
         const endIdx = getKIndex(
           bi.endTime,
@@ -113,6 +117,8 @@ export class ChanVisualAdapter {
     if (includeZhongshu) {
       const biChannels = ChanCore.createChannels(klines);
       biChannels.phaseB.forEach((zs, i) => {
+        // 防御：中枢构成单元须全部确认且有效（chancore 已保证；防旧版本/外部数据）
+        if (zs.bis.some((b) => b.status !== BiStatus.Valid)) return;
         const first = zs.bis[0];
         const last = zs.bis[zs.bis.length - 1];
         if (!first || !last) return;
@@ -145,6 +151,8 @@ export class ChanVisualAdapter {
 
     if (includeDuan && duans.length > 0) {
       duans.forEach((duan, i) => {
+        // 仅确认且有效的段渲染（未完成尾段 endBi===null 不画；status 统一判据）
+        if (duan.status !== DuanStatus.Valid || !duan.endBi) return;
         const startIdx = getKIndex(duan.startTime, duan.originIds[0]);
         const endIdx = getKIndex(
           duan.endTime,
@@ -152,16 +160,8 @@ export class ChanVisualAdapter {
         );
         if (startIdx === null || endIdx === null) return;
         const isUp = duan.trend === TrendDirection.Up;
-        const startBi =
-          duan.startBi ??
-          (duan.originBis && duan.originBis.length > 0
-            ? duan.originBis[0]
-            : null);
-        const endBi =
-          duan.endBi ??
-          (duan.originBis && duan.originBis.length > 0
-            ? duan.originBis[duan.originBis.length - 1]
-            : null);
+        const startBi = duan.startBi;
+        const endBi = duan.endBi;
 
         const startPrice = startBi
           ? startBi.trend === TrendDirection.Up
@@ -201,6 +201,8 @@ export class ChanVisualAdapter {
     if (includeZhongshu && duans.length > 0) {
       const duanChannels = ChanCore.createDuanChannels(duans);
       duanChannels.phaseB.forEach((zs, i) => {
+        // 防御：中枢构成单元须全部确认且有效（chancore 已保证；防旧版本/外部数据）
+        if (zs.duans.some((d) => d.status !== DuanStatus.Valid)) return;
         const first = zs.duans[0];
         const last = zs.duans[zs.duans.length - 1];
         if (!first || !last) return;

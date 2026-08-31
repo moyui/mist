@@ -17,7 +17,7 @@ import { createChanDuanAnchorFixture } from './chan-duan-anchor.characterization
 import { DuanStatus, DuanType, TrendDirection } from './contracts';
 
 const EXPECTED_FULL_OUTPUT_SHA256 =
-  '2ea100a3c0ea346ed06e3b6dd61e06d7059c4c58d77436f9831137a960ddb593';
+  '352c7c5b5c3fddfb7eb60913e17ebea8f5cee0a652ea061efda54665ce69b811';
 
 function toContractK(source: ChanK): ChanCharacterizationK {
   return {
@@ -112,7 +112,7 @@ function runCoreFullPipeline() {
     fingerprintPayload: {
       // 5：add-duan-first-bi-break-rule 起（历次算法版本 bump 同步）；主管道仅锁定
       // mergedK/fenxings/bis/channels，duan 输出由 chan-duan-anchor fingerprint 单独锁定
-      algorithmVersion: 5,
+      algorithmVersion: 6,
       input,
       output: {
         mergedK: merged.map(toContractMergedK),
@@ -144,8 +144,10 @@ describe('ChanCore full-output differential characterization', () => {
     expect(result.fenxings).toHaveLength(15);
     expect(result.bis.phaseA).toHaveLength(9);
     expect(result.bis.phaseB).toHaveLength(9);
-    expect(result.channels.phaseA).toHaveLength(1);
-    expect(result.channels.phaseB).toHaveLength(1);
+    // 600519 日线 fixture 的 9 笔中 7 根宽笔不达标（status=invalid）——
+    // 6 版起笔中枢只消费确认且有效笔，原先由无效笔构成的 1 个中枢消失（18 课语义修正）
+    expect(result.channels.phaseA).toHaveLength(0);
+    expect(result.channels.phaseB).toHaveLength(0);
 
     const fingerprint = createHash('sha256')
       .update(JSON.stringify(result.fingerprintPayload))
@@ -192,7 +194,7 @@ describe('ChanCore full-output differential characterization', () => {
     expect(phaseB[0].zd).toBe(1); // 波动重叠区下沿 = max(dd1,dd2)
 
     const payload = {
-      algorithmVersion: 5,
+      algorithmVersion: 6,
       duans: duans.map(toContractDuan),
       output: {
         phaseA: phaseA.map(toContractDuanChannel),
@@ -240,7 +242,7 @@ describe('ChanCore full-output differential characterization', () => {
     }
 
     const payload = {
-      algorithmVersion: 5,
+      algorithmVersion: 6,
       bis: bis.map(toContractBi),
       duans: duans.map(toContractDuan),
     };
@@ -253,11 +255,11 @@ describe('ChanCore full-output differential characterization', () => {
 
 /** Duan-level central-extension fingerprint（add-chan-central-extension 新增）。 */
 const EXPECTED_DUAN_EXPANSION_SHA256 =
-  '3e174f87be8419364f3506aa9eac4ee36ce0cbbdb8a20b9bcfbaa781d62896d9';
+  '250b5408dd4e0291aad6a1ddc0aa62d6382d4a62a5f8170bffee85d5603c672e';
 
 /** Duan lesson-71 first-Bi-break fingerprint（add-duan-first-bi-break-rule 新增，锚点窗口）。 */
 const EXPECTED_DUAN_71_SHA256 =
-  '2f5a3fef3761d04136be7c7be01bc6ff8d0c0a01aa7792c4e21fe4f548deb22a';
+  '7a72a29866de35de61054b67abab1e9315c3f1fd6af8afd337a3a54cdc25546d';
 
 function toContractDuan(duan: ChanDuan) {
   return {

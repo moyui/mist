@@ -89,6 +89,11 @@ function mergeChannels(service: ChannelCalculator, channels: ChanChannel[]) {
   ).mergeChannels(channels);
 }
 
+/** 无效笔（宽笔校验失败，status=Invalid）：不得进入笔中枢。 */
+function makeInvalidBi(trendIdx: number, base: number, range = 10): ChanBi {
+  return { ...makeBi(trendIdx, base, range), status: BiStatus.Invalid };
+}
+
 describe('ChannelCalculator', () => {
   let service: ChannelCalculator;
 
@@ -129,6 +134,19 @@ describe('ChannelCalculator', () => {
     expect(result.phaseB).toHaveLength(0);
   });
 
+  it('excludes invalid Bi (status invalid) from Bi-level Channel derivation', () => {
+    const valid: ChanBi[] = [
+      makeBi(0, 100),
+      makeBi(1, 101),
+      makeBi(2, 102),
+      makeBi(3, 103),
+      makeBi(4, 104),
+    ];
+    const invalid = makeInvalidBi(5, 105);
+    expect(service.createChannels([...valid, invalid])).toEqual(
+      service.createChannels(valid),
+    );
+  });
   describe('Phase A enumeration (5-bi base channel)', () => {
     /**
      * 构造一组满足缠论标准定义的上升中枢 5 笔序列（A B C D E）：
