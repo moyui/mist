@@ -1,8 +1,6 @@
-# chan-bi-width-validation Specification
+# chan-bi-width-validation Specification Delta
 
-## Purpose
-Define wide-Bi distance validation as ordered raw-K positions inside `originData`, not database-ID arithmetic, preserving identity boundaries and failing closed on missing or ambiguous Fenxing positions.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: Wide Bi Distance Shall Use Ordered Raw K Positions
 
 The Chan Bi algorithm SHALL determine the number of raw K values between two Fenxing extremes from their
@@ -72,4 +70,3 @@ serialized, persisted or exposed as a public ordinal.
 - **WHEN** Chan HTTP DTO/VO, database schema and persisted records are compared before and after the change
 - **THEN** no new position or ordinal field MUST exist
 - **AND** all retained identity fields and Phase A/Phase B response shapes MUST remain unchanged
-

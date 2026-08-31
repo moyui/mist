@@ -1,10 +1,6 @@
-# chan-duan-channel Specification
+# chan-duan-channel Specification Delta
 
-## Purpose
-Define Duan-level Channel (段级中枢) derivation from the Duan sequence as a pure ChanCore facade using
-directionless symmetric-overlap geometry, wiring the previously unused `ChannelLevel.Duan` enum without
-altering existing Chan output.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: ChanCore Shall Derive Duan-Level Channels From Duan
 
 ChanCore SHALL expose a stateless `createDuanChannels(duans)` facade that derives Duan-level Channels
@@ -104,4 +100,3 @@ structural statistics exclude (unconfirmed tail Duan/Bi or anything derived from
   (`type=uncomplete` / `status=unknown`), an invalid Bi (宽笔校验失败, `status=invalid`), an unconfirmed tail
   Duan (`endBi === null` / `status=unknown`), or a Duan-level Channel whose constituent set includes such a unit
 - **AND** confirmed-and-valid structures MUST render exactly as before
-
