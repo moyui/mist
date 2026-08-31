@@ -54,10 +54,10 @@ export class AlertChannelDeliveryService {
     attemptsMade: number,
     maxAttempts: number,
   ): Promise<void> {
-    const { alertEventId } = job;
+    const { alertEventId, channel: jobChannel } = job;
     // Bridge the contract's pure literal union to the NotificationChannel enum
     // (used by the entity column + adapters). Values are guaranteed equal by decode.
-    const channel = toNotificationChannel(job.channel);
+    const channel = toNotificationChannel(jobChannel);
     const delivery = await this.deliveries.findOne({
       where: { strategyAlertEventId: alertEventId, channel },
     });
@@ -195,6 +195,10 @@ function truncate(error?: string): string | null {
   return error.length > MAX_LAST_ERROR ? error.slice(0, MAX_LAST_ERROR) : error;
 }
 
-function toNotificationChannel(channel: 'qq' | 'wechat'): NotificationChannel {
-  return channel === 'qq' ? NotificationChannel.QQ : NotificationChannel.WECHAT;
+function toNotificationChannel(
+  channel: 'qq' | 'wechat' | 'feishu',
+): NotificationChannel {
+  if (channel === 'qq') return NotificationChannel.QQ;
+  if (channel === 'feishu') return NotificationChannel.FEISHU;
+  return NotificationChannel.WECHAT;
 }

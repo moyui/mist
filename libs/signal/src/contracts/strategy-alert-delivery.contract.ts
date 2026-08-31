@@ -8,7 +8,7 @@
  * domain libs by the transport boundary guard). Channel values mirror the
  * NotificationChannel enum but are defined here as a local literal union.
  */
-export type AlertDeliveryChannel = 'qq' | 'wechat';
+export type AlertDeliveryChannel = 'qq' | 'wechat' | 'feishu';
 
 export const STRATEGY_ALERT_DELIVERY_BULLMQ_PREFIX = 'mist-bullmq';
 export const STRATEGY_ALERT_DELIVERY_QUEUE_NAME = 'strategy-alert-delivery';
@@ -108,8 +108,14 @@ export function decodeAlertDeliveryChannelJobV1(
       'deliver.channel alertEventId must be a positive safe integer',
     );
   }
-  if (input.channel !== 'qq' && input.channel !== 'wechat') {
-    throw new TypeError('deliver.channel channel must be qq or wechat');
+  if (
+    input.channel !== 'qq' &&
+    input.channel !== 'wechat' &&
+    input.channel !== 'feishu'
+  ) {
+    throw new TypeError(
+      'deliver.channel channel must be qq or wechat or feishu',
+    );
   }
   return Object.freeze({
     contractVersion: 1,

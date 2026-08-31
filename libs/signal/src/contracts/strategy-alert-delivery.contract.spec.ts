@@ -36,6 +36,15 @@ describe('strategy-alert-delivery contract', () => {
       expect(decoded.channel).toBe('wechat');
     });
 
+    it('accepts feishu as a valid channel', () => {
+      const decoded = decodeAlertDeliveryChannelJobV1({
+        contractVersion: 1,
+        alertEventId: 5,
+        channel: 'feishu',
+      });
+      expect(decoded.channel).toBe('feishu');
+    });
+
     it('rejects an unknown channel', () => {
       expect(() =>
         decodeAlertDeliveryChannelJobV1({
@@ -43,7 +52,7 @@ describe('strategy-alert-delivery contract', () => {
           alertEventId: 5,
           channel: 'sms',
         }),
-      ).toThrow(/channel must be qq or wechat/);
+      ).toThrow(/channel must be qq or wechat or feishu/);
     });
   });
 
