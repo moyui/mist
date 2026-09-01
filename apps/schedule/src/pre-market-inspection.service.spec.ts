@@ -328,6 +328,8 @@ describe('PreMarketInspectionService', () => {
           expect.stringContaining('context-rebuild-observation.json'),
         ]),
       );
+      expect(report.markdown).not.toContain('native_subscribed_sub_ids');
+      expect(report.markdown).toContain('自动解锁');
       expect(report.markdown).toContain('09:05 盘前体检发现异常 (需立即介入)');
       expect(report.markdown).toContain('context-rebuild-observation.json');
     } finally {
@@ -398,7 +400,12 @@ describe('PreMarketInspectionService', () => {
       );
       expect(report.overallStatus).toBe('FAILED');
       expect(report.dimensions.klines.passed).toBe(false);
-      expect(report.dimensions.klines.remediation).toBeDefined();
+      expect(report.dimensions.klines.remediation).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('/v1/collector/collect'),
+        ]),
+      );
+      expect(report.markdown).not.toContain('/schedule/sync-post-close');
     } finally {
       global.fetch = originalFetch;
     }

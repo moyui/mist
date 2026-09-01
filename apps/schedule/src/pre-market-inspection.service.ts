@@ -157,9 +157,9 @@ export class PreMarketInspectionService {
             'QMT Journal reconciliation required (control plane locked)',
           );
           remediation.push(
-            '1. SSH to host: `ssh mist-box`',
-            '2. Create one-shot observation: `Set-Content F:\\quant\\MistAPI\\datasource\\state\\context-rebuild-observation.json \'{"native_subscribed_sub_ids":[]}\'`',
-            '3. Restart QMT datasource: `docker restart qmt-datasource`',
+            '1. 首选：重启 QMT 终端 (XtItClient.exe，需人工登录)——bridge 重注册携带新 startedAt 后自动解锁，无需手工文件',
+            '2. 备选（终端无法重启）：手工生成 F:\\quant\\MistAPI\\datasource\\state\\context-rebuild-observation.json，字段必须严格为 schemaVersion=1 / observation=qmt_context_rebuilt / affectedJournalSequence=journal 当前 record_sequence / recoveryMode=terminal_process_restarted / operatorEvidenceDigest=64位小写hex / observationTime=RFC3339；格式错误会导致 qmt-datasource 启动 crash loop',
+            '3. 验证：GET http://qmt-datasource:9002/health → subscriptions.reconciliationRequired=false',
           );
         }
         if (sub['journalHealthy'] === false) {
@@ -246,7 +246,11 @@ export class PreMarketInspectionService {
 
     // Check presence of required periods for each security on previousTradingDay
     const missingItems: string[] = [];
+    const missingTargets = new Set<string>();
     for (const secId of securityIds) {
+      const code =
+        activeAssignments.find((a) => a.securityId === secId)?.security?.code ??
+        `ID=${secId}`;
       for (const period of REQUIRED_INTRADAY_PERIODS) {
         const count = await this.kRepo.count({
           where: {
@@ -257,8 +261,9 @@ export class PreMarketInspectionService {
         });
         if (count === 0) {
           missingItems.push(
-            `标的 ID=${secId} 缺失 ${prevDateStr} 周期 ${period} 数据`,
+            `标的 ${code} 缺失 ${prevDateStr} 周期 ${period} 数据`,
           );
+          missingTargets.add(String(code));
         }
       }
     }
@@ -269,7 +274,8 @@ export class PreMarketInspectionService {
         summary: `前一交易日 (${prevDateStr}) 存在 ${missingItems.length} 条 K 线缺失`,
         details: missingItems.slice(0, 10), // Limit summary to first 10
         remediation: [
-          `手动触发收盘同步补录：在后台执行 POST /schedule/sync-post-close，指定 targetDate=${prevDateStr}`,
+          `缺失标的: ${[...missingTargets].join(', ')}`,
+          `手动补录：POST 后端 8001 /v1/collector/collect，body {"code":"<code>","period":<1|5|15|30|60>,"startDate":"${prevDateStr}","endDate":"${prevDateStr}"}（与收盘同步同走 collectKForSource；TDX 源 1m 历史可能无数据，返回 count=0 即 provider 无该数据）`,
         ],
       };
     }

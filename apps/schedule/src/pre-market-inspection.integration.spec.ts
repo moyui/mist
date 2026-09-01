@@ -182,6 +182,7 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
     expect(report.dimensions.datasource.passed).toBe(false);
     expect(report.markdown).toContain('QMT Journal reconciliation required');
     expect(report.markdown).toContain('context-rebuild-observation.json');
+    expect(report.markdown).not.toContain('native_subscribed_sub_ids');
 
     console.log(
       '\n================ [场景 2：QMT Journal 阻塞智能诊断] ================',
