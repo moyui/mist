@@ -13,7 +13,7 @@ import {
   PreMarketInspectionReport,
   PreMarketInspectionService,
 } from './pre-market-inspection.service';
-import { addDays, getMonth, subDays } from 'date-fns';
+import { addDays, getMonth } from 'date-fns';
 
 /**
  * Data Collection Controller with Dual-Window Post-Close Synchronization
@@ -143,10 +143,10 @@ export class DataCollectionController {
   })
   async handleMorningRetrySync(): Promise<void> {
     const now = this.timezoneService.getCurrentBeijingTime();
-    const previousTradingDay = await this.resolvePreviousTradingDay(now);
-
+    const previousTradingDay =
+      await this.timezoneService.resolvePreviousTradingDay(now);
     if (!previousTradingDay) {
-      this.logger.debug(
+      this.logger.warn(
         'Skipping morning retry sync: no previous trading day identified',
       );
       return;
@@ -183,18 +183,5 @@ export class DataCollectionController {
         `[Schedule] event=morning_retry_failed error="${message}"`,
       );
     }
-  }
-
-  private async resolvePreviousTradingDay(
-    currentDate: Date,
-  ): Promise<Date | null> {
-    // 往前查找最多 10 天找到最近的一个 A 股交易日
-    for (let i = 1; i <= 10; i++) {
-      const candidate = subDays(currentDate, i);
-      if (await this.timezoneService.isTradingDay(candidate)) {
-        return candidate;
-      }
-    }
-    return null;
   }
 }

@@ -1,6 +1,6 @@
 import { Decimal8 } from '@app/decimal';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
-import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
+import { fromZonedTime } from 'date-fns-tz';
+import { ASIA_SHANGHAI_TIMEZONE, formatTradingDayString } from '@app/timezone';
 
 export type RealtimeCandleSource = 'tdx' | 'qmt';
 
@@ -61,12 +61,7 @@ export function marketDayExpiryEpochSeconds(tradingDay: string): number {
   const wallMidnight = `${tradingDay.slice(0, 4)}-${tradingDay.slice(4, 6)}-${tradingDay.slice(6, 8)}T00:00:00.000`;
   const start = fromZonedTime(wallMidnight, ASIA_SHANGHAI_TIMEZONE).getTime();
   if (!Number.isFinite(start)) throw new RangeError('tradingDay is invalid');
-  const zoned = toZonedTime(new Date(start), ASIA_SHANGHAI_TIMEZONE);
-  const roundTrip = [
-    zoned.getFullYear().toString().padStart(4, '0'),
-    (zoned.getMonth() + 1).toString().padStart(2, '0'),
-    zoned.getDate().toString().padStart(2, '0'),
-  ].join('');
+  const roundTrip = formatTradingDayString(start);
   if (roundTrip !== tradingDay) throw new RangeError('tradingDay is invalid');
   return Math.floor((start + 24 * 60 * 60_000) / 1_000);
 }

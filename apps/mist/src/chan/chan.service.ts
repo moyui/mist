@@ -66,11 +66,4 @@ export class ChanService {
       phaseB: result.phaseB.map(toDuanChannelVo),
     };
   }
-
-  analyze(createBiDto: CreateBiDto) {
-    return {
-      bis: this.createBi(createBiDto),
-      fenxings: this.getFenxings(createBiDto),
-    };
-  }
 }

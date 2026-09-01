@@ -46,3 +46,19 @@ export function isIntradayAddWindow(now: Date): boolean {
     minutes < INTRADAY_ADD_WINDOW_END_MIN
   );
 }
+
+/**
+ * Format a Date or timestamp into Beijing trading day string (YYYYMMDD).
+ */
+export function formatTradingDayString(dateOrTimestamp: Date | number): string {
+  const date =
+    typeof dateOrTimestamp === 'number'
+      ? new Date(dateOrTimestamp)
+      : dateOrTimestamp;
+  const zoned = toZonedTime(date, TIME_ZONE);
+  return [
+    zoned.getFullYear().toString().padStart(4, '0'),
+    (zoned.getMonth() + 1).toString().padStart(2, '0'),
+    zoned.getDate().toString().padStart(2, '0'),
+  ].join('');
+}

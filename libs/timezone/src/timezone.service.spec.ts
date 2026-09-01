@@ -171,6 +171,32 @@ describe('TimezoneService', () => {
     });
   });
 
+  describe('formatTradingDay', () => {
+    it('should format Date as YYYYMMDD in Beijing timezone', () => {
+      // 2024-01-08 10:00:00 Beijing time
+      const date = service.parseDateString('2024-01-08 10:00:00');
+      expect(service.formatTradingDay(date)).toBe('20240108');
+    });
+
+    it('should format epoch timestamp as YYYYMMDD', () => {
+      const date = service.parseDateString('2024-01-08 10:00:00');
+      expect(service.formatTradingDay(date.getTime())).toBe('20240108');
+    });
+  });
+
+  describe('resolvePreviousTradingDay', () => {
+    it('should resolve the previous trading day skipping weekends', async () => {
+      mockAxios.get.mockResolvedValue(mockAxiosResponse);
+
+      // 2024-01-15 is a Monday; previous trading day is Friday 2024-01-12
+      const monday = new Date('2024-01-15T00:00:00.000Z');
+      const prev = await service.resolvePreviousTradingDay(monday, 10);
+
+      expect(prev).toBeDefined();
+      expect(service.formatTradingDay(prev!)).toBe('20240112');
+    });
+  });
+
   describe('clearTradingDayCache', () => {
     it('should clear the cache', async () => {
       mockAxios.get.mockResolvedValue(mockAxiosResponse);

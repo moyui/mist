@@ -12,8 +12,13 @@ export type { AtrSeriesResult } from './atr';
 export { computeDualMaSeries } from './dual-ma';
 export type { DualMaSeriesResult, DualMaSeriesParams } from './dual-ma';
 export {
+  computeChanUnitForces,
   computeUnitForces,
   computeUnitDirectionalAreas,
   computeUnitLinePeaks,
 } from './force';
-export type { UnitLinePeaks } from './force';
+export type {
+  UnitLinePeaks,
+  UnitForceTrendInput,
+  UnitForceItem,
+} from './force';

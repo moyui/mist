@@ -1,4 +1,5 @@
 import {
+  computeChanUnitForces,
   computeUnitForces,
   computeUnitDirectionalAreas,
   computeUnitLinePeaks,
@@ -191,5 +192,34 @@ describe('computeUnitLinePeaks', () => {
 
   it('handles empty units', () => {
     expect(computeUnitLinePeaks([], 0, [], [])).toEqual([]);
+  });
+});
+
+describe('computeChanUnitForces', () => {
+  it('computes unit forces across K-line series and units', () => {
+    const klines = Array.from({ length: 50 }, (_, i) => ({
+      close: 10 + Math.sin(i / 5) * 2,
+      time: new Date(Date.UTC(2026, 0, 1, 9, 30) + i * 60_000),
+    }));
+
+    const units = [
+      {
+        startTime: klines[10].time,
+        endTime: klines[25].time,
+        trend: 'up',
+      },
+      {
+        startTime: klines[26].time,
+        endTime: klines[40].time,
+        trend: 'down',
+      },
+    ];
+
+    const forces = computeChanUnitForces(klines, units);
+    expect(forces).toHaveLength(2);
+    expect(typeof forces[0].area).toBe('number');
+    expect(typeof forces[0].peak).toBe('number');
+    expect(forces[0].peak).toBeGreaterThanOrEqual(0);
+    expect(forces[1].peak).toBeGreaterThanOrEqual(0);
   });
 });

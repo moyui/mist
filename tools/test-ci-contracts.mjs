@@ -271,7 +271,11 @@ function assertBackendRuntimeSweep() {
   const chanService = read(
     join(repos.mist, 'apps/mist/src/chan/chan.service.ts'),
   );
-  assertIncludes(chanService, 'analyze(', 'mist ChanService analysis helper');
+  assertIncludes(
+    chanService,
+    'createBi(',
+    'mist ChanService Bi calculation helper',
+  );
 
   const biCalculator = read(
     join(repos.mist, 'libs/chancore/src/internal/bi.ts'),

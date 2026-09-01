@@ -11,6 +11,7 @@ import {
   fromUnixTime,
   millisecondsToSeconds,
   parseISO,
+  subDays,
 } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { ERROR_MESSAGES } from '@app/constants';
@@ -19,6 +20,7 @@ import {
   ASIA_SHANGHAI_TIMEZONE,
   BEIJING_DATE_REGEX,
 } from './date-format.constants';
+import { formatTradingDayString } from './trading-session.util';
 
 /**
  * SZSE API response type.
@@ -113,6 +115,33 @@ export class TimezoneService {
    */
   formatDate(date: Date): string {
     return format(date, 'yyyy-MM-dd');
+  }
+
+  /**
+   * Format Date or timestamp to Beijing trading day string (YYYYMMDD).
+   */
+  formatTradingDay(dateOrTimestamp: Date | number): string {
+    return formatTradingDayString(dateOrTimestamp);
+  }
+
+  /**
+   * Resolve the previous A-share trading day by looking back up to maxLookbackDays.
+   *
+   * @param currentDate - Reference date
+   * @param maxLookbackDays - Maximum days to check (default: 10)
+   * @returns Previous trading day Date or null if not found within lookback
+   */
+  async resolvePreviousTradingDay(
+    currentDate: Date,
+    maxLookbackDays = 10,
+  ): Promise<Date | null> {
+    for (let i = 1; i <= maxLookbackDays; i++) {
+      const candidate = subDays(currentDate, i);
+      if (await this.isTradingDay(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   /**

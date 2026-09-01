@@ -1,3 +1,50 @@
+import { computeMacdSeries } from './macd';
+
+export interface UnitForceTrendInput {
+  readonly startTime: Date;
+  readonly endTime: Date;
+  readonly trend: string;
+}
+
+export interface UnitForceItem {
+  readonly area: number;
+  readonly peak: number;
+}
+
+/**
+ * High-level momentum force pipeline for Chan trading units (Bis or Duans):
+ * Computes directional MACD area and DIF peak magnitude per unit interval.
+ */
+export function computeChanUnitForces(
+  klines: readonly { close: number; time: Date }[],
+  units: readonly UnitForceTrendInput[],
+): readonly UnitForceItem[] {
+  const closes = klines.map((k) => k.close);
+  const kTimes = klines.map((k) => k.time);
+  const macd = computeMacdSeries(closes);
+  const directions = units.map((unit) =>
+    unit.trend.toLowerCase() === 'up' ? ('up' as const) : ('down' as const),
+  );
+  const areas = computeUnitDirectionalAreas(
+    macd.histogram,
+    macd.begIndex,
+    kTimes,
+    units,
+    directions,
+  );
+  const peaks = computeUnitLinePeaks(macd.macd, macd.begIndex, kTimes, units);
+  return Object.freeze(
+    units.map((_unit, index) => {
+      const direction = directions[index];
+      const peak = direction === 'up' ? peaks[index].max : peaks[index].min;
+      return Object.freeze({
+        area: areas[index],
+        peak: Math.abs(peak),
+      });
+    }),
+  );
+}
+
 /**
  * Unit force aggregation for Chan divergence momentum (背驰力度).
  *

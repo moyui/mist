@@ -79,3 +79,8 @@ export {
   compileChanBspConfig,
   ChanBspConfigError,
 } from './runtime/chan-bsp/chan-bsp.config';
+export {
+  runChanBspPipeline,
+  toZhongshu,
+} from './runtime/chan-bsp/chan-bsp.pipeline';
+export type { ChanBspPipelineInput } from './runtime/chan-bsp/chan-bsp.pipeline';

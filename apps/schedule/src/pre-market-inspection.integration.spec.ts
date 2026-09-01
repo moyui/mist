@@ -120,6 +120,8 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
       getCurrentBeijingTime: () => new Date('2026-08-25T09:05:00+08:00'),
       formatDate: () => '2026-08-25',
       isTradingDay: async () => true,
+      resolvePreviousTradingDay: async () =>
+        new Date('2026-08-24T00:00:00+08:00'),
     };
     const configService: any = {
       get: (key: string) => {

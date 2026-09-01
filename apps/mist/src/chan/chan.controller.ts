@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ApiEnvelopeResponse } from '@app/transport/http';
 import { Throttle } from '@nestjs/throttler';
 import { ChanService } from './chan.service';
-import { CreateBiDto } from './dto/create-bi.dto';
 import { ChannelTwoPhaseVo } from './vo/channel.vo';
 import { BiTwoPhaseVo } from './vo/bi.vo';
 import { DuanChannelTwoPhaseVo } from './vo/duan-channel.vo';
@@ -33,23 +32,10 @@ export class ChanController {
     };
   }
 
-  @Post('merge-k')
-  @Throttle({ default: { limit: 50, ttl: 60000 } }) // 50 requests per minute for K-line merge
-  @ApiOperation({
-    summary: 'Merge K-lines',
-    description:
-      'Merges K-lines based on containment relationships and trend direction',
-  })
-  @ApiEnvelopeResponse({
-    status: 200,
-    description: 'Returns merged K-line data',
-    type: MergedKVo,
-    isArray: true,
-  })
-  async postMergeK(@Body() queryDto: IndicatorQueryDto) {
+  private async getChanKData(queryDto: IndicatorQueryDto) {
     const { startDate, endDate } = this.parseQueryDateRange(queryDto);
 
-    const kData = (
+    return (
       await this.indicatorService.findKData({
         code: queryDto.code,
         period: queryDto.period,
@@ -68,8 +54,24 @@ export class ChanController {
       volume: k.volume,
       amount: k.amount,
     }));
+  }
 
-    return this.chanService.mergeK(kData);
+  @Post('merge-k')
+  @Throttle({ default: { limit: 50, ttl: 60000 } }) // 50 requests per minute for K-line merge
+  @ApiOperation({
+    summary: 'Merge K-lines',
+    description:
+      'Merges K-lines based on containment relationships and trend direction',
+  })
+  @ApiEnvelopeResponse({
+    status: 200,
+    description: 'Returns merged K-line data',
+    type: MergedKVo,
+    isArray: true,
+  })
+  async postMergeK(@Body() queryDto: IndicatorQueryDto) {
+    const k = await this.getChanKData(queryDto);
+    return this.chanService.mergeK(k);
   }
 
   @Post('bi')
@@ -86,30 +88,8 @@ export class ChanController {
     type: BiTwoPhaseVo,
   })
   async postIndexBi(@Body() queryDto: IndicatorQueryDto) {
-    const { startDate, endDate } = this.parseQueryDateRange(queryDto);
-
-    const kData = (
-      await this.indicatorService.findKData({
-        code: queryDto.code,
-        period: queryDto.period,
-        startDate,
-        endDate,
-        source: queryDto.source,
-      })
-    ).map((k) => ({
-      id: k.id,
-      symbol: k.security.code,
-      time: k.timestamp,
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-      amount: k.amount,
-    }));
-    const createBiDto: CreateBiDto = { k: kData };
-
-    return this.chanService.createBi(createBiDto);
+    const k = await this.getChanKData(queryDto);
+    return this.chanService.createBi({ k });
   }
 
   @Post('fenxing')
@@ -126,30 +106,8 @@ export class ChanController {
     isArray: true,
   })
   async postFenxing(@Body() queryDto: IndicatorQueryDto) {
-    const { startDate, endDate } = this.parseQueryDateRange(queryDto);
-
-    const kData = (
-      await this.indicatorService.findKData({
-        code: queryDto.code,
-        period: queryDto.period,
-        startDate,
-        endDate,
-        source: queryDto.source,
-      })
-    ).map((k) => ({
-      id: k.id,
-      symbol: k.security.code,
-      time: k.timestamp,
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-      amount: k.amount,
-    }));
-    const createBiDto: CreateBiDto = { k: kData };
-
-    return this.chanService.getFenxings(createBiDto);
+    const k = await this.getChanKData(queryDto);
+    return this.chanService.getFenxings({ k });
   }
 
   @Post('channel')
@@ -166,29 +124,8 @@ export class ChanController {
     type: ChannelTwoPhaseVo,
   })
   async postChannel(@Body() queryDto: IndicatorQueryDto) {
-    const { startDate, endDate } = this.parseQueryDateRange(queryDto);
-
-    const kData = (
-      await this.indicatorService.findKData({
-        code: queryDto.code,
-        period: queryDto.period,
-        startDate,
-        endDate,
-        source: queryDto.source,
-      })
-    ).map((k) => ({
-      id: k.id,
-      symbol: k.security.code,
-      time: k.timestamp,
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-      amount: k.amount,
-    }));
-    const createBiDto: CreateBiDto = { k: kData };
-    return this.chanService.createChannels(createBiDto);
+    const k = await this.getChanKData(queryDto);
+    return this.chanService.createChannels({ k });
   }
 
   @Post('duan')
@@ -206,29 +143,8 @@ export class ChanController {
     isArray: true,
   })
   async postDuan(@Body() queryDto: IndicatorQueryDto) {
-    const { startDate, endDate } = this.parseQueryDateRange(queryDto);
-
-    const kData = (
-      await this.indicatorService.findKData({
-        code: queryDto.code,
-        period: queryDto.period,
-        startDate,
-        endDate,
-        source: queryDto.source,
-      })
-    ).map((k) => ({
-      id: k.id,
-      symbol: k.security.code,
-      time: k.timestamp,
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-      amount: k.amount,
-    }));
-    const createBiDto: CreateBiDto = { k: kData };
-    return this.chanService.createDuan(createBiDto);
+    const k = await this.getChanKData(queryDto);
+    return this.chanService.createDuan({ k });
   }
 
   @Post('duan-channel')
@@ -245,28 +161,7 @@ export class ChanController {
     type: DuanChannelTwoPhaseVo,
   })
   async postDuanChannel(@Body() queryDto: IndicatorQueryDto) {
-    const { startDate, endDate } = this.parseQueryDateRange(queryDto);
-
-    const kData = (
-      await this.indicatorService.findKData({
-        code: queryDto.code,
-        period: queryDto.period,
-        startDate,
-        endDate,
-        source: queryDto.source,
-      })
-    ).map((k) => ({
-      id: k.id,
-      symbol: k.security.code,
-      time: k.timestamp,
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-      amount: k.amount,
-    }));
-    const createBiDto: CreateBiDto = { k: kData };
-    return this.chanService.createDuanChannels(createBiDto);
+    const k = await this.getChanKData(queryDto);
+    return this.chanService.createDuanChannels({ k });
   }
 }

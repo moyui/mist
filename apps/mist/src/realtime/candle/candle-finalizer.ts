@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { toZonedTime } from 'date-fns-tz';
-import { ASIA_SHANGHAI_TIMEZONE } from '@app/timezone';
+import { formatTradingDayString } from '@app/timezone';
 import type Redis from 'ioredis';
 import type { RealtimeSource } from '../realtime.types';
 import type { InvalidReason, SealedCandle } from './candle.types';
@@ -232,7 +231,7 @@ export class CandleFinalizer {
     reason: InvalidReason,
     nowMs: number,
   ): Promise<boolean> {
-    const tradingDay = this.tradingDayFromBucketMs(decoded.bucketStartMs);
+    const tradingDay = formatTradingDayString(decoded.bucketStartMs);
     const wmK = watermarkKey(tradingDay, decoded.source, decoded.securityId);
     const dueK_ = dueKey(tradingDay);
     const manifestK = manifestKey(
@@ -327,16 +326,6 @@ export class CandleFinalizer {
       maxSealedRecordBytes: this.maxSealedRecordBytes,
       maxManifestBytes: this.maxManifestBytes,
     };
-  }
-
-  /** Derive tradingDay (YYYYMMDD) from bucketStartMs in Asia/Shanghai. */
-  private tradingDayFromBucketMs(bucketStartMs: number): string {
-    const zoned = toZonedTime(new Date(bucketStartMs), ASIA_SHANGHAI_TIMEZONE);
-    return [
-      zoned.getFullYear().toString().padStart(4, '0'),
-      (zoned.getMonth() + 1).toString().padStart(2, '0'),
-      zoned.getDate().toString().padStart(2, '0'),
-    ].join('');
   }
 
   private toCompactRecord(candle: SealedCandle): RealtimeClosedCandleRecordV1 {

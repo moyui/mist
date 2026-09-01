@@ -10,6 +10,7 @@ describe('PreMarketInspectionService', () => {
     getCurrentBeijingTime: jest.Mock;
     formatDate: jest.Mock;
     isTradingDay: jest.Mock;
+    resolvePreviousTradingDay: jest.Mock;
   };
   let configService: { get: jest.Mock };
 
@@ -35,6 +36,9 @@ describe('PreMarketInspectionService', () => {
         .mockReturnValue(new Date('2026-08-25T09:05:00+08:00')),
       formatDate: jest.fn().mockReturnValue('2026-08-25'),
       isTradingDay: jest.fn().mockResolvedValue(true),
+      resolvePreviousTradingDay: jest
+        .fn()
+        .mockResolvedValue(new Date('2026-08-24T00:00:00+08:00')),
     };
     configService = {
       get: jest.fn().mockImplementation((key: string) => {

@@ -257,6 +257,27 @@ Chan 当前为请求时实时派生计算，不写 MySQL。未来若重新持久
   `feat/strategy-portfolio-backtesting` 分支或复用其 `007/008` migration。决策记录见
   `openspec/changes/archive/2026-08-04-defer-strategy-portfolio-backtesting`。
 
+### 6.8 工具与公共模块强制复用准则
+
+- 严禁就地重复实现已有工具能力（如时区转换、交易日推导、日期格式化、集合极值统计、K线数据映射、指标计算、精确十进制等）。
+- 新增辅助函数前必须检索已有共享库：
+  - 时区/交易日/时段/时间格式化 → `@app/timezone`（前端使用 `@/app/lib/time`）；
+  - 动能/指标计算（MACD、KDJ、RSI、MA、力道）→ `@app/indicators`；
+  - 精确金额/数量运算 → `@app/decimal`（`Decimal8`）；
+  - 集合聚合统计（`minMaxBy`、`minBy`、`maxBy`）→ `@app/utils`；
+  - 证券代码与市场规范化 → `@app/utils`（`normalizeSecurityCode`）；
+  - 缠论核心纯计算 → `@app/chancore`（`ChanCore`）。
+- 跨模块通用逻辑缺失时，必须将其沉淀入对应的 shared lib，禁止在各业务 app、service 或前端页面内就地复制私有版本。
+
+### 6.9 防过度设计与奥卡姆剃刀准则
+
+- 核心判定法则：**“删掉这段代码/抽象/层级，系统功能还能不能跑？如果能，就删。”**
+- 坚决杜绝投机性抽象（YAGNI，You Aren't Gonna Need It）：
+  - 禁止为“未来可能用到”而编写无实际调用方的复杂层级、空壳 Service、空壳 Controller、未使用的 CRUD DTO（如已废弃的 Chan 持久化 DTO）；
+  - 禁止仅为满足理论完整性而编写无任何生产消费方的通用包装层或 Hook（如无调用方的通用 fetcher/hook）；
+  - 禁止引入不提供任何领域价值或校验逻辑的纯透传空壳层级。
+- 只要一个结构或方法在生产链路中可达性为零且无跨仓契约要求，应果断删除，降低认知与维护负担。
+
 ## 7. 命名、文件和目录规则
 
 - Mist Backend 的 DTO/VO class 后缀、文件后缀、目录和边界以
@@ -319,6 +340,8 @@ Chan 当前为请求时实时派生计算，不写 MySQL。未来若重新持久
 - [ ] provider-native、wire、canonical、persistence 四层没有混名。
 - [ ] 状态、时间和标识符使用本指南词汇。
 - [ ] 缺失值没有被静默补零、补空字符串或补当前时间。
+- [ ] 已检索并复用共享工具库（`@app/timezone`、`@app/indicators`、`@app/decimal`、`@app/utils`、`@/app/lib/time` 等），无私有重复造轮子。
+- [ ] 遵循奥卡姆剃刀与 YAGNI 原则：无死代码、无未消费的空壳层级/DTO/包装器（删掉能否跑？能跑就删）。
 - [ ] collection、queue、retry 和 pending map 有界且可清理。
 - [ ] 数据库变更使用新增 migration，并同步 ORM/raw SQL/审计。
 - [ ] 文件移动和重命名已更新完整影响面。

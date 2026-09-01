@@ -11,7 +11,6 @@ import {
   SecurityStatus,
 } from '@app/shared-data';
 import { TimezoneService } from '@app/timezone';
-import { subDays } from 'date-fns';
 
 export interface DimensionCheckResult {
   readonly passed: boolean;
@@ -200,7 +199,8 @@ export class PreMarketInspectionService {
    * 维度 2: 前一交易日收盘历史 K 线完整性检查
    */
   async checkHistoricalKLines(now: Date): Promise<DimensionCheckResult> {
-    const previousTradingDay = await this.resolvePreviousTradingDay(now);
+    const previousTradingDay =
+      await this.timezoneService.resolvePreviousTradingDay(now);
     if (!previousTradingDay) {
       return {
         passed: true,
@@ -719,17 +719,5 @@ export class PreMarketInspectionService {
       );
       return false;
     }
-  }
-
-  private async resolvePreviousTradingDay(
-    currentDate: Date,
-  ): Promise<Date | null> {
-    for (let i = 1; i <= 10; i++) {
-      const candidate = subDays(currentDate, i);
-      if (await this.timezoneService.isTradingDay(candidate)) {
-        return candidate;
-      }
-    }
-    return null;
   }
 }

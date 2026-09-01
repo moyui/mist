@@ -22,6 +22,9 @@ describe('DataCollectionController scheduling', () => {
     const timezoneService = {
       getCurrentBeijingTime: jest.fn(() => currentBeijingTime),
       isTradingDay: jest.fn().mockResolvedValue(true),
+      resolvePreviousTradingDay: jest
+        .fn()
+        .mockResolvedValue(new Date('2026-08-24T00:00:00Z')),
     };
     const preMarketInspectionService = {
       runInspection: jest.fn().mockResolvedValue({

@@ -1,7 +1,6 @@
 import {
   ChanCore,
   ChanBspType,
-  TrendDirection,
   type ChanBi,
   type ChanBspUnit,
   type ChanChannel,
@@ -9,13 +8,8 @@ import {
   type ChanDuan,
   type ChanDuanChannel,
   type ChanK,
-  type ChanUnitForce,
 } from '@app/chancore';
-import {
-  computeMacdSeries,
-  computeUnitDirectionalAreas,
-  computeUnitLinePeaks,
-} from '@app/indicators';
+import { computeChanUnitForces } from '@app/indicators';
 import type { ChanBspEvent, ChanBspEventType } from './chan-bsp.types';
 import type { ChanBspUnitLevel } from '../chan-bsp-plan';
 
@@ -53,7 +47,7 @@ export function runChanBspPipeline(
     zhongshus = channels.phaseB.map(toZhongshu);
   }
 
-  const forces = computeUnitForces(input.klines, units);
+  const forces = computeChanUnitForces(input.klines, units);
   const points = ChanCore.detectBuySellPoints({ units, zhongshus, forces });
   return Object.freeze(
     points.map((point) =>
@@ -110,7 +104,7 @@ function toBspUnit(
   });
 }
 
-function toZhongshu(
+export function toZhongshu(
   channel: ChanChannel | ChanDuanChannel,
 ): ChanDivergenceZhongshu {
   const units = 'bis' in channel ? channel.bis : channel.duans;
@@ -127,39 +121,4 @@ function toZhongshu(
     gg: channel.gg,
     dd: channel.dd,
   });
-}
-
-/**
- * Per-unit momentum forces: MACD directional histogram area (area) and DIF
- * extreme absolute value (peak), aligned to each unit's [startTime, endTime].
- * Direction is resolved from the unit trend (up → |max|, down → |min|).
- */
-function computeUnitForces(
-  klines: readonly ChanK[],
-  units: readonly ChanBspUnit[],
-): readonly ChanUnitForce[] {
-  const closes = klines.map((k) => k.close);
-  const kTimes = klines.map((k) => k.time);
-  const macd = computeMacdSeries(closes);
-  const directions = units.map((unit) =>
-    unit.trend === TrendDirection.Up ? ('up' as const) : ('down' as const),
-  );
-  const areas = computeUnitDirectionalAreas(
-    macd.histogram,
-    macd.begIndex,
-    kTimes,
-    units,
-    directions,
-  );
-  const peaks = computeUnitLinePeaks(macd.macd, macd.begIndex, kTimes, units);
-  return Object.freeze(
-    units.map((_unit, index) => {
-      const direction = directions[index];
-      const peak = direction === 'up' ? peaks[index].max : peaks[index].min;
-      return Object.freeze({
-        area: areas[index],
-        peak: Math.abs(peak),
-      });
-    }),
-  );
 }

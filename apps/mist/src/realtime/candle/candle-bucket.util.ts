@@ -5,6 +5,7 @@ import {
   MORNING_END_MIN,
   MORNING_START_MIN,
   ASIA_SHANGHAI_TIMEZONE,
+  formatTradingDayString,
 } from '@app/timezone';
 import type { CandleBucket, CandleSession } from './candle.types';
 
@@ -42,7 +43,7 @@ export function resolveCandleBucket(eventTimeIso: string): CandleBucket | null {
 
   const zoned = toZonedTime(new Date(epochMs), TIME_ZONE);
 
-  const tradingDay = formatTradingDay(zoned);
+  const tradingDay = formatTradingDayString(zoned);
   const session = resolveSession(zoned);
   if (session === null) {
     return null;
@@ -112,12 +113,4 @@ function truncateToMinuteMs(zoned: Date): number {
     ':00.000',
   ].join('');
   return fromZonedTime(wallMinute, TIME_ZONE).getTime();
-}
-
-function formatTradingDay(zoned: Date): string {
-  return [
-    zoned.getFullYear().toString().padStart(4, '0'),
-    (zoned.getMonth() + 1).toString().padStart(2, '0'),
-    zoned.getDate().toString().padStart(2, '0'),
-  ].join('');
 }

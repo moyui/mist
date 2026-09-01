@@ -2,20 +2,14 @@ import {
   BiStatus,
   ChanCore,
   DuanStatus,
-  TrendDirection,
   ChanBspType,
+  TrendDirection,
   type ChanBspUnit,
-  type ChanChannel,
   type ChanDivergenceZhongshu,
-  type ChanDuanChannel,
   type ChanK,
-  type ChanUnitForce,
 } from '@app/chancore';
-import {
-  computeMacdSeries,
-  computeUnitDirectionalAreas,
-  computeUnitLinePeaks,
-} from '@app/indicators';
+import { computeChanUnitForces } from '@app/indicators';
+import { toZhongshu } from '@app/signal';
 import type {
   BandVisualCommand,
   LineVisualCommand,
@@ -243,7 +237,7 @@ export class ChanVisualAdapter {
       const zhongshus: readonly ChanDivergenceZhongshu[] =
         biChannels.phaseB.map(toZhongshu);
 
-      const forces = computeUnitForces(klines, bspUnits);
+      const forces = computeChanUnitForces(klines, bspUnits);
       const points = ChanCore.detectBuySellPoints({
         units: bspUnits,
         zhongshus,
@@ -275,55 +269,6 @@ export class ChanVisualAdapter {
 
     return Object.freeze(commands);
   }
-}
-
-function toZhongshu(
-  channel: ChanChannel | ChanDuanChannel,
-): ChanDivergenceZhongshu {
-  const units = 'bis' in channel ? channel.bis : channel.duans;
-  const first = units[0];
-  const last = units[units.length - 1];
-  if (!first || !last) {
-    throw new RangeError('chan channel must contain at least one unit');
-  }
-  return Object.freeze({
-    firstUnitTime: first.startTime,
-    lastUnitTime: last.endTime,
-    zg: channel.zg,
-    zd: channel.zd,
-    gg: channel.gg,
-    dd: channel.dd,
-  });
-}
-
-function computeUnitForces(
-  klines: readonly ChanK[],
-  units: readonly ChanBspUnit[],
-): readonly ChanUnitForce[] {
-  const closes = klines.map((k) => k.close);
-  const kTimes = klines.map((k) => k.time);
-  const macd = computeMacdSeries(closes);
-  const directions = units.map((unit) =>
-    unit.trend === TrendDirection.Up ? ('up' as const) : ('down' as const),
-  );
-  const areas = computeUnitDirectionalAreas(
-    macd.histogram,
-    macd.begIndex,
-    kTimes,
-    units,
-    directions,
-  );
-  const peaks = computeUnitLinePeaks(macd.macd, macd.begIndex, kTimes, units);
-  return Object.freeze(
-    units.map((_unit, index) => {
-      const direction = directions[index];
-      const peak = direction === 'up' ? peaks[index].max : peaks[index].min;
-      return Object.freeze({
-        area: areas[index],
-        peak: Math.abs(peak),
-      });
-    }),
-  );
 }
 
 function formatBspLabel(type: ChanBspType): string {
