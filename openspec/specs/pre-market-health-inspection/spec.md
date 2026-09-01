@@ -30,7 +30,7 @@ The schedule application SHALL execute an end-to-end pre-market health inspectio
 - **AND** the diagnostic card MUST prominently display the root cause, affected securities, and exact recovery instructions (including `context-rebuild-observation.json` format and path)
 
 #### Scenario: Historical K-lines are missing for the previous trading day
-- **WHEN** query of `k_lines` reveals missing DAY or intraday minute bars for active securities on the prior trading day
+- **WHEN** query of `k_lines` reveals missing required K-line periods (`DAY`, `1m`, `5m`, `30m`) for active securities on the prior trading day
 - **THEN** the inspection MUST list the exact missing securities and periods
 - **AND** the diagnostic card MUST include the command to trigger manual post-close sync
 

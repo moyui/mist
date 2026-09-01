@@ -86,14 +86,7 @@ describe('DataCollectionController scheduling', () => {
 
     expect(postCloseSyncService.syncPostClose).toHaveBeenCalledWith({
       targetDate: tuesday,
-      periods: [
-        Period.DAY,
-        Period.ONE_MIN,
-        Period.FIVE_MIN,
-        Period.FIFTEEN_MIN,
-        Period.THIRTY_MIN,
-        Period.SIXTY_MIN,
-      ],
+      periods: [Period.DAY, Period.ONE_MIN, Period.FIVE_MIN, Period.THIRTY_MIN],
       window: 'nightly_2230',
     });
     expect(logger.error).not.toHaveBeenCalled();
@@ -112,9 +105,7 @@ describe('DataCollectionController scheduling', () => {
         Period.DAY,
         Period.ONE_MIN,
         Period.FIVE_MIN,
-        Period.FIFTEEN_MIN,
         Period.THIRTY_MIN,
-        Period.SIXTY_MIN,
         Period.WEEK,
       ],
       window: 'nightly_2230',
@@ -131,14 +122,7 @@ describe('DataCollectionController scheduling', () => {
 
     expect(postCloseSyncService.syncPostClose).toHaveBeenCalledWith({
       targetDate: expect.any(Date),
-      periods: [
-        Period.DAY,
-        Period.ONE_MIN,
-        Period.FIVE_MIN,
-        Period.FIFTEEN_MIN,
-        Period.THIRTY_MIN,
-        Period.SIXTY_MIN,
-      ],
+      periods: [Period.DAY, Period.ONE_MIN, Period.FIVE_MIN, Period.THIRTY_MIN],
       window: 'morning_0630',
     });
     expect(logger.error).not.toHaveBeenCalled();

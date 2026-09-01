@@ -44,7 +44,7 @@ aligned with late evening timelines (22:30) and next-morning retry timelines (06
 #### Scenario: Primary nightly trigger at 22:30
 - **WHEN** the system time reaches 22:30 on a weekday (Monday - Friday)
 - **AND** `TimezoneService.isTradingDay()` confirms it is an A-share trading day
-- **THEN** it MUST execute post-close synchronization for core periods (`DAY`, `1m`, `5m`, `15m`, `30m`, `60m`) for all active securities
+- **THEN** it MUST execute post-close synchronization for core periods (`DAY`, `1m`, `5m`, `30m`) for all active securities
 - **AND** on Friday trading days, it MUST additionally sync `WEEK` period
 - **AND** on the last trading day of the month, it MUST additionally sync `MONTH` period
 

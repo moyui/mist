@@ -22,9 +22,7 @@ export class PostCloseSyncService {
     Period.DAY,
     Period.ONE_MIN,
     Period.FIVE_MIN,
-    Period.FIFTEEN_MIN,
     Period.THIRTY_MIN,
-    Period.SIXTY_MIN,
   ];
 
   constructor(

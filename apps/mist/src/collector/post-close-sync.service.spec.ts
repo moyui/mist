@@ -88,12 +88,12 @@ describe('PostCloseSyncService', () => {
     expect(report.targetDate).toBe('2026-08-24');
     expect(report.window).toBe('nightly_2230');
     expect(report.totalSecurities).toBe(2);
-    // 2 securities x 6 default periods (DAY, 1m, 5m, 15m, 30m, 60m) = 12 tasks
-    expect(report.totalTasks).toBe(12);
-    expect(report.succeededTasks).toBe(12);
+    // 2 securities x 4 default periods (DAY, 1m, 5m, 30m) = 8 tasks
+    expect(report.totalTasks).toBe(8);
+    expect(report.succeededTasks).toBe(8);
     expect(report.failedTasks).toBe(0);
     expect(report.notReadyTasks).toBe(0);
-    expect(report.totalKLinesSaved).toBe(240 * 12);
+    expect(report.totalKLinesSaved).toBe(240 * 8);
 
     expect(
       dataSourceSelectionService.getDataSourceForSecurity,
@@ -128,8 +128,8 @@ describe('PostCloseSyncService', () => {
 
     const report = await service.syncPostClose();
 
-    expect(report.totalTasks).toBe(12);
-    expect(report.succeededTasks).toBe(11);
+    expect(report.totalTasks).toBe(8);
+    expect(report.succeededTasks).toBe(7);
     expect(report.notReadyTasks).toBe(1);
     expect(report.failedTasks).toBe(0);
 
@@ -153,8 +153,8 @@ describe('PostCloseSyncService', () => {
 
     const report = await service.syncPostClose();
 
-    expect(report.totalTasks).toBe(12);
-    expect(report.succeededTasks).toBe(11);
+    expect(report.totalTasks).toBe(8);
+    expect(report.succeededTasks).toBe(7);
     expect(report.failedTasks).toBe(1);
 
     expect(syncMetrics.recordTask).toHaveBeenCalledWith(

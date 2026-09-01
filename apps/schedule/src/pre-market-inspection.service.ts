@@ -37,9 +37,7 @@ const REQUIRED_INTRADAY_PERIODS: Period[] = [
   Period.DAY,
   Period.ONE_MIN,
   Period.FIVE_MIN,
-  Period.FIFTEEN_MIN,
   Period.THIRTY_MIN,
-  Period.SIXTY_MIN,
 ];
 
 @Injectable()
@@ -261,7 +259,7 @@ export class PreMarketInspectionService {
         details: missingItems.slice(0, 10), // Limit summary to first 10
         remediation: [
           `缺失标的: ${[...missingTargets].join(', ')}`,
-          `手动补录：POST 后端 8001 /v1/collector/collect，body {"code":"<code>","period":<1|5|15|30|60>,"startDate":"${prevDateStr}","endDate":"${prevDateStr}"}（与收盘同步同走 collectKForSource；TDX 源 1m 历史可能无数据，返回 count=0 即 provider 无该数据）`,
+          `手动补录：POST 后端 8001 /v1/collector/collect，body {"code":"<code>","period":<1|5|30>,"startDate":"${prevDateStr}","endDate":"${prevDateStr}"}（与收盘同步同走 collectKForSource；TDX 源 1m 历史可能无数据，返回 count=0 即 provider 无该数据）`,
         ],
       };
     }

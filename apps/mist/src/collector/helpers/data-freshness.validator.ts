@@ -16,9 +16,7 @@ export class DataFreshnessValidator {
     {
       [Period.ONE_MIN]: 240,
       [Period.FIVE_MIN]: 48,
-      [Period.FIFTEEN_MIN]: 16,
       [Period.THIRTY_MIN]: 8,
-      [Period.SIXTY_MIN]: 4,
       [Period.DAY]: 1,
       [Period.WEEK]: 1,
       [Period.MONTH]: 1,

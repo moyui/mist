@@ -98,9 +98,7 @@ export class DataCollectionController {
       Period.DAY,
       Period.ONE_MIN,
       Period.FIVE_MIN,
-      Period.FIFTEEN_MIN,
       Period.THIRTY_MIN,
-      Period.SIXTY_MIN,
     ];
 
     // 周五交易日自动追加周线
@@ -156,9 +154,7 @@ export class DataCollectionController {
       Period.DAY,
       Period.ONE_MIN,
       Period.FIVE_MIN,
-      Period.FIFTEEN_MIN,
       Period.THIRTY_MIN,
-      Period.SIXTY_MIN,
     ];
 
     if (previousTradingDay.getDay() === 5) {
