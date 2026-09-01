@@ -182,16 +182,16 @@ describe('ChanCore full-output differential characterization', () => {
     }
   });
 
-  it('locks Duan-level central-extension resolution (adjacent wave overlap merges to one expanded Unit)', () => {
-    // 段级扩张 fixture：两中枢（区间[7,9]与[2,4]不重叠、波动[4,11]与[1,8]重叠）→ Phase C 归并为一个 expanded
+  it('locks Duan-level sequential resolution (adjacent wave overlap retains separate sequential units in phaseB)', () => {
     const duans = createDuanExpansionFixture();
     const { phaseA, phaseB } = ChanCore.createDuanChannels(duans);
 
     expect(phaseA.length).toBeGreaterThan(0);
-    expect(phaseB).toHaveLength(1);
-    expect(phaseB[0].expanded).toBe(true);
-    expect(phaseB[0].zg).toBe(8); // 波动重叠区上沿 = min(gg1,gg2)
-    expect(phaseB[0].zd).toBe(4); // 波动重叠区下沿 = max(dd1,dd2)
+    expect(phaseB).toHaveLength(2);
+    expect(phaseB[0].zd).toBe(7);
+    expect(phaseB[0].zg).toBe(9);
+    expect(phaseB[1].zd).toBe(2);
+    expect(phaseB[1].zg).toBe(4);
 
     const payload = {
       algorithmVersion: 7,
@@ -255,7 +255,7 @@ describe('ChanCore full-output differential characterization', () => {
 
 /** Duan-level central-extension fingerprint（add-chan-central-extension 新增）。 */
 const EXPECTED_DUAN_EXPANSION_SHA256 =
-  '452a7b920c64fdca38451bbaa641b3fb214498ccc965c2d1098a983c3ce66712';
+  'e8436bbd4754b0f69b44f1ffbaea1a20ab10ec64725ffa5dafb721b3ad80ec6b';
 
 /** Duan lesson-71 first-Bi-break fingerprint（add-duan-first-bi-break-rule 新增，锚点窗口）。 */
 const EXPECTED_DUAN_71_SHA256 =

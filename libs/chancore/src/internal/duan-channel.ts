@@ -9,10 +9,7 @@ import type {
   ChanDuanChannel,
   ChanDuanChannelTwoPhaseResult,
 } from '../contracts';
-import {
-  mergeDuanCentralExpansion,
-  resolveCentralExpansions,
-} from './central-expansion';
+
 import { minMaxBy } from './min-max-by';
 
 /**
@@ -36,11 +33,8 @@ export class DuanChannelCalculator {
     const confirmed = duans.filter((d) => d.status === DuanStatus.Valid);
     const { phaseA, sequential } = this.sequentiallyConfirmChannels(confirmed);
 
-    // Phase C：中枢扩张归并（相邻波动区间重叠/相切 → 合并为一个更高级别中枢）
-    const phaseB = resolveCentralExpansions(
-      sequential,
-      mergeDuanCentralExpansion,
-    );
+    // Phase B：直接采用顺序生命周期确认的段中枢序列
+    const phaseB = sequential;
     return { phaseA, phaseB };
   }
 

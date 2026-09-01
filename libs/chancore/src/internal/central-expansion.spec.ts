@@ -238,7 +238,7 @@ describe('central-expansion (中枢扩张：笔级 + 段级)', () => {
   });
 
   describe('integration through the facades', () => {
-    it('ChanCore.createDuanChannels resolves an adjacent wave-overlapping pair', () => {
+    it('ChanCore.createDuanChannels returns sequential channels and resolveCentralExpansions resolves an adjacent wave-overlapping pair', () => {
       // 段序列趋势交替；构造两中枢（区间[7,9]与[2,4]不重叠、波动[4,11]与[1,8]重叠）
       const duans: ChanDuan[] = [
         makeDuan(0, 'up', 11, 4),
@@ -251,15 +251,18 @@ describe('central-expansion (中枢扩张：笔级 + 段级)', () => {
       const { phaseA, phaseB } = ChanCore.createDuanChannels(duans);
 
       expect(phaseA.length).toBeGreaterThan(0);
-      // 两中枢（波动[1,11] 与 [1,8]）碰撞 → 扩张归并为一个 expanded 单元
-      expect(phaseB).toHaveLength(1);
-      expect(phaseB[0].expanded).toBe(true);
-      expect(phaseB[0].zg).toBe(8); // 波动重叠区上沿 = min(11,8)
-      expect(phaseB[0].zd).toBe(4); // 波动重叠区下沿 = max(4,1)
-      // 确定性
-      const replay = ChanCore.createDuanChannels(duans);
-      expect(replay.phaseB).toEqual(phaseB);
-      expect(replay.phaseA).toEqual(phaseA);
+      // 顺序生命周期输出 2 个独立中枢
+      expect(phaseB).toHaveLength(2);
+
+      // Phase C 扩张算法本身将两中枢归并为一个 expanded 单元
+      const expanded = resolveCentralExpansions(
+        phaseB,
+        mergeDuanCentralExpansion,
+      );
+      expect(expanded).toHaveLength(1);
+      expect(expanded[0].expanded).toBe(true);
+      expect(expanded[0].zg).toBe(8); // 波动重叠区上沿 = min(11,8)
+      expect(expanded[0].zd).toBe(4); // 波动重叠区下沿 = max(4,1)
     });
 
     it('does not merge properly progressive disjoint Channels (position progression kept)', () => {

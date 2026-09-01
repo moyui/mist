@@ -10,10 +10,7 @@ import type {
   ChanChannel,
   ChanChannelTwoPhaseResult,
 } from '../contracts';
-import {
-  mergeBiCentralExpansion,
-  resolveCentralExpansions,
-} from './central-expansion';
+
 import { minMaxBy } from './min-max-by';
 
 export class ChannelCalculator {
@@ -38,11 +35,8 @@ export class ChannelCalculator {
 
     const { phaseA, sequential } = this.sequentiallyConfirmChannels(confirmed);
 
-    // Phase C：中枢扩张归并（相邻波动区间重叠/相切 → 归并为一个更高级别中枢）
-    const phaseB = resolveCentralExpansions(
-      sequential,
-      mergeBiCentralExpansion,
-    );
+    // Phase B：直接采用顺序生命周期确认的中枢序列（保留独立性，避免贪婪级联吞并）
+    const phaseB = sequential;
 
     return { phaseA, phaseB };
   }
