@@ -479,7 +479,15 @@ Datasource SHALL append subscription intents, observed native results, registry 
 - **THEN** datasource MUST preserve the lifecycle as unresolved and set `reconciliationRequired=true`
 - **AND** it MUST continue one attempt for other recoverable IDs without creating replacement subscriptions
 - **AND** the bounded cleanup phase MAY finish and transport `realtime.ready` MAY be emitted with source state observable as blocked/degraded
-- **AND** only the approved operator context-rebuild observation MAY later resolve the failed lifecycle
+- **AND** an approved operator context-rebuild observation MAY later resolve the failed lifecycle — written by the operator through the one-shot file path, or written automatically by the datasource under objective terminal-restart evidence
+
+#### Scenario: Objective terminal-restart evidence auto-unlocks
+
+- **WHEN** reconciliation is blocked by an unresolved recovery lifecycle and the QMT bridge `startedAt` (terminal process start time, terminal-local +8) is strictly later than the earliest unresolved recovery intent in the journal
+- **THEN** the datasource MAY durably append the `operator_observation` itself (`recoveryMode=terminal_process_restarted`, `physicalSubscriptionsAssumedReleased=true`) and clear the block without operator action
+- **AND** it MUST NOT auto-unlock when the start time is absent (older bridge) or not strictly later than the earliest unresolved intent, when the journal has no unresolved recovery intent, or when the lifecycle is not currently reconciliation-blocked
+- **AND** the unlock decision SHALL be exported as `mist_datasource_auto_unlock_total{outcome}`
+- **AND** unconfirmed attempts MUST NOT receive another automatic startup attempt either way
 
 #### Scenario: Startup replay lacks an exact ID or verified chain
 
