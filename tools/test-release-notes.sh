@@ -49,7 +49,7 @@ grep -q "还有 5 项变更" release_notes.md
 grep -q "Full Changelog" release_notes.md
 
 summary_items=$(awk '
-  /^## 发布包/ { exit }
+  /^## Docker 镜像/ { exit }
   /^- 还有 / { next }
   /^- / { count++ }
   END { print count + 0 }

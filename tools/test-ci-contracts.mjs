@@ -634,11 +634,6 @@ function assertMistBackendContracts() {
     'pnpm run ci:contracts',
     'mist release workflow',
   );
-
-  const buildWorkflow = read(join(repos.mist, '.github/workflows/build.yml'));
-  assertIncludes(buildWorkflow, 'pnpm run lint:check', 'mist build workflow');
-  assertIncludes(buildWorkflow, 'pnpm run typecheck', 'mist build workflow');
-  assertIncludes(buildWorkflow, 'pnpm run test:ci', 'mist build workflow');
 }
 
 function assertFrontendContracts() {

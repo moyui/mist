@@ -67,11 +67,6 @@ fi
 
 cat >> "$OUTPUT" <<EOF
 
-## 发布包
-
-- mist-macos-amd64
-- mist-windows-x86.exe
-
 ## Docker 镜像
 
 \`\`\`bash

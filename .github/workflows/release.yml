@@ -16,7 +16,7 @@ on:
           - major
         default: 'patch'
       dry_run:
-        description: '只测试生成 release notes 和 packages，不创建 tag/release/Docker 镜像'
+        description: '只测试生成 release notes，不创建 tag/release/Docker 镜像'
         required: false
         type: boolean
         default: false
@@ -58,7 +58,7 @@ jobs:
         run: pnpm run ci:contracts
 
   release:
-    name: Create Release, Packages, and Docker Images
+    name: Create Release and Docker Images
     runs-on: ubuntu-latest
     needs: validate
     environment: production-release
@@ -166,19 +166,6 @@ jobs:
             "${{ steps.version.outputs.tag }}" \
             release_notes.md
 
-      - name: Build release packages
-        run: |
-          chmod +x tools/build-executable.sh tools/package-release.sh
-          tools/package-release.sh
-
-      - name: Upload release packages as workflow artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: mist-release-packages-${{ steps.version.outputs.tag }}
-          path: release/mist-*
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Create GitHub Release
         if: github.event.inputs.dry_run != 'true'
         uses: softprops/action-gh-release@v2
@@ -186,10 +173,6 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Mist Backend ${{ steps.version.outputs.version }}
           body_path: release_notes.md
-          files: |
-            release/mist-macos-amd64
-            release/mist-windows-x86.exe
-          fail_on_unmatched_files: true
           draft: false
           prerelease: false
         env:
@@ -231,11 +214,6 @@ jobs:
       - name: Release Summary
         run: |
           echo "### 🎉 Mist ${{ steps.version.outputs.version }} 发布成功！" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 📦 Release 包" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- \`mist-macos-amd64\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`mist-windows-x86.exe\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### 📦 Docker 镜像标签" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
