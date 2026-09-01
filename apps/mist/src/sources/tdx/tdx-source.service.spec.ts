@@ -76,7 +76,7 @@ describe('TdxSource', () => {
                   case Period.WEEK:
                     return '1w';
                   case Period.MONTH:
-                    return '1M';
+                    return '1mon';
                   default:
                     return null;
                 }

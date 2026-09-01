@@ -53,6 +53,21 @@ describe('PeriodMappingService', () => {
     expect(service.toSourceFormat(Period.YEAR, DataSource.QMT)).toBe('1y');
   });
 
+  it('should map periods to TDX source format', () => {
+    expect(service.toSourceFormat(Period.ONE_MIN, DataSource.TDX)).toBe('1m');
+    expect(service.toSourceFormat(Period.FIVE_MIN, DataSource.TDX)).toBe('5m');
+    expect(service.toSourceFormat(Period.FIFTEEN_MIN, DataSource.TDX)).toBe(
+      '15m',
+    );
+    expect(service.toSourceFormat(Period.THIRTY_MIN, DataSource.TDX)).toBe(
+      '30m',
+    );
+    expect(service.toSourceFormat(Period.SIXTY_MIN, DataSource.TDX)).toBe('1h');
+    expect(service.toSourceFormat(Period.DAY, DataSource.TDX)).toBe('1d');
+    expect(service.toSourceFormat(Period.WEEK, DataSource.TDX)).toBe('1w');
+    expect(service.toSourceFormat(Period.MONTH, DataSource.TDX)).toBe('1mon');
+  });
+
   it('should throw for unsupported period', () => {
     expect(() =>
       service.toSourceFormat(Period.QUARTER, DataSource.TDX),
@@ -105,6 +120,8 @@ describe('PeriodMappingService with unified Period enum', () => {
       Period.SIXTY_MIN,
     );
     expect(service.fromSourceFormat('1d', DataSource.TDX)).toBe(Period.DAY);
+    expect(service.fromSourceFormat('1mon', DataSource.TDX)).toBe(Period.MONTH);
+    expect(service.fromSourceFormat('1M', DataSource.TDX)).toBe(Period.MONTH);
   });
 
   it('maps QMT source period aliases back to the unified Period enum', () => {

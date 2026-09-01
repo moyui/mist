@@ -24,7 +24,7 @@ export interface ITdxSourceFetcher extends ISourceFetcher<TdxResponse> {
 
   /**
    * Check if TDX supports a specific period
-   * TDX supports: 1m, 5m, 15m, 30m, 60m, 1d, 1w, 1M
+   * TDX supports: 1m, 5m, 15m, 30m, 60m, 1d, 1w, 1mon
    */
   isSupportedPeriod(period: Period): boolean;
 }

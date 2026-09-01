@@ -23,7 +23,7 @@ export class PeriodMappingService {
       [Period.SIXTY_MIN]: '1h',
       [Period.DAY]: '1d',
       [Period.WEEK]: '1w',
-      [Period.MONTH]: '1M',
+      [Period.MONTH]: '1mon',
     },
     [DataSource.QMT]: {
       [Period.ONE_MIN]: '1m',
@@ -67,7 +67,8 @@ export class PeriodMappingService {
       '60min': '1h',
       day: '1d',
       week: '1w',
-      month: '1M',
+      month: '1mon',
+      '1M': '1mon',
     },
     [DataSource.QMT]: {
       '1': '1m',
