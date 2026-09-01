@@ -79,11 +79,11 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
             }),
           } as any);
         }
-        if (urlStr.includes('qyapi.weixin.qq.com')) {
+        if (urlStr.includes('open.feishu.cn')) {
           return Promise.resolve({
             ok: true,
             status: 200,
-            json: async () => ({ errcode: 0, errmsg: 'ok' }),
+            json: async () => ({ StatusCode: 0 }),
           } as any);
         }
         return Promise.resolve({
