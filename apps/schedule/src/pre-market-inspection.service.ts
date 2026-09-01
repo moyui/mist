@@ -31,8 +31,6 @@ export interface PreMarketInspectionReport {
     readonly infrastructure: DimensionCheckResult;
     readonly pipelineSwitches: DimensionCheckResult;
   };
-  readonly markdown: string;
-  readonly sentToWechat: boolean;
   readonly sentToFeishu: boolean;
 }
 
@@ -106,26 +104,14 @@ export class PreMarketInspectionService {
         infrastructure,
         pipelineSwitches,
       },
-      markdown: this.buildMarkdownReport(dateStr, overallStatus, {
-        datasource,
-        klines,
-        subscription,
-        realtime,
-        infrastructure,
-        pipelineSwitches,
-      }),
-      sentToWechat: false,
       sentToFeishu: false,
     };
 
-    const [sentWechat, sentFeishu] = await Promise.all([
-      this.deliverWechatReport(report.markdown),
-      this.deliverFeishuReport(report),
-    ]);
+    const sentFeishu = await this.deliverFeishuReport(report);
     this.logger.log(
-      `[PreMarketInspection] delivery result wechat=${sentWechat ? 'sent' : 'skipped/failed'} feishu=${sentFeishu ? 'sent' : 'skipped/failed'} targetDate=${dateStr} status=${overallStatus}`,
+      `[PreMarketInspection] delivery result feishu=${sentFeishu ? 'sent' : 'skipped/failed'} targetDate=${dateStr} status=${overallStatus}`,
     );
-    return { ...report, sentToWechat: sentWechat, sentToFeishu: sentFeishu };
+    return { ...report, sentToFeishu: sentFeishu };
   }
 
   /**
@@ -446,9 +432,9 @@ export class PreMarketInspectionService {
     const qmtBase =
       this.configService.get<string>('QMT_BASE_URL') ??
       'http://qmt-datasource:9002';
-    const wechatWebhook =
-      this.configService.get<string>('OO_ALERT_WECHAT_WEBHOOK') ||
-      this.configService.get<string>('NOTIFICATION_WECHAT_WEBHOOK');
+    const feishuWebhook =
+      this.configService.get<string>('OO_ALERT_FEISHU_WEBHOOK') ||
+      this.configService.get<string>('NOTIFICATION_FEISHU_WEBHOOK');
 
     const errors: string[] = [];
     const remediation: string[] = [];
@@ -459,13 +445,13 @@ export class PreMarketInspectionService {
       qmt: 'unknown',
       redis: 'unknown',
       lifecycle: 'unknown',
-      wechat: wechatWebhook ? 'ok' : 'missing',
+      feishu: feishuWebhook ? 'ok' : 'missing',
     };
 
-    if (!wechatWebhook) {
-      errors.push('微信告警 Webhook 未配置 (NOTIFICATION_WECHAT_WEBHOOK 缺失)');
+    if (!feishuWebhook) {
+      errors.push('飞书告警 Webhook 未配置 (NOTIFICATION_FEISHU_WEBHOOK 缺失)');
       remediation.push(
-        '在 .env 中配置有效企业微信 Webhook: NOTIFICATION_WECHAT_WEBHOOK',
+        '在 .env 中配置有效飞书群机器人 Webhook: NOTIFICATION_FEISHU_WEBHOOK',
       );
     }
 
@@ -585,7 +571,7 @@ export class PreMarketInspectionService {
       statusBadges.qmt = 'unreachable';
     }
 
-    const badgeStr = `backend=${statusBadges.backend} | signal=${statusBadges.signal} | tdx=${statusBadges.tdx} | qmt=${statusBadges.qmt} | redis=${statusBadges.redis} | lifecycle=${statusBadges.lifecycle} | wechat=${statusBadges.wechat}`;
+    const badgeStr = `backend=${statusBadges.backend} | signal=${statusBadges.signal} | tdx=${statusBadges.tdx} | qmt=${statusBadges.qmt} | redis=${statusBadges.redis} | lifecycle=${statusBadges.lifecycle} | feishu=${statusBadges.feishu}`;
 
     if (errors.length > 0) {
       return {
@@ -600,77 +586,6 @@ export class PreMarketInspectionService {
       passed: true,
       summary: badgeStr,
     };
-  }
-
-  /**
-   * 生成深度结构化 Markdown 简报
-   */
-  buildMarkdownReport(
-    dateStr: string,
-    overallStatus: 'PASSED' | 'FAILED',
-    dimensions: PreMarketInspectionReport['dimensions'],
-  ): string {
-    const isPassed = overallStatus === 'PASSED';
-    const headerEmoji = isPassed ? '🟢' : '🔴';
-    const headerTitle = isPassed
-      ? '09:05 盘前系统体检通过 (All Green)'
-      : '09:05 盘前体检发现异常 (需立即介入)';
-
-    const lines: string[] = [
-      `### ${headerEmoji} ${headerTitle}`,
-      `- **交易日期**：${dateStr}`,
-      `- **链路开关**：${dimensions.pipelineSwitches.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.pipelineSwitches.summary}）`,
-      `- **数据源/Journal**：${dimensions.datasource.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.datasource.summary}）`,
-      `- **昨夜收盘K线**：${dimensions.klines.passed ? '🟢 完整' : '🔴 缺失'}（${dimensions.klines.summary}）`,
-      `- **活跃订阅分配**：${dimensions.subscription.passed ? '🟢 正常' : '🔴 异常'}（${dimensions.subscription.summary}）`,
-      `- **实时通信链路**：${dimensions.realtime.passed ? '🟢 通畅' : '🔴 异常'}（${dimensions.realtime.summary}）`,
-      `- **基础服务状态**：${dimensions.infrastructure.passed ? '🟢 正常' : '🔴 故障'}（${dimensions.infrastructure.summary}）`,
-    ];
-
-    if (!isPassed) {
-      lines.push('', '---', '#### ⚠️ 故障详情与排查指引：');
-      for (const [dimKey, result] of Object.entries(dimensions)) {
-        if (!result.passed) {
-          lines.push(`**【${dimKey}】** ${result.summary}`);
-          if (result.details && result.details.length > 0) {
-            for (const d of result.details) {
-              lines.push(`  - ❌ ${d}`);
-            }
-          }
-          if (result.remediation && result.remediation.length > 0) {
-            lines.push('  - ⚡ **恢复指引**：');
-            for (const r of result.remediation) {
-              lines.push(`    ${r}`);
-            }
-          }
-        }
-      }
-    } else {
-      lines.push(
-        '',
-        '> 距离 09:15 订阅重置还有 10 分钟，距离 09:30 开盘还有 25 分钟，全系统就绪。',
-      );
-    }
-
-    return lines.join('\n');
-  }
-
-  /**
-   * 推送企业微信机器人 Webhook
-   */
-  async deliverWechatReport(markdown: string): Promise<boolean> {
-    const webhook =
-      this.configService.get<string>('OO_ALERT_WECHAT_WEBHOOK') ||
-      this.configService.get<string>('NOTIFICATION_WECHAT_WEBHOOK');
-
-    if (!webhook) {
-      this.logger.warn(
-        '[PreMarketInspection] No WeCom webhook configured (OO_ALERT_WECHAT_WEBHOOK / NOTIFICATION_WECHAT_WEBHOOK missing), skipping dispatch',
-      );
-      return false;
-    }
-
-    return this.postWecomMarkdown(webhook, markdown);
   }
 
   /**
@@ -742,39 +657,6 @@ export class PreMarketInspectionService {
           : [paragraph, [{ tag: 'text', text: '' }] as const];
       }),
     };
-  }
-
-  private async postWecomMarkdown(
-    webhook: string,
-    markdown: string,
-  ): Promise<boolean> {
-    try {
-      const res = await fetch(webhook, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          msgtype: 'markdown',
-          markdown: {
-            content: markdown,
-          },
-        }),
-      });
-      if (!res.ok) {
-        this.logger.error(
-          `[PreMarketInspection] WeCom webhook returned HTTP ${res.status}`,
-        );
-        return false;
-      }
-      this.logger.log(
-        '[PreMarketInspection] Successfully delivered report to WeChat',
-      );
-      return true;
-    } catch (err) {
-      this.logger.error(
-        `[PreMarketInspection] Failed to send report to WeChat: ${err}`,
-      );
-      return false;
-    }
   }
 
   private async postFeishuPost(

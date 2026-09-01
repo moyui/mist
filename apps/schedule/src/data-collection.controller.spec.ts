@@ -28,9 +28,7 @@ describe('DataCollectionController scheduling', () => {
         targetDate: '2026-08-25',
         overallStatus: 'PASSED',
         dimensions: {},
-        markdown: 'All Green',
-        sentToWechat: true,
-        sentToFeishu: false,
+        sentToFeishu: true,
       }),
     };
     const controller = new DataCollectionController(

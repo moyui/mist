@@ -42,8 +42,8 @@ describe('PreMarketInspectionService', () => {
         if (key === 'QMT_BASE_URL') return 'http://127.0.0.1:9002';
         if (key === 'BACKEND_HEALTH_URL') return 'http://127.0.0.1:8001/health';
         if (key === 'SIGNAL_HEALTH_URL') return 'http://127.0.0.1:8010/health';
-        if (key === 'NOTIFICATION_WECHAT_WEBHOOK')
-          return 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock';
+        if (key === 'NOTIFICATION_FEISHU_WEBHOOK')
+          return 'https://open.feishu.cn/open-apis/bot/v2/hook/mock';
         return undefined;
       }),
     };
@@ -122,11 +122,11 @@ describe('PreMarketInspectionService', () => {
             }),
         });
       }
-      if (url.includes('qyapi.weixin.qq.com')) {
+      if (url.includes('open.feishu.cn')) {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => Promise.resolve({ errcode: 0, errmsg: 'ok' }),
+          json: () => Promise.resolve({ StatusCode: 0 }),
         });
       }
       return Promise.reject(new Error(`unexpected fetch ${url}`));
@@ -143,9 +143,8 @@ describe('PreMarketInspectionService', () => {
       expect(report.dimensions.subscription.passed).toBe(true);
       expect(report.dimensions.realtime.passed).toBe(true);
       expect(report.dimensions.infrastructure.passed).toBe(true);
-      expect(report.markdown).toContain('09:05 盘前系统体检通过 (All Green)');
-      expect(report.markdown).toContain('backend=on | signal=on');
-      expect(report.sentToWechat).toBe(true);
+      expect(report.dimensions.pipelineSwitches.summary).toContain('feishu=ok');
+      expect(report.sentToFeishu).toBe(true);
     } finally {
       global.fetch = originalFetch;
     }
@@ -235,7 +234,9 @@ describe('PreMarketInspectionService', () => {
           expect.stringContaining('REALTIME_PRODUCTIZATION_MODE'),
         ]),
       );
-      expect(report.markdown).toContain('09:05 盘前体检发现异常 (需立即介入)');
+      expect(report.dimensions.pipelineSwitches.summary).toContain(
+        'backend=off',
+      );
     } finally {
       global.fetch = originalFetch;
     }
@@ -328,10 +329,11 @@ describe('PreMarketInspectionService', () => {
           expect.stringContaining('context-rebuild-observation.json'),
         ]),
       );
-      expect(report.markdown).not.toContain('native_subscribed_sub_ids');
-      expect(report.markdown).toContain('自动解锁');
-      expect(report.markdown).toContain('09:05 盘前体检发现异常 (需立即介入)');
-      expect(report.markdown).toContain('context-rebuild-observation.json');
+      const remediationText =
+        report.dimensions.datasource.remediation?.join('\n') ?? '';
+      expect(remediationText).not.toContain('native_subscribed_sub_ids');
+      expect(remediationText).toContain('自动解锁');
+      expect(remediationText).toContain('context-rebuild-observation.json');
     } finally {
       global.fetch = originalFetch;
     }
@@ -405,7 +407,9 @@ describe('PreMarketInspectionService', () => {
           expect.stringContaining('/v1/collector/collect'),
         ]),
       );
-      expect(report.markdown).not.toContain('/schedule/sync-post-close');
+      expect(
+        report.dimensions.klines.remediation?.join('\n') ?? '',
+      ).not.toContain('/schedule/sync-post-close');
     } finally {
       global.fetch = originalFetch;
     }
@@ -568,8 +572,6 @@ describe('PreMarketInspectionService', () => {
       if (key === 'QMT_BASE_URL') return 'http://127.0.0.1:9002';
       if (key === 'BACKEND_HEALTH_URL') return 'http://127.0.0.1:8001/health';
       if (key === 'SIGNAL_HEALTH_URL') return 'http://127.0.0.1:8010/health';
-      if (key === 'NOTIFICATION_WECHAT_WEBHOOK')
-        return 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock';
       if (key === 'OO_ALERT_FEISHU_WEBHOOK')
         return 'https://open.feishu.cn/open-apis/bot/v2/hook/mock';
       if (key === 'OO_ALERT_FEISHU_SECRET') return 's3cret';
@@ -587,13 +589,6 @@ describe('PreMarketInspectionService', () => {
             ok: true,
             status: 200,
             json: () => Promise.resolve({ StatusCode: 0 }),
-          }) as unknown as Response;
-        }
-        if (String(url).includes('qyapi.weixin.qq.com')) {
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            json: () => Promise.resolve({ errcode: 0 }),
           }) as unknown as Response;
         }
         return Promise.resolve({

@@ -128,8 +128,8 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
         if (key === 'BACKEND_HEALTH_URL')
           return 'http://127.0.0.1:9876/backend/health';
         if (key === 'SIGNAL_HEALTH_URL') return 'http://127.0.0.1:9876/signal';
-        if (key === 'NOTIFICATION_WECHAT_WEBHOOK')
-          return 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=mock';
+        if (key === 'NOTIFICATION_FEISHU_WEBHOOK')
+          return 'https://open.feishu.cn/open-apis/bot/v2/hook/mock';
         return undefined;
       },
     };
@@ -163,7 +163,7 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
     expect(report.dimensions.infrastructure.passed).toBe(true);
 
     console.log('\n================ [场景 1：All Green 简报] ================');
-    console.log(report.markdown);
+    console.log(JSON.stringify(report.dimensions, null, 2));
     console.log('========================================================\n');
   });
 
@@ -180,14 +180,20 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
 
     expect(report.overallStatus).toBe('FAILED');
     expect(report.dimensions.datasource.passed).toBe(false);
-    expect(report.markdown).toContain('QMT Journal reconciliation required');
-    expect(report.markdown).toContain('context-rebuild-observation.json');
-    expect(report.markdown).not.toContain('native_subscribed_sub_ids');
+    expect(report.dimensions.datasource.details).toEqual(
+      expect.arrayContaining([
+        'QMT Journal reconciliation required (control plane locked)',
+      ]),
+    );
+    const remediationText =
+      report.dimensions.datasource.remediation?.join('\n') ?? '';
+    expect(remediationText).toContain('context-rebuild-observation.json');
+    expect(remediationText).not.toContain('native_subscribed_sub_ids');
 
     console.log(
       '\n================ [场景 2：QMT Journal 阻塞智能诊断] ================',
     );
-    console.log(report.markdown);
+    console.log(JSON.stringify(report.dimensions, null, 2));
     console.log('========================================================\n');
   });
 
@@ -211,7 +217,7 @@ describe('PreMarketInspectionService Local Simulation & Verification', () => {
     console.log(
       '\n================ [场景 3：昨夜收盘 K 线缺失] ================',
     );
-    console.log(report.markdown);
+    console.log(JSON.stringify(report.dimensions, null, 2));
     console.log('========================================================\n');
   });
 });
