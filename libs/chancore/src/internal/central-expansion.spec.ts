@@ -255,7 +255,7 @@ describe('central-expansion (中枢扩张：笔级 + 段级)', () => {
       expect(phaseB).toHaveLength(1);
       expect(phaseB[0].expanded).toBe(true);
       expect(phaseB[0].zg).toBe(8); // 波动重叠区上沿 = min(11,8)
-      expect(phaseB[0].zd).toBe(1); // 波动重叠区下沿 = max(1,1)
+      expect(phaseB[0].zd).toBe(4); // 波动重叠区下沿 = max(4,1)
       // 确定性
       const replay = ChanCore.createDuanChannels(duans);
       expect(replay.phaseB).toEqual(phaseB);

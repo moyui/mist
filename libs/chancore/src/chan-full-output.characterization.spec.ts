@@ -191,10 +191,10 @@ describe('ChanCore full-output differential characterization', () => {
     expect(phaseB).toHaveLength(1);
     expect(phaseB[0].expanded).toBe(true);
     expect(phaseB[0].zg).toBe(8); // 波动重叠区上沿 = min(gg1,gg2)
-    expect(phaseB[0].zd).toBe(1); // 波动重叠区下沿 = max(dd1,dd2)
+    expect(phaseB[0].zd).toBe(4); // 波动重叠区下沿 = max(dd1,dd2)
 
     const payload = {
-      algorithmVersion: 6,
+      algorithmVersion: 7,
       duans: duans.map(toContractDuan),
       output: {
         phaseA: phaseA.map(toContractDuanChannel),
@@ -255,7 +255,7 @@ describe('ChanCore full-output differential characterization', () => {
 
 /** Duan-level central-extension fingerprint（add-chan-central-extension 新增）。 */
 const EXPECTED_DUAN_EXPANSION_SHA256 =
-  '250b5408dd4e0291aad6a1ddc0aa62d6382d4a62a5f8170bffee85d5603c672e';
+  '452a7b920c64fdca38451bbaa641b3fb214498ccc965c2d1098a983c3ce66712';
 
 /** Duan lesson-71 first-Bi-break fingerprint（add-duan-first-bi-break-rule 新增，锚点窗口）。 */
 const EXPECTED_DUAN_71_SHA256 =

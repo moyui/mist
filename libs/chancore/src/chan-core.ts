@@ -30,7 +30,9 @@ export class ChanCore {
   // 6：exclude-unconfirmed-chan-units-from-central-and-view 起，仅确认且有效的单元进入
   // 笔/段中枢统计（status === Valid 统一判据：Invalid 宽笔失败候选与 Unknown 未确认尾单元
   // 不参与中枢；可视化同口径），数据层 createBi/createDuan 输出不变。
-  static readonly algorithmVersion = 6 as const;
+  // 7：rework-chan-channel-lifecycle-and-expansion 起，中枢计算重构为顺序确认生命周期状态机，
+  // 落实第 20 课触及延伸、第三类买卖点闭合与 9 单元扩展，相邻扩张严格判定。
+  static readonly algorithmVersion = 7 as const;
 
   private constructor() {}
 
