@@ -84,8 +84,25 @@ export class ChannelCalculator {
       let isExpanded = false;
 
       let nextIdx = cursor + 5;
+      const isUp = channelBis[0].trend === TrendDirection.Up;
       while (nextIdx + 1 < biCount) {
-        const testWindow = [...channelBis, data[nextIdx], data[nextIdx + 1]];
+        const b1 = data[nextIdx];
+        const b2 = data[nextIdx + 1];
+
+        // 走势结构极值破坏守卫：
+        // 向上中枢：震荡回调笔不得跌破中枢起始底 DD（一旦跌破，向上走势终结，中枢在跌破前密封）
+        // 向下中枢：震荡反弹笔不得冲破中枢起始顶 GG（一旦突破，向下走势终结，中枢在突破前密封）
+        if (isUp) {
+          if (b1.low < curDd || b2.low < curDd) {
+            break;
+          }
+        } else {
+          if (b1.high > curGg || b2.high > curGg) {
+            break;
+          }
+        }
+
+        const testWindow = [...channelBis, b1, b2];
         const allHighMinMax = minMaxBy(testWindow, (b) => b.high);
         const allLowMinMax = minMaxBy(testWindow, (b) => b.low);
 
@@ -94,7 +111,7 @@ export class ChannelCalculator {
           allLowMinMax &&
           allHighMinMax.min > allLowMinMax.max
         ) {
-          channelBis.push(data[nextIdx], data[nextIdx + 1]);
+          channelBis.push(b1, b2);
           curZg = allHighMinMax.min;
           curZd = allLowMinMax.max;
           curGg = allHighMinMax.max;
