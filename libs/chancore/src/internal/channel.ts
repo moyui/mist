@@ -236,6 +236,7 @@ export class ChannelCalculator {
     }
 
     const firstBi = bis[0];
+    const lastBi = bis[n - 1];
     const isUp = firstBi.trend === TrendDirection.Up;
 
     const front = bis.slice(0, n - 1); // 去 E
@@ -260,9 +261,23 @@ export class ChannelCalculator {
       dd = frontLow.min;
     }
 
-    // 约束：zg > zd（中枢核心必须存在重叠区间）
+    // 约束1：zg > zd（中枢核心必须存在有效重叠区间）
     if (zg <= zd) {
       return null;
+    }
+
+    // 约束2：进入笔与离开笔的外部端点必须在中枢 [ZD, ZG] 之外（即进入笔确实从外部进入，离开笔确实脱离中枢）
+    // 内部端点（上升中枢进入笔的最高点与离开笔的最低点、下跌中枢进入笔的最低点与离开笔的最高点）允许与 ZG / ZD 重合
+    if (isUp) {
+      // 上升中枢：进入笔从 ZD 之下进入 (firstBi.low < zd)，离开笔向上突破 ZG 离开 (lastBi.high > zg)
+      if (firstBi.low >= zd || lastBi.high <= zg) {
+        return null;
+      }
+    } else {
+      // 下跌中枢：进入笔从 ZG 之上进入 (firstBi.high > zg)，离开笔向下突破 ZD 离开 (lastBi.low < zd)
+      if (firstBi.high <= zg || lastBi.low >= zd) {
+        return null;
+      }
     }
 
     return { zg, zd, gg, dd };
