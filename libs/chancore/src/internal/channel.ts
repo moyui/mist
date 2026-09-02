@@ -266,13 +266,13 @@ export class ChannelCalculator {
       return null;
     }
 
-    // 约束2：首末笔必须突破中枢边界（进入段和离开段的标志性特征）
+    // 约束2：首末笔必须突破中枢边界（进入段和离开段的标志性特征，允许端点重合）
     if (isUp) {
-      if (firstBi.low >= dd || lastBi.high <= gg) {
+      if (firstBi.low > dd || lastBi.high < gg) {
         return null;
       }
     } else {
-      if (firstBi.high <= gg || lastBi.low >= dd) {
+      if (firstBi.high < gg || lastBi.low > dd) {
         return null;
       }
     }
