@@ -5,6 +5,7 @@ import {
   ChanBspType,
   TrendDirection,
   type ChanBspUnit,
+  type ChanBi,
   type ChanDivergenceZhongshu,
   type ChanK,
 } from '@app/chancore';
@@ -26,6 +27,7 @@ export interface ChanVisualOptions {
   readonly duanColor?: string;
   readonly zhongshuBiColor?: string;
   readonly zhongshuDuanColor?: string;
+  readonly macroBis?: readonly ChanBi[];
 }
 
 export class ChanVisualAdapter {
@@ -49,6 +51,7 @@ export class ChanVisualAdapter {
       duanColor = '#E879F9', // Purple/Fuchsia
       zhongshuBiColor = '#38BDF8', // Sky Blue
       zhongshuDuanColor = '#818CF8', // Indigo
+      macroBis,
     } = options;
 
     const commands: VisualCommand[] = [];
@@ -109,7 +112,10 @@ export class ChanVisualAdapter {
 
     // 2. Compute Bi Channels (Zhongshu)
     if (includeZhongshu) {
-      const biChannels = ChanCore.createChannels(klines);
+      const biChannels =
+        macroBis && macroBis.length > 0
+          ? ChanCore.createAdjacentBoundedChannels(bis, macroBis)
+          : ChanCore.createChannels(klines);
       biChannels.phaseB.forEach((zs, i) => {
         // 防御：中枢构成单元须全部确认且有效（chancore 已保证；防旧版本/外部数据）
         if (zs.bis.some((b) => b.status !== BiStatus.Valid)) return;

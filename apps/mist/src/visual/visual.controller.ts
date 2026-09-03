@@ -4,7 +4,7 @@ import { ApiEnvelopeResponse } from '@app/transport/http';
 import { TimezoneService } from '@app/timezone';
 import { VisualCommandService } from '@app/visual-command';
 import { prepareMarketData } from '@app/market-data';
-import type { ChanK } from '@app/chancore';
+import { BiStatus, ChanCore, type ChanBi, type ChanK } from '@app/chancore';
 import { IndicatorService } from '../indicator/indicator.service';
 import { QueryVisualCommandsDto } from './dto/query-visual-commands.dto';
 import { VisualCommandPayloadVo } from './vo/visual-command.vo';
@@ -95,12 +95,59 @@ export class VisualController {
       ? query.layers.split(',').map((s) => s.trim())
       : ['chan'];
 
+    let macroBis: ChanBi[] | undefined;
+    if (query.macroPeriod) {
+      const macroEntities = await this.indicatorService.findKData({
+        code: query.code,
+        period: query.macroPeriod,
+        startDate,
+        endDate,
+        source: query.source,
+      });
+
+      const sortedMacro = [...macroEntities]
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        .filter(
+          (item, idx, arr) =>
+            idx === 0 ||
+            item.timestamp.getTime() !== arr[idx - 1].timestamp.getTime(),
+        );
+
+      const macroPipeline = prepareMarketData({
+        rawBars: sortedMacro,
+        period: query.macroPeriod,
+        requiredBars: sortedMacro.length || 1,
+        windowStartAt: startDate,
+        windowEndAt: endDate,
+      });
+
+      const macroChanKlines: ChanK[] = macroPipeline.projected
+        .filter((bar) => bar.ohlc.effective !== null)
+        .map((bar, idx) => ({
+          id: idx + 1,
+          symbol: query.code,
+          time: bar.rawBar.timestamp,
+          open: bar.ohlc.effective!.open,
+          high: bar.ohlc.effective!.high,
+          low: bar.ohlc.effective!.low,
+          close: bar.ohlc.effective!.close,
+          volume: bar.volume.effective,
+          amount: bar.amount.effective,
+        }));
+
+      if (macroChanKlines.length >= 3) {
+        const biResult = ChanCore.createBi(macroChanKlines);
+        macroBis = biResult.phaseB.filter((b) => b.status === BiStatus.Valid);
+      }
+    }
+
     return this.visualCommandService.generateCommands({
       code: query.code,
       period: query.period,
       source: query.source ?? 'default',
       klines: chanKlines,
       layers: requestedLayers,
+      chanOptions: macroBis ? { macroBis } : undefined,
     });
   }
 }

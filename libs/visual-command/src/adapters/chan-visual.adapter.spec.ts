@@ -1,4 +1,4 @@
-import { ChanCore } from '@app/chancore';
+import { ChanCore, TrendDirection, BiStatus, BiType } from '@app/chancore';
 import type { ChanK } from '@app/chancore';
 import { ChanVisualAdapter } from './chan-visual.adapter';
 
@@ -366,5 +366,35 @@ describe('ChanVisualAdapter', () => {
     const commands = ChanVisualAdapter.convert(klines);
     const duanCommands = commands.filter((c) => c.layer === 'chan_duan');
     expect(duanCommands.length).toBe(0);
+  });
+
+  it('renders centrals bounded by macroBis when provided', () => {
+    const klines = generateRealKlines();
+    const midIdx = Math.floor(klines.length / 2);
+    const macroBi = {
+      startTime: new Date(klines[0].time),
+      endTime: new Date(klines[midIdx].time),
+      low: 3900,
+      high: 4200,
+      trend: TrendDirection.Up,
+      type: BiType.Complete,
+      status: BiStatus.Valid,
+      originIds: [klines[0].id, klines[midIdx].id],
+      originData: [],
+      independentCount: 2,
+      startFenxing: null,
+      endFenxing: null,
+    };
+
+    const commands = ChanVisualAdapter.convert(klines, {
+      macroBis: [macroBi],
+    });
+    const zsCommands = commands.filter((c) => c.layer === 'chan_zs_bi');
+    const macroEndMs = macroBi.endTime.getTime();
+    for (const zs of zsCommands) {
+      if (zs.type === 'band') {
+        expect(new Date(zs.toTime).getTime()).toBeLessThanOrEqual(macroEndMs);
+      }
+    }
   });
 });

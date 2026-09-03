@@ -63,6 +63,19 @@ export class ChanCore {
   }
 
   /**
+   * 跨级别邻近笔约束中枢求值（Adjacent Timeframe Pair Bounded Channels）
+   *
+   * @param subBis 次级别笔序列（构成中枢的构件）
+   * @param macroBis 父级别笔序列（提供时空边界）
+   */
+  static createAdjacentBoundedChannels(
+    subBis: readonly ChanBi[],
+    macroBis: readonly ChanBi[],
+  ): ChanChannelTwoPhaseResult {
+    return new ChannelCalculator().getAdjacentBoundedChannels(subBis, macroBis);
+  }
+
+  /**
    * 入参 = `createBi` 返回值的 `phaseB`（`ChanBi[]` 最终笔数组，组合方式：
    * `createDuan(createBi(k).phaseB)`）。返回确认后的段序列（无 phaseA）。
    */

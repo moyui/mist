@@ -42,6 +42,52 @@ export class ChannelCalculator {
   }
 
   /**
+   * 跨级别邻近笔约束中枢求值（Adjacent Timeframe Pair Bounded Central）
+   *
+   * 算法契约：
+   * 1. 过滤出已确认且有效的父级别大笔序列（macroBis）；
+   * 2. 遍历每根大笔的时间边界 [T_start, T_end]，切分归属于该时段的次级别笔序列（subBis）；
+   * 3. 在每个切片内部独立运行状态机求值中枢，保证次级别中枢的生长与闭合完全封闭于大笔内；
+   * 4. 汇总各切片结果，按时序输出。
+   */
+  getAdjacentBoundedChannels(
+    subBis: readonly ChanBi[],
+    macroBis: readonly ChanBi[],
+  ): ChanChannelTwoPhaseResult {
+    const validMacroBis = macroBis.filter((b) => b.status === BiStatus.Valid);
+    if (validMacroBis.length === 0 || subBis.length < 5) {
+      return { phaseA: [], phaseB: [] };
+    }
+
+    const allPhaseA: ChanChannel[] = [];
+    const allPhaseB: ChanChannel[] = [];
+
+    for (const macroBi of validMacroBis) {
+      const startMs = new Date(macroBi.startTime).getTime();
+      const endMs = new Date(macroBi.endTime).getTime();
+
+      const slice = subBis.filter((sub) => {
+        const subStart = new Date(sub.startTime).getTime();
+        const subEnd = new Date(sub.endTime).getTime();
+        return subStart >= startMs && subEnd <= endMs;
+      });
+
+      if (slice.length < 5) {
+        continue;
+      }
+
+      const sliceResult = this.createChannels(slice);
+      allPhaseA.push(...sliceResult.phaseA);
+      allPhaseB.push(...sliceResult.phaseB);
+    }
+
+    return {
+      phaseA: allPhaseA,
+      phaseB: allPhaseB,
+    };
+  }
+
+  /**
    * 顺序确认扫描与生命周期状态机推进
    */
   private sequentiallyConfirmChannels(data: readonly ChanBi[]): {

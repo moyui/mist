@@ -127,4 +127,48 @@ describe('VisualController', () => {
       .calls[0][0];
     expect(call.klines.length).toBe(600);
   });
+
+  it('loads macro K-lines and queries macroPeriod when specified', async () => {
+    (mockIndicatorService.findKData as jest.Mock)
+      .mockResolvedValueOnce([
+        {
+          id: 1,
+          security: { code: '000001' },
+          timestamp: new Date('2026-08-27T09:30:00.000Z'),
+          open: 100,
+          high: 102,
+          low: 99,
+          close: 101,
+          volume: '1000',
+          amount: '100000',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 101,
+          security: { code: '000001' },
+          timestamp: new Date('2026-08-27T09:30:00.000Z'),
+          open: 100,
+          high: 105,
+          low: 95,
+          close: 102,
+          volume: '5000',
+          amount: '500000',
+        },
+      ]);
+
+    await controller.getCommands({
+      code: '000001',
+      period: Period.FIVE_MIN,
+      macroPeriod: Period.THIRTY_MIN,
+    });
+
+    expect(mockIndicatorService.findKData).toHaveBeenCalledTimes(2);
+    expect(mockIndicatorService.findKData).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        period: Period.THIRTY_MIN,
+      }),
+    );
+  });
 });

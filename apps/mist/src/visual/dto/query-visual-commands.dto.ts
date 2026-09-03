@@ -53,4 +53,15 @@ export class QueryVisualCommandsDto {
   @IsOptional()
   @IsString()
   endDate?: string;
+
+  @ApiPropertyOptional({
+    description:
+      '父级别周期（分钟数，用于跨级别笔约束切分次级别中枢），例如 30, 1440',
+    enum: Period,
+    example: Period.THIRTY_MIN,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsEnum(Period)
+  macroPeriod?: Period;
 }
