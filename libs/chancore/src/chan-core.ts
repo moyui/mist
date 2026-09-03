@@ -32,7 +32,9 @@ export class ChanCore {
   // 不参与中枢；可视化同口径），数据层 createBi/createDuan 输出不变。
   // 7：rework-chan-channel-lifecycle-and-expansion 起，中枢计算重构为顺序确认生命周期状态机，
   // 落实第 20 课触及延伸、第三类买卖点闭合与 9 单元扩展，相邻扩张严格判定。
-  static readonly algorithmVersion = 7 as const;
+  // 8：restore-chan-duan-three-bi-axiom 起，严格恢复第 65 课线段至少三笔公理，废除单笔 Complete
+  // 线段输出，使线段与笔中枢达成严格嵌套统一（一段内包含同向笔中枢）。
+  static readonly algorithmVersion = 8 as const;
 
   private constructor() {}
 

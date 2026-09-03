@@ -92,31 +92,23 @@ describe('DuanCalculator (特征序列法)', () => {
     expect(result[0].originBis).toHaveLength(7); // bi[0..6]
   });
 
-  it('confirms a single-Bi Duan via the lesson-71 first-Bi-break rule (upward segment)', () => {
-    // 缠论 71 课「第一笔破坏」：转折笔（段内第一根反向笔）延伸三笔且第三笔破点第一笔的
-    // 结束位置 → 新线段一定形成、前线段一定结束。判据确认的段恒为单笔（endIdx===segStartIdx），
-    // 作为 65 课「至少三笔」的 71 课显式特例：单笔 Complete 段合法输出。
-    // 构型：bi#0 Up 一笔到顶 8（假设转折点 = bi#0 终点），转笔 bi#1 Dn 8→5（终点 5），
-    // 第 2 笔 bi#2 Up(8,5) 未破转笔起点 8（严格 >）→ 无结论，第 3 笔 bi#3 Dn low=4 < 5 → confirmed。
+  it('does not confirm a single-Bi Complete Duan (strictly enforces lesson-65 minimum 3-Bi axiom)', () => {
+    // 缠论 65 课「线段至少由三笔组成」公理：任何已完成线段 originBis 必须 >= 3。
+    // 单笔反向破坏不能作为独立 Complete 线段输出。
     const bis: ChanBi[] = [
-      makeBi('up', 8, 4, 0), // 段体：Up 一笔到顶（假设转折点 = bi#0 终点）
-      makeBi('down', 8, 5, 1), // 转笔 Dn：8 → 5（转笔终点 5）
-      makeBi('up', 8, 5, 2), // 第 2 笔 Up：high=8 不破起点 8（严格 >）→ 无结论
-      makeBi('down', 8, 4, 3), // 第 3 笔 Dn：low=4 < 转笔终点 5 ✓ → confirmed
+      makeBi('up', 8, 4, 0),
+      makeBi('down', 8, 5, 1),
+      makeBi('up', 8, 5, 2),
+      makeBi('down', 8, 4, 3),
     ];
 
     const result = new DuanCalculator().createDuan(bis);
 
-    expect(result).toHaveLength(2);
-    expect(result[0].type).toBe(DuanType.Complete);
-    expect(result[0].trend).toBe(TrendDirection.Up);
-    expect(result[0].originBis).toHaveLength(1); // 单笔段
-    expect(result[0].startBi).toBe(bis[0]);
-    expect(result[0].endBi).toBe(bis[0]); // startBi === endBi
-    expect(result[0].high).toBe(8);
-    expect(result[0].low).toBe(4);
-    expect(result[1].startBi).toBe(bis[1]); // 新段从转笔起
-    expect(result[1].type).toBe(DuanType.UnComplete);
+    // 无法形成 >= 3 笔的 Complete 段，整体保持为一条未完成段延伸
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe(DuanType.UnComplete);
+    expect(result[0].endBi).toBeNull();
+    expect(result[0].originBis).toHaveLength(4);
   });
 
   it('voids the lesson-71 first-Bi-break rule when the turning Bi start is broken first', () => {
@@ -142,28 +134,21 @@ describe('DuanCalculator (特征序列法)', () => {
     expect(result[1].type).toBe(DuanType.UnComplete);
   });
 
-  it('confirms a single-Bi Duan via the lesson-71 first-Bi-break rule (downward segment)', () => {
-    // Dn 对称构型：段体 bi#0 Dn 9→5（假设转折点 = bi#0 终点底 5），转笔 bi#1 Up 5→9（终点 9），
-    // 第 2 笔 bi#2 Dn low=5 未破起点 5 → 无结论，第 3 笔 bi#3 Up high=10 > 转笔终点 9 → confirmed。
+  it('strictly rejects complete segments with fewer than 3 bis (downward segment)', () => {
+    // Dn 对称构型：不足 3 笔时绝不输出 Complete 线段
     const bis: ChanBi[] = [
-      makeBi('down', 9, 5, 0), // 段体 Dn：9 → 5
-      makeBi('up', 9, 5, 1), // 转笔 Up：5 → 9（转笔终点 9）
-      makeBi('down', 8, 5, 2), // 第 2 笔 Dn：low=5 不破起点 5（严格 <）→ 无结论
-      makeBi('up', 10, 8, 3), // 第 3 笔 Up：high=10 > 转笔终点 9 ✓ → confirmed
+      makeBi('down', 9, 5, 0),
+      makeBi('up', 9, 5, 1),
+      makeBi('down', 8, 5, 2),
+      makeBi('up', 10, 8, 3),
     ];
 
     const result = new DuanCalculator().createDuan(bis);
 
-    expect(result).toHaveLength(2);
-    expect(result[0].type).toBe(DuanType.Complete);
-    expect(result[0].trend).toBe(TrendDirection.Down);
-    expect(result[0].originBis).toHaveLength(1);
-    expect(result[0].startBi).toBe(bis[0]);
-    expect(result[0].endBi).toBe(bis[0]);
-    expect(result[0].high).toBe(9);
-    expect(result[0].low).toBe(5);
-    expect(result[1].startBi).toBe(bis[1]);
-    expect(result[1].type).toBe(DuanType.UnComplete);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe(DuanType.UnComplete);
+    expect(result[0].endBi).toBeNull();
+    expect(result[0].originBis).toHaveLength(4);
   });
 
   it('is deterministic across repeated calls and does not mutate input', () => {

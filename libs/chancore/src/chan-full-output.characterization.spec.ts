@@ -215,34 +215,25 @@ describe('ChanCore full-output differential characterization', () => {
     const { phaseB: bis } = ChanCore.createBi(k);
     const duans = ChanCore.createDuan(bis);
 
-    // 语义断言（防 SHA 失效时无法定位）：
-    // 1) 存在单笔 Complete Up 段，其终点 = 2026-06-23 10:40 上海（02:40Z，4175.35 顶）
-    expect(duans.length).toBeGreaterThan(0);
-    const anchorTime = new Date('2026-06-23T02:40:00.000Z');
-    const singleIdx = duans.findIndex(
+    // 语义断言：
+    // 1) 存在合规的 Complete Up 段 (originBis >= 3)，其峰值 = 4175.35 顶
+    const topIdx = duans.findIndex(
       (d) =>
         d.type === DuanType.Complete &&
         d.trend === TrendDirection.Up &&
-        d.originBis.length === 1 &&
-        d.endBi?.endTime.getTime() === anchorTime.getTime() &&
+        d.originBis.length >= 3 &&
         d.high === 4175.35,
     );
-    expect(singleIdx).toBeGreaterThanOrEqual(0);
-    // 2) 该单笔段的后一段从同一时刻起（10:40 顶是段边界）
-    expect(duans[singleIdx + 1].startBi!.startTime.getTime()).toBe(
-      anchorTime.getTime(),
-    );
-    // 3) 没有任何段跨过 4175.35 极值（该极值只作为段端点出现）
+    expect(topIdx).toBeGreaterThanOrEqual(0);
+    // 2) 确保所有 Complete 线段 originBis >= 3
     for (const d of duans) {
-      if (d.high !== 4175.35) continue;
-      const endAtAnchor = d.endBi?.endTime.getTime() === anchorTime.getTime();
-      const startAtAnchor =
-        d.startBi!.startTime.getTime() === anchorTime.getTime();
-      expect(endAtAnchor || startAtAnchor).toBe(true);
+      if (d.type === DuanType.Complete) {
+        expect(d.originBis.length).toBeGreaterThanOrEqual(3);
+      }
     }
 
     const payload = {
-      algorithmVersion: 6,
+      algorithmVersion: 8,
       bis: bis.map(toContractBi),
       duans: duans.map(toContractDuan),
     };
@@ -257,9 +248,9 @@ describe('ChanCore full-output differential characterization', () => {
 const EXPECTED_DUAN_EXPANSION_SHA256 =
   'e8436bbd4754b0f69b44f1ffbaea1a20ab10ec64725ffa5dafb721b3ad80ec6b';
 
-/** Duan lesson-71 first-Bi-break fingerprint（add-duan-first-bi-break-rule 新增，锚点窗口）。 */
+/** Duan lesson-65 minimum 3-bi axiom fingerprint（restore-chan-duan-three-bi-axiom 更新）。 */
 const EXPECTED_DUAN_71_SHA256 =
-  '7a72a29866de35de61054b67abab1e9315c3f1fd6af8afd337a3a54cdc25546d';
+  'b952eca1efefc5ac4a8ee2f0e5f344268ef9a2c423c01d8cab03268089511bc6';
 
 function toContractDuan(duan: ChanDuan) {
   return {
