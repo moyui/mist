@@ -333,7 +333,7 @@ describe('ChanVisualAdapter', () => {
   });
 
   it('renders confirmed-and-valid duan lines on real market cycles', () => {
-    // 真实 5m 窗口（2026-06-29~07-03）：3 个 Complete 段 + 1 个 UnComplete 尾段
+    // 真实 5m 窗口（2026-06-29~07-03）：确认段渲染
     const klines = generateRealKlines();
     const commands = ChanVisualAdapter.convert(klines);
     const biCommands = commands.filter((c) => c.layer === 'chan_bi');
@@ -341,13 +341,15 @@ describe('ChanVisualAdapter', () => {
     const zsDuanCommands = commands.filter((c) => c.layer === 'chan_zs_duan');
 
     expect(biCommands.length).toBeGreaterThan(0);
-    expect(duanCommands.length).toBeGreaterThan(0); // 仅确认段渲染（实线兜底已删除）
-    // 确认识别段中枢命令也生成（含确认段的中枢可画）
-    expect(zsDuanCommands.length).toBeGreaterThan(0);
+    expect(duanCommands.length).toBeGreaterThan(0); // 仅确认段渲染
 
-    // 数据完整性：确认段存在（防止数据退化后断言失去意义）
+    // 确认识别段中枢命令数量严格对齐 chancore 段中枢数量
     const { phaseB: bis } = ChanCore.createBi(klines);
     const duans = ChanCore.createDuan(bis);
+    const duanChannels = ChanCore.createDuanChannels(duans);
+    expect(zsDuanCommands.length).toBe(duanChannels.phaseB.length);
+
+    // 数据完整性：确认段存在（防止数据退化后断言失去意义）
     expect(duans.some((d) => d.endBi !== null)).toBe(true);
     expect(duans.filter((d) => d.endBi !== null).length).toBe(
       duanCommands.length,
