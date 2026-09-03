@@ -36,19 +36,24 @@ export class VisualCommandService {
     const layerSet = new Set(layers.map((l) => l.toLowerCase()));
     const allCommands: VisualCommand[] = [];
 
+    const hasZs =
+      layerSet.has('chan_zs') ||
+      layerSet.has('chan_zs_bi') ||
+      layerSet.has('chan_zs_duan');
+
     // 1. Chan Layer
     if (
       layerSet.has('chan') ||
       layerSet.has('chan_bi') ||
       layerSet.has('chan_duan') ||
-      layerSet.has('chan_zs') ||
+      hasZs ||
       layerSet.has('chan_bsp')
     ) {
       const chanCmds = ChanVisualAdapter.convert(klines, {
         ...chanOptions,
         includeBi: !layerSet.has('chan') ? layerSet.has('chan_bi') : true,
         includeDuan: !layerSet.has('chan') ? layerSet.has('chan_duan') : true,
-        includeZhongshu: !layerSet.has('chan') ? layerSet.has('chan_zs') : true,
+        includeZhongshu: !layerSet.has('chan') ? hasZs : true,
         includeBsp: !layerSet.has('chan') ? layerSet.has('chan_bsp') : true,
       });
       allCommands.push(...chanCmds);
