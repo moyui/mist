@@ -130,12 +130,17 @@ export class DuanCalculator {
           this.isDirectionalFenxing(first, prev, rev, direction)
         ) {
           const endIdx = prev.biIndex - 1;
+          // 【核心约束：缠论第 65 课「线段至少三笔」公理】
+          // 任何被确认完成（Complete）的线段，其包含的原始笔集合长度必须 >= 3 笔。
+          // 即从 segStartIdx 到 endIdx 的跨度必须满足 endIdx >= segStartIdx + 2。
+          // 彻底废除将单次回调/反弹（不足 3 笔）误切为单笔伪线段的逻辑，
+          // 确保线段与笔中枢达成严格级别嵌套（一段内包含完整的同向笔中枢）。
           if (endIdx >= segStartIdx + 2) {
             if (!this.hasGap(first, prev)) {
-              // 第一种情况：段在第二元素起点（转折点）处结束
+              // 第一种情况（无缺口）：特征序列顶/底分型成立且无缺口，段在第二元素起点（转折点）处确认结束
               return { endIdx, nextStart: prev.biIndex };
             }
-            // 第二种情况（有缺口）：需反方向新段也出分型才倒推确认
+            // 第二种情况（有缺口）：需反方向新段也走出分型才倒推确认
             const extremum =
               direction === TrendDirection.Down ? prev.low : prev.high;
             if (this.case2Confirmed(bis, prev.biIndex, direction, extremum)) {
@@ -144,6 +149,9 @@ export class DuanCalculator {
             // 未确认：prev 归属段内，继续扫描下一分型
           }
         }
+        // 若 first === null（说明 prev 是段内第 1 根反向笔，尚无特征序列第一元素可成三元素分型），
+        // 或虽有分型但前段不足 3 笔，绝不能把前面的单笔结算为 Complete 线段；
+        // 而是将 prev 正常并入 stdSeq 做包含合并，当前线段继续向后延伸！
         stdSeq = this.mergeFeatureInclusion(stdSeq, prev, direction);
       }
       prev = rev;
