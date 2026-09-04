@@ -118,14 +118,20 @@ export class ChanVisualAdapter {
           : ChanCore.createChannels(klines);
       biChannels.phaseB.forEach((zs, i) => {
         // 防御：中枢构成单元须全部确认且有效（chancore 已保证；防旧版本/外部数据）
-        if (zs.bis.some((b) => b.status !== BiStatus.Valid)) return;
-        const first = zs.bis[0];
-        const last = zs.bis[zs.bis.length - 1];
-        if (!first || !last) return;
+        // 中枢真实区间：从启动笔终点（第1根构件笔起点）到离开笔起点（最后一根构件笔终点）
+        const centralStartBi = zs.bis.length >= 2 ? zs.bis[1] : zs.bis[0];
+        const centralExitBi = zs.bis[zs.bis.length - 1];
+        if (!centralStartBi || !centralExitBi) return;
 
-        const fromIdx = getKIndex(first.startTime, zs.startId);
-        const toIdx = getKIndex(last.endTime, zs.endId);
-        if (fromIdx === null || toIdx === null) return;
+        const fromIdx = getKIndex(
+          centralStartBi.startTime,
+          centralStartBi.originIds[0],
+        );
+        const toIdx = getKIndex(
+          centralExitBi.startTime,
+          centralExitBi.originIds[0],
+        );
+        if (fromIdx === null || toIdx === null || toIdx <= fromIdx) return;
 
         const bandCmd: BandVisualCommand = {
           id: `chan_zs_bi_${i}_${fromIdx}_${toIdx}`,
@@ -133,8 +139,8 @@ export class ChanVisualAdapter {
           layer: 'chan_zs_bi',
           fromIndex: fromIdx,
           toIndex: toIdx,
-          fromTime: new Date(first.startTime).toISOString(),
-          toTime: new Date(last.endTime).toISOString(),
+          fromTime: new Date(centralStartBi.startTime).toISOString(),
+          toTime: new Date(centralExitBi.startTime).toISOString(),
           top: zs.zg,
           bottom: zs.zd,
           gg: zs.gg,

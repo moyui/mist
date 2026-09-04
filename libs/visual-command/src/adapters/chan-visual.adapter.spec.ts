@@ -397,4 +397,24 @@ describe('ChanVisualAdapter', () => {
       }
     }
   });
+
+  it('renders bi-centrals spanning from entry stroke end to exit stroke start', () => {
+    const klines = generateRealKlines();
+    const commands = ChanVisualAdapter.convert(klines);
+    const zsCommands = commands.filter((c) => c.layer === 'chan_zs_bi');
+
+    const { phaseB: channels } = ChanCore.createChannels(klines);
+    if (channels.length > 0 && zsCommands.length > 0) {
+      const firstZs = channels[0];
+      const firstCmd = zsCommands[0] as any;
+      // fromTime must equal bis[1].startTime (entry bi end), not bis[0].startTime
+      expect(firstCmd.fromTime).toBe(
+        new Date(firstZs.bis[1].startTime).toISOString(),
+      );
+      // toTime must equal bis[last].startTime (exit bi start), not bis[last].endTime
+      expect(firstCmd.toTime).toBe(
+        new Date(firstZs.bis[firstZs.bis.length - 1].startTime).toISOString(),
+      );
+    }
+  });
 });
