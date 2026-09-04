@@ -46,7 +46,10 @@ export class ChannelCalculator {
    *
    * 算法契约：
    * 1. 过滤出已确认且有效的父级别大笔序列（macroBis）；
-   * 2. 遍历每根大笔的时间边界 [T_start, T_end]，切分归属于该时段的次级别笔序列（subBis）；
+   * 2. 依据大级别起止分型窗口（顶/底分型时段），在次级别中精确锚定大级别极值发生时的起止笔：
+   *    - 向上大笔：在起点分型时段找次级别最低点（低点向上笔），在终点分型时段找次级别最高点（高点向上笔）；
+   *    - 向下大笔：在起点分型时段找次级别最高点（高点向下笔），在终点分型时段找次级别最低点（低点向下笔）；
+   *    消除周期离散化（如 30m 封盘与 5m 极值相差 5~25 分钟）带来的边缘次级别笔被误伤切除问题；
    * 3. 在每个切片内部独立运行状态机求值中枢，保证次级别中枢的生长与闭合完全封闭于大笔内；
    * 4. 汇总各切片结果，按时序输出。
    */
@@ -63,15 +66,7 @@ export class ChannelCalculator {
     const allPhaseB: ChanChannel[] = [];
 
     for (const macroBi of validMacroBis) {
-      const startMs = new Date(macroBi.startTime).getTime();
-      const endMs = new Date(macroBi.endTime).getTime();
-
-      const slice = subBis.filter((sub) => {
-        const subStart = new Date(sub.startTime).getTime();
-        const subEnd = new Date(sub.endTime).getTime();
-        return subStart >= startMs && subEnd <= endMs;
-      });
-
+      const slice = this.sliceSubBisForMacroBi(macroBi, subBis);
       if (slice.length < 5) {
         continue;
       }
@@ -85,6 +80,87 @@ export class ChannelCalculator {
       phaseA: allPhaseA,
       phaseB: allPhaseB,
     };
+  }
+
+  /**
+   * 利用父级别起止分型窗口在次级别笔序列中精确定位属于该大笔的子序列
+   */
+  private sliceSubBisForMacroBi(
+    macroBi: ChanBi,
+    subBis: readonly ChanBi[],
+  ): readonly ChanBi[] {
+    const isUp = macroBi.trend === TrendDirection.Up;
+    const sTimeMs = new Date(macroBi.startTime).getTime();
+    const eTimeMs = new Date(macroBi.endTime).getTime();
+
+    // 分型窗口搜索范围（以大笔起止时间为中心，向两侧放宽 4 小时以覆盖跨日/多根合并K线的分型区间）
+    const windowBufferMs = 4 * 3600 * 1000;
+
+    // 1. 在起点分型窗口中寻找极值锚点笔：
+    // 向上大笔起点必为窗口内最低点 (min low) 且方向为向上
+    // 向下大笔起点必为窗口内最高点 (max high) 且方向为向下
+    let startIdx = -1;
+    let startExtreme = isUp ? Infinity : -Infinity;
+
+    subBis.forEach((s, idx) => {
+      const ms = new Date(s.startTime).getTime();
+      if (ms >= sTimeMs - windowBufferMs && ms <= sTimeMs + windowBufferMs) {
+        if (isUp && s.trend === TrendDirection.Up) {
+          if (s.low < startExtreme) {
+            startExtreme = s.low;
+            startIdx = idx;
+          }
+        } else if (!isUp && s.trend === TrendDirection.Down) {
+          if (s.high > startExtreme) {
+            startExtreme = s.high;
+            startIdx = idx;
+          }
+        }
+      }
+    });
+
+    // 2. 在终点分型窗口中寻找极值锚点笔：
+    // 向上大笔终点必为窗口内最高点 (max high) 且方向为向上
+    // 向下大笔终点必为窗口内最低点 (min low) 且方向为向下
+    let endIdx = -1;
+    let endExtreme = isUp ? -Infinity : Infinity;
+
+    subBis.forEach((s, idx) => {
+      const ms = new Date(s.endTime).getTime();
+      if (ms >= eTimeMs - windowBufferMs && ms <= eTimeMs + windowBufferMs) {
+        if (isUp && s.trend === TrendDirection.Up) {
+          if (s.high > endExtreme) {
+            endExtreme = s.high;
+            endIdx = idx;
+          }
+        } else if (!isUp && s.trend === TrendDirection.Down) {
+          if (s.low < endExtreme) {
+            endExtreme = s.low;
+            endIdx = idx;
+          }
+        }
+      }
+    });
+
+    // 兜底保护：若数据边缘或分型异常未匹配到极值，平滑退化为时间戳边界切片
+    if (startIdx === -1) {
+      startIdx = subBis.findIndex(
+        (s) => new Date(s.startTime).getTime() >= sTimeMs,
+      );
+    }
+    if (endIdx === -1) {
+      for (let i = subBis.length - 1; i >= 0; i--) {
+        if (new Date(subBis[i].endTime).getTime() <= eTimeMs) {
+          endIdx = i;
+          break;
+        }
+      }
+    }
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx >= startIdx) {
+      return subBis.slice(startIdx, endIdx + 1);
+    }
+    return [];
   }
 
   /**

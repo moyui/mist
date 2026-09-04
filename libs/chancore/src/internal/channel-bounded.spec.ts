@@ -293,4 +293,64 @@ describe('ChannelCalculator.getAdjacentBoundedChannels', () => {
       new Date('2026-01-01T11:30:00Z').getTime(),
     );
   });
+
+  it('correctly anchors sub-bis to macro fenxing extreme when sub-bi starts slightly before macro bar close time', () => {
+    // 30m bar closes at 11:30 (so macroBi.startTime is 11:30)
+    // but the 5m peak actually occurs at 11:25 (so subBi #1 starts at 11:25)
+    const macroBis = [
+      makeMockBi(
+        TrendDirection.Down,
+        20,
+        50,
+        '2026-01-01T11:30:00Z',
+        '2026-01-01T13:30:00Z',
+      ),
+    ];
+
+    const subBis = [
+      makeMockBi(
+        TrendDirection.Down,
+        30,
+        50,
+        '2026-01-01T11:25:00Z', // 5m before macro 11:30!
+        '2026-01-01T12:00:00Z',
+      ),
+      makeMockBi(
+        TrendDirection.Up,
+        30,
+        42,
+        '2026-01-01T12:00:00Z',
+        '2026-01-01T12:20:00Z',
+      ),
+      makeMockBi(
+        TrendDirection.Down,
+        32,
+        42,
+        '2026-01-01T12:20:00Z',
+        '2026-01-01T12:40:00Z',
+      ),
+      makeMockBi(
+        TrendDirection.Up,
+        32,
+        40,
+        '2026-01-01T12:40:00Z',
+        '2026-01-01T13:00:00Z',
+      ),
+      makeMockBi(
+        TrendDirection.Down,
+        20,
+        40,
+        '2026-01-01T13:00:00Z',
+        '2026-01-01T13:25:00Z',
+      ),
+    ];
+
+    const result = ChanCore.createAdjacentBoundedChannels(subBis, macroBis);
+    expect(result.phaseB).toHaveLength(1);
+    const zs = result.phaseB[0];
+    expect(zs.trend).toBe(TrendDirection.Down);
+    expect(zs.zg).toBe(40);
+    expect(zs.zd).toBe(32);
+    expect(zs.bis[0].startTime.toISOString()).toBe('2026-01-01T11:25:00.000Z');
+  });
 });
