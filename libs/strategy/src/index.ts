@@ -80,3 +80,5 @@ export type {
   StrategyQuantityEvidenceObservation,
   StrategyUnavailableReason,
 } from './evaluation/strategy-evaluation.types';
+export * from './factor';
+export * from './decision-flow';

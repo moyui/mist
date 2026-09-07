@@ -206,6 +206,13 @@ export class StrategyDefinitionService {
       compileChanBspConfigSafe(version.rule, definition.periods);
       return;
     }
+    if (definition.kind === StrategyKind.DECISION_FLOW) {
+      const rootNode = (version.rule as any)?.rootNode;
+      if (!rootNode || !rootNode.type) {
+        throw new BadRequestException('决策流版本规则缺少有效的 rootNode');
+      }
+      return;
+    }
     if (forRealtime) {
       this.executionPlanService.compileForRealtimeRegistration(version);
       return;
@@ -234,6 +241,23 @@ export class StrategyDefinitionService {
           points: plan.points,
           direction: plan.direction,
           requiredBarCount: plan.requiredBarCount,
+        },
+      };
+    }
+    if (kind === StrategyKind.DECISION_FLOW) {
+      const rootNode = (rule as any)?.rootNode;
+      if (!rootNode || !rootNode.type) {
+        throw new BadRequestException(
+          '决策流策略必须包含有效的根节点定义 rootNode',
+        );
+      }
+      return {
+        normalizedRule: rule,
+        validationSummary: {
+          ruleSchemaVersion: StrategyRuleSchemaVersion.V1,
+          kind: 'decision_flow',
+          rootNodeType: rootNode.type,
+          requiredBarCount: (rule as any)?.requiredBarCount ?? 50,
         },
       };
     }

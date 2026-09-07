@@ -16,6 +16,9 @@ export interface NotificationMessage {
   readonly periodLabel: string;
   readonly signalTime: string;
   readonly summary: string;
+  readonly confidence?: number;
+  readonly confidenceLevel?: 'HIGH' | 'MEDIUM' | 'LOW';
+  readonly reason?: string;
 }
 
 export interface NotificationEnvelope {
@@ -48,6 +51,13 @@ export function buildNotificationEnvelope(
   const strategyName = strategyDefinition?.name ?? '';
   const periodLabel = signal ? formatPeriod(signal.period) : '';
   const signalTime = signal ? formatShanghaiTime(signal.signalTime) : '';
+  const confidence =
+    signal?.confidence !== null && signal?.confidence !== undefined
+      ? Number(signal.confidence)
+      : undefined;
+  const confidenceLevel = signal?.confidenceLevel ?? undefined;
+  const reason = (signal?.decisionTrace as any)?.summary;
+
   const summary = buildSummary({
     securityCode,
     securityName,
@@ -56,6 +66,8 @@ export function buildNotificationEnvelope(
     strategyName,
     periodLabel,
     signalTime,
+    confidence,
+    confidenceLevel,
   });
   return Object.freeze({
     alertEventId: alertEvent.id,
@@ -70,6 +82,9 @@ export function buildNotificationEnvelope(
       periodLabel,
       signalTime,
       summary,
+      confidence,
+      confidenceLevel,
+      reason,
     }),
   });
 }
@@ -82,13 +97,19 @@ function buildSummary(parts: {
   strategyName: string;
   periodLabel: string;
   signalTime: string;
+  confidence?: number;
+  confidenceLevel?: string;
 }): string {
   const name = parts.securityName ? ` ${parts.securityName}` : '';
   const price =
     parts.triggerPrice !== undefined ? ` @ ${parts.triggerPrice}` : '';
+  const conf =
+    parts.confidence !== undefined
+      ? ` [${parts.confidenceLevel ?? 'CONF'} ${parts.confidence.toFixed(1)}%]`
+      : '';
   const seg = (...xs: string[]) => xs.filter(Boolean).join(' | ');
   const tail = seg(parts.strategyName, parts.periodLabel, parts.signalTime);
-  return `[Mist] ${parts.securityCode}${name} ${parts.direction}${price}${
+  return `[Mist]${conf} ${parts.securityCode}${name} ${parts.direction}${price}${
     tail ? ` | ${tail}` : ''
   }`;
 }

@@ -23,6 +23,7 @@ export class StrategySignalService {
 
     return await this.signalRepository.find({
       where,
+      relations: ['security'],
       order: { signalTime: 'DESC' },
     });
   }

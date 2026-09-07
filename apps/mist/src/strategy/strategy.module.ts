@@ -3,12 +3,14 @@ import { StrategyAlertEventController } from './controllers/strategy-alert-event
 import { StrategyBacktestController } from './controllers/strategy-backtest.controller';
 import { StrategySignalController } from './controllers/strategy-signal.controller';
 import { StrategyController } from './controllers/strategy.controller';
+import { FactorPluginController } from './controllers/factor-plugin.controller';
 import { StrategyCoreModule } from './strategy-core.module';
 
 @Module({
   imports: [StrategyCoreModule],
   controllers: [
     StrategyController,
+    FactorPluginController,
     StrategySignalController,
     StrategyAlertEventController,
     StrategyBacktestController,

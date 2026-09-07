@@ -26,9 +26,11 @@
 - [x] 4.4 在 `strategy_definitions` 中录入并启用 4 个指数的 5m bi、5m duan、30m bi、30m duan 策略实例（共 16 个策略）。
 - [x] 4.5 激活 4 个指数的实时订阅分配（Assignments），旧股票订阅已停用。
 
-## 5. 实盘交易时段验证（明日开盘）
+## 5. 实盘交易时段验证（2026-09-02 开盘，已核对）
 
-- [ ] 5.1 09:15 验证定时任务执行 read-before-reset，QMT 与 TDX 成功下发 4 个指数的订阅命令。
-- [x] 5.2 09:30 验证首批 tick snapshot 正常流入并落入 Redis 1m candle 聚合桶。
-- [x] 5.3 09:35 验证首根 5m candle 封存并触发 signal app 策略扫描。
-- [ ] 5.4 验证结构满足背驰/买卖点时，飞书机器人秒级推送带结构级别的通知（已弃用企业微信）。
+- [x] 5.1 09:15 验证定时任务执行 read-before-reset，QMT 与 TDX 成功下发 4 个指数的订阅命令。（生产确认：QMT/TDX `subscriptions.ready:true`，4 指数均有 `candlefinal` BullMQ 作业流）
+- [x] 5.2 09:30 验证首批 tick snapshot 正常流入并落入 Redis 1m candle 聚合桶。（生产确认：Redis 存在 `candlefinal-v1-qmt-5/8/11-1m`、`candlefinal-v1-tdx-12-1m` 且时间戳为当日）
+- [x] 5.3 09:35 验证首根 5m candle 封存并触发 signal app 策略扫描。（生产确认：09:35:05–06 生成 4 条告警，signal 编译 16 策略 def 9–22）
+- [x] 5.4 验证结构满足背驰/买卖点时，飞书机器人秒级推送带结构级别的通知（已弃用企业微信）。（操作员确认飞书已收到；WeCom 死信噪声待通过 `NOTIFICATION_CHANNELS=feishu` 切换消除）
+
+> 备注：09:05 盘前巡检 `klines` 维度因 15m/60m 系统性未入库而标红，操作员判定无碍实盘，按通过处理；000688 的 2026-09-01 5m/30m/DAY 缺口建议后续补录。

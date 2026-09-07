@@ -188,6 +188,12 @@ function mapResult(result: BacktestSignalResult): BacktestSignalResultVo {
     backtestRunId: result.backtestRunId,
     securityCode: result.securityCode,
     signalTime: result.signalTime.toISOString(),
+    confidence:
+      result.confidence !== null && result.confidence !== undefined
+        ? Number(result.confidence)
+        : null,
+    confidenceLevel: result.confidenceLevel ?? null,
+    decisionTrace: result.decisionTrace ?? null,
     contextSnapshot: result.contextSnapshot,
     ruleSnapshot: result.ruleSnapshot,
     createdAt: result.createdAt.toISOString(),

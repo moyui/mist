@@ -119,7 +119,9 @@ describe('Strategy domain boundary', () => {
               !allowedSiblingImports.has(source) &&
               // The shared indicator core is a pure library (no I/O) and the evaluator delegates
               // KDJ/MACD math to it (see extract-shared-indicators-library).
-              source !== '@app/indicators') ||
+              source !== '@app/indicators' &&
+              // The Chan core is a pure computational geometry library (no I/O) for factor plugins
+              source !== '@app/chancore') ||
             source.startsWith('apps/') ||
             source.includes('/apps/') ||
             relativeImportEscapesStrategy(file, source),

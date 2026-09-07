@@ -39,8 +39,28 @@ export class BacktestSignalResult {
   @Column({ name: 'signal_time', type: 'datetime' })
   signalTime: Date = new Date();
 
+  @Column({
+    name: 'confidence',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
+  confidence?: number | null;
+
+  @Column({
+    name: 'confidence_level',
+    type: 'enum',
+    enum: ['HIGH', 'MEDIUM', 'LOW'],
+    nullable: true,
+  })
+  confidenceLevel?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+
   @Column({ name: 'context_snapshot', type: 'json' })
   contextSnapshot!: Record<string, unknown>;
+
+  @Column({ name: 'decision_trace', type: 'json', nullable: true })
+  decisionTrace?: Record<string, unknown> | null;
 
   @Column({ name: 'rule_snapshot', type: 'json' })
   ruleSnapshot!: Record<string, unknown>;
